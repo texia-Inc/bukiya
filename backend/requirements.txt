@@ -1,0 +1,41 @@
+# FastAPI関連
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# データベース関連
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+
+# 認証・セキュリティ
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-decouple==3.8
+
+# Redis関連
+redis==5.0.1
+hiredis==2.2.3
+
+# バリデーション・シリアライゼーション
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# HTTP関連
+httpx==0.25.2
+requests==2.31.0
+
+# ユーティリティ
+python-dateutil==2.8.2
+pytz==2023.3
+
+# 開発・テスト関連
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+
+# ログ・監視
+structlog==23.2.0

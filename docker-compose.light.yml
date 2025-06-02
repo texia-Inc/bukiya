@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # PostgreSQL データベース（軽量版）
+  postgres:
+    image: postgres:15-alpine
+    container_name: bukiya_postgres_light
+    environment:
+      POSTGRES_DB: bukiya_game
+      POSTGRES_USER: bukiya_user
+      POSTGRES_PASSWORD: bukiya_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/seed_data_complete.sql:/docker-entrypoint-initdb.d/02-seed_data.sql
+    restart: unless-stopped
+    command: postgres -c shared_preload_libraries='' -c max_connections=20
+
+  # Redis キャッシュ（軽量版）
+  redis:
+    image: redis:7-alpine
+    container_name: bukiya_redis_light
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 128mb
+
+networks:
+  default:
+    name: bukiya_network_light
