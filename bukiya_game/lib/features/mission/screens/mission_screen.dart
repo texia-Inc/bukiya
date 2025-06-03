@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:bukiya_game/core/models/mission.dart';
-import 'package:bukiya_game/features/mission/providers/mission_provider.dart';
-import 'package:bukiya_game/features/mission/widgets/mission_card.dart';
-import 'package:bukiya_game/features/mission/widgets/mission_summary_card.dart';
-import 'package:bukiya_game/shared/themes/app_theme.dart';
+import '../providers/mission_provider.dart';
+import '../widgets/mission_card.dart';
+import '../widgets/mission_summary_card.dart';
+import '../../../shared/themes/app_theme.dart';
 
 class MissionScreen extends StatefulWidget {
   const MissionScreen({super.key});
@@ -22,7 +21,7 @@ class _MissionScreenState extends State<MissionScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     
-    // 初回データ取得
+    // ミッションデータを読み込み
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MissionProvider>().fetchAllMissions();
     });
@@ -48,185 +47,36 @@ class _MissionScreenState extends State<MissionScreen>
         ),
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
-        actions: [
-          Consumer<MissionProvider>(
-            builder: (context, provider, child) {
-              if (provider.hasClaimableRewards) {
-                return Stack(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.card_giftcard, color: Colors.white),
-                      onPressed: () => _showClaimAllDialog(context, provider),
-                    ),
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          '${provider.claimableRewardsCount}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: () {
-              context.read<MissionProvider>().refresh();
-            },
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          tabs: [
+          tabs: const [
             Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.today, size: 20),
-                  const SizedBox(width: 4),
-                  const Text('デイリー'),
-                  Consumer<MissionProvider>(
-                    builder: (context, provider, child) {
-                      final count = provider.dailyMissions
-                          .where((m) => m.canClaimReward)
-                          .length;
-                      if (count > 0) {
-                        return Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$count',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ],
-              ),
+              icon: Icon(Icons.today),
+              text: 'デイリー',
             ),
             Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.calendar_view_week, size: 20),
-                  const SizedBox(width: 4),
-                  const Text('ウィークリー'),
-                  Consumer<MissionProvider>(
-                    builder: (context, provider, child) {
-                      final count = provider.weeklyMissions
-                          .where((m) => m.canClaimReward)
-                          .length;
-                      if (count > 0) {
-                        return Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$count',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ],
-              ),
+              icon: Icon(Icons.calendar_view_week),
+              text: 'ウィークリー',
             ),
             Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.emoji_events, size: 20),
-                  const SizedBox(width: 4),
-                  const Text('実績'),
-                  Consumer<MissionProvider>(
-                    builder: (context, provider, child) {
-                      final count = provider.achievements
-                          .where((m) => m.canClaimReward)
-                          .length;
-                      if (count > 0) {
-                        return Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$count',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ],
-              ),
+              icon: Icon(Icons.emoji_events),
+              text: 'アチーブメント',
             ),
           ],
         ),
       ),
       body: Consumer<MissionProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading) {
+        builder: (context, missionProvider, child) {
+          if (missionProvider.isLoading) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          if (provider.error != null) {
+          if (missionProvider.error != null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -238,16 +88,24 @@ class _MissionScreenState extends State<MissionScreen>
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    provider.error!,
+                    'エラーが発生しました',
                     style: TextStyle(
+                      fontSize: 18,
                       color: Colors.grey[600],
-                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    missionProvider.error!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => provider.refresh(),
+                    onPressed: () => missionProvider.fetchAllMissions(),
                     child: const Text('再試行'),
                   ),
                 ],
@@ -255,23 +113,38 @@ class _MissionScreenState extends State<MissionScreen>
             );
           }
 
-          return TabBarView(
-            controller: _tabController,
+          return Column(
             children: [
-              _buildMissionList(
-                provider.dailyMissions,
-                MissionType.daily,
-                provider,
+              // ミッション概要カード
+              Container(
+                margin: const EdgeInsets.all(16),
+                child: _buildOverallSummary(missionProvider),
               ),
-              _buildMissionList(
-                provider.weeklyMissions,
-                MissionType.weekly,
-                provider,
-              ),
-              _buildMissionList(
-                provider.achievements,
-                MissionType.achievement,
-                provider,
+              
+              // ミッション一覧
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // デイリーミッション
+                    _buildMissionList(
+                      missionProvider.dailyMissions,
+                      'デイリーミッションはありません',
+                    ),
+                    
+                    // ウィークリーミッション
+                    _buildMissionList(
+                      missionProvider.weeklyMissions,
+                      'ウィークリーミッションはありません',
+                    ),
+                    
+                    // アチーブメント
+                    _buildMissionList(
+                      missionProvider.achievements,
+                      'アチーブメントはありません',
+                    ),
+                  ],
+                ),
               ),
             ],
           );
@@ -280,27 +153,175 @@ class _MissionScreenState extends State<MissionScreen>
     );
   }
 
-  Widget _buildMissionList(
-    List<Mission> missions,
-    MissionType type,
-    MissionProvider provider,
-  ) {
+  Widget _buildOverallSummary(MissionProvider missionProvider) {
+    final totalClaimable = missionProvider.claimableRewardsCount;
+    
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6A1B9A), Color(0xFF4A148C)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.assignment,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ミッション概要',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '進捗状況と受取可能報酬',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (totalClaimable > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$totalClaimable',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSummaryItem(
+                    'デイリー',
+                    '${missionProvider.completedDailyCount}/${missionProvider.dailyMissions.length}',
+                    Icons.today,
+                  ),
+                ),
+                Expanded(
+                  child: _buildSummaryItem(
+                    'ウィークリー',
+                    '${missionProvider.completedWeeklyCount}/${missionProvider.weeklyMissions.length}',
+                    Icons.calendar_view_week,
+                  ),
+                ),
+                Expanded(
+                  child: _buildSummaryItem(
+                    'アチーブメント',
+                    '${missionProvider.completedAchievementCount}/${missionProvider.achievements.length}',
+                    Icons.emoji_events,
+                  ),
+                ),
+              ],
+            ),
+            if (totalClaimable > 0) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => _claimAllRewards(missionProvider),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  '全ての報酬を受け取る ($totalClaimable個)',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          color: Colors.white,
+          size: 24,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.white70,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMissionList(List<dynamic> missions, String emptyMessage) {
     if (missions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              _getTypeIcon(type),
+              Icons.assignment_outlined,
               size: 64,
               color: Colors.grey[400],
             ),
             const SizedBox(height: 16),
             Text(
-              _getEmptyMessage(type),
+              emptyMessage,
               style: TextStyle(
-                color: Colors.grey[600],
                 fontSize: 16,
+                color: Colors.grey[600],
               ),
             ),
           ],
@@ -309,107 +330,71 @@ class _MissionScreenState extends State<MissionScreen>
     }
 
     return RefreshIndicator(
-      onRefresh: () => provider.refresh(),
-      child: ListView(
+      onRefresh: () async {
+        await context.read<MissionProvider>().fetchAllMissions();
+      },
+      child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        children: [
-          // サマリーカード
-          MissionSummaryCard(
-            type: type,
-            missions: missions,
-          ),
-          const SizedBox(height: 16),
-          
-          // ミッションリスト
-          ...missions.map((mission) => Padding(
+        itemCount: missions.length,
+        itemBuilder: (context, index) {
+          final mission = missions[index];
+          return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: MissionCard(
               mission: mission,
-              onClaimReward: () => _claimReward(mission, provider),
             ),
-          )),
-        ],
+          );
+        },
       ),
     );
   }
 
-  IconData _getTypeIcon(MissionType type) {
-    switch (type) {
-      case MissionType.daily:
-        return Icons.today;
-      case MissionType.weekly:
-        return Icons.calendar_view_week;
-      case MissionType.achievement:
-        return Icons.emoji_events;
-    }
-  }
-
-  String _getEmptyMessage(MissionType type) {
-    switch (type) {
-      case MissionType.daily:
-        return 'デイリーミッションはありません';
-      case MissionType.weekly:
-        return 'ウィークリーミッションはありません';
-      case MissionType.achievement:
-        return 'アチーブメントはありません';
-    }
-  }
-
-  Future<void> _claimReward(Mission mission, MissionProvider provider) async {
-    final success = await provider.claimReward(mission.id);
-    
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('報酬を受け取りました: ${mission.name}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('報酬の受取に失敗しました'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  Future<void> _showClaimAllDialog(
-    BuildContext context,
-    MissionProvider provider,
-  ) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('一括受取'),
-        content: Text(
-          '受取可能な報酬 ${provider.claimableRewardsCount} 個をすべて受け取りますか？',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('キャンセル'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('受け取る'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true) {
-      final claimedCount = await provider.claimAllRewards();
+  void _claimAllRewards(MissionProvider missionProvider) async {
+    try {
+      final claimedCount = await missionProvider.claimAllRewards();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$claimedCount 個の報酬を受け取りました'),
+            content: Text('$claimedCount個の報酬を受け取りました！'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('報酬の受け取りに失敗しました'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _claimReward(dynamic mission) async {
+    try {
+      await context.read<MissionProvider>().claimReward(mission.id);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('報酬を受け取りました！'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('報酬の受け取りに失敗しました'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

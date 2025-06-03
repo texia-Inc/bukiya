@@ -66,7 +66,8 @@ const MonsterList: React.FC = () => {
 
   const [deleteMonster] = useDeleteMonsterMutation();
 
-  const monsters = monstersResponse?.data || [];
+  const monsters = monstersResponse?.monsters || [];
+  const total = monstersResponse?.total || 0;
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -277,7 +278,7 @@ const MonsterList: React.FC = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              monsters.map((monster) => (
+              monsters.map((monster: any) => (
                 <TableRow key={monster.id} hover>
                   <TableCell>{monster.id}</TableCell>
                   <TableCell>

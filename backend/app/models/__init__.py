@@ -11,6 +11,14 @@ from .crafting_recipe import CraftingRecipe
 from .recipe_material import RecipeMaterial
 from .mission_template import MissionTemplate
 from .player_mission import PlayerMission, MissionProgressLog
+from .enchantment import (
+    EnchantmentType, WeaponEnchantment, EnchantmentLog,
+    EnchantmentMaterial, PlayerEnchantmentMaterial
+)
+from .idle_system import (
+    PlayerIdleSystem, IdleUpgradeMaster, PlayerIdleUpgrade,
+    IdleBonusMaster, PlayerIdleBonus
+)
 
 __all__ = [
     "Player",
@@ -26,4 +34,14 @@ __all__ = [
     "MissionTemplate",
     "PlayerMission",
     "MissionProgressLog",
+    "EnchantmentType",
+    "WeaponEnchantment",
+    "EnchantmentLog",
+    "EnchantmentMaterial",
+    "PlayerEnchantmentMaterial",
+    "PlayerIdleSystem",
+    "IdleUpgradeMaster",
+    "PlayerIdleUpgrade",
+    "IdleBonusMaster",
+    "PlayerIdleBonus",
 ]

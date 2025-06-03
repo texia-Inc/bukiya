@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.dependencies import get_current_user
-from app.schemas.auth import Token, UserCreate, UserResponse
+from app.schemas.auth import Token, UserCreate, UserResponse, UserLogin
 from app.schemas.common import APIResponse
 from app.models.player import Player
 from app.models.player_statistics import PlayerStatistics
@@ -85,15 +85,15 @@ async def register(
 
 @router.post("/login", response_model=APIResponse[UserResponse])
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    user_data: UserLogin,
     db: Session = Depends(get_db)
 ):
     """
     プレイヤーログイン
     """
     # プレイヤー認証
-    player = db.query(Player).filter(Player.email == form_data.username).first()
-    if not player or not verify_password(form_data.password, player.password_hash):
+    player = db.query(Player).filter(Player.email == user_data.email).first()
+    if not player or not verify_password(user_data.password, player.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="メールアドレスまたはパスワードが正しくありません",

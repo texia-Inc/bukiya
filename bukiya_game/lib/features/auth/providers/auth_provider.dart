@@ -59,8 +59,21 @@ class AuthProvider extends ChangeNotifier {
         value: response.accessToken,
       );
 
-      // プレイヤー情報を保存
-      _currentPlayer = response.user;
+      // プレイヤー情報を作成（後でプロフィール取得）
+      _currentPlayer = Player(
+        id: response.playerId,
+        username: response.username,
+        email: email,
+        gold: 1000,
+        gems: 100,
+        shopLevel: 1,
+        experience: 0,
+        reputation: 1,
+        isActive: true,
+        lastLogin: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
       _isAuthenticated = true;
 
       _setLoading(false);
@@ -91,8 +104,21 @@ class AuthProvider extends ChangeNotifier {
         value: response.accessToken,
       );
 
-      // プレイヤー情報を保存
-      _currentPlayer = response.user;
+      // プレイヤー情報を作成（後でプロフィール取得）
+      _currentPlayer = Player(
+        id: response.playerId,
+        username: response.username,
+        email: email,
+        gold: 1000,
+        gems: 100,
+        shopLevel: 1,
+        experience: 0,
+        reputation: 1,
+        isActive: true,
+        lastLogin: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
       _isAuthenticated = true;
 
       _setLoading(false);

@@ -25,6 +25,7 @@ import {
   Person as AdventurerIcon,
   Pets as MonsterIcon,
   Assignment as MissionIcon,
+  AutoFixHigh as EnchantmentIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -45,6 +46,7 @@ const menuItems = [
   { id: 'monsters', label: 'モンスター管理', icon: MonsterIcon, path: '/monsters' },
   { id: 'quest-areas', label: 'クエストエリア管理', icon: SettingsIcon, path: '/quest-areas' },
   { id: 'missions', label: 'ミッション管理', icon: MissionIcon, path: '/missions' },
+  { id: 'enchantments', label: 'エンチャント管理', icon: EnchantmentIcon, path: '/enchantments' },
   { id: 'settings', label: '設定', icon: SettingsIcon, path: '/settings' },
 ]
 

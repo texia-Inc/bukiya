@@ -64,9 +64,9 @@ flutter:
     - assets/icons/
     - assets/animations/
   
-  fonts:
-    - family: GameFont
-      fonts:
-        - asset: assets/fonts/game_font_regular.ttf
-        - asset: assets/fonts/game_font_bold.ttf
-          weight: 700
+  # fonts:
+  #   - family: GameFont
+  #     fonts:
+  #       - asset: assets/fonts/game_font_regular.ttf
+  #       - asset: assets/fonts/game_font_bold.ttf
+  #         weight: 700

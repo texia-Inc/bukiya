@@ -28,6 +28,7 @@ class PlayerWeapon(Base):
     # リレーションシップ
     player = relationship("Player", back_populates="weapons")
     weapon_master = relationship("WeaponMaster", back_populates="player_weapons")
+    enchantments = relationship("WeaponEnchantment", back_populates="weapon", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<PlayerWeapon(id={self.id}, weapon='{self.weapon_master.name if self.weapon_master else 'Unknown'}', attack={self.attack})>"

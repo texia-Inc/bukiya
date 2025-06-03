@@ -16,6 +16,7 @@ import '../../crafting/screens/crafting_screen.dart';
 import '../../inventory/screens/inventory_screen.dart';
 import '../../adventurer/screens/adventurer_screen.dart';
 import '../../idle/widgets/idle_income_card.dart';
+import '../../enchantment/screens/enchantment_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -146,6 +147,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return _buildInventoryTab();
       case 5:
         return _buildCraftingTab();
+      case 6:
+        return _buildEnchantmentTab();
       default:
         return _buildDashboardTab(player, dashboardProvider);
     }
@@ -209,6 +212,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCraftingTab() {
     // 錬成画面を直接表示
     return const CraftingScreen();
+  }
+
+  Widget _buildEnchantmentTab() {
+    // エンチャント画面を直接表示
+    return const EnchantmentScreen();
   }
 
   Widget _buildRecentActivity(DashboardProvider dashboardProvider) {
@@ -275,6 +283,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         BottomNavigationBarItem(
           icon: Icon(Icons.build),
           label: '合成',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.auto_fix_high),
+          label: 'エンチャント',
         ),
       ],
     );

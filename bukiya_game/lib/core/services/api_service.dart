@@ -63,7 +63,11 @@ class ApiService {
         ApiEndpoints.login,
         data: request.toJson(),
       );
-      return AuthResponse.fromJson(response.data);
+      if (response.data['success'] == true) {
+        return AuthResponse.fromJson(response.data['data']);
+      } else {
+        throw Exception(response.data['message'] ?? 'ログインに失敗しました');
+      }
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -75,7 +79,11 @@ class ApiService {
         ApiEndpoints.register,
         data: request.toJson(),
       );
-      return AuthResponse.fromJson(response.data);
+      if (response.data['success'] == true) {
+        return AuthResponse.fromJson(response.data['data']);
+      } else {
+        throw Exception(response.data['message'] ?? '新規登録に失敗しました');
+      }
     } on DioException catch (e) {
       throw _handleError(e);
     }

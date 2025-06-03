@@ -176,11 +176,11 @@ class Material {
 
   factory Material.fromJson(Map<String, dynamic> json) {
     return Material(
-      id: json['id'],
-      name: json['name'],
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+      name: json['name'] ?? '',
       description: json['description'] ?? '',
-      rarity: json['rarity'] ?? 'common',
-      sellPrice: json['sell_price'] ?? 0,
+      rarity: json['rarity']?.toString() ?? 'common',
+      sellPrice: json['sell_price'] is int ? json['sell_price'] : int.tryParse(json['sell_price'].toString()) ?? 0,
       isActive: json['is_active'] ?? true,
     );
   }

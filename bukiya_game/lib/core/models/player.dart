@@ -192,19 +192,22 @@ class RegisterRequest {
 
 @JsonSerializable()
 class AuthResponse {
+  @JsonKey(name: 'player_id')
+  final String playerId;
+  final String username;
   @JsonKey(name: 'access_token')
   final String accessToken;
   @JsonKey(name: 'token_type')
   final String tokenType;
   @JsonKey(name: 'expires_in')
   final int expiresIn;
-  final Player user;
 
   const AuthResponse({
+    required this.playerId,
+    required this.username,
     required this.accessToken,
     required this.tokenType,
     required this.expiresIn,
-    required this.user,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) =>

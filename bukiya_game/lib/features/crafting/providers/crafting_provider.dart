@@ -76,7 +76,8 @@ class CraftingProvider extends ChangeNotifier {
       );
 
       if (response.data['success']) {
-        _recipes = (response.data['data'] as List)
+        final List<dynamic> recipesData = response.data['data'];
+        _recipes = recipesData
             .map((json) => CraftingRecipe.fromJson(json))
             .toList();
         notifyListeners();
@@ -86,35 +87,37 @@ class CraftingProvider extends ChangeNotifier {
     }
   }
 
-  // 合成可能なレシピを取得
-  Future<void> fetchAvailableRecipes() async {
-    try {
-      final response = await _apiService.dio.get('/crafting/recipes/available');
-      
-      if (response.data['success']) {
-        _availableRecipes = (response.data['data'] as List)
-            .map((json) => CraftingRecipe.fromJson(json))
-            .toList();
-        notifyListeners();
-      }
-    } catch (e) {
-      _setError('合成可能レシピの取得に失敗しました: $e');
-    }
-  }
-
   // プレイヤー所持素材を取得
   Future<void> fetchPlayerMaterials() async {
     try {
-      final response = await _apiService.dio.get('/materials/player');
+      final response = await _apiService.dio.get('/materials/player/inventory');
       
       if (response.data['success']) {
-        _playerMaterials = (response.data['data'] as List)
+        final List<dynamic> materialsData = response.data['data'];
+        _playerMaterials = materialsData
             .map((json) => PlayerMaterial.fromJson(json))
             .toList();
         notifyListeners();
       }
     } catch (e) {
       _setError('所持素材の取得に失敗しました: $e');
+    }
+  }
+
+  // 合成可能なレシピを取得
+  Future<void> fetchAvailableRecipes() async {
+    try {
+      final response = await _apiService.dio.get('/crafting/recipes');
+      
+      if (response.data['success']) {
+        final List<dynamic> recipesData = response.data['data'];
+        _availableRecipes = recipesData
+            .map((json) => CraftingRecipe.fromJson(json))
+            .toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      _setError('合成可能レシピの取得に失敗しました: $e');
     }
   }
 
@@ -192,13 +195,13 @@ class CraftingProvider extends ChangeNotifier {
 
     if (weaponType != null) {
       filteredRecipes = filteredRecipes
-          .where((recipe) => recipe.weapon.weaponType.name.toLowerCase() == weaponType.toLowerCase())
+          .where((recipe) => recipe.weapon.weaponType.toLowerCase() == weaponType.toLowerCase())
           .toList();
     }
 
     if (rarity != null) {
       filteredRecipes = filteredRecipes
-          .where((recipe) => recipe.weapon.rarity.name.toLowerCase() == rarity.toLowerCase())
+          .where((recipe) => recipe.weapon.rarity.toLowerCase() == rarity.toLowerCase())
           .toList();
     }
 
@@ -225,7 +228,7 @@ class CraftingProvider extends ChangeNotifier {
     return _availableRecipes.where((recipe) {
       return recipe.name.toLowerCase().contains(lowerQuery) ||
              recipe.weapon.name.toLowerCase().contains(lowerQuery) ||
-             recipe.description.toLowerCase().contains(lowerQuery);
+             (recipe.description?.toLowerCase().contains(lowerQuery) ?? false);
     }).toList();
   }
 

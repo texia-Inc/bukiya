@@ -65,7 +65,8 @@ const AdventurerList: React.FC = () => {
 
   const [deleteAdventurer] = useDeleteAdventurerMutation();
 
-  const adventurers = adventurersResponse?.data || [];
+  const adventurers = adventurersResponse?.adventurers || [];
+  const total = adventurersResponse?.total || 0;
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -259,7 +260,7 @@ const AdventurerList: React.FC = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              adventurers.map((adventurer) => (
+              adventurers.map((adventurer: any) => (
                 <TableRow key={adventurer.id} hover>
                   <TableCell>{adventurer.id}</TableCell>
                   <TableCell>

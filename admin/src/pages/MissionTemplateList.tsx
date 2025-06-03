@@ -66,6 +66,7 @@ const MissionTemplateList: React.FC = () => {
   const [deleteMissionTemplate] = useDeleteMissionTemplateMutation()
 
   const templates = templatesResponse?.data || []
+  const total = templates.length
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage)

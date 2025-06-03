@@ -12,6 +12,7 @@ import 'features/crafting/providers/crafting_provider.dart';
 import 'features/mission/providers/mission_provider.dart';
 import 'features/adventurer/providers/adventurer_provider.dart';
 import 'features/idle/providers/idle_provider.dart';
+import 'features/enchantment/providers/enchantment_provider.dart';
 import 'core/services/api_service.dart';
 import 'app/app.dart';
 
@@ -44,9 +45,13 @@ class BukiyaGameApp extends StatelessWidget {
           create: (context) => CraftingProvider(context.read<ApiService>()),
           update: (context, apiService, previous) => previous ?? CraftingProvider(apiService),
         ),
-        ChangeNotifierProxyProvider<ApiService, MissionProvider>(
-          create: (context) => MissionProvider(context.read<ApiService>()),
-          update: (context, apiService, previous) => previous ?? MissionProvider(apiService),
+        ChangeNotifierProxyProvider2<ApiService, AuthProvider, MissionProvider>(
+          create: (context) => MissionProvider(
+            context.read<ApiService>(),
+            context.read<AuthProvider>(),
+          ),
+          update: (context, apiService, authProvider, previous) => 
+            previous ?? MissionProvider(apiService, authProvider),
         ),
         ChangeNotifierProxyProvider<ApiService, AdventurerProvider>(
           create: (context) => AdventurerProvider(context.read<ApiService>()),
@@ -56,6 +61,7 @@ class BukiyaGameApp extends StatelessWidget {
           create: (context) => IdleProvider(context.read<ApiService>()),
           update: (context, apiService, previous) => previous ?? IdleProvider(apiService),
         ),
+        ChangeNotifierProvider(create: (_) => EnchantmentProvider()),
       ],
       child: MaterialApp(
         title: '武器屋放置ゲーム',

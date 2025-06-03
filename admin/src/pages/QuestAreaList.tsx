@@ -65,16 +65,17 @@ const QuestAreaList: React.FC = () => {
 
   const [deleteQuestArea] = useDeleteQuestAreaMutation();
 
-  const questAreas = questAreasResponse?.data || [];
+  const questAreas = questAreasResponse?.areas || [];
+  const total = questAreasResponse?.total || 0;
 
   // フィルタリング（タイプフィルターはクライアントサイドで実装）
-  const filteredQuestAreas = questAreas.filter((area) => {
+  const filteredQuestAreas = questAreas.filter((area: any) => {
     const matchesType = !typeFilter || area.area_type === typeFilter;
     return matchesType;
   });
 
   // 表示順序でソート
-  const sortedQuestAreas = filteredQuestAreas.sort((a, b) => a.display_order - b.display_order);
+  const sortedQuestAreas = filteredQuestAreas.sort((a: any, b: any) => a.display_order - b.display_order);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -280,7 +281,7 @@ const QuestAreaList: React.FC = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              sortedQuestAreas.map((area) => (
+              sortedQuestAreas.map((area: any) => (
                 <TableRow key={area.id} hover>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

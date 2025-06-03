@@ -221,7 +221,7 @@ export const adminApi = createApi({
     }),
 
     // 冒険者マスター（管理画面用）
-    getAdventurers: builder.query<BaseResponse<AdventurerMaster[]>, AdventurerListParams>({
+    getAdventurers: builder.query<any, AdventurerListParams>({
       query: (params) => ({
         url: 'admin/adventurers',
         params,
@@ -261,7 +261,7 @@ export const adminApi = createApi({
     }),
 
     // モンスターマスター（管理画面用）
-    getMonsters: builder.query<BaseResponse<MonsterMaster[]>, MonsterListParams>({
+    getMonsters: builder.query<any, MonsterListParams>({
       query: (params) => ({
         url: 'admin/monsters',
         params,
@@ -301,7 +301,7 @@ export const adminApi = createApi({
     }),
 
     // クエストエリアマスター（管理画面用）
-    getQuestAreas: builder.query<BaseResponse<QuestAreaMaster[]>, QuestAreaListParams>({
+    getQuestAreas: builder.query<any, QuestAreaListParams>({
       query: (params) => ({
         url: 'admin/quest-areas',
         params,

@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import 'package:bukiya_game/core/models/mission.dart';
 import 'package:bukiya_game/core/services/api_service.dart';
+import 'package:bukiya_game/features/auth/providers/auth_provider.dart';
 
 class MissionProvider extends ChangeNotifier {
   final ApiService _apiService;
+  final AuthProvider _authProvider;
 
-  MissionProvider(this._apiService);
+  MissionProvider(this._apiService, this._authProvider);
 
   // ミッション状態
   List<Mission> _dailyMissions = [];
@@ -65,7 +68,17 @@ class MissionProvider extends ChangeNotifier {
   // デイリーミッションを取得
   Future<void> fetchDailyMissions() async {
     try {
-      final response = await _apiService.dio.get('/missions/daily');
+      final playerId = _authProvider.currentPlayer?.id;
+      if (playerId == null) {
+        _setError('プレイヤー情報が取得できません。ログインしてください。');
+        return;
+      }
+
+      final response = await _apiService.dio.get(
+        '/missions/daily',
+        queryParameters: {'player_id': playerId},
+      );
+      
       if (response.data['success']) {
         _dailyMissions = (response.data['data'] as List)
             .map((json) => Mission.fromJson(json))
@@ -80,7 +93,17 @@ class MissionProvider extends ChangeNotifier {
   // ウィークリーミッションを取得
   Future<void> fetchWeeklyMissions() async {
     try {
-      final response = await _apiService.dio.get('/missions/weekly');
+      final playerId = _authProvider.currentPlayer?.id;
+      if (playerId == null) {
+        _setError('プレイヤー情報が取得できません。ログインしてください。');
+        return;
+      }
+
+      final response = await _apiService.dio.get(
+        '/missions/weekly',
+        queryParameters: {'player_id': playerId},
+      );
+      
       if (response.data['success']) {
         _weeklyMissions = (response.data['data'] as List)
             .map((json) => Mission.fromJson(json))
@@ -95,7 +118,17 @@ class MissionProvider extends ChangeNotifier {
   // アチーブメントを取得
   Future<void> fetchAchievements() async {
     try {
-      final response = await _apiService.dio.get('/missions/achievements');
+      final playerId = _authProvider.currentPlayer?.id;
+      if (playerId == null) {
+        _setError('プレイヤー情報が取得できません。ログインしてください。');
+        return;
+      }
+
+      final response = await _apiService.dio.get(
+        '/missions/achievements',
+        queryParameters: {'player_id': playerId},
+      );
+      
       if (response.data['success']) {
         _achievements = (response.data['data'] as List)
             .map((json) => Mission.fromJson(json))

@@ -92,16 +92,18 @@ Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
     };
 
 AuthResponse _$AuthResponseFromJson(Map<String, dynamic> json) => AuthResponse(
+      playerId: json['player_id'] as String,
+      username: json['username'] as String,
       accessToken: json['access_token'] as String,
       tokenType: json['token_type'] as String,
       expiresIn: (json['expires_in'] as num).toInt(),
-      user: Player.fromJson(json['user'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$AuthResponseToJson(AuthResponse instance) =>
     <String, dynamic>{
+      'player_id': instance.playerId,
+      'username': instance.username,
       'access_token': instance.accessToken,
       'token_type': instance.tokenType,
       'expires_in': instance.expiresIn,
-      'user': instance.user,
     };
