@@ -34,107 +34,47 @@ import {
   Refresh as RefreshIcon,
   DragHandle as OrderIcon,
 } from '@mui/icons-material';
-
-// モックデータ（後でAPIに置き換え）
-const mockQuestAreas = [
-  {
-    id: 1,
-    name: '初心者の森',
-    area_type: 'forest',
-    difficulty: 1,
-    required_level: 1,
-    duration_minutes: 30,
-    image_url: null,
-    background_color: '#4CAF50',
-    description: '冒険者が最初に訪れる安全な森林エリア',
-    unlock_condition: null,
-    is_active: true,
-    display_order: 1,
-    created_at: '2025-06-01T10:00:00Z',
-    updated_at: '2025-06-01T10:00:00Z',
-  },
-  {
-    id: 2,
-    name: '暗闇の洞窟',
-    area_type: 'cave',
-    difficulty: 3,
-    required_level: 10,
-    duration_minutes: 60,
-    image_url: null,
-    background_color: '#795548',
-    description: '危険なモンスターが潜む洞窟',
-    unlock_condition: '{"completed_areas": [1]}',
-    is_active: true,
-    display_order: 2,
-    created_at: '2025-06-01T11:00:00Z',
-    updated_at: '2025-06-01T11:00:00Z',
-  },
-  {
-    id: 3,
-    name: '竜の山',
-    area_type: 'mountain',
-    difficulty: 5,
-    required_level: 30,
-    duration_minutes: 120,
-    image_url: null,
-    background_color: '#FF5722',
-    description: '伝説のドラゴンが住む危険な山岳地帯',
-    unlock_condition: '{"completed_areas": [1, 2], "min_weapon_level": 20}',
-    is_active: false,
-    display_order: 3,
-    created_at: '2025-06-01T12:00:00Z',
-    updated_at: '2025-06-02T09:00:00Z',
-  },
-];
-
-interface QuestArea {
-  id: number;
-  name: string;
-  area_type: string;
-  difficulty: number;
-  required_level: number;
-  duration_minutes: number;
-  image_url: string | null;
-  background_color: string;
-  description: string | null;
-  unlock_condition: string | null;
-  is_active: boolean;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-}
+import {
+  useGetQuestAreasQuery,
+  useDeleteQuestAreaMutation,
+} from '../services/api';
+import type { QuestAreaMaster } from '../types';
 
 const QuestAreaList: React.FC = () => {
-  const [questAreas, setQuestAreas] = useState<QuestArea[]>(mockQuestAreas);
-  const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
-  const [selectedQuestArea, setSelectedQuestArea] = useState<QuestArea | null>(null);
+  const [selectedQuestArea, setSelectedQuestArea] = useState<QuestAreaMaster | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // フィルタリング
+  // API呼び出し
+  const {
+    data: questAreasResponse,
+    error,
+    isLoading,
+    refetch,
+  } = useGetQuestAreasQuery({
+    page: page + 1,
+    limit: rowsPerPage,
+    search: searchTerm || undefined,
+    is_active: activeFilter === 'active' ? true : activeFilter === 'inactive' ? false : undefined,
+  });
+
+  const [deleteQuestArea] = useDeleteQuestAreaMutation();
+
+  const questAreas = questAreasResponse?.data || [];
+
+  // フィルタリング（タイプフィルターはクライアントサイドで実装）
   const filteredQuestAreas = questAreas.filter((area) => {
-    const matchesSearch = area.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = !typeFilter || area.area_type === typeFilter;
-    const matchesActive = activeFilter === '' || 
-      (activeFilter === 'active' && area.is_active) ||
-      (activeFilter === 'inactive' && !area.is_active);
-    
-    return matchesSearch && matchesType && matchesActive;
+    return matchesType;
   });
 
   // 表示順序でソート
   const sortedQuestAreas = filteredQuestAreas.sort((a, b) => a.display_order - b.display_order);
-
-  // ページネーション
-  const paginatedQuestAreas = sortedQuestAreas.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -145,12 +85,12 @@ const QuestAreaList: React.FC = () => {
     setPage(0);
   };
 
-  const handleEdit = (area: QuestArea) => {
+  const handleEdit = (area: QuestAreaMaster) => {
     setSelectedQuestArea(area);
     setDialogOpen(true);
   };
 
-  const handleDelete = (area: QuestArea) => {
+  const handleDelete = (area: QuestAreaMaster) => {
     setSelectedQuestArea(area);
     setDeleteDialogOpen(true);
   };
@@ -170,11 +110,20 @@ const QuestAreaList: React.FC = () => {
     setSelectedQuestArea(null);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedQuestArea) {
-      setQuestAreas(prev => prev.filter(a => a.id !== selectedQuestArea.id));
-      handleCloseDeleteDialog();
+      try {
+        await deleteQuestArea(selectedQuestArea.id).unwrap();
+        refetch();
+        handleCloseDeleteDialog();
+      } catch (error) {
+        console.error('削除に失敗しました:', error);
+      }
     }
+  };
+
+  const handleRefresh = () => {
+    refetch();
   };
 
   const getAreaTypeName = (type: string) => {
@@ -220,6 +169,16 @@ const QuestAreaList: React.FC = () => {
     const remainingMinutes = minutes % 60;
     return remainingMinutes > 0 ? `${hours}時間${remainingMinutes}分` : `${hours}時間`;
   };
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          データの取得に失敗しました。サーバーが起動していることを確認してください。
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -282,7 +241,7 @@ const QuestAreaList: React.FC = () => {
             >
               新規作成
             </Button>
-            <IconButton onClick={() => setLoading(true)}>
+            <IconButton onClick={handleRefresh}>
               <RefreshIcon />
             </IconButton>
           </Box>
@@ -306,14 +265,22 @@ const QuestAreaList: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? (
+            {isLoading ? (
               <TableRow>
                 <TableCell colSpan={9} align="center">
                   <CircularProgress />
                 </TableCell>
               </TableRow>
+            ) : sortedQuestAreas.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} align="center">
+                  <Typography color="text.secondary">
+                    データがありません
+                  </Typography>
+                </TableCell>
+              </TableRow>
             ) : (
-              paginatedQuestAreas.map((area) => (
+              sortedQuestAreas.map((area) => (
                 <TableRow key={area.id} hover>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

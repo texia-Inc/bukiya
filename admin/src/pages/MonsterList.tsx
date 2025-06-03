@@ -33,121 +33,40 @@ import {
   Refresh as RefreshIcon,
   ViewList as DropIcon,
 } from '@mui/icons-material';
-
-// モックデータ（後でAPIに置き換え）
-const mockMonsters = [
-  {
-    id: 1,
-    name: 'ゴブリン',
-    monster_type: 'beast',
-    level: 5,
-    hp: 100,
-    attack: 30,
-    defense: 10,
-    element: 'none',
-    weakness: 'fire',
-    resistance: null,
-    spawn_areas: 'forest',
-    spawn_weight: 100,
-    min_required_weapon_level: 0,
-    base_gold_reward: 50,
-    experience_reward: 25,
-    is_active: true,
-    created_at: '2025-06-01T10:00:00Z',
-    updated_at: '2025-06-01T10:00:00Z',
-  },
-  {
-    id: 2,
-    name: 'オーク',
-    monster_type: 'beast',
-    level: 12,
-    hp: 250,
-    attack: 60,
-    defense: 25,
-    element: 'none',
-    weakness: 'ice',
-    resistance: 'fire',
-    spawn_areas: 'forest,cave',
-    spawn_weight: 80,
-    min_required_weapon_level: 5,
-    base_gold_reward: 120,
-    experience_reward: 60,
-    is_active: true,
-    created_at: '2025-06-01T11:00:00Z',
-    updated_at: '2025-06-01T11:00:00Z',
-  },
-  {
-    id: 3,
-    name: 'ドラゴン',
-    monster_type: 'dragon',
-    level: 50,
-    hp: 2000,
-    attack: 300,
-    defense: 150,
-    element: 'fire',
-    weakness: 'ice',
-    resistance: 'fire',
-    spawn_areas: 'mountain',
-    spawn_weight: 10,
-    min_required_weapon_level: 30,
-    base_gold_reward: 5000,
-    experience_reward: 2500,
-    is_active: false,
-    created_at: '2025-06-01T12:00:00Z',
-    updated_at: '2025-06-02T09:00:00Z',
-  },
-];
-
-interface Monster {
-  id: number;
-  name: string;
-  monster_type: string;
-  level: number;
-  hp: number;
-  attack: number;
-  defense: number;
-  element: string | null;
-  weakness: string | null;
-  resistance: string | null;
-  spawn_areas: string;
-  spawn_weight: number;
-  min_required_weapon_level: number;
-  base_gold_reward: number;
-  experience_reward: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import {
+  useGetMonstersQuery,
+  useDeleteMonsterMutation,
+} from '../services/api';
+import type { MonsterMaster } from '../types';
 
 const MonsterList: React.FC = () => {
-  const [monsters, setMonsters] = useState<Monster[]>(mockMonsters);
-  const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
-  const [selectedMonster, setSelectedMonster] = useState<Monster | null>(null);
+  const [selectedMonster, setSelectedMonster] = useState<MonsterMaster | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dropDialogOpen, setDropDialogOpen] = useState(false);
 
-  // フィルタリング
-  const filteredMonsters = monsters.filter((monster) => {
-    const matchesSearch = monster.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = !typeFilter || monster.monster_type === typeFilter;
-    const matchesActive = activeFilter === '' || 
-      (activeFilter === 'active' && monster.is_active) ||
-      (activeFilter === 'inactive' && !monster.is_active);
-    
-    return matchesSearch && matchesType && matchesActive;
+  // API呼び出し
+  const {
+    data: monstersResponse,
+    error,
+    isLoading,
+    refetch,
+  } = useGetMonstersQuery({
+    page: page + 1,
+    limit: rowsPerPage,
+    search: searchTerm || undefined,
+    monster_type: typeFilter || undefined,
+    is_active: activeFilter === 'active' ? true : activeFilter === 'inactive' ? false : undefined,
   });
 
-  // ページネーション
-  const paginatedMonsters = filteredMonsters.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  const [deleteMonster] = useDeleteMonsterMutation();
+
+  const monsters = monstersResponse?.data || [];
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -158,17 +77,17 @@ const MonsterList: React.FC = () => {
     setPage(0);
   };
 
-  const handleEdit = (monster: Monster) => {
+  const handleEdit = (monster: MonsterMaster) => {
     setSelectedMonster(monster);
     setDialogOpen(true);
   };
 
-  const handleDelete = (monster: Monster) => {
+  const handleDelete = (monster: MonsterMaster) => {
     setSelectedMonster(monster);
     setDeleteDialogOpen(true);
   };
 
-  const handleDropTable = (monster: Monster) => {
+  const handleDropTable = (monster: MonsterMaster) => {
     setSelectedMonster(monster);
     setDropDialogOpen(true);
   };
@@ -193,11 +112,20 @@ const MonsterList: React.FC = () => {
     setSelectedMonster(null);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedMonster) {
-      setMonsters(prev => prev.filter(m => m.id !== selectedMonster.id));
-      handleCloseDeleteDialog();
+      try {
+        await deleteMonster(selectedMonster.id).unwrap();
+        refetch();
+        handleCloseDeleteDialog();
+      } catch (error) {
+        console.error('削除に失敗しました:', error);
+      }
     }
+  };
+
+  const handleRefresh = () => {
+    refetch();
   };
 
   const getMonsterTypeName = (type: string) => {
@@ -236,6 +164,16 @@ const MonsterList: React.FC = () => {
     };
     return areas.split(',').map(area => areaMap[area.trim()] || area.trim()).join(', ');
   };
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          データの取得に失敗しました。サーバーが起動していることを確認してください。
+        </Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
@@ -297,7 +235,7 @@ const MonsterList: React.FC = () => {
             >
               新規作成
             </Button>
-            <IconButton onClick={() => setLoading(true)}>
+            <IconButton onClick={handleRefresh}>
               <RefreshIcon />
             </IconButton>
           </Box>
@@ -324,14 +262,22 @@ const MonsterList: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {loading ? (
+            {isLoading ? (
               <TableRow>
                 <TableCell colSpan={12} align="center">
                   <CircularProgress />
                 </TableCell>
               </TableRow>
+            ) : monsters.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={12} align="center">
+                  <Typography color="text.secondary">
+                    データがありません
+                  </Typography>
+                </TableCell>
+              </TableRow>
             ) : (
-              paginatedMonsters.map((monster) => (
+              monsters.map((monster) => (
                 <TableRow key={monster.id} hover>
                   <TableCell>{monster.id}</TableCell>
                   <TableCell>
@@ -409,7 +355,7 @@ const MonsterList: React.FC = () => {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={filteredMonsters.length}
+          count={monsters.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

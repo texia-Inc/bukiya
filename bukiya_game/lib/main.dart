@@ -9,6 +9,10 @@ import 'features/dashboard/providers/dashboard_provider.dart';
 import 'features/shop/providers/shop_provider.dart';
 import 'features/inventory/providers/inventory_provider.dart';
 import 'features/crafting/providers/crafting_provider.dart';
+import 'features/mission/providers/mission_provider.dart';
+import 'features/adventurer/providers/adventurer_provider.dart';
+import 'features/idle/providers/idle_provider.dart';
+import 'core/services/api_service.dart';
 import 'app/app.dart';
 
 void main() async {
@@ -31,11 +35,27 @@ class BukiyaGameApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider(create: (_) => ApiService()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(create: (_) => ShopProvider()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()),
-        ChangeNotifierProvider(create: (_) => CraftingProvider()),
+        ChangeNotifierProxyProvider<ApiService, CraftingProvider>(
+          create: (context) => CraftingProvider(context.read<ApiService>()),
+          update: (context, apiService, previous) => previous ?? CraftingProvider(apiService),
+        ),
+        ChangeNotifierProxyProvider<ApiService, MissionProvider>(
+          create: (context) => MissionProvider(context.read<ApiService>()),
+          update: (context, apiService, previous) => previous ?? MissionProvider(apiService),
+        ),
+        ChangeNotifierProxyProvider<ApiService, AdventurerProvider>(
+          create: (context) => AdventurerProvider(context.read<ApiService>()),
+          update: (context, apiService, previous) => previous ?? AdventurerProvider(apiService),
+        ),
+        ChangeNotifierProxyProvider<ApiService, IdleProvider>(
+          create: (context) => IdleProvider(context.read<ApiService>()),
+          update: (context, apiService, previous) => previous ?? IdleProvider(apiService),
+        ),
       ],
       child: MaterialApp(
         title: '武器屋放置ゲーム',

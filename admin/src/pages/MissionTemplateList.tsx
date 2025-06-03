@@ -28,28 +28,15 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
   Assignment as MissionIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material'
+import {
+  useGetMissionTemplatesQuery,
+  useDeleteMissionTemplateMutation,
+} from '../services/api'
+import type { MissionTemplate } from '../types'
 import { MissionTemplateDialog } from '../components/MissionTemplateDialog'
 import { MissionDeleteDialog } from '../components/MissionDeleteDialog'
-
-interface MissionTemplate {
-  id: number
-  name: string
-  description: string
-  mission_type: 'daily' | 'weekly' | 'achievement'
-  target_type: string
-  target_count: number
-  target_conditions: any
-  reward_gold: number
-  reward_exp: number
-  reward_items: any
-  is_active: boolean
-  reset_schedule: string | null
-  required_level: number
-  display_order: number
-  created_at: string
-  updated_at: string
-}
 
 const MissionTemplateList: React.FC = () => {
   const [page, setPage] = useState(0)
@@ -62,97 +49,23 @@ const MissionTemplateList: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<MissionTemplate | null>(null)
 
-  // モックデータ（APIが利用可能になるまで）
-  const mockTemplates: MissionTemplate[] = [
-    {
-      id: 1,
-      name: '武器を3個作成する',
-      description: 'デイリーミッション：武器を3個作成してください',
-      mission_type: 'daily',
-      target_type: 'craft_weapon',
-      target_count: 3,
-      target_conditions: null,
-      reward_gold: 500,
-      reward_exp: 50,
-      reward_items: null,
-      is_active: true,
-      reset_schedule: 'daily',
-      required_level: 1,
-      display_order: 1,
-      created_at: '2025-06-03T00:00:00Z',
-      updated_at: '2025-06-03T00:00:00Z',
-    },
-    {
-      id: 2,
-      name: '冒険者に武器を5個販売する',
-      description: 'デイリーミッション：冒険者に武器を5個販売してください',
-      mission_type: 'daily',
-      target_type: 'sell_weapon',
-      target_count: 5,
-      target_conditions: null,
-      reward_gold: 1000,
-      reward_exp: 100,
-      reward_items: null,
-      is_active: true,
-      reset_schedule: 'daily',
-      required_level: 1,
-      display_order: 2,
-      created_at: '2025-06-03T00:00:00Z',
-      updated_at: '2025-06-03T00:00:00Z',
-    },
-    {
-      id: 3,
-      name: 'レア武器を10個作成する',
-      description: 'ウィークリーミッション：レア武器を10個作成してください',
-      mission_type: 'weekly',
-      target_type: 'craft_weapon',
-      target_count: 10,
-      target_conditions: { rarity: 'rare' },
-      reward_gold: 5000,
-      reward_exp: 500,
-      reward_items: { rare_materials: 3 },
-      is_active: true,
-      reset_schedule: 'weekly',
-      required_level: 5,
-      display_order: 1,
-      created_at: '2025-06-03T00:00:00Z',
-      updated_at: '2025-06-03T00:00:00Z',
-    },
-    {
-      id: 4,
-      name: '武器マスター',
-      description: 'アチーブメント：累計武器作成数1000個を達成してください',
-      mission_type: 'achievement',
-      target_type: 'craft_weapon',
-      target_count: 1000,
-      target_conditions: null,
-      reward_gold: 50000,
-      reward_exp: 5000,
-      reward_items: { title: 'weapon_master', bonus: 'craft_speed_10' },
-      is_active: true,
-      reset_schedule: null,
-      required_level: 1,
-      display_order: 1,
-      created_at: '2025-06-03T00:00:00Z',
-      updated_at: '2025-06-03T00:00:00Z',
-    },
-  ]
+  // API呼び出し
+  const {
+    data: templatesResponse,
+    error,
+    isLoading,
+    refetch,
+  } = useGetMissionTemplatesQuery({
+    page: page + 1,
+    limit: rowsPerPage,
+    search: searchTerm || undefined,
+    mission_type: (missionTypeFilter as 'daily' | 'weekly' | 'achievement') || undefined,
+    is_active: isActiveFilter === 'true' ? true : isActiveFilter === 'false' ? false : undefined,
+  })
 
-  const templates = mockTemplates
-  const isLoading = false
-  const error = null
+  const [deleteMissionTemplate] = useDeleteMissionTemplateMutation()
 
-  // フィルタリング
-  const filteredTemplates = templates.filter((template: MissionTemplate) =>
-    template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    template.description.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  // ページネーション
-  const paginatedTemplates = filteredTemplates.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  )
+  const templates = templatesResponse?.data || []
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage)
@@ -177,6 +90,27 @@ const MissionTemplateList: React.FC = () => {
     setCreateDialogOpen(false)
     setEditDialogOpen(false)
     setSelectedTemplate(null)
+  }
+
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false)
+    setSelectedTemplate(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (selectedTemplate) {
+      try {
+        await deleteMissionTemplate(selectedTemplate.id).unwrap()
+        refetch()
+        handleDeleteDialogClose()
+      } catch (error) {
+        console.error('削除に失敗しました:', error)
+      }
+    }
+  }
+
+  const handleRefresh = () => {
+    refetch()
   }
 
   const getMissionTypeLabel = (type: string) => {
@@ -212,14 +146,16 @@ const MissionTemplateList: React.FC = () => {
 
   if (error) {
     return (
-      <Alert severity="error">
-        ミッションテンプレートの読み込みに失敗しました
-      </Alert>
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          データの取得に失敗しました。サーバーが起動していることを確認してください。
+        </Alert>
+      </Box>
     )
   }
 
   return (
-    <Box>
+    <Box sx={{ p: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box display="flex" alignItems="center" gap={1}>
           <MissionIcon color="primary" />
@@ -227,18 +163,23 @@ const MissionTemplateList: React.FC = () => {
             ミッションテンプレート管理
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          新規作成
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            新規作成
+          </Button>
+          <IconButton onClick={handleRefresh}>
+            <RefreshIcon />
+          </IconButton>
+        </Box>
       </Box>
 
       {/* フィルター */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
           <TextField
             label="検索"
             variant="outlined"
@@ -302,14 +243,16 @@ const MissionTemplateList: React.FC = () => {
                   <CircularProgress />
                 </TableCell>
               </TableRow>
-            ) : paginatedTemplates.length === 0 ? (
+            ) : templates.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} align="center">
-                  ミッションテンプレートが見つかりません
+                  <Typography color="text.secondary">
+                    データがありません
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (
-              paginatedTemplates.map((template: MissionTemplate) => (
+              templates.map((template: MissionTemplate) => (
                 <TableRow key={template.id} hover>
                   <TableCell>{template.id}</TableCell>
                   <TableCell>
@@ -362,20 +305,22 @@ const MissionTemplateList: React.FC = () => {
                   </TableCell>
                   <TableCell>{template.display_order}</TableCell>
                   <TableCell>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(template)}
-                      color="primary"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(template)}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEdit(template)}
+                        color="primary"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDelete(template)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
@@ -385,7 +330,7 @@ const MissionTemplateList: React.FC = () => {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={filteredTemplates.length}
+          count={templates.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
@@ -412,14 +357,9 @@ const MissionTemplateList: React.FC = () => {
 
       <MissionDeleteDialog
         open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
+        onClose={handleDeleteDialogClose}
         template={selectedTemplate}
-        onConfirm={() => {
-          // TODO: API実装後に削除処理を追加
-          console.log('Delete template:', selectedTemplate?.id)
-          setDeleteDialogOpen(false)
-          setSelectedTemplate(null)
-        }}
+        onConfirm={handleConfirmDelete}
         isLoading={false}
       />
     </Box>

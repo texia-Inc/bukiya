@@ -203,22 +203,55 @@ class ApiService {
   }
 
   // 放置システム関連
-  Future<Map<String, dynamic>> getOfflineIncome() async {
+  Future<Map<String, dynamic>> getIdleStatus() async {
     try {
-      final response = await _dio.get(ApiEndpoints.offlineIncome);
+      final response = await _dio.get('/api/v1/idle/status');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  Future<Map<String, dynamic>> collectOfflineIncome() async {
+  Future<Map<String, dynamic>> collectIdleIncome() async {
     try {
-      final response = await _dio.post(ApiEndpoints.collectIncome);
+      final response = await _dio.post('/api/v1/idle/collect');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
     }
+  }
+
+  Future<Map<String, dynamic>> purchaseIdleUpgrade(String upgradeId) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/idle/upgrade',
+        data: {'upgrade_id': upgradeId},
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> activateIdleBonus(String bonusId) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/idle/activate-bonus',
+        data: {'bonus_id': bonusId},
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // 旧メソッド（後方互換性のため）
+  Future<Map<String, dynamic>> getOfflineIncome() async {
+    return await getIdleStatus();
+  }
+
+  Future<Map<String, dynamic>> collectOfflineIncome() async {
+    return await collectIdleIncome();
   }
 
   // エラーハンドリング

@@ -47,6 +47,7 @@ class Player(Base):
     weapons = relationship("PlayerWeapon", back_populates="player")
     materials = relationship("PlayerMaterial", back_populates="player")
     missions = relationship("PlayerMission", back_populates="player")
+    idle_system = relationship("PlayerIdleSystem", back_populates="player", uselist=False)
     
     def __repr__(self):
         return f"<Player(id={self.id}, username='{self.username}', shop_level={self.shop_level})>"

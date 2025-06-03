@@ -512,6 +512,7 @@ export interface MissionTemplateUpdate extends Partial<MissionTemplateCreate> {
 export interface MissionTemplateListParams {
   page?: number
   limit?: number
+  search?: string
   mission_type?: 'daily' | 'weekly' | 'achievement'
   is_active?: boolean
 }

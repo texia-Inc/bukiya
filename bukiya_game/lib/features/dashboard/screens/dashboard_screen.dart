@@ -11,6 +11,11 @@ import '../widgets/game_stats_card.dart';
 import '../widgets/quick_actions_card.dart';
 import '../widgets/offline_income_dialog.dart';
 import '../../shop/screens/shop_screen.dart';
+import '../../mission/screens/mission_screen.dart';
+import '../../crafting/screens/crafting_screen.dart';
+import '../../inventory/screens/inventory_screen.dart';
+import '../../adventurer/screens/adventurer_screen.dart';
+import '../../idle/widgets/idle_income_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -134,8 +139,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 1:
         return _buildShopTab();
       case 2:
-        return _buildInventoryTab();
+        return const MissionScreen();
       case 3:
+        return _buildAdventurerTab();
+      case 4:
+        return _buildInventoryTab();
+      case 5:
         return _buildCraftingTab();
       default:
         return _buildDashboardTab(player, dashboardProvider);
@@ -164,10 +173,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // クイックアクションカード
             QuickActionsCard(
               onShopTap: () => _setCurrentIndex(1),
-              onInventoryTap: () => _setCurrentIndex(2),
-              onCraftingTap: () => _setCurrentIndex(3),
+              onInventoryTap: () => _setCurrentIndex(4),
+              onCraftingTap: () => _setCurrentIndex(5),
               onCollectIncome: () => _collectOfflineIncome(),
             ),
+            const SizedBox(height: 16),
+            
+            // 放置収益カード
+            const IdleIncomeCard(),
             const SizedBox(height: 16),
             
             // 最近の活動
@@ -183,84 +196,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return const ShopScreen();
   }
 
+  Widget _buildAdventurerTab() {
+    // 冒険者画面を直接表示
+    return const AdventurerScreen();
+  }
+
   Widget _buildInventoryTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.inventory,
-            size: 64,
-            color: AppTheme.primaryColor,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'インベントリ',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '所持している武器・素材を確認できます',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          SizedBox(height: 16),
-          Text(
-            '実装予定',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
+    // インベントリ画面を直接表示
+    return const InventoryScreen();
   }
 
   Widget _buildCraftingTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.build,
-            size: 64,
-            color: AppTheme.primaryColor,
-          ),
-          SizedBox(height: 16),
-          Text(
-            '武器合成',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            '素材を使って新しい武器を作成できます',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          SizedBox(height: 16),
-          Text(
-            '実装予定',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
+    // 錬成画面を直接表示
+    return const CraftingScreen();
   }
 
   Widget _buildRecentActivity(DashboardProvider dashboardProvider) {
@@ -305,12 +253,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onTap: _setCurrentIndex,
       items: const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard),
-          label: 'ダッシュボード',
+          icon: Icon(Icons.home),
+          label: 'ホーム',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.store),
           label: 'ショップ',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.assignment),
+          label: 'ミッション',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.people),
+          label: '冒険者',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.inventory),
