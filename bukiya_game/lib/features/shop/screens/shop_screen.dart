@@ -50,76 +50,36 @@ class _ShopScreenState extends State<ShopScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('武器ショップ'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.shopping_cart),
-              text: '購入',
-            ),
-            Tab(
-              icon: Icon(Icons.sell),
-              text: '売却',
-            ),
-          ],
-        ),
-        actions: [
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              final player = authProvider.currentPlayer;
-              if (player == null) return const SizedBox.shrink();
-              
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.monetization_on,
-                      color: AppTheme.secondaryColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      player.gold.toString(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      Icons.diamond,
-                      color: AppTheme.accentColor,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      player.gems.toString(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.accentColor,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+        title: const Text('=== 武器ショップ ==='),
+        backgroundColor: AppTheme.backgroundColor,
+        foregroundColor: AppTheme.textPrimary,
+        elevation: 0,
       ),
       body: Consumer<ShopProvider>(
         builder: (context, shopProvider, child) {
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              // 購入タブ
-              _buildPurchaseTab(shopProvider),
-              // 売却タブ
-              _buildSellTab(shopProvider),
-            ],
+          return Container(
+            color: AppTheme.backgroundColor,
+            width: double.infinity,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ヘッダー情報
+                  _buildRetroHeader(),
+                  const SizedBox(height: 4),
+                  
+                  // メニュータブ
+                  _buildRetroTabs(),
+                  const SizedBox(height: 4),
+                  
+                  // メインコンテンツ
+                  _buildRetroContent(shopProvider),
+                ],
+              ),
+            ),
           );
         },
       ),
@@ -299,6 +259,214 @@ class _ShopScreenState extends State<ShopScreen>
         content: Text(message),
         backgroundColor: AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // レトロ風UIメソッド
+  Widget _buildRetroHeader() {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final player = authProvider.currentPlayer;
+        if (player == null) return const SizedBox.shrink();
+        
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.primaryColor, width: 2),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '--- 武器ショップ ---',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.secondaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    'ゴールド: ${player.gold}G',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.accentColor,
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Text(
+                    'ジェム: ${player.gems}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.rareColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRetroTabs() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 0 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[1] 購入',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 0 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 1 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[2] 売却',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 1 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroContent(ShopProvider shopProvider) {
+    if (shopProvider.isLoading && shopProvider.weapons.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppTheme.primaryColor, width: 1),
+        ),
+        child: Text(
+          '武器データを読み込み中...',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '--- 武器一覧 ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (shopProvider.weapons.isEmpty)
+            Text(
+              '購入可能な武器がありません',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            )
+          else
+            _buildRetroWeaponList(shopProvider.weapons),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroWeaponList(List<Weapon> weapons) {
+    return Column(
+      children: weapons.map((weapon) => _buildRetroWeaponItem(weapon)).toList(),
+    );
+  }
+
+  Widget _buildRetroWeaponItem(Weapon weapon) {
+    return GestureDetector(
+      onTap: () => _showWeaponDetail(weapon, true),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
+                weapon.name,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                'ATK:${weapon.attack}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                '${weapon.price}G',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.accentColor,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 1,
+              child: GestureDetector(
+                onTap: () => _handlePurchase(weapon),
+                child: Text(
+                  '[購入]',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.successColor,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

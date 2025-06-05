@@ -107,7 +107,8 @@ class CraftingProvider extends ChangeNotifier {
   // 合成可能なレシピを取得
   Future<void> fetchAvailableRecipes() async {
     try {
-      final response = await _apiService.dio.get('/crafting/recipes');
+      // 認証が不要な管理画面用エンドポイントを使用
+      final response = await _apiService.dio.get('/crafting/recipes/admin/list');
       
       if (response.data['success']) {
         final List<dynamic> recipesData = response.data['data'];

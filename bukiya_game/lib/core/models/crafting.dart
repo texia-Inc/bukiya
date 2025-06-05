@@ -36,14 +36,14 @@ class CraftingRecipe {
 
   factory CraftingRecipe.fromJson(Map<String, dynamic> json) {
     return CraftingRecipe(
-      id: json['id'],
-      weaponId: json['weapon_id'],
-      name: json['name'],
-      description: json['description'] ?? '',
-      goldCost: json['gold_cost'],
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+      weaponId: json['weapon_id'] is int ? json['weapon_id'] : int.tryParse(json['weapon_id'].toString()) ?? 0,
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      goldCost: json['gold_cost'] is int ? json['gold_cost'] : int.tryParse(json['gold_cost'].toString()) ?? 0,
       successRate: (json['success_rate'] as num).toDouble(),
-      requiredLevel: json['required_level'],
-      isActive: json['is_active'],
+      requiredLevel: json['required_level'] is int ? json['required_level'] : int.tryParse(json['required_level'].toString()) ?? 1,
+      isActive: json['is_active'] ?? true,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       weapon: Weapon.fromJson(json['weapon']),
@@ -142,8 +142,8 @@ class RecipeMaterial {
 
   factory RecipeMaterial.fromJson(Map<String, dynamic> json) {
     return RecipeMaterial(
-      materialId: json['material_id'],
-      quantity: json['quantity'],
+      materialId: json['material_id'] is int ? json['material_id'] : int.tryParse(json['material_id'].toString()) ?? 0,
+      quantity: json['quantity'] is int ? json['quantity'] : int.tryParse(json['quantity'].toString()) ?? 0,
       material: Material.fromJson(json['material']),
     );
   }
@@ -312,8 +312,8 @@ class PlayerMaterial {
 
   factory PlayerMaterial.fromJson(Map<String, dynamic> json) {
     return PlayerMaterial(
-      materialId: json['material_id'],
-      quantity: json['quantity'],
+      materialId: json['material_id'] is int ? json['material_id'] : int.tryParse(json['material_id'].toString()) ?? 0,
+      quantity: json['quantity'] is int ? json['quantity'] : int.tryParse(json['quantity'].toString()) ?? 0,
       material: Material.fromJson(json['material']),
     );
   }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../shared/themes/app_theme.dart';
 import '../../../shared/widgets/loading_screen.dart';
 import '../../../core/constants/app_constants.dart';
+import '../providers/auth_provider.dart';
 
 class LoginForm extends StatefulWidget {
-  final Function(String email, String password) onSubmit;
+  final Function(String email, String password, {bool rememberLogin}) onSubmit;
   final bool isLoading;
 
   const LoginForm({
@@ -23,12 +25,34 @@ class _LoginFormState extends State<LoginForm> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberLogin = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedUserInfo();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSavedUserInfo() async {
+    final authProvider = context.read<AuthProvider>();
+    final savedInfo = await authProvider.getSavedUserInfo();
+    
+    if (savedInfo['email'] != null) {
+      _emailController.text = savedInfo['email']!;
+    }
+    
+    if (savedInfo['remember_login'] != null) {
+      setState(() {
+        _rememberLogin = savedInfo['remember_login'] == 'true';
+      });
+    }
   }
 
   @override
@@ -103,7 +127,31 @@ class _LoginFormState extends State<LoginForm> {
                 return null;
               },
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+            
+            // ログイン状態を保持チェックボックス
+            Row(
+              children: [
+                Checkbox(
+                  value: _rememberLogin,
+                  onChanged: (value) {
+                    setState(() {
+                      _rememberLogin = value ?? true;
+                    });
+                  },
+                  activeColor: AppTheme.primaryColor,
+                ),
+                Expanded(
+                  child: Text(
+                    'ログイン状態を保持する',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             
             // ログインボタン
             ElevatedButton(
@@ -128,7 +176,11 @@ class _LoginFormState extends State<LoginForm> {
 
   void _handleSubmit() {
     if (_formKey.currentState?.validate() ?? false) {
-      widget.onSubmit(_emailController.text, _passwordController.text);
+      widget.onSubmit(
+        _emailController.text, 
+        _passwordController.text,
+        rememberLogin: _rememberLogin,
+      );
     }
   }
 }

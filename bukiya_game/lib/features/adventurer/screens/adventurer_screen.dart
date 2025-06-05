@@ -29,6 +29,9 @@ class _AdventurerScreenState extends State<AdventurerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadAdventurerData();
@@ -49,52 +52,36 @@ class _AdventurerScreenState extends State<AdventurerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('冒険者ギルド'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.people),
-              text: '訪問者',
-            ),
-            Tab(
-              icon: Icon(Icons.explore),
-              text: '冒険中',
-            ),
-            Tab(
-              icon: Icon(Icons.shopping_bag),
-              text: '買取',
-            ),
-          ],
-        ),
+        title: const Text('=== 冒険者ギルド ==='),
+        backgroundColor: AppTheme.backgroundColor,
+        foregroundColor: AppTheme.textPrimary,
+        elevation: 0,
       ),
       body: Consumer<AdventurerProvider>(
         builder: (context, adventurerProvider, child) {
-          return Column(
-            children: [
-              // 緊急買取アラート
-              if (adventurerProvider.urgentBuybacks.isNotEmpty)
-                BuybackAlertCard(
-                  urgentBuybacks: adventurerProvider.urgentBuybacks,
-                  onTap: () => _tabController.animateTo(2),
-                ),
-              
-              // タブビュー
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // 訪問者タブ
-                    _buildVisitorsTab(adventurerProvider),
-                    // 冒険中タブ
-                    _buildOnQuestTab(adventurerProvider),
-                    // 買取タブ
-                    _buildBuybackTab(adventurerProvider),
-                  ],
-                ),
+          return Container(
+            color: AppTheme.backgroundColor,
+            width: double.infinity,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ヘッダー情報
+                  _buildRetroHeader(adventurerProvider),
+                  const SizedBox(height: 4),
+                  
+                  // タブメニュー
+                  _buildRetroTabs(adventurerProvider),
+                  const SizedBox(height: 4),
+                  
+                  // メインコンテンツ
+                  _buildRetroContent(adventurerProvider),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),
@@ -425,6 +412,142 @@ class _AdventurerScreenState extends State<AdventurerScreen>
         content: Text(message),
         backgroundColor: AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildRetroHeader(AdventurerProvider adventurerProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 2),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '--- 冒険者ギルド ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Row(
+            children: [
+              Text(
+                '訪問者: ${adventurerProvider.visitingAdventurers.length}人',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 20),
+              Text(
+                '冒険中: ${adventurerProvider.onQuestAdventurers.length}人',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroTabs(AdventurerProvider adventurerProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 0 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[1] 訪問者 (${adventurerProvider.visitingAdventurers.length})',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 0 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 1 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[2] 冒険中 (${adventurerProvider.onQuestAdventurers.length})',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 1 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(2),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 2 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[3] 買取 (${adventurerProvider.pendingBuybacks.length})',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 2 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroContent(AdventurerProvider adventurerProvider) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: IndexedStack(
+        index: _tabController.index,
+        children: [
+          _buildVisitorsTab(adventurerProvider),
+          _buildOnQuestTab(adventurerProvider),
+          _buildBuybackTab(adventurerProvider),
+        ],
       ),
     );
   }

@@ -157,38 +157,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildDashboardTab(player, DashboardProvider dashboardProvider) {
     return RefreshIndicator(
       onRefresh: () => dashboardProvider.loadDashboardData(),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // プレイヤー情報カード
-            PlayerInfoCard(player: player),
-            const SizedBox(height: 16),
-            
-            // ゲーム統計カード
-            GameStatsCard(
-              statistics: dashboardProvider.statistics,
-            ),
-            const SizedBox(height: 16),
-            
-            // クイックアクションカード
-            QuickActionsCard(
-              onShopTap: () => _setCurrentIndex(1),
-              onInventoryTap: () => _setCurrentIndex(4),
-              onCraftingTap: () => _setCurrentIndex(5),
-              onCollectIncome: () => _collectOfflineIncome(),
-            ),
-            const SizedBox(height: 16),
-            
-            // 放置収益カード
-            const IdleIncomeCard(),
-            const SizedBox(height: 16),
-            
-            // 最近の活動
-            _buildRecentActivity(dashboardProvider),
-          ],
+      child: Container(
+        color: AppTheme.backgroundColor,
+        width: double.infinity,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // レトロなヘッダー（横幅めいっぱい）
+              _buildRetroHeader(player),
+              const SizedBox(height: 4),
+              
+              // メイン情報エリア（横並び）
+              _buildMainInfoArea(player, dashboardProvider),
+              const SizedBox(height: 4),
+              
+              // メニューエリア（横並び）
+              _buildRetroMenu(),
+              const SizedBox(height: 4),
+              
+              // 統計情報（1行表示）
+              _buildRetroStats(dashboardProvider),
+            ],
+          ),
         ),
       ),
     );
@@ -354,5 +347,229 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
+  }
+
+  // レトロ風UIメソッド
+  Widget _buildRetroHeader(player) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '=== 武器屋経営システム ===',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'プレイヤー: ${player.username}',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          Text(
+            'レベル: ${player.level} (EXP: ${player.experience})',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroPlayerInfo(player) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '--- プレイヤー情報 ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'ゴールド: ${player.gold}G',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.accentColor,
+            ),
+          ),
+          Text(
+            'ジェム: ${player.gems}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.rareColor,
+            ),
+          ),
+          Text(
+            'ショップレベル: ${player.shopLevel}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          Text(
+            '評判: ${player.reputation}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroMenu() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '--- メインメニュー ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // メニューを横並びで表示
+          Wrap(
+            spacing: 20,
+            runSpacing: 4,
+            children: [
+              _buildMenuOption('[1] ショップ管理', () => _setCurrentIndex(1)),
+              _buildMenuOption('[2] 武器錬成', () => _setCurrentIndex(5)),
+              _buildMenuOption('[3] 冒険者対応', () => _setCurrentIndex(3)),
+              _buildMenuOption('[4] ミッション確認', () => _setCurrentIndex(2)),
+              _buildMenuOption('[5] インベントリ', () => _setCurrentIndex(4)),
+              _buildMenuOption('[6] エンチャント', () => _setCurrentIndex(6)),
+              _buildMenuOption('[7] オフライン収益', () => _collectOfflineIncome()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuOption(String text, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(
+          text,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // メイン情報エリア（横並び）
+  Widget _buildMainInfoArea(player, DashboardProvider dashboardProvider) {
+    return Row(
+      children: [
+        // プレイヤー情報（左側）
+        Expanded(
+          flex: 1,
+          child: _buildRetroPlayerInfo(player),
+        ),
+        const SizedBox(width: 4),
+        // 追加情報（右側）
+        Expanded(
+          flex: 1,
+          child: _buildQuickInfo(player),
+        ),
+      ],
+    );
+  }
+
+  // クイック情報
+  Widget _buildQuickInfo(player) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '--- クイック情報 ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'プレイ時間: 計算中...',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          Text(
+            '武器作成数: 計算中...',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          Text(
+            '総収益: 計算中...',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.accentColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroStats(DashboardProvider dashboardProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '--- システム情報 --- ステータス: オンライン',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.successColor,
+            ),
+          ),
+          Text(
+            '最終更新: ${DateTime.now().toString().substring(11, 19)}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          Text(
+            'v1.0.0',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

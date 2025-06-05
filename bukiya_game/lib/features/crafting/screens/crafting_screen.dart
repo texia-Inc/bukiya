@@ -27,6 +27,9 @@ class _CraftingScreenState extends State<CraftingScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
     
     // 初回データ取得
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -45,14 +48,9 @@ class _CraftingScreenState extends State<CraftingScreen>
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          '武器錬成',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: AppTheme.primaryColor,
+        title: const Text('=== 武器錬成 ==='),
+        backgroundColor: AppTheme.backgroundColor,
+        foregroundColor: AppTheme.textPrimary,
         elevation: 0,
         actions: [
           Consumer<CraftingProvider>(
@@ -132,47 +130,27 @@ class _CraftingScreenState extends State<CraftingScreen>
       ),
       body: Consumer<CraftingProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (provider.error != null) {
-            return Center(
+          return Container(
+            color: AppTheme.backgroundColor,
+            width: double.infinity,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(4),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    provider.error!,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.refresh(),
-                    child: const Text('再試行'),
-                  ),
+                  // ヘッダー情報
+                  _buildRetroHeader(provider),
+                  const SizedBox(height: 4),
+                  
+                  // タブメニュー
+                  _buildRetroTabs(provider),
+                  const SizedBox(height: 4),
+                  
+                  // メインコンテンツ
+                  _buildRetroContent(provider),
                 ],
               ),
-            );
-          }
-
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildRecipeList(provider.recipes, provider),
-              _buildRecipeList(provider.availableRecipes, provider),
-            ],
+            ),
           );
         },
       ),
@@ -340,5 +318,247 @@ class _CraftingScreenState extends State<CraftingScreen>
         provider.clearLastCraftingResult();
       }
     }
+  }
+
+  // レトロ風UIメソッド
+  Widget _buildRetroHeader(CraftingProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 2),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '--- 武器錬成工房 ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Row(
+            children: [
+              Text(
+                '合成可能: ${provider.craftableRecipesCount}件',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.successColor,
+                ),
+              ),
+              const SizedBox(width: 20),
+              Text(
+                '総レシピ: ${provider.recipes.length}件',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroTabs(CraftingProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 0 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[1] 全レシピ',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 0 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 1 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[2] 合成可能',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 1 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroContent(CraftingProvider provider) {
+    if (provider.isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppTheme.primaryColor, width: 1),
+        ),
+        child: Text(
+          'レシピデータを読み込み中...',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    if (provider.error != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppTheme.primaryColor, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '--- エラー ---',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppTheme.errorColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              provider.error!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => provider.refresh(),
+              child: Text(
+                '[再試行]',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.successColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final recipes = _tabController.index == 0 
+      ? provider.recipes 
+      : provider.availableRecipes;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '--- レシピ一覧 ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (recipes.isEmpty)
+            Text(
+              'レシピがありません',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            )
+          else
+            _buildRetroRecipeList(recipes, provider),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroRecipeList(List<CraftingRecipe> recipes, CraftingProvider provider) {
+    return Column(
+      children: recipes.take(10).map((recipe) => _buildRetroRecipeItem(recipe, provider)).toList(),
+    );
+  }
+
+  Widget _buildRetroRecipeItem(CraftingRecipe recipe, CraftingProvider provider) {
+    final canCraft = recipe.isCraftable;
+    
+    return GestureDetector(
+      onTap: () => _craftWeapon(recipe, provider),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
+                recipe.name,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                '${recipe.successRatePercentage}%',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                '${recipe.goldCost}G',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.accentColor,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 1,
+              child: Text(
+                canCraft ? '[合成]' : '[不可]',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: canCraft ? AppTheme.successColor : AppTheme.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

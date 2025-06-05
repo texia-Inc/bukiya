@@ -15,21 +15,27 @@ class PurchaseConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rarityColor = AppTheme.getRarityColor(weapon.rarity);
     final remainingGold = playerGold - weapon.price;
     
     return Dialog(
+      backgroundColor: AppTheme.backgroundColor,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(0),
+        side: BorderSide(color: AppTheme.primaryColor, width: 2),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.backgroundColor,
+          border: Border.all(color: AppTheme.primaryColor, width: 2),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // タイトル
             Text(
-              '購入確認',
+              '=== 購入確認 ===',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: AppTheme.primaryColor,
@@ -39,79 +45,110 @@ class PurchaseConfirmationDialog extends StatelessWidget {
             
             // 武器情報
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: rarityColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: rarityColor.withOpacity(0.3),
-                ),
+                border: Border.all(color: AppTheme.primaryColor, width: 1),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    '--- 武器情報 ---',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.secondaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: rarityColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          _getWeaponIcon(weapon.weaponType),
-                          color: rarityColor,
-                          size: 28,
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          '名前:',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              weapon.name,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: rarityColor,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    weapon.rarity,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Icon(
-                                  Icons.flash_on,
-                                  color: AppTheme.accentColor,
-                                  size: 16,
-                                ),
-                                Text(
-                                  weapon.attack.toString(),
-                                  style: TextStyle(
-                                    color: AppTheme.accentColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                        flex: 3,
+                        child: Text(
+                          weapon.name,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'タイプ:',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          weapon.weaponType,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'レアリティ:',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          weapon.rarity,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.accentColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          '攻撃力:',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '${weapon.attack}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.accentColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -123,124 +160,154 @@ class PurchaseConfirmationDialog extends StatelessWidget {
             
             // 価格情報
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.primaryColor, width: 1),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '価格:',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.monetization_on,
-                            color: AppTheme.secondaryColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            weapon.price.toString(),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.secondaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  Text(
+                    '--- 価格情報 ---',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.secondaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '現在の所持金:',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '価格:',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
                       ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.monetization_on,
-                            color: AppTheme.textSecondary,
-                            size: 16,
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          '${weapon.price}G',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.secondaryColor,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            playerGold.toString(),
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
-                  const Divider(),
+                  const SizedBox(height: 4),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '購入後の所持金:',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '現在の所持金:',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                          ),
                         ),
                       ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.monetization_on,
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          '${playerGold}G',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: 1,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          '購入後の所持金:',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          '${remainingGold}G',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: remainingGold >= 0 
                                 ? AppTheme.successColor 
                                 : AppTheme.errorColor,
-                            size: 20,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            remainingGold.toString(),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: remainingGold >= 0 
-                                  ? AppTheme.successColor 
-                                  : AppTheme.errorColor,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
             // ボタン
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('キャンセル'),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.primaryColor, width: 1),
+                      ),
+                      child: Text(
+                        '[キャンセル]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: remainingGold >= 0 
+                  child: GestureDetector(
+                    onTap: remainingGold >= 0 
                         ? () => Navigator.of(context).pop(true)
                         : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.successColor,
-                    ),
-                    child: const Text(
-                      '購入する',
-                      style: TextStyle(color: Colors.white),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: remainingGold >= 0 
+                              ? AppTheme.successColor 
+                              : AppTheme.textSecondary, 
+                          width: 1
+                        ),
+                        color: remainingGold >= 0 
+                            ? AppTheme.successColor.withOpacity(0.1)
+                            : null,
+                      ),
+                      child: Text(
+                        remainingGold >= 0 ? '[購入する]' : '[資金不足]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: remainingGold >= 0 
+                              ? AppTheme.successColor 
+                              : AppTheme.textSecondary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -250,24 +317,5 @@ class PurchaseConfirmationDialog extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  IconData _getWeaponIcon(String weaponType) {
-    switch (weaponType.toLowerCase()) {
-      case 'sword':
-        return Icons.sports_martial_arts;
-      case 'axe':
-        return Icons.construction;
-      case 'bow':
-        return Icons.sports_golf;
-      case 'staff':
-        return Icons.auto_fix_high;
-      case 'dagger':
-        return Icons.content_cut;
-      case 'hammer':
-        return Icons.build;
-      default:
-        return Icons.sports_martial_arts;
-    }
   }
 }

@@ -32,7 +32,18 @@ class Weapon {
     required this.updatedAt,
   });
 
-  factory Weapon.fromJson(Map<String, dynamic> json) => _$WeaponFromJson(json);
+  factory Weapon.fromJson(Map<String, dynamic> json) => Weapon(
+    id: json['id'].toString(),
+    name: json['name']?.toString() ?? '',
+    description: json['description']?.toString() ?? '',
+    attack: (json['calculated_attack'] ?? json['base_attack'] ?? 0) is num ? (json['calculated_attack'] ?? json['base_attack'] ?? 0).toInt() : int.tryParse((json['calculated_attack'] ?? json['base_attack']).toString()) ?? 0,
+    weaponType: json['weapon_type_id']?.toString() ?? json['weapon_type']?.toString() ?? '',
+    rarity: json['rarity']?['name']?.toString() ?? json['rarity_id']?.toString() ?? '',
+    price: (json['calculated_price'] ?? json['base_price'] ?? 0) is num ? (json['calculated_price'] ?? json['base_price'] ?? 0).toInt() : int.tryParse((json['calculated_price'] ?? json['base_price']).toString()) ?? 0,
+    requiredLevel: (json['required_level'] ?? 1) is num ? (json['required_level'] ?? 1).toInt() : int.tryParse(json['required_level'].toString()) ?? 1,
+    createdAt: DateTime.parse(json['created_at']),
+    updatedAt: DateTime.parse(json['updated_at']),
+  );
   Map<String, dynamic> toJson() => _$WeaponToJson(this);
 
   Weapon copyWith({
@@ -104,8 +115,16 @@ class PlayerWeapon {
     required this.createdAt,
   });
 
-  factory PlayerWeapon.fromJson(Map<String, dynamic> json) =>
-      _$PlayerWeaponFromJson(json);
+  factory PlayerWeapon.fromJson(Map<String, dynamic> json) => PlayerWeapon(
+    id: json['id'].toString(),
+    playerId: json['player_id'].toString(),
+    weaponId: json['weapon_id'].toString(),
+    weaponName: json['weapon_name']?.toString() ?? '',
+    attack: (json['attack'] ?? 0) is num ? (json['attack'] ?? 0).toInt() : int.tryParse(json['attack'].toString()) ?? 0,
+    enchantLevel: (json['enchant_level'] ?? 0) is num ? (json['enchant_level'] ?? 0).toInt() : int.tryParse(json['enchant_level'].toString()) ?? 0,
+    isEquipped: json['is_equipped'] ?? false,
+    createdAt: DateTime.parse(json['created_at']),
+  );
   Map<String, dynamic> toJson() => _$PlayerWeaponToJson(this);
 
   PlayerWeapon copyWith({
@@ -163,8 +182,12 @@ class WeaponType {
     required this.attackMultiplier,
   });
 
-  factory WeaponType.fromJson(Map<String, dynamic> json) =>
-      _$WeaponTypeFromJson(json);
+  factory WeaponType.fromJson(Map<String, dynamic> json) => WeaponType(
+    id: json['id'].toString(),
+    name: json['name']?.toString() ?? '',
+    description: json['description']?.toString() ?? '',
+    attackMultiplier: (json['attack_multiplier'] ?? 1.0) is num ? (json['attack_multiplier'] ?? 1.0).toDouble() : double.tryParse(json['attack_multiplier'].toString()) ?? 1.0,
+  );
   Map<String, dynamic> toJson() => _$WeaponTypeToJson(this);
 
   @override

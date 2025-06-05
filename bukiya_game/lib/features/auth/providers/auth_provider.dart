@@ -27,17 +27,33 @@ class AuthProvider extends ChangeNotifier {
     
     try {
       final token = await _secureStorage.read(key: AppConstants.tokenKey);
+      final rememberLogin = await _secureStorage.read(key: 'remember_login');
       
       if (token != null && !JwtDecoder.isExpired(token)) {
         // トークンが有効な場合、プレイヤー情報を取得
-        await _loadPlayerProfile();
-        _isAuthenticated = true;
+        try {
+          await _loadPlayerProfile();
+          _isAuthenticated = true;
+          print('自動ログイン成功: ${_currentPlayer?.username}');
+        } catch (e) {
+          print('プレイヤー情報取得失敗: $e');
+          // プレイヤー情報取得に失敗した場合、トークンを削除
+          await logout();
+        }
       } else {
-        // トークンが無効な場合、ログアウト処理
-        await logout();
+        print('トークンが無効または期限切れ');
+        // 「ログイン状態を保持」が無効な場合、完全にログアウト
+        if (rememberLogin != 'true') {
+          await logout();
+        } else {
+          // 保持設定がある場合、トークンのみクリア（ユーザー名などは保持）
+          await _secureStorage.delete(key: AppConstants.tokenKey);
+          _isAuthenticated = false;
+        }
       }
     } catch (e) {
-      _setError('認証状態の確認に失敗しました: $e');
+      print('認証状態確認エラー: $e');
+      _setError('認証状態の確認に失敗しました');
       await logout();
     } finally {
       _setLoading(false);
@@ -45,7 +61,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ログイン
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String email, String password, {bool rememberLogin = true}) async {
     _setLoading(true);
     _clearError();
 
@@ -58,6 +74,18 @@ class AuthProvider extends ChangeNotifier {
         key: AppConstants.tokenKey,
         value: response.accessToken,
       );
+
+      // ログイン状態保持設定を保存
+      await _secureStorage.write(
+        key: 'remember_login',
+        value: rememberLogin.toString(),
+      );
+
+      // ユーザー情報を保存（自動入力用）
+      if (rememberLogin) {
+        await _secureStorage.write(key: 'saved_email', value: email);
+        await _secureStorage.write(key: 'saved_username', value: response.username);
+      }
 
       // プレイヤー情報を作成（後でプロフィール取得）
       _currentPlayer = Player(
@@ -200,6 +228,19 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       return false;
     }
+  }
+
+  // 保存されたユーザー情報を取得
+  Future<Map<String, String?>> getSavedUserInfo() async {
+    final email = await _secureStorage.read(key: 'saved_email');
+    final username = await _secureStorage.read(key: 'saved_username');
+    final rememberLogin = await _secureStorage.read(key: 'remember_login');
+    
+    return {
+      'email': email,
+      'username': username,
+      'remember_login': rememberLogin,
+    };
   }
 
   @override

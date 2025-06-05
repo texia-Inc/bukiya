@@ -22,6 +22,9 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -41,52 +44,32 @@ class _LoginScreenState extends State<LoginScreen>
         }
 
         return Scaffold(
+          backgroundColor: AppTheme.backgroundColor,
           body: Container(
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-            ),
+            color: AppTheme.backgroundColor,
+            width: double.infinity,
             child: SafeArea(
-              child: Column(
-                children: [
-                  // ヘッダー
-                  _buildHeader(),
-                  
-                  // タブバー
-                  _buildTabBar(),
-                  
-                  // フォーム
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: AppTheme.cardShadow,
-                      ),
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          // ログインフォーム
-                          LoginForm(
-                            onSubmit: _handleLogin,
-                            isLoading: authProvider.isLoading,
-                          ),
-                          // 新規登録フォーム
-                          RegisterForm(
-                            onSubmit: _handleRegister,
-                            isLoading: authProvider.isLoading,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  // エラーメッセージ
-                  if (authProvider.errorMessage != null)
-                    _buildErrorMessage(authProvider.errorMessage!),
-                  
-                  const SizedBox(height: 32),
-                ],
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // レトロヘッダー
+                    _buildRetroHeader(),
+                    const SizedBox(height: 4),
+                    
+                    // タブメニュー
+                    _buildRetroTabs(),
+                    const SizedBox(height: 4),
+                    
+                    // フォームエリア
+                    _buildRetroForm(authProvider),
+                    
+                    // エラーメッセージ
+                    if (authProvider.errorMessage != null)
+                      _buildRetroErrorMessage(authProvider.errorMessage!),
+                  ],
+                ),
               ),
             ),
           ),
@@ -196,9 +179,9 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Future<void> _handleLogin(String email, String password) async {
+  Future<void> _handleLogin(String email, String password, {bool rememberLogin = true}) async {
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.login(email, password);
+    final success = await authProvider.login(email, password, rememberLogin: rememberLogin);
     
     if (success && mounted) {
       // ログイン成功時は自動的にDashboardScreenに遷移される
@@ -224,5 +207,160 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       );
     }
+  }
+
+  // レトロ風UIメソッド
+  Widget _buildRetroHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 2),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '=== 武器屋経営システム ===',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'ユーザー認証',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '最強の武器屋を目指そう！',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroTabs() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 0 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[1] ログイン',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 0 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _tabController.animateTo(1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: _tabController.index == 1 
+                    ? Border.all(color: AppTheme.primaryColor, width: 1)
+                    : null,
+                ),
+                child: Text(
+                  '[2] 新規登録',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _tabController.index == 1 
+                      ? AppTheme.primaryColor 
+                      : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroForm(AuthProvider authProvider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.primaryColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _tabController.index == 0 ? '--- ログイン ---' : '--- 新規登録 ---',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_tabController.index == 0)
+            LoginForm(
+              onSubmit: _handleLogin,
+              isLoading: authProvider.isLoading,
+            )
+          else
+            RegisterForm(
+              onSubmit: _handleRegister,
+              isLoading: authProvider.isLoading,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRetroErrorMessage(String message) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.errorColor, width: 1),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '--- エラー ---',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.errorColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

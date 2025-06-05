@@ -2,26 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // カラーパレット
-  static const Color primaryColor = Color(0xFF8B4513); // サドルブラウン
-  static const Color secondaryColor = Color(0xFFDAA520); // ゴールデンロッド
-  static const Color accentColor = Color(0xFFFF6B35); // オレンジレッド
-  static const Color backgroundColor = Color(0xFFF5F5DC); // ベージュ
-  static const Color surfaceColor = Color(0xFFFFFFFF);
-  static const Color errorColor = Color(0xFFD32F2F);
-  static const Color successColor = Color(0xFF388E3C);
-  static const Color warningColor = Color(0xFFF57C00);
+  // レトロターミナル風カラーパレット
+  static const Color primaryColor = Color(0xFFFFFFFF); // 白
+  static const Color secondaryColor = Color(0xFF00FFFF); // シアン
+  static const Color accentColor = Color(0xFFFFFF00); // 黄色
+  static const Color backgroundColor = Color(0xFF000000); // 黒
+  static const Color surfaceColor = Color(0xFF111111); // 濃いグレー
+  static const Color errorColor = Color(0xFFFF0000); // 赤
+  static const Color successColor = Color(0xFF00FF00); // 緑
+  static const Color warningColor = Color(0xFFFFFF00); // 黄色
   
-  // テキストカラー
-  static const Color textPrimary = Color(0xFF2E2E2E);
-  static const Color textSecondary = Color(0xFF757575);
-  static const Color textOnPrimary = Color(0xFFFFFFFF);
+  // テキストカラー（ターミナル風）
+  static const Color textPrimary = Color(0xFFFFFFFF); // 白
+  static const Color textSecondary = Color(0xFF888888); // グレー
+  static const Color textOnPrimary = Color(0xFF000000); // 黒
+  static const Color textWhite = Color(0xFFFFFFFF); // 白
   
-  // レアリティカラー
-  static const Color commonColor = Color(0xFF9E9E9E);
-  static const Color rareColor = Color(0xFF2196F3);
-  static const Color epicColor = Color(0xFF9C27B0);
-  static const Color legendaryColor = Color(0xFFFF9800);
+  // レアリティカラー（ターミナル風）
+  static const Color commonColor = Color(0xFF888888); // グレー
+  static const Color rareColor = Color(0xFF00FFFF); // シアン
+  static const Color epicColor = Color(0xFFFF00FF); // マゼンタ
+  static const Color legendaryColor = Color(0xFFFFFF00); // 黄色
   
   static ThemeData get lightTheme {
     return ThemeData(
@@ -40,79 +41,79 @@ class AppTheme {
         onError: textOnPrimary,
       ),
       
-      // フォント設定
-      textTheme: GoogleFonts.notoSansTextTheme().copyWith(
-        displayLarge: GoogleFonts.notoSans(
+      // フォント設定（等幅フォント）
+      textTheme: GoogleFonts.courierPrimeTextTheme().copyWith(
+        displayLarge: GoogleFonts.courierPrime(
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: textPrimary,
         ),
-        displayMedium: GoogleFonts.notoSans(
+        displayMedium: GoogleFonts.courierPrime(
           fontSize: 28,
           fontWeight: FontWeight.bold,
           color: textPrimary,
         ),
-        displaySmall: GoogleFonts.notoSans(
+        displaySmall: GoogleFonts.courierPrime(
           fontSize: 24,
           fontWeight: FontWeight.bold,
           color: textPrimary,
         ),
-        headlineLarge: GoogleFonts.notoSans(
+        headlineLarge: GoogleFonts.courierPrime(
           fontSize: 22,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        headlineMedium: GoogleFonts.notoSans(
+        headlineMedium: GoogleFonts.courierPrime(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        headlineSmall: GoogleFonts.notoSans(
+        headlineSmall: GoogleFonts.courierPrime(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        titleLarge: GoogleFonts.notoSans(
+        titleLarge: GoogleFonts.courierPrime(
           fontSize: 16,
           fontWeight: FontWeight.w500,
           color: textPrimary,
         ),
-        titleMedium: GoogleFonts.notoSans(
+        titleMedium: GoogleFonts.courierPrime(
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: textPrimary,
         ),
-        titleSmall: GoogleFonts.notoSans(
+        titleSmall: GoogleFonts.courierPrime(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: textPrimary,
         ),
-        bodyLarge: GoogleFonts.notoSans(
+        bodyLarge: GoogleFonts.courierPrime(
           fontSize: 16,
           fontWeight: FontWeight.normal,
           color: textPrimary,
         ),
-        bodyMedium: GoogleFonts.notoSans(
+        bodyMedium: GoogleFonts.courierPrime(
           fontSize: 14,
           fontWeight: FontWeight.normal,
           color: textPrimary,
         ),
-        bodySmall: GoogleFonts.notoSans(
+        bodySmall: GoogleFonts.courierPrime(
           fontSize: 12,
           fontWeight: FontWeight.normal,
           color: textSecondary,
         ),
-        labelLarge: GoogleFonts.notoSans(
+        labelLarge: GoogleFonts.courierPrime(
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: textPrimary,
         ),
-        labelMedium: GoogleFonts.notoSans(
+        labelMedium: GoogleFonts.courierPrime(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: textPrimary,
         ),
-        labelSmall: GoogleFonts.notoSans(
+        labelSmall: GoogleFonts.courierPrime(
           fontSize: 10,
           fontWeight: FontWeight.w500,
           color: textSecondary,
@@ -121,28 +122,29 @@ class AppTheme {
       
       // AppBar テーマ
       appBarTheme: AppBarTheme(
-        backgroundColor: primaryColor,
-        foregroundColor: textOnPrimary,
-        elevation: 4,
+        backgroundColor: backgroundColor,
+        foregroundColor: textPrimary,
+        elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.notoSans(
+        titleTextStyle: GoogleFonts.courierPrime(
           fontSize: 20,
           fontWeight: FontWeight.bold,
-          color: textOnPrimary,
+          color: textPrimary,
         ),
       ),
       
       // ボタンテーマ
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
-          foregroundColor: textOnPrimary,
-          elevation: 4,
+          backgroundColor: surfaceColor,
+          foregroundColor: textPrimary,
+          elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(0),
+            side: BorderSide(color: primaryColor, width: 1),
           ),
-          textStyle: GoogleFonts.notoSans(
+          textStyle: GoogleFonts.courierPrime(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -152,12 +154,12 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primaryColor,
-          side: const BorderSide(color: primaryColor, width: 2),
+          side: const BorderSide(color: primaryColor, width: 1),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(0),
           ),
-          textStyle: GoogleFonts.notoSans(
+          textStyle: GoogleFonts.courierPrime(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -168,7 +170,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: primaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          textStyle: GoogleFonts.notoSans(
+          textStyle: GoogleFonts.courierPrime(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -178,39 +180,40 @@ class AppTheme {
       // カードテーマ
       cardTheme: CardTheme(
         color: surfaceColor,
-        elevation: 4,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(0),
+          side: BorderSide(color: primaryColor, width: 1),
         ),
-        margin: const EdgeInsets.all(8),
+        margin: const EdgeInsets.all(4),
       ),
       
       // 入力フィールドテーマ
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceColor,
+        fillColor: backgroundColor,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(0),
           borderSide: const BorderSide(color: primaryColor),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(0),
           borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(0),
           borderSide: const BorderSide(color: primaryColor, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(0),
           borderSide: const BorderSide(color: errorColor),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        labelStyle: GoogleFonts.notoSans(
+        labelStyle: GoogleFonts.courierPrime(
           color: textSecondary,
           fontSize: 14,
         ),
-        hintStyle: GoogleFonts.notoSans(
+        hintStyle: GoogleFonts.courierPrime(
           color: textSecondary,
           fontSize: 14,
         ),
@@ -232,17 +235,18 @@ class AppTheme {
       
       // ダイアログテーマ
       dialogTheme: DialogTheme(
-        backgroundColor: surfaceColor,
-        elevation: 8,
+        backgroundColor: backgroundColor,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(0),
+          side: BorderSide(color: primaryColor, width: 2),
         ),
-        titleTextStyle: GoogleFonts.notoSans(
+        titleTextStyle: GoogleFonts.courierPrime(
           fontSize: 20,
           fontWeight: FontWeight.bold,
           color: textPrimary,
         ),
-        contentTextStyle: GoogleFonts.notoSans(
+        contentTextStyle: GoogleFonts.courierPrime(
           fontSize: 14,
           color: textPrimary,
         ),
@@ -250,16 +254,16 @@ class AppTheme {
       
       // ボトムナビゲーションテーマ
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: surfaceColor,
+        backgroundColor: backgroundColor,
         selectedItemColor: primaryColor,
         unselectedItemColor: textSecondary,
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
-        selectedLabelStyle: GoogleFonts.notoSans(
+        elevation: 0,
+        selectedLabelStyle: GoogleFonts.courierPrime(
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
-        unselectedLabelStyle: GoogleFonts.notoSans(
+        unselectedLabelStyle: GoogleFonts.courierPrime(
           fontSize: 12,
           fontWeight: FontWeight.normal,
         ),

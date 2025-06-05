@@ -50,6 +50,7 @@ class AdventurerProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
+      print('Loading adventurer data...');
       // 並行して各データを取得
       final futures = await Future.wait([
         _loadVisitingAdventurers(),
@@ -58,8 +59,10 @@ class AdventurerProvider extends ChangeNotifier {
         _loadQuestAreas(),
       ]);
 
+      print('Visiting: ${_visitingAdventurers.length}, OnQuest: ${_onQuestAdventurers.length}, Buybacks: ${_pendingBuybacks.length}');
       notifyListeners();
     } catch (e) {
+      print('Error loading adventurer data: $e');
       _setError('冒険者データの読み込みに失敗しました: ${e.toString()}');
     } finally {
       _setLoading(false);
