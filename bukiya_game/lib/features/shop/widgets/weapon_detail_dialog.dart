@@ -38,8 +38,8 @@ class WeaponDetailDialog extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    rarityColor.withOpacity(0.1),
-                    rarityColor.withOpacity(0.05),
+                    rarityColor.withValues(alpha: 0.1),
+                    rarityColor.withValues(alpha: 0.05),
                   ],
                 ),
                 borderRadius: const BorderRadius.only(
@@ -53,10 +53,10 @@ class WeaponDetailDialog extends StatelessWidget {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: rarityColor.withOpacity(0.2),
+                      color: rarityColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: rarityColor.withOpacity(0.5),
+                        color: rarityColor.withValues(alpha: 0.5),
                         width: 2,
                       ),
                     ),

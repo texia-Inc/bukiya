@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/themes/app_theme.dart';
-import '../../../core/models/adventurer.dart';
+import '../../../core/models/adventurer_new.dart';
 
 class WeaponSaleDialog extends StatelessWidget {
   final Adventurer adventurer;
@@ -39,20 +39,52 @@ class WeaponSaleDialog extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('キャンセル'),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.primaryColor, width: 1),
+                      ),
+                      child: Text(
+                        '[キャンセル]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => onSale('weapon_1', 1000),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
+                  child: GestureDetector(
+                    onTap: () async {
+                      // ダイアログを即座に閉じる
+                      Navigator.of(context).pop();
+                      
+                      // 武器販売処理を実行
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      onSale('weapon_1', 1000);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppTheme.successColor,
+                          width: 1,
+                        ),
+                        color: AppTheme.successColor.withValues(alpha: 0.1),
+                      ),
+                      child: Text(
+                        '[販売]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.successColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    child: const Text('販売'),
                   ),
                 ),
               ],

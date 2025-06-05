@@ -93,6 +93,10 @@ const MissionTemplateList: React.FC = () => {
     setSelectedTemplate(null)
   }
 
+  const handleDialogSuccess = () => {
+    refetch()
+  }
+
   const handleDeleteDialogClose = () => {
     setDeleteDialogOpen(false)
     setSelectedTemplate(null)
@@ -348,12 +352,14 @@ const MissionTemplateList: React.FC = () => {
         open={createDialogOpen}
         onClose={handleDialogClose}
         template={null}
+        onSuccess={handleDialogSuccess}
       />
       
       <MissionTemplateDialog
         open={editDialogOpen}
         onClose={handleDialogClose}
         template={selectedTemplate}
+        onSuccess={handleDialogSuccess}
       />
 
       <MissionDeleteDialog

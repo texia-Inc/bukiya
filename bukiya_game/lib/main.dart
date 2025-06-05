@@ -13,7 +13,10 @@ import 'features/mission/providers/mission_provider.dart';
 import 'features/adventurer/providers/adventurer_provider.dart';
 import 'features/idle/providers/idle_provider.dart';
 import 'features/enchantment/providers/enchantment_provider.dart';
+import 'features/settings/providers/settings_provider.dart';
+import 'features/tutorial/providers/tutorial_provider.dart';
 import 'core/services/api_service.dart';
+import 'core/services/seed_data_service.dart';
 import 'app/app.dart';
 
 void main() async {
@@ -25,6 +28,28 @@ void main() async {
   // ボックスを開く
   await Hive.openBox(AppConstants.settingsKey);
   await Hive.openBox(AppConstants.gameDataKey);
+  
+  // APIを使用するため、既存のローカルデータをクリア
+  final gameDataBox = Hive.box(AppConstants.gameDataKey);
+  final settingsBox = Hive.box(AppConstants.settingsKey);
+  
+  if (gameDataBox.isNotEmpty) {
+    print('既存のゲームデータをクリア中...');
+    await gameDataBox.clear();
+    print('ゲームデータをクリアしました。');
+  }
+  
+  if (settingsBox.isNotEmpty) {
+    print('既存の設定データをクリア中...');
+    await settingsBox.clear();
+    print('設定データをクリアしました。');
+  }
+  
+  print('APIからデータを取得します。');
+  
+  // シードデータの初期化（APIを使用するため無効化）
+  // final seedDataService = SeedDataService();
+  // await seedDataService.seedAllData();
   
   runApp(const BukiyaGameApp());
 }
@@ -62,6 +87,8 @@ class BukiyaGameApp extends StatelessWidget {
           update: (context, apiService, previous) => previous ?? IdleProvider(apiService),
         ),
         ChangeNotifierProvider(create: (_) => EnchantmentProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => TutorialProvider()),
       ],
       child: MaterialApp(
         title: '武器屋放置ゲーム',

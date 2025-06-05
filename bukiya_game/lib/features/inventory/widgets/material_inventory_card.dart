@@ -20,7 +20,7 @@ class MaterialInventoryCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: _getRarityColor(material.material.rarity).withOpacity(0.3),
+          color: _getRarityColor(material.material.rarity).withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -29,8 +29,8 @@ class MaterialInventoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
             colors: [
-              _getRarityColor(material.material.rarity).withOpacity(0.05),
-              _getRarityColor(material.material.rarity).withOpacity(0.02),
+              _getRarityColor(material.material.rarity).withValues(alpha: 0.05),
+              _getRarityColor(material.material.rarity).withValues(alpha: 0.02),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -49,7 +49,7 @@ class MaterialInventoryCard extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _getRarityColor(material.material.rarity).withOpacity(0.2),
+                      color: _getRarityColor(material.material.rarity).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _getRarityColor(material.material.rarity),
@@ -166,10 +166,10 @@ class MaterialInventoryCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: Colors.green.withOpacity(0.3),
+                    color: Colors.green.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(

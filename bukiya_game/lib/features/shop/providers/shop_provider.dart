@@ -96,10 +96,6 @@ class ShopProvider extends ChangeNotifier {
     }
 
     List<Weapon> filtered = List.from(_weapons);
-    
-    print('=== Shop Filter Debug ===');
-    print('Total weapons loaded: ${_weapons.length}');
-    print('Player: ${_currentPlayer?.username}, Shop Level: ${_currentPlayer?.shopLevel}');
 
     // 武器タイプでフィルター
     if (_currentFilters['weaponType'] != 'all') {
@@ -115,18 +111,8 @@ class ShopProvider extends ChangeNotifier {
 
     // プレイヤーレベルでフィルター（購入できない武器を除外）
     if (_currentPlayer != null) {
-      print('Before level filter: ${filtered.length} weapons');
-      for (var weapon in filtered) {
-        print('Weapon: ${weapon.name}, Required Level: ${weapon.requiredLevel}, Player Level: ${_currentPlayer!.shopLevel}');
-      }
-      
       filtered = filtered.where((weapon) => 
         _currentPlayer!.shopLevel >= weapon.requiredLevel).toList();
-        
-      print('After level filter: ${filtered.length} weapons');
-      for (var weapon in filtered) {
-        print('Available weapon: ${weapon.name}');
-      }
     }
 
     // ソート

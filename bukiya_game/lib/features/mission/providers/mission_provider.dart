@@ -1,14 +1,18 @@
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
 import 'package:bukiya_game/core/models/mission.dart';
 import 'package:bukiya_game/core/services/api_service.dart';
+import 'package:bukiya_game/core/services/mission_auto_progress_service.dart';
 import 'package:bukiya_game/features/auth/providers/auth_provider.dart';
 
 class MissionProvider extends ChangeNotifier {
   final ApiService _apiService;
   final AuthProvider _authProvider;
+  late final MissionAutoProgressService _autoProgressService;
 
-  MissionProvider(this._apiService, this._authProvider);
+  MissionProvider(this._apiService, this._authProvider) {
+    _autoProgressService = MissionAutoProgressService(_apiService);
+    _initializeAutoProgress();
+  }
 
   // ミッション状態
   List<Mission> _dailyMissions = [];
@@ -17,6 +21,10 @@ class MissionProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   DateTime? _lastRefresh;
+  
+  // 自動進行関連
+  OfflineProgressResult? _lastOfflineProgress;
+  bool _hasCheckedOfflineProgress = false;
 
   // ゲッター
   List<Mission> get dailyMissions => _dailyMissions;
@@ -25,6 +33,11 @@ class MissionProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastRefresh => _lastRefresh;
+  
+  // 自動進行関連ゲッター
+  OfflineProgressResult? get lastOfflineProgress => _lastOfflineProgress;
+  bool get hasCheckedOfflineProgress => _hasCheckedOfflineProgress;
+  Map<String, int> get sessionStats => _autoProgressService.getSessionStats();
 
   // 完了済みミッション数
   int get completedDailyCount => 
@@ -45,6 +58,37 @@ class MissionProvider extends ChangeNotifier {
       _dailyMissions.where((m) => m.canClaimReward).length +
       _weeklyMissions.where((m) => m.canClaimReward).length +
       _achievements.where((m) => m.canClaimReward).length;
+
+  // 自動進行システムを初期化
+  Future<void> _initializeAutoProgress() async {
+    await _autoProgressService.initialize();
+    
+    // オフライン進捗をチェック
+    if (!_hasCheckedOfflineProgress) {
+      await checkOfflineProgress();
+    }
+  }
+  
+  // オフライン進捗をチェック
+  Future<void> checkOfflineProgress() async {
+    try {
+      _lastOfflineProgress = await _autoProgressService.calculateOfflineProgress();
+      _hasCheckedOfflineProgress = true;
+      
+      if (_lastOfflineProgress != null && 
+          _lastOfflineProgress!.offlineTime.inMinutes >= 5) {
+        // 5分以上のオフライン時間がある場合は進捗を適用
+        await _autoProgressService.applyOfflineProgress(_lastOfflineProgress!);
+        
+        // ミッション状態を再取得
+        await fetchAllMissions();
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('オフライン進捗チェックエラー: $e');
+    }
+  }
 
   // 全ミッションを取得
   Future<void> fetchAllMissions() async {
@@ -68,22 +112,21 @@ class MissionProvider extends ChangeNotifier {
   // デイリーミッションを取得
   Future<void> fetchDailyMissions() async {
     try {
-      final playerId = _authProvider.currentPlayer?.id;
-      if (playerId == null) {
+      if (_authProvider.currentPlayer == null) {
         _setError('プレイヤー情報が取得できません。ログインしてください。');
         return;
       }
 
-      final response = await _apiService.dio.get(
-        '/missions/daily',
-        queryParameters: {'player_id': playerId},
-      );
+      final response = await _apiService.dio.get('/api/v1/missions/daily');
       
-      if (response.data['success']) {
-        _dailyMissions = (response.data['data'] as List)
+      // バックエンドは MissionListResponse を直接返す
+      if (response.data != null && response.data.containsKey('missions')) {
+        _dailyMissions = (response.data['missions'] as List)
             .map((json) => Mission.fromJson(json))
             .toList();
         notifyListeners();
+      } else {
+        _setError('デイリーミッションの取得に失敗しました');
       }
     } catch (e) {
       _setError('デイリーミッションの取得に失敗しました: $e');
@@ -93,22 +136,21 @@ class MissionProvider extends ChangeNotifier {
   // ウィークリーミッションを取得
   Future<void> fetchWeeklyMissions() async {
     try {
-      final playerId = _authProvider.currentPlayer?.id;
-      if (playerId == null) {
+      if (_authProvider.currentPlayer == null) {
         _setError('プレイヤー情報が取得できません。ログインしてください。');
         return;
       }
 
-      final response = await _apiService.dio.get(
-        '/missions/weekly',
-        queryParameters: {'player_id': playerId},
-      );
+      final response = await _apiService.dio.get('/api/v1/missions/weekly');
       
-      if (response.data['success']) {
-        _weeklyMissions = (response.data['data'] as List)
+      // バックエンドは MissionListResponse を直接返す
+      if (response.data != null && response.data.containsKey('missions')) {
+        _weeklyMissions = (response.data['missions'] as List)
             .map((json) => Mission.fromJson(json))
             .toList();
         notifyListeners();
+      } else {
+        _setError('ウィークリーミッションの取得に失敗しました');
       }
     } catch (e) {
       _setError('ウィークリーミッションの取得に失敗しました: $e');
@@ -118,32 +160,32 @@ class MissionProvider extends ChangeNotifier {
   // アチーブメントを取得
   Future<void> fetchAchievements() async {
     try {
-      final playerId = _authProvider.currentPlayer?.id;
-      if (playerId == null) {
+      if (_authProvider.currentPlayer == null) {
         _setError('プレイヤー情報が取得できません。ログインしてください。');
         return;
       }
 
-      final response = await _apiService.dio.get(
-        '/missions/achievements',
-        queryParameters: {'player_id': playerId},
-      );
+      final response = await _apiService.dio.get('/api/v1/missions/achievements');
       
-      if (response.data['success']) {
-        _achievements = (response.data['data'] as List)
+      // バックエンドは MissionListResponse を直接返す
+      if (response.data != null && response.data.containsKey('missions')) {
+        _achievements = (response.data['missions'] as List)
             .map((json) => Mission.fromJson(json))
             .toList();
         notifyListeners();
+      } else {
+        _setError('アチーブメントの取得に失敗しました');
       }
     } catch (e) {
       _setError('アチーブメントの取得に失敗しました: $e');
+      print('アチーブメント取得エラーの詳細: $e');
     }
   }
 
   // ミッション進捗を取得
   Future<void> fetchMissionProgress() async {
     try {
-      final response = await _apiService.dio.get('/missions/progress');
+      final response = await _apiService.dio.get('/api/v1/missions/progress');
       if (response.data['success']) {
         final progressData = response.data['data'] as Map<String, dynamic>;
         
@@ -159,7 +201,7 @@ class MissionProvider extends ChangeNotifier {
   // 報酬を受け取る
   Future<bool> claimReward(int missionId) async {
     try {
-      final response = await _apiService.dio.post('/missions/$missionId/claim');
+      final response = await _apiService.dio.post('/api/v1/missions/$missionId/claim');
       if (response.data['success']) {
         // ミッション状態を更新
         _updateMissionStatus(missionId, isClaimed: true);
@@ -198,7 +240,7 @@ class MissionProvider extends ChangeNotifier {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final response = await _apiService.dio.post('/missions/progress', data: {
+      final response = await _apiService.dio.post('/api/v1/missions/progress', data: {
         'action_type': actionType,
         'count': count,
         'metadata': metadata,
@@ -212,6 +254,27 @@ class MissionProvider extends ChangeNotifier {
       debugPrint('ミッション進捗更新エラー: $e');
     }
   }
+  
+  // プレイヤーアクションを記録（自動進行システム経由）
+  Future<void> recordPlayerAction(String actionType, {
+    int count = 1,
+    Map<String, dynamic>? metadata,
+  }) async {
+    // 自動進行サービスにアクションを記録
+    await _autoProgressService.recordAction(
+      actionType, 
+      count: count, 
+      metadata: metadata,
+    );
+    
+    // 即座にミッション進捗を取得
+    await fetchMissionProgress();
+    
+    // アクティブ時間を更新
+    await _autoProgressService.updateActiveTime();
+    
+    notifyListeners();
+  }
 
   // 自動リフレッシュを開始
   void startAutoRefresh() {
@@ -224,68 +287,23 @@ class MissionProvider extends ChangeNotifier {
     });
   }
 
-  // ミッション進捗を更新
+  // ミッション進捗を更新（新しいAPIではミッションデータを再取得）
   void _updateMissionProgress(Map<String, dynamic> progressData) {
-    for (final mission in [..._dailyMissions, ..._weeklyMissions, ..._achievements]) {
-      final progressKey = mission.id.toString();
-      if (progressData.containsKey(progressKey)) {
-        final progress = progressData[progressKey];
-        final updatedMission = mission.copyWith(
-          currentProgress: progress['current_progress'],
-          isCompleted: progress['is_completed'],
-          isClaimed: progress['is_claimed'],
-          completedAt: progress['completed_at'] != null 
-              ? DateTime.parse(progress['completed_at'])
-              : null,
-        );
-        
-        // リストを更新
-        _replaceMission(updatedMission);
-      }
-    }
+    // 新しいAPIではミッション進捗はサーバー側で管理されるため、
+    // ここでは再フェッチを行う
+    fetchAllMissions();
   }
 
-  // ミッション状態を更新
+  // ミッション状態を更新（新しいAPIではサーバー側で管理）
   void _updateMissionStatus(int missionId, {
     int? currentProgress,
     bool? isCompleted,
     bool? isClaimed,
     DateTime? completedAt,
   }) {
-    final mission = _findMissionById(missionId);
-    if (mission != null) {
-      final updatedMission = mission.copyWith(
-        currentProgress: currentProgress,
-        isCompleted: isCompleted,
-        isClaimed: isClaimed,
-        completedAt: completedAt,
-      );
-      _replaceMission(updatedMission);
-    }
-  }
-
-  // ミッションを置き換え
-  void _replaceMission(Mission updatedMission) {
-    switch (updatedMission.missionType) {
-      case MissionType.daily:
-        final index = _dailyMissions.indexWhere((m) => m.id == updatedMission.id);
-        if (index != -1) {
-          _dailyMissions[index] = updatedMission;
-        }
-        break;
-      case MissionType.weekly:
-        final index = _weeklyMissions.indexWhere((m) => m.id == updatedMission.id);
-        if (index != -1) {
-          _weeklyMissions[index] = updatedMission;
-        }
-        break;
-      case MissionType.achievement:
-        final index = _achievements.indexWhere((m) => m.id == updatedMission.id);
-        if (index != -1) {
-          _achievements[index] = updatedMission;
-        }
-        break;
-    }
+    // 新しいAPIではミッション状態はサーバー側で管理されるため、
+    // ここでは再フェッチを行う
+    fetchAllMissions();
   }
 
   // IDでミッションを検索
@@ -328,8 +346,22 @@ class MissionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // セッション統計をリセット
+  Future<void> resetSessionStats() async {
+    await _autoProgressService.resetSessionStats();
+    notifyListeners();
+  }
+  
+  // オフライン進捗状態をリセット
+  void resetOfflineProgressCheck() {
+    _hasCheckedOfflineProgress = false;
+    _lastOfflineProgress = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
+    _autoProgressService.dispose();
     super.dispose();
   }
 }

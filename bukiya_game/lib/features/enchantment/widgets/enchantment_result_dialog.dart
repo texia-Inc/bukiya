@@ -58,10 +58,10 @@ class EnchantmentResultDialog extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _getResultColor().withOpacity(0.1),
+        color: _getResultColor().withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: _getResultColor().withOpacity(0.3),
+          color: _getResultColor().withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -123,7 +123,7 @@ class EnchantmentResultDialog extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
+        color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

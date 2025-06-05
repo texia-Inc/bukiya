@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:bukiya_game/core/models/enchantment.dart';
 import 'package:bukiya_game/core/models/inventory.dart';
 import 'package:bukiya_game/core/services/api_service.dart';
+import '../services/enchantment_failure_service.dart';
 
 class EnchantmentProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -19,7 +20,7 @@ class EnchantmentProvider with ChangeNotifier {
   List<WeaponEnchantment> _weaponEnchantments = [];
 
   // 素材選択
-  Map<int, int> _selectedMaterials = {}; // materialId -> quantity
+  final Map<int, int> _selectedMaterials = {}; // materialId -> quantity
   bool _useProtection = false;
 
   // UI状態
@@ -27,6 +28,7 @@ class EnchantmentProvider with ChangeNotifier {
   bool _isEnchanting = false;
   String? _errorMessage;
   EnchantmentResponse? _lastEnchantmentResult;
+  EnchantmentFailureResult? _lastFailureResult;
 
   // Getters
   List<EnchantmentType> get enchantmentTypes => _enchantmentTypes;
@@ -46,6 +48,7 @@ class EnchantmentProvider with ChangeNotifier {
   bool get isEnchanting => _isEnchanting;
   String? get errorMessage => _errorMessage;
   EnchantmentResponse? get lastEnchantmentResult => _lastEnchantmentResult;
+  EnchantmentFailureResult? get lastFailureResult => _lastFailureResult;
 
   // エンチャント一覧を取得
   Future<void> loadEnchantmentData() async {
@@ -53,7 +56,7 @@ class EnchantmentProvider with ChangeNotifier {
     _clearError();
 
     try {
-      final response = await _apiService.dio.get('/enchantments/');
+      final response = await _apiService.dio.get('/api/v1/enchantments/');
       
       if (response.data['success']) {
         final data = EnchantmentListResponse.fromJson(response.data['data']);
@@ -86,7 +89,7 @@ class EnchantmentProvider with ChangeNotifier {
   // 武器のエンチャント一覧を取得
   Future<void> loadWeaponEnchantments(String weaponId) async {
     try {
-      final response = await _apiService.dio.get('/enchantments/weapon/$weaponId/enchantments');
+      final response = await _apiService.dio.get('/api/v1/enchantments/weapon/$weaponId/enchantments');
       
       if (response.data['success']) {
         _weaponEnchantments = (response.data['data'] as List)
@@ -166,12 +169,17 @@ class EnchantmentProvider with ChangeNotifier {
         useProtection: _useProtection,
       );
 
-      final response = await _apiService.dio.post('/enchantments/enchant', data: request.toJson());
+      final response = await _apiService.dio.post('/api/v1/enchantments/enchant', data: request.toJson());
 
       if (response.data['success']) {
         _lastEnchantmentResult = EnchantmentResponse.fromJson(response.data['data']);
         
-        // 成功時は関連データを再読み込み
+        // 失敗時の詳細処理
+        if (_lastEnchantmentResult!.result != EnchantmentResult.success) {
+          await _processEnchantmentFailure();
+        }
+        
+        // 関連データを再読み込み
         await Future.wait([
           loadEnchantmentData(),
           if (_selectedWeapon != null) loadWeaponEnchantments(_selectedWeapon!.id.toString()),
@@ -198,7 +206,7 @@ class EnchantmentProvider with ChangeNotifier {
   // エンチャント履歴を取得
   Future<void> loadEnchantmentHistory({int limit = 50, int offset = 0}) async {
     try {
-      final response = await _apiService.dio.get('/enchantments/history', queryParameters: {
+      final response = await _apiService.dio.get('/api/v1/enchantments/history', queryParameters: {
         'limit': limit,
         'offset': offset,
       });
@@ -287,7 +295,7 @@ class EnchantmentProvider with ChangeNotifier {
     return (baseCost * costMultiplier).round();
   }
 
-  // エンチャント成功率を計算
+  // エンチャント成功率を計算（同情ボーナス込み）
   double calculateSuccessRate() {
     if (_selectedWeapon == null || _selectedEnchantmentType == null) {
       return 0.0;
@@ -328,6 +336,18 @@ class EnchantmentProvider with ChangeNotifier {
 
     final finalSuccessRate = (baseSuccessRate + successRateBonus).clamp(0.05, 0.95);
     return finalSuccessRate;
+  }
+
+  // 同情ボーナス込みの成功率を計算
+  Future<double> calculateSuccessRateWithPity() async {
+    final baseRate = calculateSuccessRate();
+    
+    if (_selectedEnchantmentType != null) {
+      final pityBonus = await EnchantmentFailureService.getNextSuccessRateBonus(_selectedEnchantmentType!.id);
+      return (baseRate + pityBonus).clamp(0.05, 0.99);
+    }
+    
+    return baseRate;
   }
 
   // プレイヤーの素材所持数を取得
@@ -374,7 +394,52 @@ class EnchantmentProvider with ChangeNotifier {
   // 結果をクリア
   void clearLastResult() {
     _lastEnchantmentResult = null;
+    _lastFailureResult = null;
     notifyListeners();
+  }
+
+  // エンチャント失敗時の詳細処理
+  Future<void> _processEnchantmentFailure() async {
+    if (_lastEnchantmentResult == null || _selectedWeapon == null || _selectedEnchantmentType == null) {
+      return;
+    }
+
+    try {
+      // 使用した素材を取得
+      final usedMaterials = <EnchantmentMaterial>[];
+      for (final materialId in _selectedMaterials.keys) {
+        final material = _materials.firstWhere(
+          (m) => m.id == materialId,
+          orElse: () => EnchantmentMaterial(
+            id: materialId,
+            name: 'Unknown Material',
+            description: '',
+            rarity: 'common',
+            materialType: 'general',
+            successRateBonus: 0.0,
+            costMultiplier: 1.0,
+            maxStack: 1,
+            isActive: true,
+            createdAt: DateTime.now(),
+          ),
+        );
+        usedMaterials.add(material);
+      }
+
+      // 失敗処理サービスを呼び出し
+      _lastFailureResult = await EnchantmentFailureService.processFailure(
+        enchantmentResult: _lastEnchantmentResult!,
+        weapon: _selectedWeapon!,
+        enchantmentType: _selectedEnchantmentType!,
+        usedMaterials: usedMaterials,
+        cost: calculateEnchantmentCost(),
+        useProtection: _useProtection,
+      );
+
+      debugPrint('エンチャント失敗処理完了: ${_lastFailureResult?.message}');
+    } catch (e) {
+      debugPrint('エンチャント失敗処理エラー: $e');
+    }
   }
 
 
@@ -402,11 +467,6 @@ class EnchantmentProvider with ChangeNotifier {
 
   // 素材を追加
   void addMaterial(int materialId) {
-    final material = _materials.firstWhere(
-      (m) => m.id == materialId,
-      orElse: () => throw Exception('Material not found'),
-    );
-    
     final playerMaterial = _playerMaterials.firstWhere(
       (pm) => pm.materialId == materialId,
       orElse: () => PlayerEnchantmentMaterial(
@@ -461,5 +521,16 @@ class EnchantmentProvider with ChangeNotifier {
   // エンチャント実行可能かチェック
   bool canPerformEnchantment() {
     return canEnchant();
+  }
+
+  // 連続失敗回数を取得
+  Future<int> getConsecutiveFailures() async {
+    if (_selectedEnchantmentType == null) return 0;
+    return await EnchantmentFailureService.getConsecutiveFailures(_selectedEnchantmentType!.id);
+  }
+
+  // 失敗履歴を取得
+  Future<List<EnchantmentFailureLog>> getFailureHistory() async {
+    return await EnchantmentFailureService.getFailureHistory();
   }
 }

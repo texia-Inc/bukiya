@@ -4,6 +4,7 @@ import '../providers/mission_provider.dart';
 import '../widgets/mission_card.dart';
 import '../widgets/mission_summary_card.dart';
 import '../../../shared/themes/app_theme.dart';
+import '../../../shared/widgets/badge_widget.dart';
 
 class MissionScreen extends StatefulWidget {
   const MissionScreen({super.key});
@@ -47,25 +48,70 @@ class _MissionScreenState extends State<MissionScreen>
         ),
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(
-              icon: Icon(Icons.today),
-              text: 'デイリー',
-            ),
-            Tab(
-              icon: Icon(Icons.calendar_view_week),
-              text: 'ウィークリー',
-            ),
-            Tab(
-              icon: Icon(Icons.emoji_events),
-              text: 'アチーブメント',
-            ),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Consumer<MissionProvider>(
+            builder: (context, missionProvider, child) {
+              // 各タブの報酬受取可能数を計算
+              final dailyClaimable = missionProvider.dailyMissions
+                  .where((m) => m.canClaimReward).length;
+              final weeklyClaimable = missionProvider.weeklyMissions
+                  .where((m) => m.canClaimReward).length;
+              final achievementClaimable = missionProvider.achievements
+                  .where((m) => m.canClaimReward).length;
+              
+              return TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: [
+                  Tab(
+                    child: BadgeWidget(
+                      count: dailyClaimable,
+                      showBadge: dailyClaimable > 0,
+                      badgeColor: Colors.red,
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.today),
+                          Text('デイリー'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Tab(
+                    child: BadgeWidget(
+                      count: weeklyClaimable,
+                      showBadge: weeklyClaimable > 0,
+                      badgeColor: Colors.red,
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.calendar_view_week),
+                          Text('ウィークリー'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Tab(
+                    child: BadgeWidget(
+                      count: achievementClaimable,
+                      showBadge: achievementClaimable > 0,
+                      badgeColor: Colors.red,
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.emoji_events),
+                          Text('アチーブメント'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
       body: Consumer<MissionProvider>(

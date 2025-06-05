@@ -47,7 +47,7 @@ class PlayerInfoCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'レベル ${player.level}',
+                        'ショップLv ${player.shopLevel}',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           color: AppTheme.primaryColor,
                           fontWeight: FontWeight.w600,
@@ -74,7 +74,7 @@ class PlayerInfoCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${player.expToNextLevel} EXP to next level',
+                      '${player.experience} EXP',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppTheme.textSecondary,
                       ),
@@ -83,7 +83,7 @@ class PlayerInfoCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
-                  value: player.levelProgress,
+                  value: 0.5,
                   backgroundColor: AppTheme.backgroundColor,
                   valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                 ),
@@ -153,9 +153,9 @@ class PlayerInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

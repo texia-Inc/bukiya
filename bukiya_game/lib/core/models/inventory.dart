@@ -4,7 +4,7 @@ import 'crafting.dart' as crafting;
 
 class PlayerWeapon {
   final String id;
-  final int playerId;
+  final String playerId;
   final int weaponMasterId;
   final int attack;
   final int enchantLevel;
@@ -106,7 +106,7 @@ class PlayerWeapon {
 
   PlayerWeapon copyWith({
     String? id,
-    int? playerId,
+    String? playerId,
     int? weaponMasterId,
     int? attack,
     int? enchantLevel,

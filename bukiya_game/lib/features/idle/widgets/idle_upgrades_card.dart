@@ -87,7 +87,7 @@ class IdleUpgradesCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(8),
         color: isMaxLevel
-            ? AppTheme.surfaceColor.withOpacity(0.5)
+            ? AppTheme.surfaceColor.withValues(alpha: 0.5)
             : null,
       ),
       child: Column(
@@ -100,7 +100,7 @@ class IdleUpgradesCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(

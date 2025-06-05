@@ -73,7 +73,7 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
     リフレッシュトークンを作成（長期間有効）
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=30)  # 30日間有効
+    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
     
     encoded_jwt = jwt.encode(

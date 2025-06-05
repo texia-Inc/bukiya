@@ -48,6 +48,7 @@ class Player(Base):
     materials = relationship("PlayerMaterial", back_populates="player")
     missions = relationship("PlayerMission", back_populates="player")
     idle_system = relationship("PlayerIdleSystem", back_populates="player", uselist=False)
+    adventurers = relationship("AdventurerInstance", back_populates="player")
     
     def __repr__(self):
         return f"<Player(id={self.id}, username='{self.username}', shop_level={self.shop_level})>"
@@ -91,3 +92,6 @@ class Player(Base):
     def add_gems(self, amount: int):
         """ジェムを追加"""
         self.gems += amount
+
+    # リレーションシップ
+    device_sessions = relationship("DeviceSession", back_populates="player", cascade="all, delete-orphan")

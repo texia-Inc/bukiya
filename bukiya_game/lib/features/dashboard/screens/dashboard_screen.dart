@@ -3,9 +3,13 @@ import 'package:provider/provider.dart';
 
 import '../../../shared/themes/app_theme.dart';
 import '../../../shared/widgets/loading_screen.dart';
+import '../../../shared/widgets/badge_widget.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../../mission/providers/mission_provider.dart';
+import '../../enchantment/providers/enchantment_provider.dart';
+import '../../crafting/providers/crafting_provider.dart';
 import '../widgets/player_info_card.dart';
 import '../widgets/game_stats_card.dart';
 import '../widgets/quick_actions_card.dart';
@@ -17,6 +21,7 @@ import '../../inventory/screens/inventory_screen.dart';
 import '../../adventurer/screens/adventurer_screen.dart';
 import '../../idle/widgets/idle_income_card.dart';
 import '../../enchantment/screens/enchantment_screen.dart';
+import '../../settings/screens/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -40,8 +45,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dashboardProvider = context.read<DashboardProvider>();
     await dashboardProvider.loadDashboardData();
     
-    // オフライン収益をチェック
-    await _checkOfflineIncome();
+    // オフライン収益をチェック（一時的に無効化）
+    // await _checkOfflineIncome();
   }
 
   Future<void> _checkOfflineIncome() async {
@@ -149,6 +154,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return _buildCraftingTab();
       case 6:
         return _buildEnchantmentTab();
+      case 7:
+        return const SettingsScreen();
       default:
         return _buildDashboardTab(player, dashboardProvider);
     }
@@ -199,7 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildInventoryTab() {
     // インベントリ画面を直接表示
-    return const InventoryScreen();
+    return InventoryScreen(key: ValueKey(_currentIndex));
   }
 
   Widget _buildCraftingTab() {
@@ -248,40 +255,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: _currentIndex,
-      onTap: _setCurrentIndex,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'ホーム',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.store),
-          label: 'ショップ',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment),
-          label: 'ミッション',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.people),
-          label: '冒険者',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.inventory),
-          label: 'インベントリ',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.build),
-          label: '合成',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.auto_fix_high),
-          label: 'エンチャント',
-        ),
-      ],
+    return Consumer3<MissionProvider, EnchantmentProvider, CraftingProvider>(
+      builder: (context, missionProvider, enchantmentProvider, craftingProvider, child) {
+        // バッジカウントを計算
+        final claimableMissions = missionProvider.claimableRewardsCount;
+        final availableRecipes = craftingProvider.availableRecipes.length;
+        final enchantableWeapons = enchantmentProvider.selectedWeapon != null ? 1 : 0;
+        
+        return BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _currentIndex,
+          onTap: _setCurrentIndex,
+          items: [
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'ホーム',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.store),
+              label: 'ショップ',
+            ),
+            BadgedBottomNavigationBarItem(
+              icon: const Icon(Icons.assignment),
+              label: 'ミッション',
+              badgeCount: claimableMissions,
+              showBadge: claimableMissions > 0,
+              animated: true,
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.people),
+              label: '冒険者',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.inventory),
+              label: 'インベントリ',
+            ),
+            BadgedBottomNavigationBarItem(
+              icon: const Icon(Icons.build),
+              label: '合成',
+              badgeCount: availableRecipes,
+              showBadge: availableRecipes > 0,
+              badgeColor: Colors.green,
+              animated: true,
+            ),
+            BadgedBottomNavigationBarItem(
+              icon: const Icon(Icons.auto_fix_high),
+              label: 'エンチャント',
+              badgeCount: enchantableWeapons,
+              showBadge: enchantableWeapons > 0,
+              badgeColor: Colors.purple,
+              animated: true,
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: '設定',
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -374,7 +405,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           Text(
-            'レベル: ${player.level} (EXP: ${player.experience})',
+            'ショップLv: ${player.shopLevel} (EXP: ${player.experience})',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: AppTheme.textPrimary,
             ),

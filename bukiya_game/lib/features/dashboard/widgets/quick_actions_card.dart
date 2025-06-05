@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/themes/app_theme.dart';
+import '../../../shared/widgets/badge_widget.dart';
 
 class QuickActionsCard extends StatelessWidget {
   final VoidCallback onShopTap;
   final VoidCallback onInventoryTap;
   final VoidCallback onCraftingTap;
   final VoidCallback onCollectIncome;
+  final int? craftingBadgeCount;
+  final int? incomeBadgeCount;
+  final int? inventoryBadgeCount;
 
   const QuickActionsCard({
     super.key,
@@ -14,6 +18,9 @@ class QuickActionsCard extends StatelessWidget {
     required this.onInventoryTap,
     required this.onCraftingTap,
     required this.onCollectIncome,
+    this.craftingBadgeCount,
+    this.incomeBadgeCount,
+    this.inventoryBadgeCount,
   });
 
   @override
@@ -61,6 +68,7 @@ class QuickActionsCard extends StatelessWidget {
                     'インベントリ',
                     AppTheme.secondaryColor,
                     onInventoryTap,
+                    badgeCount: inventoryBadgeCount,
                   ),
                 ),
               ],
@@ -76,6 +84,7 @@ class QuickActionsCard extends StatelessWidget {
                     '武器合成',
                     AppTheme.accentColor,
                     onCraftingTap,
+                    badgeCount: craftingBadgeCount,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -86,6 +95,7 @@ class QuickActionsCard extends StatelessWidget {
                     '収益回収',
                     AppTheme.successColor,
                     onCollectIncome,
+                    badgeCount: incomeBadgeCount,
                   ),
                 ),
               ],
@@ -101,24 +111,29 @@ class QuickActionsCard extends StatelessWidget {
     IconData icon,
     String label,
     Color color,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    int? badgeCount,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 32,
+            AnimatedBadgeWidget(
+              count: badgeCount,
+              showBadge: badgeCount != null && badgeCount > 0,
+              child: Icon(
+                icon,
+                color: color,
+                size: 32,
+              ),
             ),
             const SizedBox(height: 8),
             Text(

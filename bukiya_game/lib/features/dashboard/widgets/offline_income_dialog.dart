@@ -28,7 +28,7 @@ class OfflineIncomeDialog extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.successColor.withOpacity(0.1),
+                color: AppTheme.successColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
@@ -61,10 +61,10 @@ class OfflineIncomeDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.secondaryColor.withOpacity(0.1),
+                color: AppTheme.secondaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.secondaryColor.withOpacity(0.3),
+                  color: AppTheme.secondaryColor.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(

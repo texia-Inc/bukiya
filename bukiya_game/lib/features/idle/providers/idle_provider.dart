@@ -197,7 +197,7 @@ class IdleProvider extends ChangeNotifier {
       final box = await Hive.openBox(AppConstants.gameDataKey);
       await box.put('idle_system', _idleSystem!.toJson());
     } catch (e) {
-      print('ローカル保存に失敗: $e');
+      debugPrint('ローカル保存に失敗: $e');
     }
   }
 
@@ -212,7 +212,7 @@ class IdleProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('ローカル読み込みに失敗: $e');
+      debugPrint('ローカル読み込みに失敗: $e');
     }
   }
 

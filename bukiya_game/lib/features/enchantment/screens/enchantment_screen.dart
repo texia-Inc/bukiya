@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:bukiya_game/core/models/enchantment.dart';
-import 'package:bukiya_game/core/models/weapon.dart';
 import 'package:bukiya_game/features/enchantment/providers/enchantment_provider.dart';
 import 'package:bukiya_game/features/enchantment/widgets/weapon_selection_card.dart';
 import 'package:bukiya_game/features/enchantment/widgets/enchantment_type_selection_card.dart';
@@ -187,7 +186,7 @@ class _EnchantmentScreenState extends State<EnchantmentScreen> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -248,14 +247,14 @@ class _EnchantmentScreenState extends State<EnchantmentScreen> {
             children: [
               Icon(
                 Icons.trending_up,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 size: 16,
               ),
               const SizedBox(width: 4),
               Text(
                 '成功率: ${(provider.calculateSuccessRate() * 100).toStringAsFixed(1)}%',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
               ),
             ],

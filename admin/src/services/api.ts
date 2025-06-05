@@ -53,18 +53,38 @@ const baseQuery = fetchBaseQuery({
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery,
-  tagTypes: ['Weapon', 'Material', 'Recipe', 'Player', 'WeaponType', 'Rarity', 'Adventurer', 'Monster', 'QuestArea', 'MissionTemplate'],
+  tagTypes: ['Weapon', 'Material', 'Recipe', 'Player', 'WeaponType', 'Rarity', 'Adventurer', 'Monster', 'QuestArea', 'MissionTemplate', 'Dashboard'],
   endpoints: (builder) => ({
-    // 注意: 以下のエンドポイントは実装されていないため、モックデータを使用
-    // getDashboardStats: 実装されていない
-    // getWeaponTypes: 実装されていない  
-    // getRarityLevels: 実装されていない
+    // ダッシュボード統計
+    getDashboardStats: builder.query<BaseResponse<DashboardStats>, void>({
+      query: () => 'dashboard/stats',
+      providesTags: ['Dashboard'],
+    }),
+
+    // 武器タイプマスター
+    getWeaponTypes: builder.query<BaseResponse<WeaponType[]>, void>({
+      query: () => 'weapon-types',
+      providesTags: ['WeaponType'],
+    }),
+
+    // レアリティレベルマスター
+    getRarityLevels: builder.query<BaseResponse<RarityLevel[]>, void>({
+      query: () => 'rarity-levels',
+      providesTags: ['Rarity'],
+    }),
 
     // 武器マスター（管理画面用・認証不要）
     getWeapons: builder.query<PaginatedResponse<WeaponMaster>, WeaponListParams>({
       query: (params) => ({
         url: 'weapons/admin/list',
-        params,
+        params: {
+          page: params.page || 1,
+          limit: params.limit || 20,
+          weapon_type_id: params.weapon_type_id,
+          rarity_id: params.rarity_id,
+          min_level: params.min_level,
+          max_level: params.max_level
+        }
       }),
       providesTags: ['Weapon'],
     }),
@@ -100,11 +120,17 @@ export const adminApi = createApi({
       invalidatesTags: ['Weapon'],
     }),
 
-    // 素材マスター（管理画面用・認証不要）
+    // 素材マスター（管理画面用）
     getMaterials: builder.query<PaginatedResponse<MaterialMaster>, MaterialListParams>({
       query: (params) => ({
-        url: 'materials/admin/list',
-        params,
+        url: 'materials',
+        params: {
+          page: params.page,
+          limit: params.limit,
+          rarity_id: params.rarity_id,
+          min_price: params.min_price,
+          max_price: params.max_price
+        }
       }),
       providesTags: ['Material'],
     }),
@@ -140,23 +166,29 @@ export const adminApi = createApi({
       invalidatesTags: ['Material'],
     }),
 
-    // 合成レシピ（管理画面用・認証不要）
+    // クラフトレシピマスター（管理画面用）
     getRecipes: builder.query<PaginatedResponse<CraftingRecipe>, RecipeListParams>({
       query: (params) => ({
-        url: 'crafting/recipes/admin/list',
-        params,
+        url: 'recipes',
+        params: {
+          page: params.page,
+          limit: params.limit,
+          weapon_type_id: params.weapon_type_id,
+          rarity_id: params.rarity_id,
+          max_level: params.max_level
+        }
       }),
       providesTags: ['Recipe'],
     }),
 
     getRecipe: builder.query<BaseResponse<CraftingRecipe>, number>({
-      query: (id) => `crafting/recipes/${id}`,
+      query: (id) => `recipes/${id}`,
       providesTags: (result, error, id) => [{ type: 'Recipe', id }],
     }),
 
     createRecipe: builder.mutation<BaseResponse<CraftingRecipe>, CraftingRecipeCreate>({
       query: (recipe) => ({
-        url: 'crafting/recipes/admin/create',
+        url: 'recipes/admin/create',
         method: 'POST',
         body: recipe,
       }),
@@ -165,7 +197,7 @@ export const adminApi = createApi({
 
     updateRecipe: builder.mutation<BaseResponse<CraftingRecipe>, { id: number; recipe: CraftingRecipeUpdate }>({
       query: ({ id, recipe }) => ({
-        url: `crafting/recipes/admin/${id}`,
+        url: `recipes/admin/${id}`,
         method: 'PUT',
         body: recipe,
       }),
@@ -174,17 +206,23 @@ export const adminApi = createApi({
 
     deleteRecipe: builder.mutation<BaseResponse<void>, number>({
       query: (id) => ({
-        url: `crafting/recipes/admin/${id}`,
+        url: `recipes/admin/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Recipe'],
     }),
 
-    // プレイヤー（管理画面用・認証不要）
+    // プレイヤー管理（管理画面用）
     getPlayers: builder.query<BaseResponse<Player[]>, PlayerListParams>({
       query: (params) => ({
-        url: 'players/admin/list',
-        params,
+        url: 'players/admin',
+        params: {
+          page: params.page,
+          limit: params.limit,
+          min_level: params.min_level,
+          max_level: params.max_level,
+          is_banned: params.is_banned
+        }
       }),
       providesTags: ['Player'],
     }),
@@ -221,10 +259,16 @@ export const adminApi = createApi({
     }),
 
     // 冒険者マスター（管理画面用）
-    getAdventurers: builder.query<any, AdventurerListParams>({
+    getAdventurers: builder.query<PaginatedResponse<AdventurerMaster>, AdventurerListParams>({
       query: (params) => ({
         url: 'admin/adventurers',
-        params,
+        params: {
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          profession: params.profession,
+          is_active: params.is_active
+        }
       }),
       providesTags: ['Adventurer'],
     }),
@@ -261,16 +305,22 @@ export const adminApi = createApi({
     }),
 
     // モンスターマスター（管理画面用）
-    getMonsters: builder.query<any, MonsterListParams>({
+    getMonsters: builder.query<PaginatedResponse<MonsterMaster>, MonsterListParams>({
       query: (params) => ({
-        url: 'admin/monsters',
-        params,
+        url: 'monsters',
+        params: {
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          monster_type: params.monster_type,
+          is_active: params.is_active
+        }
       }),
       providesTags: ['Monster'],
     }),
 
     getMonster: builder.query<BaseResponse<MonsterMaster>, number>({
-      query: (id) => `admin/monsters/${id}`,
+      query: (id) => `monsters/${id}`,
       providesTags: (result, error, id) => [{ type: 'Monster', id }],
     }),
 
@@ -301,10 +351,15 @@ export const adminApi = createApi({
     }),
 
     // クエストエリアマスター（管理画面用）
-    getQuestAreas: builder.query<any, QuestAreaListParams>({
+    getQuestAreas: builder.query<PaginatedResponse<QuestAreaMaster>, QuestAreaListParams>({
       query: (params) => ({
         url: 'admin/quest-areas',
-        params,
+        params: {
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          is_active: params.is_active
+        }
       }),
       providesTags: ['QuestArea'],
     }),
@@ -344,7 +399,13 @@ export const adminApi = createApi({
     getMissionTemplates: builder.query<BaseResponse<MissionTemplate[]>, MissionTemplateListParams>({
       query: (params) => ({
         url: 'missions/admin/templates',
-        params,
+        params: {
+          page: params.page,
+          limit: params.limit,
+          search: params.search,
+          mission_type: params.mission_type,
+          is_active: params.is_active
+        }
       }),
       providesTags: ['MissionTemplate'],
     }),
@@ -378,6 +439,9 @@ export const adminApi = createApi({
 })
 
 export const {
+  useGetDashboardStatsQuery,
+  useGetWeaponTypesQuery,
+  useGetRarityLevelsQuery,
   useGetWeaponsQuery,
   useGetWeaponQuery,
   useCreateWeaponMutation,

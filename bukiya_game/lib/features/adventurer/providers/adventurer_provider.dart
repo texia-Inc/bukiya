@@ -1,14 +1,20 @@
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
 
-import '../../../core/models/adventurer.dart';
-import '../../../core/models/weapon.dart';
+import '../../../core/models/adventurer_new.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/adventurer_api_service.dart';
+import '../../../core/services/adventurer_mock_service.dart';
 
 class AdventurerProvider extends ChangeNotifier {
   final ApiService _apiService;
+  late final AdventurerApiService _adventurerApiService;
+  
+  // 開発中はモックAPIを使用、本番では実際のAPIを使用
+  static const bool _useRealApi = true;
 
-  AdventurerProvider(this._apiService);
+  AdventurerProvider(this._apiService) {
+    _adventurerApiService = AdventurerApiService(_apiService);
+  }
 
   // 状態管理
   bool _isLoading = false;
@@ -28,41 +34,29 @@ class AdventurerProvider extends ChangeNotifier {
   List<QuestResult> get pendingBuybacks => _pendingBuybacks;
   List<QuestArea> get questAreas => _questAreas;
 
-  // 緊急度の高い買取案件
-  List<QuestResult> get urgentBuybacks {
-    return _pendingBuybacks
-        .where((result) => result.remainingBuybackMinutes <= 30)
-        .toList()
-      ..sort((a, b) => a.remainingBuybackMinutes.compareTo(b.remainingBuybackMinutes));
-  }
-
-  // 高額買取案件
-  List<QuestResult> get highValueBuybacks {
-    return _pendingBuybacks
-        .where((result) => result.totalBuybackPrice >= 1000)
-        .toList()
-      ..sort((a, b) => b.totalBuybackPrice.compareTo(a.totalBuybackPrice));
-  }
-
-  // 冒険者データの読み込み
+  // メインデータ読み込み
   Future<void> loadAdventurerData() async {
     try {
       _setLoading(true);
       _clearError();
 
-      print('Loading adventurer data...');
-      // 並行して各データを取得
-      final futures = await Future.wait([
+      // 並行して全データを読み込み
+      final futures = [
         _loadVisitingAdventurers(),
         _loadOnQuestAdventurers(),
         _loadPendingBuybacks(),
         _loadQuestAreas(),
-      ]);
+      ];
 
-      print('Visiting: ${_visitingAdventurers.length}, OnQuest: ${_onQuestAdventurers.length}, Buybacks: ${_pendingBuybacks.length}');
+      await Future.wait(futures);
+
+      // 訪問中の冒険者がいない場合、自動で生成を試行
+      if (_visitingAdventurers.isEmpty) {
+        await _spawnVisitors();
+      }
+
       notifyListeners();
     } catch (e) {
-      print('Error loading adventurer data: $e');
       _setError('冒険者データの読み込みに失敗しました: ${e.toString()}');
     } finally {
       _setLoading(false);
@@ -72,81 +66,130 @@ class AdventurerProvider extends ChangeNotifier {
   // 訪問中の冒険者を取得
   Future<void> _loadVisitingAdventurers() async {
     try {
-      final response = await _apiService.dio.get('/adventurers/visiting');
-      _visitingAdventurers = (response.data['adventurers'] as List)
-          .map((json) => Adventurer.fromJson(json))
-          .toList();
+      if (_useRealApi) {
+        _visitingAdventurers = await _adventurerApiService.getVisitingAdventurers();
+      } else {
+        _visitingAdventurers = await AdventurerMockService.generateVisitingAdventurers();
+      }
     } catch (e) {
       debugPrint('訪問中冒険者の読み込みエラー: $e');
-      // モックデータで代替
-      _visitingAdventurers = _generateMockVisitingAdventurers();
+      // エラー時は空リストにして、spawn-visitorsで冒険者を生成してもらう
+      _visitingAdventurers = [];
     }
   }
 
   // 冒険中の冒険者を取得
   Future<void> _loadOnQuestAdventurers() async {
     try {
-      final response = await _apiService.dio.get('/adventurers/on-quest');
-      _onQuestAdventurers = (response.data['adventurers'] as List)
-          .map((json) => Adventurer.fromJson(json))
-          .toList();
+      if (_useRealApi) {
+        _onQuestAdventurers = await _adventurerApiService.getOnQuestAdventurers();
+      } else {
+        _onQuestAdventurers = await AdventurerMockService.generateOnQuestAdventurers();
+      }
     } catch (e) {
       debugPrint('冒険中冒険者の読み込みエラー: $e');
-      // モックデータで代替
-      _onQuestAdventurers = _generateMockOnQuestAdventurers();
+      // エラー時は空リスト
+      _onQuestAdventurers = [];
     }
   }
 
   // 買取待ちの結果を取得
   Future<void> _loadPendingBuybacks() async {
     try {
-      final response = await _apiService.dio.get('/adventurers/buybacks');
-      _pendingBuybacks = (response.data['results'] as List)
-          .map((json) => QuestResult.fromJson(json))
-          .toList();
+      if (_useRealApi) {
+        _pendingBuybacks = await _adventurerApiService.getPendingBuybacks();
+      } else {
+        _pendingBuybacks = await AdventurerMockService.generatePendingBuybacks();
+      }
     } catch (e) {
       debugPrint('買取案件の読み込みエラー: $e');
-      // モックデータで代替
-      _pendingBuybacks = _generateMockBuybacks();
+      // エラー時は空リスト
+      _pendingBuybacks = [];
     }
   }
 
   // クエストエリアを取得
   Future<void> _loadQuestAreas() async {
     try {
-      final response = await _apiService.dio.get('/quest-areas');
-      _questAreas = (response.data['areas'] as List)
-          .map((json) => QuestArea.fromJson(json))
-          .toList();
+      if (_useRealApi) {
+        _questAreas = await _adventurerApiService.getQuestAreas();
+      } else {
+        _questAreas = await AdventurerMockService.getQuestAreas();
+      }
     } catch (e) {
       debugPrint('クエストエリアの読み込みエラー: $e');
-      // モックデータで代替
-      _questAreas = _generateMockQuestAreas();
+      // エラー時は空リスト
+      _questAreas = [];
     }
   }
 
   // 武器を冒険者に販売
   Future<bool> sellWeaponToAdventurer(String adventurerId, String weaponId, int price) async {
     try {
-      _setLoading(true);
       _clearError();
 
-      final response = await _apiService.dio.post('/adventurers/$adventurerId/sell', data: {
-        'weapon_id': weaponId,
-        'price': price,
-      });
-
-      if (response.statusCode == 200) {
-        // 販売成功後、冒険者リストを更新
-        await _loadVisitingAdventurers();
-        return true;
+      if (_useRealApi) {
+        final result = await _adventurerApiService.sellWeaponToAdventurer(
+          adventurerId: adventurerId,
+          weaponId: weaponId,
+          price: price,
+        );
+        
+        if (result['success'] == true) {
+          // 販売成功時、該当の冒険者を訪問者リストから冒険中リストに移動
+          _moveAdventurerToQuest(adventurerId);
+          return true;
+        }
+        return false;
+      } else {
+        final result = await AdventurerMockService.sellWeapon(
+          adventurerId: adventurerId,
+          weaponId: weaponId,
+          price: price,
+        );
+        
+        if (result['success'] == true) {
+          // 販売成功時、該当の冒険者を訪問者リストから冒険中リストに移動
+          _moveAdventurerToQuest(adventurerId);
+          return true;
+        }
+        return false;
       }
-      return false;
     } catch (e) {
       _setError('武器の販売に失敗しました: ${e.toString()}');
       return false;
-    } finally {
-      _setLoading(false);
+    }
+  }
+
+  // 冒険者を訪問者リストから冒険中リストに移動
+  void _moveAdventurerToQuest(String adventurerId) {
+    final adventurerIndex = _visitingAdventurers.indexWhere((a) => a.id == adventurerId);
+    if (adventurerIndex != -1) {
+      final adventurer = _visitingAdventurers[adventurerIndex];
+      
+      // 新しい冒険者インスタンスを作成（ステータスを変更）
+      final updatedAdventurer = Adventurer(
+        id: adventurer.id,
+        adventurerMasterId: adventurer.adventurerMasterId,
+        playerId: adventurer.playerId,
+        name: adventurer.name,
+        level: adventurer.level,
+        trustLevel: adventurer.trustLevel,
+        status: 'on_quest', // ステータスを冒険中に変更
+        currentQuestId: 'quest_${DateTime.now().millisecondsSinceEpoch}',
+        visitStartTime: adventurer.visitStartTime,
+        visitEndTime: adventurer.visitEndTime,
+        createdAt: adventurer.createdAt,
+        updatedAt: DateTime.now(),
+        adventurerMaster: adventurer.adventurerMaster,
+        requests: adventurer.requests,
+      );
+      
+      // リストから削除して冒険中リストに追加
+      _visitingAdventurers.removeAt(adventurerIndex);
+      _onQuestAdventurers.add(updatedAdventurer);
+      
+      notifyListeners();
     }
   }
 
@@ -156,16 +199,29 @@ class AdventurerProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      final response = await _apiService.dio.post('/adventurers/$adventurerId/quest', data: {
-        'quest_area_id': questAreaId,
-      });
-
-      if (response.statusCode == 200) {
-        // 派遣成功後、冒険者リストを更新
-        await loadAdventurerData();
-        return true;
+      if (_useRealApi) {
+        final result = await _adventurerApiService.sendAdventurerOnQuest(
+          adventurerId: adventurerId,
+          questAreaId: questAreaId,
+        );
+        
+        if (result['success'] == true) {
+          await loadAdventurerData();
+          return true;
+        }
+        return false;
+      } else {
+        final result = await AdventurerMockService.sendOnQuest(
+          adventurerId: adventurerId,
+          questAreaId: questAreaId,
+        );
+        
+        if (result['success'] == true) {
+          await loadAdventurerData();
+          return true;
+        }
+        return false;
       }
-      return false;
     } catch (e) {
       _setError('冒険者の派遣に失敗しました: ${e.toString()}');
       return false;
@@ -180,17 +236,29 @@ class AdventurerProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      final response = await _apiService.dio.post('/adventurers/buyback', data: {
-        'quest_result_id': questResultId,
-        'item_ids': itemIds,
-      });
-
-      if (response.statusCode == 200) {
-        // 買取成功後、買取リストを更新
-        await _loadPendingBuybacks();
-        return true;
+      if (_useRealApi) {
+        final result = await _adventurerApiService.buybackItems(
+          questResultId: questResultId,
+          itemIds: itemIds,
+        );
+        
+        if (result['success'] == true) {
+          await _loadPendingBuybacks();
+          return true;
+        }
+        return false;
+      } else {
+        final result = await AdventurerMockService.buybackItems(
+          questResultId: questResultId,
+          itemIds: itemIds,
+        );
+        
+        if (result['success'] == true) {
+          await _loadPendingBuybacks();
+          return true;
+        }
+        return false;
       }
-      return false;
     } catch (e) {
       _setError('アイテムの買取に失敗しました: ${e.toString()}');
       return false;
@@ -205,14 +273,11 @@ class AdventurerProvider extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      final response = await _apiService.dio.delete('/adventurers/buyback/$questResultId');
-
-      if (response.statusCode == 200) {
-        // 拒否成功後、買取リストを更新
-        await _loadPendingBuybacks();
-        return true;
-      }
-      return false;
+      // 買取案件を削除
+      _pendingBuybacks.removeWhere((buyback) => buyback.id == questResultId);
+      notifyListeners();
+      
+      return true;
     } catch (e) {
       _setError('買取の拒否に失敗しました: ${e.toString()}');
       return false;
@@ -221,15 +286,24 @@ class AdventurerProvider extends ChangeNotifier {
     }
   }
 
-  // 冒険者の詳細情報を取得
-  Future<Adventurer?> getAdventurerDetails(String adventurerId) async {
+  // 新しい訪問者を生成
+  Future<void> _spawnVisitors() async {
     try {
-      final response = await _apiService.dio.get('/adventurers/$adventurerId');
-      return Adventurer.fromJson(response.data);
+      if (_useRealApi) {
+        _visitingAdventurers = await _adventurerApiService.spawnVisitors();
+      } else {
+        _visitingAdventurers = await AdventurerMockService.spawnVisitors();
+      }
+      notifyListeners();
     } catch (e) {
-      _setError('冒険者の詳細取得に失敗しました: ${e.toString()}');
-      return null;
+      debugPrint('新しい訪問者の生成エラー: $e');
+      // 生成に失敗した場合は何もしない（空リストのまま）
     }
+  }
+
+  // 手動で訪問者を生成
+  Future<void> manualSpawnVisitors() async {
+    await _spawnVisitors();
   }
 
   // プライベートメソッド
@@ -247,154 +321,4 @@ class AdventurerProvider extends ChangeNotifier {
     _errorMessage = null;
   }
 
-  // モックデータ生成メソッド
-  List<Adventurer> _generateMockVisitingAdventurers() {
-    final now = DateTime.now();
-    return [
-      Adventurer(
-        id: '1',
-        name: 'アリス',
-        profession: 'warrior',
-        level: 15,
-        personality: 'generous',
-        trustLevel: 75,
-        budget: 2500,
-        preferredWeaponType: 'sword',
-        avatarUrl: '',
-        visitStartTime: now.subtract(const Duration(minutes: 10)),
-        visitEndTime: now.add(const Duration(minutes: 50)),
-        status: AdventurerStatus.visiting,
-        currentRequest: AdventurerRequest(
-          id: 'req1',
-          adventurerId: '1',
-          weaponType: 'sword',
-          minAttack: 200,
-          maxBudget: 2000,
-          preferredRarity: 'rare',
-          urgency: 4,
-          description: '強力な剣が必要です。明日の討伐に使います。',
-          deadline: now.add(const Duration(hours: 2)),
-        ),
-      ),
-      Adventurer(
-        id: '2',
-        name: 'ボブ',
-        profession: 'archer',
-        level: 12,
-        personality: 'stingy',
-        trustLevel: 45,
-        budget: 1200,
-        preferredWeaponType: 'bow',
-        avatarUrl: '',
-        visitStartTime: now.subtract(const Duration(minutes: 5)),
-        visitEndTime: now.add(const Duration(minutes: 25)),
-        status: AdventurerStatus.visiting,
-        currentRequest: AdventurerRequest(
-          id: 'req2',
-          adventurerId: '2',
-          weaponType: 'bow',
-          minAttack: 150,
-          maxBudget: 1000,
-          preferredRarity: 'common',
-          urgency: 2,
-          description: '安くて良い弓を探しています。',
-          deadline: now.add(const Duration(hours: 4)),
-        ),
-      ),
-    ];
-  }
-
-  List<Adventurer> _generateMockOnQuestAdventurers() {
-    final now = DateTime.now();
-    return [
-      Adventurer(
-        id: '3',
-        name: 'キャロル',
-        profession: 'mage',
-        level: 18,
-        personality: 'normal',
-        trustLevel: 60,
-        budget: 3000,
-        preferredWeaponType: 'staff',
-        avatarUrl: '',
-        visitStartTime: now.subtract(const Duration(hours: 2)),
-        visitEndTime: now.add(const Duration(hours: 1)),
-        status: AdventurerStatus.onQuest,
-      ),
-    ];
-  }
-
-  List<QuestResult> _generateMockBuybacks() {
-    final now = DateTime.now();
-    return [
-      QuestResult(
-        id: 'result1',
-        adventurerId: '3',
-        questArea: '森林',
-        success: true,
-        goldEarned: 500,
-        drops: [
-          QuestDrop(
-            id: 'drop1',
-            itemType: 'material',
-            itemId: 'iron_ore',
-            name: '鉄鉱石',
-            rarity: 'common',
-            quantity: 3,
-            buybackPrice: 150,
-            description: '質の良い鉄鉱石です。',
-          ),
-          QuestDrop(
-            id: 'drop2',
-            itemType: 'weapon',
-            itemId: 'rusty_sword',
-            name: '錆びた剣',
-            rarity: 'common',
-            quantity: 1,
-            buybackPrice: 300,
-            description: '古い剣ですが、修理すれば使えそうです。',
-          ),
-        ],
-        completedAt: now.subtract(const Duration(minutes: 10)),
-        buybackDeadline: now.add(const Duration(minutes: 20)),
-      ),
-    ];
-  }
-
-  List<QuestArea> _generateMockQuestAreas() {
-    return [
-      const QuestArea(
-        id: 'forest',
-        name: '森林',
-        description: '初心者向けの森林エリア。基本的な素材が手に入ります。',
-        requiredLevel: 1,
-        duration: 60,
-        difficulty: 1,
-        imageUrl: '',
-      ),
-      const QuestArea(
-        id: 'cave',
-        name: '洞窟',
-        description: '中級者向けの洞窟エリア。レアな鉱石が見つかることがあります。',
-        requiredLevel: 10,
-        duration: 120,
-        difficulty: 2,
-        imageUrl: '',
-      ),
-      const QuestArea(
-        id: 'mountain',
-        name: '山岳',
-        description: '上級者向けの山岳エリア。強力なモンスターが生息しています。',
-        requiredLevel: 20,
-        duration: 240,
-        difficulty: 3,
-        imageUrl: '',
-      ),
-    ];
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

@@ -1,12 +1,14 @@
 class AppConstants {
   // API設定
-  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
+  static const String baseUrl = 'http://127.0.0.1:8000';
   static const String apiVersion = 'v1';
   
   // 認証設定
   static const String tokenKey = 'auth_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userIdKey = 'user_id';
+  static const String deviceIdKey = 'device_id';
+  static const String guestTokenKey = 'guest_token';
   
   // ローカルストレージキー
   static const String isFirstLaunchKey = 'is_first_launch';
@@ -117,39 +119,39 @@ class AppConstants {
 
 class ApiEndpoints {
   // 認証
-  static const String login = '/auth/login';
-  static const String register = '/auth/register';
-  static const String refresh = '/auth/refresh';
-  static const String logout = '/auth/logout';
+  static const String login = '/api/v1/auth/login';
+  static const String register = '/api/v1/auth/register';
+  static const String refresh = '/api/v1/auth/refresh';
+  static const String logout = '/api/v1/auth/logout';
   
   // プレイヤー
-  static const String playerProfile = '/players/me';
-  static const String playerStatistics = '/players/me/statistics';
-  static const String playerGold = '/players/me/gold';
-  static const String playerGems = '/players/me/gems';
+  static const String playerProfile = '/api/v1/players/me';
+  static const String playerStatistics = '/api/v1/players/me/statistics';
+  static const String playerGold = '/api/v1/players/me/gold';
+  static const String playerGems = '/api/v1/players/me/gems';
   
   // 武器
-  static const String weapons = '/weapons';
-  static const String weaponTypes = '/weapons/types';
-  static const String playerWeapons = '/players/me/weapons';
+  static const String weapons = '/api/v1/weapons/';
+  static const String weaponTypes = '/api/v1/weapons/types';
+  static const String playerWeapons = '/api/v1/weapons/player/inventory';
   
   // 素材
-  static const String materials = '/materials';
-  static const String playerMaterials = '/players/me/materials';
+  static const String materials = '/api/v1/materials';
+  static const String playerMaterials = '/api/v1/materials/player/inventory';
   
   // 合成
-  static const String recipes = '/crafting/recipes';
-  static const String craft = '/crafting/craft';
-  static const String craftingHistory = '/crafting/history';
+  static const String recipes = '/api/v1/crafting/recipes';
+  static const String craft = '/api/v1/crafting/craft';
+  static const String craftingHistory = '/api/v1/crafting/history';
   
   // ショップ
-  static const String shop = '/shop';
-  static const String purchase = '/shop/purchase';
-  static const String sell = '/shop/sell';
+  static const String shop = '/api/v1/shop';
+  static const String purchase = '/api/v1/shop/purchase';
+  static const String sell = '/api/v1/shop/sell';
   
   // 放置システム
-  static const String offlineIncome = '/idle/income';
-  static const String collectIncome = '/idle/collect';
+  static const String offlineIncome = '/api/v1/idle/status';
+  static const String collectIncome = '/api/v1/idle/collect';
   
   // 管理
   static const String adminWeapons = '/weapons/admin';

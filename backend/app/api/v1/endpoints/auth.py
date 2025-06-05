@@ -7,12 +7,13 @@ import uuid
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_refresh_token
 from app.core.dependencies import get_current_user
-from app.schemas.auth import Token, UserCreate, UserResponse, UserLogin
+from app.schemas.auth import Token, UserCreate, UserResponse, UserLogin, RefreshTokenRequest, DeviceLoginRequest, GuestLoginRequest, AccountLinkRequest
 from app.schemas.common import APIResponse
 from app.models.player import Player
 from app.models.player_statistics import PlayerStatistics
+from app.models.device_session import DeviceSession
 
 router = APIRouter()
 
@@ -63,10 +64,14 @@ async def register(
     db.add(player_stats)
     db.commit()
     
-    # アクセストークン生成
+    # アクセストークンとリフレッシュトークン生成
     access_token = create_access_token(
         data={"sub": str(player.id)},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    refresh_token = create_refresh_token(
+        data={"sub": str(player.id)}
     )
     
     return APIResponse(
@@ -75,6 +80,7 @@ async def register(
             player_id=str(player.id),
             username=player.username,
             access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         ),
@@ -117,10 +123,14 @@ async def login(
     player.last_login = datetime.utcnow()
     db.commit()
     
-    # アクセストークン生成
+    # アクセストークンとリフレッシュトークン生成
     access_token = create_access_token(
         data={"sub": str(player.id)},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    refresh_token = create_refresh_token(
+        data={"sub": str(player.id)}
     )
     
     return APIResponse(
@@ -129,6 +139,7 @@ async def login(
             player_id=str(player.id),
             username=player.username,
             access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         ),
@@ -142,7 +153,7 @@ async def refresh_token(
     current_user: Player = Depends(get_current_user)
 ):
     """
-    アクセストークン更新
+    アクセストークン更新（既存のアクセストークンを使用）
     """
     access_token = create_access_token(
         data={"sub": str(current_user.id)},
@@ -153,6 +164,53 @@ async def refresh_token(
         success=True,
         data=Token(
             access_token=access_token,
+            token_type="bearer",
+            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        ),
+        message="トークンを更新しました",
+        timestamp=datetime.utcnow(),
+        request_id=str(uuid.uuid4())
+    )
+
+@router.post("/refresh-with-token", response_model=APIResponse[Token])
+async def refresh_with_refresh_token(
+    request: RefreshTokenRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    リフレッシュトークンを使用したアクセストークン更新
+    """
+    # リフレッシュトークンを検証
+    user_id = verify_refresh_token(request.refresh_token)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="無効なリフレッシュトークンです"
+        )
+    
+    # ユーザーを取得
+    player = db.query(Player).filter(Player.id == user_id).first()
+    if not player or not player.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="ユーザーが見つからないか無効化されています"
+        )
+    
+    # 新しいアクセストークンとリフレッシュトークンを生成
+    new_access_token = create_access_token(
+        data={"sub": str(player.id)},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    new_refresh_token = create_refresh_token(
+        data={"sub": str(player.id)}
+    )
+    
+    return APIResponse(
+        success=True,
+        data=Token(
+            access_token=new_access_token,
+            refresh_token=new_refresh_token,
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         ),

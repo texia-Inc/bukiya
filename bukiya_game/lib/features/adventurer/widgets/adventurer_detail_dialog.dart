@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/themes/app_theme.dart';
-import '../../../core/models/adventurer.dart';
+import '../../../core/models/adventurer_new.dart';
 
 class AdventurerDetailDialog extends StatelessWidget {
   final Adventurer adventurer;
@@ -72,24 +72,49 @@ class AdventurerDetailDialog extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('閉じる'),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.primaryColor, width: 1),
+                      ),
+                      child: Text(
+                        '[閉じる]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 if (onSellWeapon != null) ...[
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
+                    child: GestureDetector(
+                      onTap: () {
                         Navigator.of(context).pop();
                         onSellWeapon!();
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppTheme.successColor,
+                            width: 1,
+                          ),
+                          color: AppTheme.successColor.withValues(alpha: 0.1),
+                        ),
+                        child: Text(
+                          '[取引する]',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.successColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      child: const Text('取引'),
                     ),
                   ),
                 ],

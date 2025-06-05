@@ -41,14 +41,18 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Future<void> _loadSavedUserInfo() async {
+    if (!mounted) return;
+    
     final authProvider = context.read<AuthProvider>();
     final savedInfo = await authProvider.getSavedUserInfo();
+    
+    if (!mounted) return;
     
     if (savedInfo['email'] != null) {
       _emailController.text = savedInfo['email']!;
     }
     
-    if (savedInfo['remember_login'] != null) {
+    if (savedInfo['remember_login'] != null && mounted) {
       setState(() {
         _rememberLogin = savedInfo['remember_login'] == 'true';
       });

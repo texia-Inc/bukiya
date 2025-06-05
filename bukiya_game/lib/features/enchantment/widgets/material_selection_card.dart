@@ -39,7 +39,7 @@ class MaterialSelectionCard extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Row(
@@ -74,8 +74,8 @@ class MaterialSelectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(8),
@@ -115,7 +115,7 @@ class MaterialSelectionCard extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getMaterialRarityColor(material.rarity).withOpacity(0.2),
+                  color: _getMaterialRarityColor(material.rarity).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _getMaterialRarityColor(material.rarity),
@@ -203,8 +203,8 @@ class MaterialSelectionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: selectedQuantity > 0
-            ? _getMaterialRarityColor(material.rarity).withOpacity(0.1)
-            : Colors.grey.withOpacity(0.1),
+            ? _getMaterialRarityColor(material.rarity).withValues(alpha: 0.1)
+            : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: selectedQuantity > 0
@@ -265,7 +265,7 @@ class MaterialSelectionCard extends StatelessWidget {
           Container(
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(8),
                 bottomRight: Radius.circular(8),
@@ -279,7 +279,7 @@ class MaterialSelectionCard extends StatelessWidget {
                     child: Container(
                       height: 40,
                       decoration: BoxDecoration(
-                        color: canRemove ? Colors.red.withOpacity(0.1) : Colors.transparent,
+                        color: canRemove ? Colors.red.withValues(alpha: 0.1) : Colors.transparent,
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(8),
                         ),
@@ -295,7 +295,7 @@ class MaterialSelectionCard extends StatelessWidget {
                 Container(
                   width: 1,
                   height: 40,
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                 ),
                 Expanded(
                   child: GestureDetector(
@@ -303,7 +303,7 @@ class MaterialSelectionCard extends StatelessWidget {
                     child: Container(
                       height: 40,
                       decoration: BoxDecoration(
-                        color: canSelect ? Colors.green.withOpacity(0.1) : Colors.transparent,
+                        color: canSelect ? Colors.green.withValues(alpha: 0.1) : Colors.transparent,
                         borderRadius: const BorderRadius.only(
                           bottomRight: Radius.circular(8),
                         ),

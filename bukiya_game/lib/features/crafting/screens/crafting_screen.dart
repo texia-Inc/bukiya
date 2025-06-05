@@ -303,7 +303,7 @@ class _CraftingScreenState extends State<CraftingScreen>
     );
 
     if (confirmed == true) {
-      final success = await provider.craftWeapon(recipe.id);
+      await provider.craftWeapon(recipe.id);
       
       if (mounted && provider.lastCraftingResult != null) {
         // 結果ダイアログを表示

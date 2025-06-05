@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/themes/app_theme.dart';
-import '../../../core/models/adventurer.dart';
+import '../../../core/models/adventurer_new.dart';
 
 class BuybackAlertCard extends StatelessWidget {
   final List<QuestResult> urgentBuybacks;
@@ -42,8 +42,8 @@ class BuybackAlertCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.errorColor.withOpacity(0.1),
-                  AppTheme.errorColor.withOpacity(0.05),
+                  AppTheme.errorColor.withValues(alpha: 0.1),
+                  AppTheme.errorColor.withValues(alpha: 0.05),
                 ],
               ),
             ),

@@ -71,7 +71,7 @@ class CraftingProvider extends ChangeNotifier {
       if (maxLevel != null) queryParams['max_level'] = maxLevel;
 
       final response = await _apiService.dio.get(
-        '/crafting/recipes',
+        '/api/v1/crafting/recipes',
         queryParameters: queryParams,
       );
 
@@ -90,7 +90,7 @@ class CraftingProvider extends ChangeNotifier {
   // プレイヤー所持素材を取得
   Future<void> fetchPlayerMaterials() async {
     try {
-      final response = await _apiService.dio.get('/materials/player/inventory');
+      final response = await _apiService.dio.get('/api/v1/materials/player/inventory');
       
       if (response.data['success']) {
         final List<dynamic> materialsData = response.data['data'];
@@ -107,16 +107,10 @@ class CraftingProvider extends ChangeNotifier {
   // 合成可能なレシピを取得
   Future<void> fetchAvailableRecipes() async {
     try {
-      // 認証が不要な管理画面用エンドポイントを使用
-      final response = await _apiService.dio.get('/crafting/recipes/admin/list');
-      
-      if (response.data['success']) {
-        final List<dynamic> recipesData = response.data['data'];
-        _availableRecipes = recipesData
-            .map((json) => CraftingRecipe.fromJson(json))
-            .toList();
-        notifyListeners();
-      }
+      // 一時的に通常のレシピ一覧を使用（availableエンドポイントが存在しないため）
+      // TODO: バックエンドに合成可能レシピ専用エンドポイントを追加
+      _availableRecipes = _recipes;
+      notifyListeners();
     } catch (e) {
       _setError('合成可能レシピの取得に失敗しました: $e');
     }
@@ -125,7 +119,7 @@ class CraftingProvider extends ChangeNotifier {
   // レシピ詳細を取得
   Future<CraftingRecipe?> fetchRecipeDetail(int recipeId) async {
     try {
-      final response = await _apiService.dio.get('/crafting/recipes/$recipeId');
+      final response = await _apiService.dio.get('/api/v1/crafting/recipes/$recipeId');
       
       if (response.data['success']) {
         return CraftingRecipe.fromJson(response.data['data']);
@@ -140,7 +134,7 @@ class CraftingProvider extends ChangeNotifier {
   // 合成可能性をチェック
   Future<CraftingAvailability?> checkCraftingAvailability(int recipeId) async {
     try {
-      final response = await _apiService.dio.get('/crafting/recipes/$recipeId/availability');
+      final response = await _apiService.dio.get('/api/v1/crafting/recipes/$recipeId/availability');
       
       if (response.data['success']) {
         return CraftingAvailability.fromJson(response.data['data']);
@@ -162,7 +156,7 @@ class CraftingProvider extends ChangeNotifier {
     try {
       final request = CraftingRequest(recipeId: recipeId);
       final response = await _apiService.dio.post(
-        '/crafting/craft',
+        '/api/v1/crafting/craft',
         data: request.toJson(),
       );
 
@@ -229,7 +223,7 @@ class CraftingProvider extends ChangeNotifier {
     return _availableRecipes.where((recipe) {
       return recipe.name.toLowerCase().contains(lowerQuery) ||
              recipe.weapon.name.toLowerCase().contains(lowerQuery) ||
-             (recipe.description?.toLowerCase().contains(lowerQuery) ?? false);
+             (recipe.description.toLowerCase().contains(lowerQuery));
     }).toList();
   }
 
@@ -334,10 +328,6 @@ class CraftingProvider extends ChangeNotifier {
     await fetchAllRecipes();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }
 
 // 拡張メソッド

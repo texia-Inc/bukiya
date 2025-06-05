@@ -39,6 +39,8 @@ import {
   useDeleteQuestAreaMutation,
 } from '../services/api';
 import type { QuestAreaMaster } from '../types';
+import { QuestAreaCreateDialog } from '../components/QuestAreaCreateDialog';
+import { QuestAreaEditDialog } from '../components/QuestAreaEditDialog';
 
 const QuestAreaList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -47,7 +49,8 @@ const QuestAreaList: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const [selectedQuestArea, setSelectedQuestArea] = useState<QuestAreaMaster | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // API呼び出し
@@ -88,7 +91,7 @@ const QuestAreaList: React.FC = () => {
 
   const handleEdit = (area: QuestAreaMaster) => {
     setSelectedQuestArea(area);
-    setDialogOpen(true);
+    setEditDialogOpen(true);
   };
 
   const handleDelete = (area: QuestAreaMaster) => {
@@ -98,11 +101,16 @@ const QuestAreaList: React.FC = () => {
 
   const handleCreate = () => {
     setSelectedQuestArea(null);
-    setDialogOpen(true);
+    setCreateDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
+  const handleCloseCreateDialog = () => {
+    setCreateDialogOpen(false);
+    setSelectedQuestArea(null);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
     setSelectedQuestArea(null);
   };
 
@@ -389,6 +397,27 @@ const QuestAreaList: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 新規作成ダイアログ */}
+      <QuestAreaCreateDialog
+        open={createDialogOpen}
+        onClose={handleCloseCreateDialog}
+        onSuccess={() => {
+          refetch();
+          handleCloseCreateDialog();
+        }}
+      />
+
+      {/* 編集ダイアログ */}
+      <QuestAreaEditDialog
+        open={editDialogOpen}
+        questArea={selectedQuestArea}
+        onClose={handleCloseEditDialog}
+        onSuccess={() => {
+          refetch();
+          handleCloseEditDialog();
+        }}
+      />
     </Box>
   );
 };

@@ -40,7 +40,8 @@ class DashboardProvider extends ChangeNotifier {
   Future<int> getOfflineIncome() async {
     try {
       final response = await _apiService.getOfflineIncome();
-      return response['income'] ?? 0;
+      // idle/statusレスポンスからpending_incomeを取得
+      return response['pending_income'] ?? 0;
     } catch (e) {
       print('オフライン収益の取得に失敗: $e');
       return 0;

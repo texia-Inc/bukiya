@@ -29,6 +29,7 @@ import { useGetPlayersQuery } from '../services/api'
 import { PlayerDetailDialog } from '../components/PlayerDetailDialog'
 import { PlayerEditDialog } from '../components/PlayerEditDialog'
 import { PlayerBanDialog } from '../components/PlayerBanDialog'
+import { PlayerCreateDialog } from '../components/PlayerCreateDialog'
 
 // モックデータ
 const mockPlayers = [
@@ -112,6 +113,7 @@ const PlayerList: React.FC = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [banDialogOpen, setBanDialogOpen] = useState(false)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<any>(null)
   
   // APIデータまたはモックデータを使用
@@ -133,8 +135,7 @@ const PlayerList: React.FC = () => {
   }
 
   const handleAdd = () => {
-    console.log('Add new player')
-    // TODO: プレイヤー作成ダイアログを実装
+    setCreateDialogOpen(true)
   }
 
   const handleDialogSuccess = () => {
@@ -358,6 +359,12 @@ const PlayerList: React.FC = () => {
         open={banDialogOpen}
         player={selectedPlayer}
         onClose={() => setBanDialogOpen(false)}
+        onSuccess={handleDialogSuccess}
+      />
+
+      <PlayerCreateDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
         onSuccess={handleDialogSuccess}
       />
     </Box>

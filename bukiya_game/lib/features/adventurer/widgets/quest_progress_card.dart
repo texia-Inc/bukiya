@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/themes/app_theme.dart';
-import '../../../core/models/adventurer.dart';
+import '../../../core/models/adventurer_new.dart';
 
 class QuestProgressCard extends StatelessWidget {
   final Adventurer adventurer;

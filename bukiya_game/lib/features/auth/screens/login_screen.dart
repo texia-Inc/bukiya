@@ -5,6 +5,7 @@ import '../../../shared/themes/app_theme.dart';
 import '../../../shared/widgets/loading_screen.dart';
 import '../../../core/constants/app_constants.dart';
 import '../providers/auth_provider.dart';
+import '../../admin/providers/admin_provider.dart';
 import '../widgets/auth_form.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -114,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen>
           Text(
             '最強の武器屋を目指そう！',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -126,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
       ),
       child: TabBar(
@@ -180,6 +181,27 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _handleLogin(String email, String password, {bool rememberLogin = true}) async {
+    // 管理者アカウントの場合は管理者ログインを試行
+    if (email == 'admin@bukiya.game' || email == 'admin') {
+      try {
+        final adminProvider = context.read<AdminProvider>();
+        final success = await adminProvider.adminLogin(email, password);
+        
+        if (success && mounted) {
+          Navigator.of(context).pushReplacementNamed('/admin/dashboard');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('管理者としてログインしました'),
+              backgroundColor: AppTheme.successColor,
+            ),
+          );
+        }
+        return;
+      } catch (e) {
+        print('Admin login failed, falling back to regular login: $e');
+      }
+    }
+    
     final authProvider = context.read<AuthProvider>();
     final success = await authProvider.login(email, password, rememberLogin: rememberLogin);
     

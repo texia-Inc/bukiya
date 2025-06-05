@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/themes/app_theme.dart';
-import '../../../core/models/adventurer.dart';
+import '../../../core/models/adventurer_new.dart';
 
 class QuestDispatchDialog extends StatelessWidget {
   final Adventurer adventurer;
@@ -41,20 +41,45 @@ class QuestDispatchDialog extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('キャンセル'),
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.primaryColor, width: 1),
+                      ),
+                      child: Text(
+                        '[キャンセル]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => onDispatch('forest'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
+                  child: GestureDetector(
+                    onTap: () => onDispatch('forest'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppTheme.successColor,
+                          width: 1,
+                        ),
+                        color: AppTheme.successColor.withValues(alpha: 0.1),
+                      ),
+                      child: Text(
+                        '[派遣する]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.successColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    child: const Text('派遣'),
                   ),
                 ),
               ],

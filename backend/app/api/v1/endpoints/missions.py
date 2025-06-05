@@ -6,6 +6,7 @@ from sqlalchemy import and_, or_, func
 from uuid import UUID
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_player
 from app.models import MissionTemplate, PlayerMission, MissionProgressLog, Player
 from app.schemas.mission import (
     MissionTemplateResponse, MissionTemplateCreate, MissionTemplateUpdate,
@@ -20,39 +21,39 @@ router = APIRouter()
 # ミッション一覧取得
 @router.get("/daily", response_model=MissionListResponse)
 def get_daily_missions(
-    player_id: UUID = Query(..., description="プレイヤーID"),
+    current_player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
     """デイリーミッション一覧を取得"""
-    return _get_missions_by_type(db, player_id, MissionType.DAILY)
+    return _get_missions_by_type(db, current_player.id, MissionType.DAILY)
 
 
 @router.get("/weekly", response_model=MissionListResponse)
 def get_weekly_missions(
-    player_id: UUID = Query(..., description="プレイヤーID"),
+    current_player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
     """ウィークリーミッション一覧を取得"""
-    return _get_missions_by_type(db, player_id, MissionType.WEEKLY)
+    return _get_missions_by_type(db, current_player.id, MissionType.WEEKLY)
 
 
 @router.get("/achievements", response_model=MissionListResponse)
 def get_achievements(
-    player_id: UUID = Query(..., description="プレイヤーID"),
+    current_player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
     """アチーブメント一覧を取得"""
-    return _get_missions_by_type(db, player_id, MissionType.ACHIEVEMENT)
+    return _get_missions_by_type(db, current_player.id, MissionType.ACHIEVEMENT)
 
 
 @router.get("/progress", response_model=List[PlayerMissionWithTemplate])
 def get_mission_progress(
-    player_id: UUID = Query(..., description="プレイヤーID"),
+    current_player: Player = Depends(get_current_player),
     mission_type: Optional[MissionType] = Query(None, description="ミッションタイプフィルター"),
     db: Session = Depends(get_db)
 ):
     """プレイヤーのミッション進捗を取得"""
-    query = db.query(PlayerMission).filter(PlayerMission.player_id == player_id)
+    query = db.query(PlayerMission).filter(PlayerMission.player_id == current_player.id)
     
     if mission_type:
         query = query.join(MissionTemplate).filter(MissionTemplate.mission_type == mission_type)
@@ -66,7 +67,7 @@ def get_mission_progress(
 @router.post("/{mission_id}/claim", response_model=MissionRewardClaimResponse)
 def claim_mission_reward(
     mission_id: int,
-    player_id: UUID = Query(..., description="プレイヤーID"),
+    current_player: Player = Depends(get_current_player),
     db: Session = Depends(get_db)
 ):
     """ミッション報酬を受け取る"""
@@ -74,7 +75,7 @@ def claim_mission_reward(
     mission = db.query(PlayerMission).filter(
         and_(
             PlayerMission.id == mission_id,
-            PlayerMission.player_id == player_id
+            PlayerMission.player_id == current_player.id
         )
     ).first()
     
@@ -84,17 +85,12 @@ def claim_mission_reward(
     if not mission.can_claim_reward():
         raise HTTPException(status_code=400, detail="報酬を受け取ることができません")
     
-    # プレイヤーを取得
-    player = db.query(Player).filter(Player.id == player_id).first()
-    if not player:
-        raise HTTPException(status_code=404, detail="プレイヤーが見つかりません")
-    
     # 報酬を付与
     rewards = {}
     template = mission.mission_template
     
     if template.reward_gold > 0:
-        player.add_gold(template.reward_gold)
+        current_player.add_gold(template.reward_gold)
         rewards["gold"] = template.reward_gold
     
     if template.reward_exp > 0:

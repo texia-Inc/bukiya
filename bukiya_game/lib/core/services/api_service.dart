@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/app_constants.dart';
@@ -36,8 +37,25 @@ class ApiService {
           handler.next(options);
         },
         onError: (error, handler) async {
-          // 401エラーの場合、トークンをクリアして再認証を促す
+          // 401エラーの場合、トークンリフレッシュを試行
           if (error.response?.statusCode == 401) {
+            try {
+              // トークンリフレッシュを試行
+              final newToken = await refreshToken();
+              if (newToken != null) {
+                // 新しいトークンで元のリクエストをリトライ
+                final options = error.requestOptions;
+                options.headers['Authorization'] = 'Bearer $newToken';
+                
+                final response = await _dio.fetch(options);
+                handler.resolve(response);
+                return;
+              }
+            } catch (e) {
+              debugPrint('トークンリフレッシュ失敗: $e');
+            }
+            
+            // リフレッシュに失敗した場合、トークンをクリア
             await _secureStorage.delete(key: AppConstants.tokenKey);
           }
           handler.next(error);
@@ -94,7 +112,40 @@ class ApiService {
       await _dio.post(ApiEndpoints.logout);
     } on DioException catch (e) {
       // ログアウトエラーは無視（トークンは既にクリアされている）
-      print('Logout error: $e');
+      debugPrint('Logout error: $e');
+    }
+  }
+
+  // 汎用HTTPメソッド
+  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
+    try {
+      return await _dio.get(path, queryParameters: queryParameters);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Response> post(String path, {dynamic data}) async {
+    try {
+      return await _dio.post(path, data: data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Response> put(String path, {dynamic data}) async {
+    try {
+      return await _dio.put(path, data: data);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Response> delete(String path) async {
+    try {
+      return await _dio.delete(path);
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
   }
 
@@ -102,7 +153,8 @@ class ApiService {
   Future<Player> getPlayerProfile() async {
     try {
       final response = await _dio.get(ApiEndpoints.playerProfile);
-      return Player.fromJson(response.data['data']);
+      // レスポンス構造に合わせて修正: data.player
+      return Player.fromJson(response.data['data']['player']);
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -294,6 +346,64 @@ class ApiService {
     }
 
     return Exception(message);
+  }
+
+  // トークンリフレッシュ（永続ログイン対応）
+  Future<String?> refreshToken() async {
+    try {
+      // まずアクセストークンでリフレッシュを試行
+      final currentToken = await _secureStorage.read(key: AppConstants.tokenKey);
+      if (currentToken != null) {
+        try {
+          final response = await _dio.post('/auth/refresh', 
+            options: Options(
+              headers: {'Authorization': 'Bearer $currentToken'}
+            )
+          );
+
+          if (response.data['success'] == true) {
+            final newToken = response.data['data']['access_token'];
+            await _secureStorage.write(key: AppConstants.tokenKey, value: newToken);
+            return newToken;
+          }
+        } catch (e) {
+          debugPrint('アクセストークンでのリフレッシュ失敗: $e');
+        }
+      }
+
+      // アクセストークンでのリフレッシュが失敗した場合、リフレッシュトークンを使用
+      final refreshToken = await _secureStorage.read(key: AppConstants.refreshTokenKey);
+      if (refreshToken != null) {
+        try {
+          final response = await _dio.post('/auth/refresh-with-token', 
+            data: {'refresh_token': refreshToken}
+          );
+
+          if (response.data['success'] == true) {
+            final newAccessToken = response.data['data']['access_token'];
+            final newRefreshToken = response.data['data']['refresh_token'];
+            
+            // 新しいトークンを保存
+            await _secureStorage.write(key: AppConstants.tokenKey, value: newAccessToken);
+            if (newRefreshToken != null) {
+              await _secureStorage.write(key: AppConstants.refreshTokenKey, value: newRefreshToken);
+            }
+            
+            debugPrint('リフレッシュトークンによる永続ログイン成功');
+            return newAccessToken;
+          }
+        } catch (e) {
+          debugPrint('リフレッシュトークンでのリフレッシュ失敗: $e');
+          // リフレッシュトークンも無効な場合は削除
+          await _secureStorage.delete(key: AppConstants.refreshTokenKey);
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('トークンリフレッシュエラー: $e');
+      return null;
+    }
   }
 
   // リソースのクリーンアップ

@@ -4,13 +4,13 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 import '../../../shared/themes/app_theme.dart';
 import '../../../shared/widgets/loading_screen.dart';
-import '../../../core/models/adventurer.dart';
+import '../../../core/models/adventurer_new.dart';
 import '../providers/adventurer_provider.dart';
+import '../../inventory/providers/inventory_provider.dart';
 import '../widgets/adventurer_card.dart';
 import '../widgets/quest_progress_card.dart';
-import '../widgets/buyback_alert_card.dart';
 import '../widgets/adventurer_detail_dialog.dart';
-import '../widgets/weapon_sale_dialog.dart';
+import '../widgets/weapon_selection_dialog.dart';
 import '../widgets/quest_dispatch_dialog.dart';
 import '../widgets/buyback_dialog.dart';
 
@@ -52,36 +52,53 @@ class _AdventurerScreenState extends State<AdventurerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('=== 冒険者ギルド ==='),
-        backgroundColor: AppTheme.backgroundColor,
-        foregroundColor: AppTheme.textPrimary,
-        elevation: 0,
+        title: const Text('冒険者ギルド'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _loadAdventurerData(),
+          ),
+        ],
       ),
       body: Consumer<AdventurerProvider>(
         builder: (context, adventurerProvider, child) {
-          return Container(
-            color: AppTheme.backgroundColor,
-            width: double.infinity,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ヘッダー情報
-                  _buildRetroHeader(adventurerProvider),
-                  const SizedBox(height: 4),
-                  
-                  // タブメニュー
-                  _buildRetroTabs(adventurerProvider),
-                  const SizedBox(height: 4),
-                  
-                  // メインコンテンツ
-                  _buildRetroContent(adventurerProvider),
+          return Column(
+            children: [
+              // 統計情報
+              _buildStatsHeader(adventurerProvider),
+              
+              // タブバー
+              TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(
+                    text: '訪問者 (${adventurerProvider.visitingAdventurers.length})',
+                    icon: const Icon(Icons.people),
+                  ),
+                  Tab(
+                    text: '冒険中 (${adventurerProvider.onQuestAdventurers.length})',
+                    icon: const Icon(Icons.explore),
+                  ),
+                  Tab(
+                    text: '買取 (${adventurerProvider.pendingBuybacks.length})',
+                    icon: const Icon(Icons.shopping_bag),
+                  ),
                 ],
               ),
-            ),
+              
+              // タブコンテンツ
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildVisitorsTab(adventurerProvider),
+                    _buildOnQuestTab(adventurerProvider),
+                    _buildBuybackTab(adventurerProvider),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -211,6 +228,7 @@ class _AdventurerScreenState extends State<AdventurerScreen>
         padding: const EdgeInsets.all(16),
         itemCount: results.length,
         itemBuilder: (context, index) {
+          final result = results[index];
           return AnimationConfiguration.staggeredList(
             position: index,
             duration: const Duration(milliseconds: 375),
@@ -220,44 +238,106 @@ class _AdventurerScreenState extends State<AdventurerScreen>
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Card(
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: AppTheme.primaryColor,
-                        child: Text(
-                          results[index].questArea[0],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    elevation: 2,
+                    child: InkWell(
+                      onTap: () => _showBuybackDialog(result),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Icon(
+                                    Icons.inventory,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${result.questAreaName}からの帰還',
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        'アイテム数: ${result.drops.length}個',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '買取価格: ${result.totalBuybackPrice}G',
+                                    style: TextStyle(
+                                      color: AppTheme.secondaryColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: result.remainingBuybackMinutes <= 10
+                                        ? AppTheme.errorColor.withValues(alpha: 0.1)
+                                        : AppTheme.accentColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '期限: ${result.remainingBuybackMinutes}分',
+                                    style: TextStyle(
+                                      color: result.remainingBuybackMinutes <= 10
+                                          ? AppTheme.errorColor
+                                          : AppTheme.accentColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      title: Text(
-                        '${results[index].questArea}からの帰還',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('アイテム数: ${results[index].drops.length}'),
-                          Text(
-                            '買取価格: ${results[index].totalBuybackPrice}G',
-                            style: TextStyle(
-                              color: AppTheme.secondaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '期限: ${results[index].remainingBuybackMinutes}分',
-                            style: TextStyle(
-                              color: results[index].remainingBuybackMinutes <= 10
-                                  ? AppTheme.errorColor
-                                  : AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios),
-                      onTap: () => _showBuybackDialog(results[index]),
                     ),
                   ),
                 ),
@@ -305,10 +385,10 @@ class _AdventurerScreenState extends State<AdventurerScreen>
       context: context,
       builder: (context) => AdventurerDetailDialog(
         adventurer: adventurer,
-        onSellWeapon: adventurer.status == AdventurerStatus.visiting
+        onSellWeapon: adventurer.adventurerStatus == AdventurerStatus.visiting
             ? () => _showWeaponSaleDialog(adventurer)
             : null,
-        onDispatchQuest: adventurer.status == AdventurerStatus.visiting
+        onDispatchQuest: adventurer.adventurerStatus == AdventurerStatus.visiting
             ? () => _showQuestDispatchDialog(adventurer)
             : null,
       ),
@@ -318,7 +398,7 @@ class _AdventurerScreenState extends State<AdventurerScreen>
   void _showWeaponSaleDialog(Adventurer adventurer) {
     showDialog(
       context: context,
-      builder: (context) => WeaponSaleDialog(
+      builder: (context) => WeaponSelectionDialog(
         adventurer: adventurer,
         onSale: (weaponId, price) => _handleWeaponSale(adventurer.id, weaponId, price),
       ),
@@ -350,13 +430,19 @@ class _AdventurerScreenState extends State<AdventurerScreen>
 
   Future<void> _handleWeaponSale(String adventurerId, String weaponId, int price) async {
     final provider = context.read<AdventurerProvider>();
-    final success = await provider.sellWeaponToAdventurer(adventurerId, weaponId, price);
     
-    if (success && mounted) {
-      Navigator.of(context).pop(); // ダイアログを閉じる
-      _showSuccessMessage('武器を販売しました！');
-    } else if (mounted) {
-      _showErrorMessage(provider.errorMessage ?? '販売に失敗しました');
+    try {
+      final success = await provider.sellWeaponToAdventurer(adventurerId, weaponId, price);
+      
+      if (success && mounted) {
+        _showSuccessMessage('武器を販売しました！');
+      } else if (mounted) {
+        _showErrorMessage(provider.errorMessage ?? '販売に失敗しました');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorMessage('予期しないエラーが発生しました: $e');
+      }
     }
   }
 
@@ -416,7 +502,7 @@ class _AdventurerScreenState extends State<AdventurerScreen>
     );
   }
 
-  Widget _buildRetroHeader(AdventurerProvider adventurerProvider) {
+  Widget _buildStatsHeader(AdventurerProvider adventurerProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -454,101 +540,4 @@ class _AdventurerScreenState extends State<AdventurerScreen>
     );
   }
 
-  Widget _buildRetroTabs(AdventurerProvider adventurerProvider) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.primaryColor, width: 1),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _tabController.animateTo(0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  border: _tabController.index == 0 
-                    ? Border.all(color: AppTheme.primaryColor, width: 1)
-                    : null,
-                ),
-                child: Text(
-                  '[1] 訪問者 (${adventurerProvider.visitingAdventurers.length})',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: _tabController.index == 0 
-                      ? AppTheme.primaryColor 
-                      : AppTheme.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _tabController.animateTo(1),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  border: _tabController.index == 1 
-                    ? Border.all(color: AppTheme.primaryColor, width: 1)
-                    : null,
-                ),
-                child: Text(
-                  '[2] 冒険中 (${adventurerProvider.onQuestAdventurers.length})',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: _tabController.index == 1 
-                      ? AppTheme.primaryColor 
-                      : AppTheme.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _tabController.animateTo(2),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  border: _tabController.index == 2 
-                    ? Border.all(color: AppTheme.primaryColor, width: 1)
-                    : null,
-                ),
-                child: Text(
-                  '[3] 買取 (${adventurerProvider.pendingBuybacks.length})',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: _tabController.index == 2 
-                      ? AppTheme.primaryColor 
-                      : AppTheme.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRetroContent(AdventurerProvider adventurerProvider) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
-      decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.primaryColor, width: 1),
-      ),
-      child: IndexedStack(
-        index: _tabController.index,
-        children: [
-          _buildVisitorsTab(adventurerProvider),
-          _buildOnQuestTab(adventurerProvider),
-          _buildBuybackTab(adventurerProvider),
-        ],
-      ),
-    );
-  }
 }

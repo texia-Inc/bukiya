@@ -33,7 +33,7 @@ class RarityLevelBase(BaseModel):
     description: Optional[str] = Field(None, description="説明")
     color_code: Optional[str] = Field(None, max_length=7, description="カラーコード")
     multiplier: float = Field(1.0, ge=0.1, le=10.0, description="攻撃力倍率")
-    drop_rate: float = Field(1.0, ge=0.0, le=1.0, description="ドロップ率")
+    drop_rate: float = Field(1.0, ge=0.0, le=100.0, description="ドロップ率")
 
 class RarityLevelCreate(RarityLevelBase):
     pass
@@ -43,7 +43,7 @@ class RarityLevelUpdate(BaseModel):
     description: Optional[str] = Field(None, description="説明")
     color_code: Optional[str] = Field(None, max_length=7, description="カラーコード")
     multiplier: Optional[float] = Field(None, ge=0.1, le=10.0, description="攻撃力倍率")
-    drop_rate: Optional[float] = Field(None, ge=0.0, le=1.0, description="ドロップ率")
+    drop_rate: Optional[float] = Field(None, ge=0.0, le=100.0, description="ドロップ率")
     is_active: Optional[bool] = Field(None, description="有効フラグ")
 
 class RarityLevel(RarityLevelBase):

@@ -66,16 +66,20 @@ class InventoryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('インベントリ取得開始...');
       final response = await _apiService.dio.get('/api/v1/weapons/player/inventory');
+      debugPrint('インベントリレスポンス: ${response.data}');
       
       if (response.data['success']) {
         _playerWeapons = (response.data['data'] as List)
             .map((json) => PlayerWeapon.fromJson(json))
             .toList();
+        debugPrint('武器データ取得成功: ${_playerWeapons.length}個');
       } else {
         throw Exception(response.data['message'] ?? '武器データの取得に失敗しました');
       }
     } catch (e) {
+      debugPrint('武器データ取得エラー: $e');
       _setError('武器データの読み込みに失敗しました: $e');
     } finally {
       _isWeaponsLoading = false;

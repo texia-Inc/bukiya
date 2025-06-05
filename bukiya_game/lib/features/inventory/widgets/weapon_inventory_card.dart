@@ -22,7 +22,7 @@ class WeaponInventoryCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: weapon.rarityColor.withOpacity(0.3),
+          color: weapon.rarityColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -31,8 +31,8 @@ class WeaponInventoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           gradient: LinearGradient(
             colors: [
-              weapon.rarityColor.withOpacity(0.05),
-              weapon.rarityColor.withOpacity(0.02),
+              weapon.rarityColor.withValues(alpha: 0.05),
+              weapon.rarityColor.withValues(alpha: 0.02),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -51,7 +51,7 @@ class WeaponInventoryCard extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: weapon.rarityColor.withOpacity(0.2),
+                      color: weapon.rarityColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: weapon.rarityColor,
@@ -198,7 +198,7 @@ class WeaponInventoryCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

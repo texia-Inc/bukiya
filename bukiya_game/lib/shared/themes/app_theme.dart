@@ -8,6 +8,7 @@ class AppTheme {
   static const Color accentColor = Color(0xFFFFFF00); // 黄色
   static const Color backgroundColor = Color(0xFF000000); // 黒
   static const Color surfaceColor = Color(0xFF111111); // 濃いグレー
+  static const Color borderColor = Color(0xFFFFFFFF); // 白（ボーダー用）
   static const Color errorColor = Color(0xFFFF0000); // 赤
   static const Color successColor = Color(0xFF00FF00); // 緑
   static const Color warningColor = Color(0xFFFFFF00); // 黄色
@@ -198,7 +199,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(0),
-          borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
+          borderSide: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(0),
@@ -305,7 +306,7 @@ class AppTheme {
   // シャドウ
   static List<BoxShadow> get cardShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.1),
+      color: Colors.black.withValues(alpha: 0.1),
       blurRadius: 8,
       offset: const Offset(0, 4),
     ),
@@ -313,7 +314,7 @@ class AppTheme {
   
   static List<BoxShadow> get buttonShadow => [
     BoxShadow(
-      color: primaryColor.withOpacity(0.3),
+      color: primaryColor.withValues(alpha: 0.3),
       blurRadius: 8,
       offset: const Offset(0, 4),
     ),

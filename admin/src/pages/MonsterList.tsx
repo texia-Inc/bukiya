@@ -38,6 +38,8 @@ import {
   useDeleteMonsterMutation,
 } from '../services/api';
 import type { MonsterMaster } from '../types';
+import { MonsterCreateDialog } from '../components/MonsterCreateDialog';
+import { MonsterEditDialog } from '../components/MonsterEditDialog';
 
 const MonsterList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -46,7 +48,8 @@ const MonsterList: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const [selectedMonster, setSelectedMonster] = useState<MonsterMaster | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dropDialogOpen, setDropDialogOpen] = useState(false);
 
@@ -80,7 +83,7 @@ const MonsterList: React.FC = () => {
 
   const handleEdit = (monster: MonsterMaster) => {
     setSelectedMonster(monster);
-    setDialogOpen(true);
+    setEditDialogOpen(true);
   };
 
   const handleDelete = (monster: MonsterMaster) => {
@@ -95,11 +98,16 @@ const MonsterList: React.FC = () => {
 
   const handleCreate = () => {
     setSelectedMonster(null);
-    setDialogOpen(true);
+    setCreateDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
+  const handleCloseCreateDialog = () => {
+    setCreateDialogOpen(false);
+    setSelectedMonster(null);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
     setSelectedMonster(null);
   };
 
@@ -382,6 +390,27 @@ const MonsterList: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 新規作成ダイアログ */}
+      <MonsterCreateDialog
+        open={createDialogOpen}
+        onClose={handleCloseCreateDialog}
+        onSuccess={() => {
+          refetch();
+          handleCloseCreateDialog();
+        }}
+      />
+
+      {/* 編集ダイアログ */}
+      <MonsterEditDialog
+        open={editDialogOpen}
+        monster={selectedMonster}
+        onClose={handleCloseEditDialog}
+        onSuccess={() => {
+          refetch();
+          handleCloseEditDialog();
+        }}
+      />
 
       {/* ドロップテーブル管理ダイアログ */}
       <Dialog open={dropDialogOpen} onClose={handleCloseDropDialog} maxWidth="md" fullWidth>

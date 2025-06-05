@@ -16,7 +16,12 @@ import {
   Switch,
   FormControlLabel,
   Alert,
+  CircularProgress,
 } from '@mui/material'
+import {
+  useCreateMissionTemplateMutation,
+  useUpdateMissionTemplateMutation,
+} from '../services/api'
 
 interface MissionTemplate {
   id: number
@@ -41,12 +46,14 @@ interface MissionTemplateDialogProps {
   open: boolean
   onClose: () => void
   template: MissionTemplate | null
+  onSuccess?: () => void
 }
 
 export const MissionTemplateDialog: React.FC<MissionTemplateDialogProps> = ({
   open,
   onClose,
   template,
+  onSuccess,
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -62,6 +69,12 @@ export const MissionTemplateDialog: React.FC<MissionTemplateDialogProps> = ({
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  // API mutations
+  const [createMissionTemplate, { isLoading: isCreating }] = useCreateMissionTemplateMutation()
+  const [updateMissionTemplate, { isLoading: isUpdating }] = useUpdateMissionTemplateMutation()
+  
+  const isLoading = isCreating || isUpdating
 
   useEffect(() => {
     if (template) {
@@ -127,14 +140,29 @@ export const MissionTemplateDialog: React.FC<MissionTemplateDialogProps> = ({
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) {
       return
     }
 
-    // TODO: API実装後に保存処理を追加
-    console.log('Save mission template:', formData)
-    onClose()
+    try {
+      if (template) {
+        // 更新
+        await updateMissionTemplate({ 
+          id: template.id, 
+          template: formData 
+        }).unwrap()
+      } else {
+        // 新規作成
+        await createMissionTemplate(formData).unwrap()
+      }
+      
+      onSuccess?.()
+      onClose()
+    } catch (error) {
+      console.error('ミッションテンプレートの保存に失敗しました:', error)
+      // エラーハンドリングは必要に応じて追加
+    }
   }
 
   const getMissionTypeLabel = (type: string) => {
@@ -350,8 +378,15 @@ export const MissionTemplateDialog: React.FC<MissionTemplateDialogProps> = ({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>キャンセル</Button>
-        <Button onClick={handleSubmit} variant="contained">
+        <Button onClick={onClose} disabled={isLoading}>
+          キャンセル
+        </Button>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained" 
+          disabled={isLoading}
+          startIcon={isLoading ? <CircularProgress size={16} /> : undefined}
+        >
           {template ? '更新' : '作成'}
         </Button>
       </DialogActions>

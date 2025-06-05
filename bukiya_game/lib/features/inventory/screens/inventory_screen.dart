@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../shared/themes/app_theme.dart';
 import '../../../shared/widgets/loading_screen.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../widgets/inventory_stats_card.dart';
 import '../widgets/weapon_inventory_tab.dart';
@@ -16,8 +17,11 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
+  
+  @override
+  bool get wantKeepAlive => false; // 毎回再読み込みを許可
 
   @override
   void initState() {
@@ -28,8 +32,28 @@ class _InventoryScreenState extends State<InventoryScreen>
     });
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<InventoryProvider>().loadInventory();
+      _loadInventoryIfAuthenticated();
     });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 認証状態が変わった場合に再読み込み
+    final authProvider = context.watch<AuthProvider>();
+    if (authProvider.isAuthenticated) {
+      _loadInventoryIfAuthenticated();
+    }
+  }
+  
+  Future<void> _loadInventoryIfAuthenticated() async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isAuthenticated) {
+      debugPrint('認証済み - インベントリを読み込みます');
+      await context.read<InventoryProvider>().loadInventory();
+    } else {
+      debugPrint('未認証 - インベントリの読み込みをスキップ');
+    }
   }
 
   @override
@@ -40,6 +64,7 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Consumer<InventoryProvider>(
       builder: (context, inventoryProvider, child) {
         return Scaffold(

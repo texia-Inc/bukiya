@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     # セキュリティ設定
     SECRET_KEY: str = "bukiya_secret_key_change_in_production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24時間 (24 * 60)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 365  # 1年間
     
     # データベース設定
     DATABASE_URL: str = "postgresql://bukiya_user:bukiya_password@postgres:5432/bukiya_game"

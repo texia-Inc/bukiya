@@ -295,7 +295,7 @@ class PurchaseConfirmationDialog extends StatelessWidget {
                           width: 1
                         ),
                         color: remainingGold >= 0 
-                            ? AppTheme.successColor.withOpacity(0.1)
+                            ? AppTheme.successColor.withValues(alpha: 0.1)
                             : null,
                       ),
                       child: Text(

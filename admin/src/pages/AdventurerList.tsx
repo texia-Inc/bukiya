@@ -38,6 +38,8 @@ import {
   useDeleteAdventurerMutation,
 } from '../services/api';
 import type { AdventurerMaster } from '../types';
+import { AdventurerCreateDialog } from '../components/AdventurerCreateDialog';
+import { AdventurerEditDialog } from '../components/AdventurerEditDialog';
 
 const AdventurerList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -46,7 +48,8 @@ const AdventurerList: React.FC = () => {
   const [professionFilter, setProfessionFilter] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const [selectedAdventurer, setSelectedAdventurer] = useState<AdventurerMaster | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // API呼び出し
@@ -79,7 +82,7 @@ const AdventurerList: React.FC = () => {
 
   const handleEdit = (adventurer: AdventurerMaster) => {
     setSelectedAdventurer(adventurer);
-    setDialogOpen(true);
+    setEditDialogOpen(true);
   };
 
   const handleDelete = (adventurer: AdventurerMaster) => {
@@ -89,11 +92,16 @@ const AdventurerList: React.FC = () => {
 
   const handleCreate = () => {
     setSelectedAdventurer(null);
-    setDialogOpen(true);
+    setCreateDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
+  const handleCloseCreateDialog = () => {
+    setCreateDialogOpen(false);
+    setSelectedAdventurer(null);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
     setSelectedAdventurer(null);
   };
 
@@ -340,6 +348,27 @@ const AdventurerList: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 新規作成ダイアログ */}
+      <AdventurerCreateDialog
+        open={createDialogOpen}
+        onClose={handleCloseCreateDialog}
+        onSuccess={() => {
+          refetch();
+          handleCloseCreateDialog();
+        }}
+      />
+
+      {/* 編集ダイアログ */}
+      <AdventurerEditDialog
+        open={editDialogOpen}
+        adventurer={selectedAdventurer}
+        onClose={handleCloseEditDialog}
+        onSuccess={() => {
+          refetch();
+          handleCloseEditDialog();
+        }}
+      />
     </Box>
   );
 };

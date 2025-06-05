@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/themes/app_theme.dart';
-import '../../../core/models/adventurer.dart';
+import '../../../core/models/adventurer_new.dart';
 
 class BuybackDialog extends StatelessWidget {
   final QuestResult questResult;
@@ -49,20 +49,45 @@ class BuybackDialog extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: onReject,
-                    child: const Text('拒否'),
+                  child: GestureDetector(
+                    onTap: onReject,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.primaryColor, width: 1),
+                      ),
+                      child: Text(
+                        '[拒否]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => onBuyback(questResult.drops.map((d) => d.id).toList()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
+                  child: GestureDetector(
+                    onTap: () => onBuyback(questResult.drops.map((d) => d.id).toList()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppTheme.successColor,
+                          width: 1,
+                        ),
+                        color: AppTheme.successColor.withValues(alpha: 0.1),
+                      ),
+                      child: Text(
+                        '[買取する]',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.successColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    child: const Text('買取'),
                   ),
                 ),
               ],

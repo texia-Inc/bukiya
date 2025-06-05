@@ -55,7 +55,7 @@ class _ShopFilterBarState extends State<ShopFilterBar> {
         color: AppTheme.backgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: AppTheme.textSecondary.withOpacity(0.2),
+            color: AppTheme.textSecondary.withValues(alpha: 0.2),
           ),
         ),
       ),
@@ -124,7 +124,7 @@ class _ShopFilterBarState extends State<ShopFilterBar> {
               Container(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -183,7 +183,7 @@ class _ShopFilterBarState extends State<ShopFilterBar> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             border: Border.all(
-              color: AppTheme.textSecondary.withOpacity(0.3),
+              color: AppTheme.textSecondary.withValues(alpha: 0.3),
             ),
             borderRadius: BorderRadius.circular(8),
           ),

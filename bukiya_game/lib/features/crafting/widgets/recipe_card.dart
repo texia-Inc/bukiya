@@ -50,7 +50,7 @@ class RecipeCard extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _getRarityColor(recipe.weapon.rarity).withOpacity(0.2),
+                      color: _getRarityColor(recipe.weapon.rarity).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _getRarityColor(recipe.weapon.rarity),
@@ -160,9 +160,9 @@ class RecipeCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.2),
+                    color: Colors.red.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.5)),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,7 +279,7 @@ class RecipeCard extends StatelessWidget {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: material.material.rarityColor.withOpacity(0.2),
+              color: material.material.rarityColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(4),
               border: Border.all(
                 color: material.material.rarityColor,
