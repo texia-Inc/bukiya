@@ -8,6 +8,7 @@ import uuid
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.api import api_router
+# from app.core.dragon_event_service import dragon_service
 
 # ログ設定
 logger = structlog.get_logger()
@@ -107,11 +108,29 @@ async def startup_event():
     if settings.ENVIRONMENT == "development":
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created")
+    
+    # Dragon event serviceの初期化（一時的に無効化）
+    # try:
+    #     await dragon_service.setup_weekly_schedule()
+    #     logger.info("Dragon event service initialized")
+    #     
+    #     # バックグラウンドタスクとしてドラゴンイベントサービスを開始
+    #     import asyncio
+    #     asyncio.create_task(dragon_service.start_service())
+    # except Exception as e:
+    #     logger.error(f"Failed to start dragon event service: {e}")
 
 # アプリケーション終了時の処理
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down 武器屋放置ゲーム API")
+    
+    # Dragon event serviceの停止（一時的に無効化）
+    # try:
+    #     await dragon_service.stop_service()
+    #     logger.info("Dragon event service stopped")
+    # except Exception as e:
+    #     logger.error(f"Error stopping dragon event service: {e}")
 
 if __name__ == "__main__":
     import uvicorn

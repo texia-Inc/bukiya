@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/models/tutorial.dart';
 import '../../../core/services/tutorial_service.dart';
 
-/// チュートリアル状態管理プロバイダー
+/// チュートリアル・実績・ガイド統合プロバイダー
 class TutorialProvider extends ChangeNotifier {
   final TutorialService _tutorialService = TutorialService();
   
@@ -28,6 +28,15 @@ class TutorialProvider extends ChangeNotifier {
   bool get isCompleted => _progress?.isCompleted ?? false;
   bool get canSkip => _config.allowSkip;
   TutorialStepType? get currentStep => _progress?.currentStep;
+  
+  // 新しいガイド・実績システム
+  PlayerGuideState get guideState => _tutorialService.guideState;
+  List<Achievement> get achievements => _tutorialService.achievements;
+  List<Achievement> get completedAchievements => _tutorialService.completedAchievements;
+  List<Achievement> get pendingAchievements => _tutorialService.pendingAchievements;
+  bool get isNewPlayer => _tutorialService.isNewPlayer();
+  String get currentObjective => _tutorialService.getCurrentObjective();
+  List<String> get recommendedActions => _tutorialService.getRecommendedActions();
   
   /// 初期化
   Future<void> initialize() async {
@@ -206,11 +215,47 @@ class TutorialProvider extends ChangeNotifier {
     }
   }
   
+  /// アクションを記録（新しいガイドシステム）
+  Future<void> recordAction(String action) async {
+    await _tutorialService.recordAction(action);
+    notifyListeners();
+  }
+
+  /// 実績の進捗を更新
+  Future<void> updateAchievementProgress(String achievementId, {int increment = 1}) async {
+    await _tutorialService.updateAchievementProgress(achievementId, increment: increment);
+    notifyListeners();
+  }
+
+  /// セッション開始
+  Future<void> onSessionStart() async {
+    await _tutorialService.onSessionStart();
+    notifyListeners();
+  }
+
+  /// ガイド状態の更新
+  Future<void> updateGuideState(PlayerGuideState newState) async {
+    await _tutorialService.updateGuideState(newState);
+    notifyListeners();
+  }
+
   /// 進行状況リセット（デバッグ用）
   Future<void> resetProgress() async {
     await _tutorialService.resetProgress();
     await _reloadProgress();
     _isShowingTutorial = false;
+    notifyListeners();
+  }
+
+  /// ガイド状態リセット（デバッグ用）
+  Future<void> resetGuideState() async {
+    await _tutorialService.resetGuideState();
+    notifyListeners();
+  }
+
+  /// 実績リセット（デバッグ用）
+  Future<void> resetAchievements() async {
+    await _tutorialService.resetAchievements();
     notifyListeners();
   }
   

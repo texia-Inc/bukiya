@@ -29,6 +29,7 @@ import { useGetRecipesQuery } from '../services/api'
 import { RecipeCreateDialog } from '../components/RecipeCreateDialog'
 import { RecipeEditDialog } from '../components/RecipeEditDialog'
 import { RecipeDeleteDialog } from '../components/RecipeDeleteDialog'
+import Pagination from '../components/Pagination'
 
 // モックデータ
 const mockRecipes = [
@@ -112,7 +113,15 @@ const mockRecipes = [
 ]
 
 const RecipeList: React.FC = () => {
-  const { data: recipesData, isLoading, error, refetch } = useGetRecipesQuery({})
+  // ページネーション関連の状態
+  const [page, setPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  
+  const { data: recipesData, isLoading, error, refetch } = useGetRecipesQuery({
+    page,
+    limit: itemsPerPage,
+  })
+  
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -120,6 +129,8 @@ const RecipeList: React.FC = () => {
   
   // APIデータまたはモックデータを使用
   const recipes = recipesData?.data || mockRecipes
+  const totalItems = recipesData?.total || mockRecipes.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   const handleEdit = (recipe: any) => {
     setSelectedRecipe(recipe)
@@ -141,6 +152,16 @@ const RecipeList: React.FC = () => {
 
   const handleCreateSuccess = () => {
     refetch() // データを再取得
+  }
+
+  // ページネーション関連のハンドラー
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setPage(1) // ページサイズが変更されたら最初のページに戻る
   }
 
   if (isLoading) {
@@ -356,6 +377,16 @@ const RecipeList: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          
+          {/* ページネーション */}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
         </CardContent>
       </Card>
 

@@ -132,7 +132,7 @@ class AdventurerMockService {
     await Future.delayed(const Duration(milliseconds: 500)); // API遅延をシミュレート
     
     final adventurers = <Adventurer>[];
-    final count = _random.nextInt(3) + 1; // 1-3人の訪問者
+    final count = 0; // モックデータを無効化
     
     for (int i = 0; i < count; i++) {
       final master = _adventurerMasters[_random.nextInt(_adventurerMasters.length)];
@@ -171,6 +171,9 @@ class AdventurerMockService {
           updatedAt: now,
         ),
         requests: _generateRequests(adventurerId, master),
+        isNamedCharacter: false,
+        characterId: null,
+        genericName: null,
       );
       
       adventurers.add(adventurer);
@@ -184,7 +187,7 @@ class AdventurerMockService {
     await Future.delayed(const Duration(milliseconds: 300));
     
     final adventurers = <Adventurer>[];
-    final count = _random.nextInt(4); // 0-3人の冒険中
+    final count = 0; // モックデータを無効化
     
     for (int i = 0; i < count; i++) {
       final master = _adventurerMasters[_random.nextInt(_adventurerMasters.length)];
@@ -221,6 +224,9 @@ class AdventurerMockService {
           createdAt: now.subtract(Duration(days: 60)),
           updatedAt: now,
         ),
+        isNamedCharacter: false,
+        characterId: null,
+        genericName: null,
       );
       
       adventurers.add(adventurer);

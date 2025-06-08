@@ -32,6 +32,24 @@ CREATE TABLE IF NOT EXISTS adventurer_requests (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- クエストエリアマスターテーブル
+CREATE TABLE IF NOT EXISTS quest_area_masters (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    area_type VARCHAR(50) NOT NULL,
+    difficulty INTEGER NOT NULL DEFAULT 1,
+    required_level INTEGER NOT NULL DEFAULT 1,
+    duration_minutes INTEGER NOT NULL DEFAULT 60,
+    image_url VARCHAR(255),
+    background_color VARCHAR(7) NOT NULL DEFAULT '#4CAF50',
+    description TEXT,
+    unlock_condition VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 冒険者のクエスト履歴テーブル
 CREATE TABLE IF NOT EXISTS adventurer_quests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -103,5 +121,11 @@ EXECUTE FUNCTION update_updated_at_column();
 DROP TRIGGER IF EXISTS update_adventurer_quests_updated_at ON adventurer_quests;
 CREATE TRIGGER update_adventurer_quests_updated_at
 BEFORE UPDATE ON adventurer_quests
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_quest_area_masters_updated_at ON quest_area_masters;
+CREATE TRIGGER update_quest_area_masters_updated_at
+BEFORE UPDATE ON quest_area_masters
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();

@@ -4,8 +4,13 @@ import 'package:provider/provider.dart';
 import '../../../shared/themes/app_theme.dart';
 import '../../../shared/widgets/loading_screen.dart';
 import '../../../shared/widgets/badge_widget.dart';
+import '../../../shared/widgets/welcome_guide_widget.dart';
+import '../../../shared/widgets/achievement_popup.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/tutorial_service.dart';
+import '../../../core/models/tutorial.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/tutorial/providers/tutorial_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../../mission/providers/mission_provider.dart';
 import '../../enchantment/providers/enchantment_provider.dart';
@@ -22,6 +27,7 @@ import '../../adventurer/screens/adventurer_screen.dart';
 import '../../idle/widgets/idle_income_card.dart';
 import '../../enchantment/screens/enchantment_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../dragon_event/screens/dragon_event_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -43,10 +49,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _initializeDashboard() async {
     final dashboardProvider = context.read<DashboardProvider>();
+    final tutorialProvider = context.read<TutorialProvider>();
+    
+    // セッション開始を記録
+    await tutorialProvider.onSessionStart();
+    
+    // ダッシュボードデータの読み込み
     await dashboardProvider.loadDashboardData();
     
     // オフライン収益をチェック（一時的に無効化）
     // await _checkOfflineIncome();
+    
+    // 新規プレイヤーの場合は初回実績をチェック
+    if (tutorialProvider.isNewPlayer && mounted) {
+      _checkNewPlayerAchievements(tutorialProvider);
+    }
+  }
+
+  void _checkNewPlayerAchievements(TutorialProvider tutorialProvider) {
+    // 遅延して実績チェック（UIが安定してから）
+    Future.delayed(const Duration(seconds: 2), () {
+      final completedAchievements = tutorialProvider.completedAchievements;
+      
+      // 未表示の実績があれば表示
+      for (final achievement in completedAchievements) {
+        if (achievement.id == 'first_login' && mounted) {
+          AchievementPopup.show(context, achievement);
+          break; // 一度に一つの実績のみ表示
+        }
+      }
+    });
   }
 
   Future<void> _checkOfflineIncome() async {
@@ -147,14 +179,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 2:
         return const MissionScreen();
       case 3:
-        return _buildAdventurerTab();
+        return const DragonEventScreen();
       case 4:
-        return _buildInventoryTab();
+        return _buildAdventurerTab();
       case 5:
-        return _buildCraftingTab();
+        return _buildInventoryTab();
       case 6:
-        return _buildEnchantmentTab();
+        return _buildCraftingTab();
       case 7:
+        return _buildEnchantmentTab();
+      case 8:
         return const SettingsScreen();
       default:
         return _buildDashboardTab(player, dashboardProvider);
@@ -173,6 +207,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 新規プレイヤー向けウェルカムガイド
+              const WelcomeGuideWidget(),
+              
               // レトロなヘッダー（横幅めいっぱい）
               _buildRetroHeader(player),
               const SizedBox(height: 4),
@@ -283,6 +320,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               animated: true,
             ),
             const BottomNavigationBarItem(
+              icon: Icon(Icons.whatshot),
+              label: 'ドラゴン',
+            ),
+            const BottomNavigationBarItem(
               icon: Icon(Icons.people),
               label: '冒険者',
             ),
@@ -320,6 +361,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _currentIndex = index;
     });
+    
+    // タブ訪問をトラッキング
+    _trackTabVisit(index);
+  }
+
+  void _trackTabVisit(int index) {
+    final tutorialProvider = context.read<TutorialProvider>();
+    
+    switch (index) {
+      case 1: // ショップ
+        tutorialProvider.recordAction('shop_visit');
+        break;
+      case 2: // ミッション
+        // ミッション訪問のトラッキングは必要に応じて追加
+        break;
+      case 3: // ドラゴン
+        tutorialProvider.recordAction('dragon_event_visit');
+        break;
+      case 4: // 冒険者
+        tutorialProvider.recordAction('adventurer_visit');
+        break;
+      case 6: // 合成
+        tutorialProvider.recordAction('crafting_visit');
+        break;
+    }
   }
 
   void _navigateToSettings() {

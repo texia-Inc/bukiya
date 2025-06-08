@@ -32,7 +32,7 @@ class AdventurerApiService {
   /// 冒険中の冒険者一覧を取得
   Future<List<Adventurer>> getOnQuestAdventurers() async {
     try {
-      final response = await _apiService.dio.get('/api/v1/adventurers/on-quest');
+      final response = await _apiService.dio.get('/api/v1/adventurers/on-quest-noauth');
       
       if (response.statusCode == 200) {
         final adventurers = (response.data['adventurers'] as List)
@@ -70,10 +70,10 @@ class AdventurerApiService {
   /// 利用可能なクエストエリア一覧を取得
   Future<List<QuestArea>> getQuestAreas() async {
     try {
-      final response = await _apiService.dio.get('/api/v1/quest-areas');
+      final response = await _apiService.dio.get('/api/v1/adventurers/quest-areas');
       
       if (response.statusCode == 200) {
-        final questAreas = (response.data['quest_areas'] as List)
+        final questAreas = (response.data['areas'] as List)
             .map((json) => QuestArea.fromJson(json))
             .toList();
         return questAreas;

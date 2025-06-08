@@ -1,9 +1,59 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/models/adventurer_new.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/adventurer_api_service.dart';
 import '../../../core/services/adventurer_mock_service.dart';
+
+// 武器販売結果を表すクラス
+class WeaponSaleResult {
+  final bool success;
+  final String message;
+  final int goldEarned;
+  final String? weaponName;
+  final String? adventurerName;
+  final int? trustGained;
+  final int? newTrustLevel;
+  final String? saleReason;
+  final bool questDispatched;
+  final String? questAreaName;
+  final int? questDurationMinutes;
+  final String? questEndTime;
+
+  WeaponSaleResult({
+    required this.success,
+    required this.message,
+    required this.goldEarned,
+    this.weaponName,
+    this.adventurerName,
+    this.trustGained,
+    this.newTrustLevel,
+    this.saleReason,
+    this.questDispatched = false,
+    this.questAreaName,
+    this.questDurationMinutes,
+    this.questEndTime,
+  });
+
+  factory WeaponSaleResult.fromJson(Map<String, dynamic> json) {
+    return WeaponSaleResult(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      goldEarned: json['gold_earned'] ?? 0,
+      weaponName: json['weapon_name'],
+      adventurerName: json['adventurer_name'],
+      trustGained: json['trust_gained'],
+      newTrustLevel: json['new_trust_level'],
+      saleReason: json['sale_reason'],
+      questDispatched: json['quest_dispatched'] ?? false,
+      questAreaName: json['quest_area_name'],
+      questDurationMinutes: json['quest_duration_minutes'],
+      questEndTime: json['quest_end_time'],
+    );
+  }
+}
 
 class AdventurerProvider extends ChangeNotifier {
   final ApiService _apiService;
@@ -25,6 +75,11 @@ class AdventurerProvider extends ChangeNotifier {
   List<Adventurer> _onQuestAdventurers = [];
   List<QuestResult> _pendingBuybacks = [];
   List<QuestArea> _questAreas = [];
+  
+  // 定期更新用タイマー
+  Timer? _updateTimer;
+  Timer? _visitorSpawnTimer;
+  DateTime? _lastVisitorSpawn;
 
   // ゲッター
   bool get isLoading => _isLoading;
@@ -33,6 +88,61 @@ class AdventurerProvider extends ChangeNotifier {
   List<Adventurer> get onQuestAdventurers => _onQuestAdventurers;
   List<QuestResult> get pendingBuybacks => _pendingBuybacks;
   List<QuestArea> get questAreas => _questAreas;
+  
+  // 自動更新の開始
+  void startAutoUpdate() {
+    _updateTimer?.cancel();
+    _updateTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      loadAdventurerData();
+    });
+    
+    // 訪問者の定期生成開始（5-15分間隔）
+    _startVisitorSpawning();
+  }
+  
+  // 自動更新の停止
+  void stopAutoUpdate() {
+    _updateTimer?.cancel();
+    _updateTimer = null;
+    _visitorSpawnTimer?.cancel();
+    _visitorSpawnTimer = null;
+  }
+  
+  // 訪問者の定期生成開始
+  void _startVisitorSpawning() {
+    _visitorSpawnTimer?.cancel();
+    _scheduleNextVisitorSpawn();
+  }
+  
+  // 次の訪問者生成をスケジュール
+  void _scheduleNextVisitorSpawn() {
+    // 5-15分間隔でランダムに生成
+    final nextSpawnMinutes = 5 + Random().nextInt(11); // 5-15分
+    _visitorSpawnTimer = Timer(Duration(minutes: nextSpawnMinutes), () async {
+      await _trySpawnVisitors();
+      _scheduleNextVisitorSpawn(); // 次回もスケジュール
+    });
+  }
+  
+  // 条件に応じて訪問者を生成
+  Future<void> _trySpawnVisitors() async {
+    try {
+      // 訪問中が5人未満の場合のみ生成
+      if (_visitingAdventurers.length < 5) {
+        await _spawnVisitors();
+        _lastVisitorSpawn = DateTime.now();
+        debugPrint('新しい訪問者を生成しました (現在: ${_visitingAdventurers.length}人)');
+      }
+    } catch (e) {
+      debugPrint('定期訪問者生成エラー: $e');
+    }
+  }
+  
+  @override
+  void dispose() {
+    stopAutoUpdate();
+    super.dispose();
+  }
 
   // メインデータ読み込み
   Future<void> loadAdventurerData() async {
@@ -124,9 +234,18 @@ class AdventurerProvider extends ChangeNotifier {
   }
 
   // 武器を冒険者に販売
-  Future<bool> sellWeaponToAdventurer(String adventurerId, String weaponId, int price) async {
+  Future<WeaponSaleResult> sellWeaponToAdventurer(String adventurerId, String weaponId, int price) async {
     try {
       _clearError();
+      
+      // 販売前に冒険者データを更新して最新の状態を確認
+      await loadAdventurerData();
+      
+      // 冒険者がまだ訪問中かチェック
+      final adventurer = _visitingAdventurers.firstWhere(
+        (a) => a.id == adventurerId,
+        orElse: () => throw Exception('冒険者が訪問中ではありません'),
+      );
 
       if (_useRealApi) {
         final result = await _adventurerApiService.sellWeaponToAdventurer(
@@ -135,12 +254,26 @@ class AdventurerProvider extends ChangeNotifier {
           price: price,
         );
         
-        if (result['success'] == true) {
-          // 販売成功時、該当の冒険者を訪問者リストから冒険中リストに移動
-          _moveAdventurerToQuest(adventurerId);
-          return true;
+        final saleResult = WeaponSaleResult.fromJson(result);
+        
+        if (saleResult.success) {
+          // 販売成功時、冒険者データを再読み込み
+          await loadAdventurerData();
+          
+          // 販売情報をログ出力（デバッグ用）
+          print('=== 武器販売成功 ===');
+          print('販売理由: ${saleResult.saleReason}');
+          print('獲得ゴールド: ${saleResult.goldEarned}');
+          print('信頼度上昇: +${saleResult.trustGained} (新レベル: ${saleResult.newTrustLevel})');
+          if (saleResult.questDispatched) {
+            print('クエスト派遣: ${saleResult.questAreaName} (${saleResult.questDurationMinutes}分)');
+          } else {
+            print('クエスト派遣: なし');
+          }
+          print('==================');
         }
-        return false;
+        
+        return saleResult;
       } else {
         final result = await AdventurerMockService.sellWeapon(
           adventurerId: adventurerId,
@@ -148,16 +281,22 @@ class AdventurerProvider extends ChangeNotifier {
           price: price,
         );
         
-        if (result['success'] == true) {
+        final saleResult = WeaponSaleResult.fromJson(result);
+        
+        if (saleResult.success) {
           // 販売成功時、該当の冒険者を訪問者リストから冒険中リストに移動
           _moveAdventurerToQuest(adventurerId);
-          return true;
         }
-        return false;
+        
+        return saleResult;
       }
     } catch (e) {
       _setError('武器の販売に失敗しました: ${e.toString()}');
-      return false;
+      return WeaponSaleResult(
+        success: false,
+        message: '武器の販売に失敗しました: ${e.toString()}',
+        goldEarned: 0,
+      );
     }
   }
 
@@ -183,6 +322,9 @@ class AdventurerProvider extends ChangeNotifier {
         updatedAt: DateTime.now(),
         adventurerMaster: adventurer.adventurerMaster,
         requests: adventurer.requests,
+        isNamedCharacter: adventurer.isNamedCharacter,
+        characterId: adventurer.characterId,
+        genericName: adventurer.genericName,
       );
       
       // リストから削除して冒険中リストに追加
@@ -242,7 +384,8 @@ class AdventurerProvider extends ChangeNotifier {
           itemIds: itemIds,
         );
         
-        if (result['success'] == true) {
+        // APIレスポンスに'message'フィールドがあれば成功とみなす
+        if (result.containsKey('message')) {
           await _loadPendingBuybacks();
           return true;
         }
@@ -253,7 +396,8 @@ class AdventurerProvider extends ChangeNotifier {
           itemIds: itemIds,
         );
         
-        if (result['success'] == true) {
+        // モックAPIでも同様に'message'フィールドで成功判定
+        if (result.containsKey('message') || result['success'] == true) {
           await _loadPendingBuybacks();
           return true;
         }

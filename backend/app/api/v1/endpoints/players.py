@@ -26,6 +26,15 @@ from sqlalchemy.orm import joinedload
 router = APIRouter()
 
 # 管理画面用の認証不要エンドポイント
+@router.get("/admin")
+async def get_players_admin_default(
+    db: Session = Depends(get_db)
+):
+    """
+    管理画面用：プレイヤー一覧を取得（認証不要）- デフォルトエンドポイント
+    """
+    return await get_players_admin(db)
+
 @router.get("/admin/list")
 async def get_players_admin(
     db: Session = Depends(get_db)

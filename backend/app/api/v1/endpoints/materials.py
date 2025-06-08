@@ -21,6 +21,20 @@ from app.schemas import (
 router = APIRouter()
 
 # 管理画面用の認証不要エンドポイント
+@router.get("/", response_model=MaterialMasterListResponse)
+async def get_materials_list(
+    page: int = Query(1, ge=1, description="ページ番号"),
+    limit: int = Query(20, ge=1, le=100, description="1ページあたりのアイテム数"),
+    rarity_id: Optional[int] = Query(None, description="レアリティIDフィルター"),
+    min_price: Optional[int] = Query(None, description="最小価格"),
+    max_price: Optional[int] = Query(None, description="最大価格"),
+    db: Session = Depends(get_db)
+):
+    """
+    素材マスター一覧を取得（認証不要・管理画面用）
+    """
+    return await get_materials_admin(page, limit, rarity_id, min_price, max_price, db)
+
 @router.get("/admin/list", response_model=MaterialMasterListResponse)
 async def get_materials_admin(
     page: int = Query(1, ge=1, description="ページ番号"),

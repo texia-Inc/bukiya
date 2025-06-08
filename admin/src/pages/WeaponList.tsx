@@ -29,6 +29,7 @@ import { useGetWeaponsQuery } from '../services/api'
 import { WeaponCreateDialog } from '../components/WeaponCreateDialog'
 import { WeaponEditDialog } from '../components/WeaponEditDialog'
 import { WeaponDeleteDialog } from '../components/WeaponDeleteDialog'
+import Pagination from '../components/Pagination'
 
 // モックデータ
 const mockWeapons = [
@@ -90,7 +91,15 @@ const mockWeapons = [
 ]
 
 const WeaponList: React.FC = () => {
-  const { data: weaponsData, isLoading, error, refetch } = useGetWeaponsQuery({})
+  // ページネーション関連の状態
+  const [page, setPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  
+  const { data: weaponsData, isLoading, error, refetch } = useGetWeaponsQuery({
+    page,
+    limit: itemsPerPage,
+  })
+  
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -98,6 +107,8 @@ const WeaponList: React.FC = () => {
   
   // APIデータまたはモックデータを使用
   const weapons = weaponsData?.data || mockWeapons
+  const totalItems = weaponsData?.total || mockWeapons.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   const handleEdit = (weapon: any) => {
     setSelectedWeapon(weapon)
@@ -119,6 +130,16 @@ const WeaponList: React.FC = () => {
 
   const handleCreateSuccess = () => {
     refetch() // データを再取得
+  }
+
+  // ページネーション関連のハンドラー
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setPage(1) // ページサイズが変更されたら最初のページに戻る
   }
 
   if (isLoading) {
@@ -300,6 +321,16 @@ const WeaponList: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          
+          {/* ページネーション */}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
         </CardContent>
       </Card>
 

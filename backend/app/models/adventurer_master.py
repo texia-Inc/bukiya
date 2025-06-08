@@ -29,6 +29,10 @@ class AdventurerMaster(Base):
     min_player_level = Column(Integer, nullable=False, default=1)
     max_player_level = Column(Integer, nullable=True)
     
+    # 難易度ティア設定（プログレッション用）
+    tier = Column(String(20), nullable=False, default="normal")  # normal, challenge, elite
+    progression_multiplier = Column(Float, nullable=False, default=1.0)  # 報酬倍率
+    
     # システム情報
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

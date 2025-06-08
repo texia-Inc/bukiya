@@ -4,12 +4,14 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/tutorial.dart';
 import '../constants/app_constants.dart';
 
-/// チュートリアルサービス
+/// 統合チュートリアル・実績・ガイドサービス
 /// 
-/// チュートリアルの進行状況管理とステップ定義を提供します
-class TutorialService {
+/// 新規プレイヤーのオンボーディング、実績システム、ガイダンスを提供します
+class TutorialService extends ChangeNotifier {
   static const String _progressKey = 'tutorial_progress';
   static const String _configKey = 'tutorial_config';
+  static const String _guideStateKey = 'player_guide_state';
+  static const String _achievementKey = 'player_achievements';
   
   // シングルトンインスタンス
   static final TutorialService _instance = TutorialService._internal();
@@ -18,11 +20,38 @@ class TutorialService {
   
   TutorialProgress? _currentProgress;
   TutorialConfig _config = const TutorialConfig();
+  PlayerGuideState _guideState = PlayerGuideState.initial();
+  List<Achievement> _achievements = [];
+  bool _isLoading = false;
+
+  // Getters
+  PlayerGuideState get guideState => _guideState;
+  List<Achievement> get achievements => _achievements;
+  bool get isLoading => _isLoading;
+  
+  List<Achievement> get completedAchievements => 
+      _achievements.where((a) => a.isCompleted).toList();
+  
+  List<Achievement> get pendingAchievements => 
+      _achievements.where((a) => !a.isCompleted && !a.isHidden).toList();
   
   /// 初期化
   Future<void> initialize() async {
-    await _loadProgress();
-    await _loadConfig();
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _loadProgress();
+      await _loadConfig();
+      await _loadGuideState();
+      await _loadAchievements();
+      await _initializeDefaultAchievements();
+    } catch (e) {
+      debugPrint('Tutorial service initialization error: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
   }
   
   /// プログレス読み込み
@@ -78,6 +107,172 @@ class TutorialService {
     } catch (e) {
       debugPrint('チュートリアル設定保存エラー: $e');
     }
+  }
+
+  /// ガイド状態の読み込み
+  Future<void> _loadGuideState() async {
+    try {
+      final box = await Hive.openBox(AppConstants.gameDataKey);
+      final data = box.get(_guideStateKey);
+      
+      if (data != null) {
+        _guideState = PlayerGuideState.fromJson(Map<String, dynamic>.from(data));
+      } else {
+        _guideState = PlayerGuideState.initial();
+        await _saveGuideState();
+      }
+    } catch (e) {
+      debugPrint('Failed to load guide state: $e');
+      _guideState = PlayerGuideState.initial();
+    }
+  }
+
+  /// ガイド状態の保存
+  Future<void> _saveGuideState() async {
+    try {
+      final box = await Hive.openBox(AppConstants.gameDataKey);
+      await box.put(_guideStateKey, _guideState.toJson());
+    } catch (e) {
+      debugPrint('Failed to save guide state: $e');
+    }
+  }
+
+  /// 実績の読み込み
+  Future<void> _loadAchievements() async {
+    try {
+      final box = await Hive.openBox(AppConstants.gameDataKey);
+      final data = box.get(_achievementKey);
+      
+      if (data != null) {
+        final achievementsList = List<Map<String, dynamic>>.from(data);
+        _achievements = achievementsList
+            .map((a) => Achievement.fromJson(a))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('Failed to load achievements: $e');
+      _achievements = [];
+    }
+  }
+
+  /// 実績の保存
+  Future<void> _saveAchievements() async {
+    try {
+      final box = await Hive.openBox(AppConstants.gameDataKey);
+      await box.put(_achievementKey, _achievements.map((a) => a.toJson()).toList());
+    } catch (e) {
+      debugPrint('Failed to save achievements: $e');
+    }
+  }
+
+  /// デフォルト実績の初期化
+  Future<void> _initializeDefaultAchievements() async {
+    final defaultAchievements = _createDefaultAchievements();
+    
+    for (final defaultAchievement in defaultAchievements) {
+      final existingIndex = _achievements.indexWhere(
+        (a) => a.id == defaultAchievement.id
+      );
+      
+      if (existingIndex == -1) {
+        _achievements.add(defaultAchievement);
+      }
+    }
+    
+    await _saveAchievements();
+  }
+
+  /// デフォルト実績の作成
+  List<Achievement> _createDefaultAchievements() {
+    return [
+      // 初回アクション系
+      Achievement(
+        id: 'first_login',
+        title: 'ようこそ武器屋へ！',
+        description: '初めてゲームにログインしました',
+        category: 'beginner',
+        iconName: 'login',
+        rewardGold: 100,
+        rewardExp: 50,
+      ),
+      Achievement(
+        id: 'first_shop_visit',
+        title: '初回来店',
+        description: 'ショップを初めて見学しました',
+        category: 'beginner',
+        iconName: 'store',
+        rewardGold: 50,
+        rewardExp: 25,
+      ),
+      Achievement(
+        id: 'first_weapon_purchase',
+        title: '初めての仕入れ',
+        description: '初めて武器を購入しました',
+        category: 'trading',
+        iconName: 'shopping_cart',
+        rewardGold: 200,
+        rewardExp: 100,
+      ),
+      Achievement(
+        id: 'first_weapon_sale',
+        title: '初回販売',
+        description: '初めて武器を販売しました',
+        category: 'trading',
+        iconName: 'sell',
+        rewardGold: 300,
+        rewardExp: 150,
+      ),
+      Achievement(
+        id: 'first_craft',
+        title: '初心者クラフター',
+        description: '初めて武器を作成しました',
+        category: 'crafting',
+        iconName: 'build',
+        rewardGold: 250,
+        rewardExp: 200,
+      ),
+      
+      // 数量達成系
+      Achievement(
+        id: 'sales_5',
+        title: '商売上手',
+        description: '武器を5本販売しました',
+        category: 'trading',
+        iconName: 'trending_up',
+        rewardGold: 500,
+        rewardExp: 250,
+        maxProgress: 5,
+      ),
+      Achievement(
+        id: 'gold_1000',
+        title: '小金持ち',
+        description: '1000ゴールドを貯めました',
+        category: 'wealth',
+        iconName: 'attach_money',
+        rewardGold: 200,
+        rewardExp: 100,
+      ),
+      Achievement(
+        id: 'level_5',
+        title: 'ショップ拡張',
+        description: 'ショップレベル5に到達しました',
+        category: 'progression',
+        iconName: 'store',
+        rewardGold: 1000,
+        rewardExp: 500,
+      ),
+
+      // 探索系
+      Achievement(
+        id: 'all_tabs_visited',
+        title: '探検家',
+        description: 'すべての機能を一度は見学しました',
+        category: 'exploration',
+        iconName: 'explore',
+        rewardGold: 300,
+        rewardExp: 150,
+      ),
+    ];
   }
   
   /// 現在の進行状況を取得
@@ -314,11 +509,189 @@ class TutorialService {
     return getAllSteps().where((step) => step.type == type).firstOrNull;
   }
   
+  /// 実績を更新/進捗
+  Future<void> updateAchievementProgress(String achievementId, {int increment = 1}) async {
+    final index = _achievements.indexWhere((a) => a.id == achievementId);
+    if (index == -1) return;
+
+    final achievement = _achievements[index];
+    if (achievement.isCompleted) return;
+
+    final newProgress = (achievement.progress + increment).clamp(0, achievement.maxProgress);
+    final isNowCompleted = newProgress >= achievement.maxProgress;
+
+    _achievements[index] = achievement.copyWith(
+      progress: newProgress,
+      isCompleted: isNowCompleted,
+      completedAt: isNowCompleted ? DateTime.now() : null,
+    );
+
+    if (isNowCompleted) {
+      debugPrint('Achievement completed: ${achievement.title}');
+      _onAchievementCompleted(_achievements[index]);
+    }
+
+    await _saveAchievements();
+    notifyListeners();
+  }
+
+  /// 実績完了時の処理
+  void _onAchievementCompleted(Achievement achievement) {
+    debugPrint('🎉 Achievement unlocked: ${achievement.title}');
+    debugPrint('Reward: ${achievement.rewardGold} gold, ${achievement.rewardExp} exp');
+  }
+
+  /// ガイド状態の更新
+  Future<void> updateGuideState(PlayerGuideState newState) async {
+    _guideState = newState;
+    await _saveGuideState();
+    notifyListeners();
+  }
+
+  /// 特定のアクションを記録
+  Future<void> recordAction(String action) async {
+    var newState = _guideState.copyWith(
+      totalActionsCompleted: _guideState.totalActionsCompleted + 1,
+    );
+
+    // アクション固有の状態更新
+    switch (action) {
+      case 'shop_visit':
+        newState = newState.copyWith(hasSeenShop: true);
+        await updateAchievementProgress('first_shop_visit');
+        break;
+      case 'weapon_purchase':
+        await updateAchievementProgress('first_weapon_purchase');
+        break;
+      case 'weapon_sale':
+        newState = newState.copyWith(hasCompletedFirstSale: true);
+        await updateAchievementProgress('first_weapon_sale');
+        await updateAchievementProgress('sales_5');
+        break;
+      case 'weapon_craft':
+        newState = newState.copyWith(hasCompletedFirstCraft: true);
+        await updateAchievementProgress('first_craft');
+        break;
+      case 'adventurer_visit':
+        newState = newState.copyWith(hasSeenAdventurer: true);
+        break;
+      case 'crafting_visit':
+        newState = newState.copyWith(hasSeenCrafting: true);
+        break;
+    }
+
+    await updateGuideState(newState);
+  }
+
+  /// 現在の目標を取得
+  String getCurrentObjective() {
+    if (_guideState.isFirstTimeUser) {
+      return 'ようこそ武器屋へ！まずはショップタブを見てみましょう';
+    }
+    
+    if (!_guideState.hasSeenShop) {
+      return 'ショップで武器を確認してみましょう';
+    }
+    
+    if (!_guideState.hasCompletedFirstSale) {
+      return '武器を購入して冒険者に販売してみましょう';
+    }
+    
+    if (!_guideState.hasSeenCrafting) {
+      return '合成タブで武器作成を試してみましょう';
+    }
+    
+    if (!_guideState.hasCompletedFirstCraft) {
+      return '素材を集めて武器を作成してみましょう';
+    }
+    
+    if (_guideState.totalActionsCompleted < 10) {
+      return 'いろいろな機能を試して、経験を積みましょう';
+    }
+    
+    return '自由に武器屋経営を楽しみましょう！';
+  }
+
+  /// 次のステップの推奨アクション
+  List<String> getRecommendedActions() {
+    final actions = <String>[];
+    
+    if (!_guideState.hasSeenShop) {
+      actions.add('ショップタブを開く');
+    }
+    
+    if (_guideState.hasSeenShop && !_guideState.hasCompletedFirstSale) {
+      actions.add('武器を購入する');
+      actions.add('冒険者に武器を販売する');
+    }
+    
+    if (!_guideState.hasSeenCrafting) {
+      actions.add('合成タブを確認する');
+    }
+    
+    if (_guideState.hasSeenCrafting && !_guideState.hasCompletedFirstCraft) {
+      actions.add('武器を作成する');
+    }
+    
+    if (!_guideState.hasSeenAdventurer) {
+      actions.add('冒険者タブを確認する');
+    }
+
+    // 経験者向けの推奨アクション
+    if (_guideState.totalActionsCompleted >= 5) {
+      actions.add('ショップレベルを上げる');
+      actions.add('高レア武器を作成する');
+      actions.add('エンチャントを試す');
+    }
+    
+    return actions;
+  }
+
+  /// セッション開始時の処理
+  Future<void> onSessionStart() async {
+    final newState = _guideState.copyWith(
+      sessionCount: _guideState.sessionCount + 1,
+      lastPlayedAt: DateTime.now(),
+    );
+    
+    await updateGuideState(newState);
+    
+    // 初回ログイン実績
+    if (newState.sessionCount == 1) {
+      await updateAchievementProgress('first_login');
+    }
+  }
+
+  /// 新規プレイヤーかどうか
+  bool isNewPlayer() => _guideState.isNewPlayer;
+  
+  /// チュートリアル完了かどうか
+  bool isTutorialCompleted() => _guideState.hasCompletedTutorial;
+
   /// 進行状況のリセット（デバッグ用）
   Future<void> resetProgress() async {
     final box = await Hive.openBox(AppConstants.gameDataKey);
     await box.delete(_progressKey);
     _currentProgress = null;
     await _loadProgress();
+  }
+
+  /// デバッグ用：ガイド状態リセット
+  Future<void> resetGuideState() async {
+    if (kDebugMode) {
+      _guideState = PlayerGuideState.initial();
+      await _saveGuideState();
+      notifyListeners();
+    }
+  }
+
+  /// デバッグ用：実績リセット
+  Future<void> resetAchievements() async {
+    if (kDebugMode) {
+      _achievements.clear();
+      await _saveAchievements();
+      await _initializeDefaultAchievements();
+      notifyListeners();
+    }
   }
 }

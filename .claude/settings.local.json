@@ -35,7 +35,23 @@
       "mcp__playwright__browser_press_key",
       "Bash(pod install:*)",
       "Bash(pkill:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(docker stats:*)",
+      "Bash(docker kill:*)",
+      "Bash(true)",
+      "Bash(dart analyze:*)",
+      "Bash(timeout:*)",
+      "Bash(dart compile:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(cat:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(flutter:*)",
+      "Bash(dart pub:*)",
+      "Bash(psql:*)",
+      "Bash(pip install:*)",
+      "Bash(docker-compose exec:*)",
+      "mcp__playwright__browser_network_requests"
     ],
     "deny": []
   }

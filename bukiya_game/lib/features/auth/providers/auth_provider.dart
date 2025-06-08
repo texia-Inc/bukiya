@@ -76,7 +76,19 @@ class AuthProvider extends ChangeNotifier {
             }
           }
         } else {
-          // リフレッシュトークンもない場合
+          // リフレッシュトークンもない場合 - ゲストログインを試行
+          print('認証トークンがない - ゲストログインを試行');
+          try {
+            final guestLoginSuccess = await guestLogin();
+            if (guestLoginSuccess) {
+              print('ゲストログイン成功');
+              return; // ゲストログイン成功なら終了
+            }
+          } catch (e) {
+            print('ゲストログイン失敗: $e');
+          }
+          
+          // ゲストログインも失敗した場合
           if (rememberLogin != 'true') {
             await logout();
           } else {
@@ -87,6 +99,19 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       print('認証状態確認エラー: $e');
+      
+      // 認証チェックエラーの場合もゲストログインを試行
+      try {
+        print('認証チェック失敗 - ゲストログインを試行');
+        final guestLoginSuccess = await guestLogin();
+        if (guestLoginSuccess) {
+          print('ゲストログインで復旧成功');
+          return;
+        }
+      } catch (guestError) {
+        print('ゲストログインも失敗: $guestError');
+      }
+      
       _setError('認証状態の確認に失敗しました');
       await logout();
     } finally {
@@ -344,7 +369,7 @@ class AuthProvider extends ChangeNotifier {
       final deviceId = await _deviceService.getDeviceId();
       final deviceInfo = await _deviceService.getDeviceInfo();
 
-      final response = await _apiService.dio.post('/auth/guest-login', data: {
+      final response = await _apiService.dio.post('/api/v1/auth/guest-login', data: {
         'device_id': deviceId,
         'device_info': deviceInfo,
       });
@@ -406,7 +431,7 @@ class AuthProvider extends ChangeNotifier {
       final deviceId = await _deviceService.getDeviceId();
       final deviceInfo = await _deviceService.getDeviceInfo();
 
-      final response = await _apiService.dio.post('/auth/device-login', data: {
+      final response = await _apiService.dio.post('/api/v1/auth/device-login', data: {
         'device_id': deviceId,
         'device_info': deviceInfo,
       });

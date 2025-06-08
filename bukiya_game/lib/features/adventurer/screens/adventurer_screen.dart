@@ -13,6 +13,7 @@ import '../widgets/adventurer_detail_dialog.dart';
 import '../widgets/weapon_selection_dialog.dart';
 import '../widgets/quest_dispatch_dialog.dart';
 import '../widgets/buyback_dialog.dart';
+import '../../character/screens/character_screen.dart';
 
 class AdventurerScreen extends StatefulWidget {
   const AdventurerScreen({super.key});
@@ -28,19 +29,23 @@ class _AdventurerScreenState extends State<AdventurerScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       setState(() {});
     });
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadAdventurerData();
+      final adventurerProvider = context.read<AdventurerProvider>();
+      adventurerProvider.startAutoUpdate();
     });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    final adventurerProvider = context.read<AdventurerProvider>();
+    adventurerProvider.stopAutoUpdate();
     super.dispose();
   }
 
@@ -84,6 +89,10 @@ class _AdventurerScreenState extends State<AdventurerScreen>
                     text: '買取 (${adventurerProvider.pendingBuybacks.length})',
                     icon: const Icon(Icons.shopping_bag),
                   ),
+                  const Tab(
+                    text: '固有キャラ',
+                    icon: Icon(Icons.star),
+                  ),
                 ],
               ),
               
@@ -95,6 +104,7 @@ class _AdventurerScreenState extends State<AdventurerScreen>
                     _buildVisitorsTab(adventurerProvider),
                     _buildOnQuestTab(adventurerProvider),
                     _buildBuybackTab(adventurerProvider),
+                    _buildCharacterTab(),
                   ],
                 ),
               ),
@@ -116,11 +126,7 @@ class _AdventurerScreenState extends State<AdventurerScreen>
     return RefreshIndicator(
       onRefresh: () => provider.loadAdventurerData(),
       child: provider.visitingAdventurers.isEmpty
-          ? _buildEmptyState(
-              Icons.people_outline,
-              '現在、訪問中の冒険者はいません',
-              '冒険者が来店するまでお待ちください',
-            )
+          ? _buildEmptyStateWithSpawn(provider)
           : _buildAdventurerList(provider.visitingAdventurers, true),
     );
   }
@@ -432,12 +438,32 @@ class _AdventurerScreenState extends State<AdventurerScreen>
     final provider = context.read<AdventurerProvider>();
     
     try {
-      final success = await provider.sellWeaponToAdventurer(adventurerId, weaponId, price);
+      final result = await provider.sellWeaponToAdventurer(adventurerId, weaponId, price);
       
-      if (success && mounted) {
-        _showSuccessMessage('武器を販売しました！');
+      if (result.success && mounted) {
+        // 詳細な成功メッセージを表示
+        String successMessage = '武器を販売しました！\n';
+        successMessage += '獲得ゴールド: ${result.goldEarned}G';
+        
+        if (result.trustGained != null && result.trustGained! > 0) {
+          successMessage += '\n信頼度 +${result.trustGained}';
+        }
+        
+        if (result.questDispatched && result.questAreaName != null) {
+          successMessage += '\n✅ ${result.questAreaName}へクエスト派遣';
+          if (result.questDurationMinutes != null) {
+            successMessage += '（${result.questDurationMinutes}分）';
+          }
+        }
+        
+        if (result.saleReason != null) {
+          successMessage += '\n${result.saleReason}';
+        }
+        
+        _showSuccessMessage(successMessage);
       } else if (mounted) {
-        _showErrorMessage(provider.errorMessage ?? '販売に失敗しました');
+        // 詳細な失敗理由を表示
+        _showErrorMessage(result.message.isNotEmpty ? result.message : '販売に失敗しました');
       }
     } catch (e) {
       if (mounted) {
@@ -538,6 +564,59 @@ class _AdventurerScreenState extends State<AdventurerScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildEmptyStateWithSpawn(AdventurerProvider provider) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.people_outline,
+            size: 64,
+            color: AppTheme.textSecondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '現在、訪問中の冒険者はいません',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '冒険者が自動で来店するか、手動で呼び出してください',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: provider.isLoading ? null : () async {
+              try {
+                await provider.manualSpawnVisitors();
+                _showSuccessMessage('新しい冒険者を呼び出しました');
+              } catch (e) {
+                _showErrorMessage('冒険者の呼び出しに失敗しました');
+              }
+            },
+            icon: const Icon(Icons.add_call),
+            label: const Text('冒険者を呼び出す'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCharacterTab() {
+    return const CharacterScreen();
   }
 
 }

@@ -37,25 +37,48 @@ class AdventurerCard extends StatelessWidget {
               Row(
                 children: [
                   // アバター
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: professionColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: professionColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        adventurer.professionIcon,
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: professionColor,
+                  Stack(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: professionColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: professionColor.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            adventurer.professionIcon,
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: professionColor,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      // 固有キャラクターの星印
+                      if (adventurer.isNamedCharacter)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: AppTheme.warningColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.star,
+                              size: 12,
+                              color: AppTheme.backgroundColor,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(width: 12),
                   

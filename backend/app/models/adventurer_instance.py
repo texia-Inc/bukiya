@@ -1,7 +1,8 @@
 """
 冒険者インスタンスモデル
 """
-from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey, DateTime, Text, UUID
+from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey, DateTime, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
@@ -22,15 +23,43 @@ class AdventurerInstance(Base):
     current_quest_id = Column(UUID(as_uuid=True))
     visit_start_time = Column(DateTime(timezone=True))
     visit_end_time = Column(DateTime(timezone=True))
+    
+    # 新しいキャラクターシステムとの連携
+    is_named_character = Column(Boolean, default=False)  # 固有キャラクターかどうか
+    character_id = Column(Integer, ForeignKey("adventurer_characters.id"))  # 固有キャラクターID
+    generic_name = Column(String(100))  # 名前なしキャラクター用の汎用名前
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # リレーション
     adventurer_master = relationship("AdventurerMaster", lazy="joined")
+    character = relationship("AdventurerCharacter", back_populates="adventurer_instances")  # 新しいキャラクターシステム
     player = relationship("Player", back_populates="adventurers")
     requests = relationship("AdventurerRequest", back_populates="adventurer", cascade="all, delete-orphan")
     quests = relationship("AdventurerQuest", back_populates="adventurer", cascade="all, delete-orphan")
     purchases = relationship("AdventurerPurchase", back_populates="adventurer", cascade="all, delete-orphan")
+    
+    @property
+    def display_name(self):
+        """表示用の名前を取得（キャラクターシステム対応）"""
+        if self.is_named_character and self.character:
+            return self.character.display_name
+        elif self.generic_name:
+            return self.generic_name
+        else:
+            # フォールバック：職業名ベースの汎用名前を生成
+            if self.adventurer_master:
+                profession_names = {
+                    'warrior': '戦士',
+                    'archer': '弓使い', 
+                    'mage': '魔法使い',
+                    'rogue': '盗賊',
+                    'paladin': '聖騎士'
+                }
+                profession = profession_names.get(self.adventurer_master.profession, '冒険者')
+                return f"訪問中の{profession}"
+            return self.name
 
 
 class AdventurerRequest(Base):

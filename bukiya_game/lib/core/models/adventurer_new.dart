@@ -5,43 +5,48 @@ part 'adventurer_new.g.dart';
 // 冒険者マスター
 @JsonSerializable()
 class AdventurerMaster {
-  final int id;
+  @JsonKey(defaultValue: 0)
+  final int? id;
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: '')
   final String profession;
+  @JsonKey(defaultValue: 1)
   final int level;
+  @JsonKey(defaultValue: '')
   final String personality;
-  @JsonKey(name: 'trust_level')
+  @JsonKey(name: 'trust_level', defaultValue: 50)
   final int trustLevel;
-  @JsonKey(name: 'budget_min')
+  @JsonKey(name: 'budget_min', defaultValue: 500)
   final int budgetMin;
-  @JsonKey(name: 'budget_max')
+  @JsonKey(name: 'budget_max', defaultValue: 2000)
   final int budgetMax;
-  @JsonKey(name: 'preferred_weapon_type')
+  @JsonKey(name: 'preferred_weapon_type', defaultValue: '')
   final String preferredWeaponType;
   @JsonKey(name: 'avatar_url')
   final String? avatarUrl;
   final String? description;
-  @JsonKey(name: 'min_attack_requirement')
+  @JsonKey(name: 'min_attack_requirement', defaultValue: 100)
   final int minAttackRequirement;
-  @JsonKey(name: 'max_budget_multiplier')
+  @JsonKey(name: 'max_budget_multiplier', defaultValue: 1.0)
   final double maxBudgetMultiplier;
-  @JsonKey(name: 'urgency_tendency')
+  @JsonKey(name: 'urgency_tendency', defaultValue: 3)
   final int urgencyTendency;
-  @JsonKey(name: 'spawn_weight')
+  @JsonKey(name: 'spawn_weight', defaultValue: 100)
   final int spawnWeight;
-  @JsonKey(name: 'min_player_level')
+  @JsonKey(name: 'min_player_level', defaultValue: 1)
   final int minPlayerLevel;
   @JsonKey(name: 'max_player_level')
   final int? maxPlayerLevel;
-  @JsonKey(name: 'is_active')
-  final bool isActive;
+  @JsonKey(name: 'is_active', defaultValue: true)
+  final bool? isActive;
   @JsonKey(name: 'created_at')
-  final DateTime createdAt;
+  final DateTime? createdAt;
   @JsonKey(name: 'updated_at')
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
 
   const AdventurerMaster({
-    required this.id,
+    this.id,
     required this.name,
     required this.profession,
     required this.level,
@@ -58,33 +63,35 @@ class AdventurerMaster {
     required this.spawnWeight,
     required this.minPlayerLevel,
     this.maxPlayerLevel,
-    required this.isActive,
-    required this.createdAt,
-    required this.updatedAt,
+    this.isActive,
+    this.createdAt,
+    this.updatedAt,
   });
 
-  factory AdventurerMaster.fromJson(Map<String, dynamic> json) =>
-      _$AdventurerMasterFromJson(json);
+  factory AdventurerMaster.fromJson(Map<String, dynamic> json) => _$AdventurerMasterFromJson(json);
   Map<String, dynamic> toJson() => _$AdventurerMasterToJson(this);
 }
 
 // 冒険者リクエスト
 @JsonSerializable()
 class AdventurerRequest {
+  @JsonKey(defaultValue: '')
   final String id;
-  @JsonKey(name: 'adventurer_instance_id')
+  @JsonKey(name: 'adventurer_instance_id', defaultValue: '')
   final String adventurerInstanceId;
-  @JsonKey(name: 'weapon_type')
+  @JsonKey(name: 'weapon_type', defaultValue: '')
   final String weaponType;
-  @JsonKey(name: 'min_attack')
+  @JsonKey(name: 'min_attack', defaultValue: 100)
   final int minAttack;
-  @JsonKey(name: 'max_budget')
+  @JsonKey(name: 'max_budget', defaultValue: 1000)
   final int maxBudget;
   @JsonKey(name: 'preferred_rarity')
   final String? preferredRarity;
+  @JsonKey(defaultValue: 3)
   final int urgency;
   final String? description;
   final DateTime deadline;
+  @JsonKey(defaultValue: 'pending')
   final String status;
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
@@ -106,8 +113,7 @@ class AdventurerRequest {
     required this.updatedAt,
   });
 
-  factory AdventurerRequest.fromJson(Map<String, dynamic> json) =>
-      _$AdventurerRequestFromJson(json);
+  factory AdventurerRequest.fromJson(Map<String, dynamic> json) => _$AdventurerRequestFromJson(json);
   Map<String, dynamic> toJson() => _$AdventurerRequestToJson(this);
 
   // 緊急度の表示名
@@ -139,15 +145,19 @@ class AdventurerRequest {
 // 冒険者インスタンス
 @JsonSerializable()
 class Adventurer {
+  @JsonKey(defaultValue: '')
   final String id;
-  @JsonKey(name: 'adventurer_master_id')
-  final int adventurerMasterId;
+  @JsonKey(name: 'adventurer_master_id', defaultValue: 0)
+  final int? adventurerMasterId;
   @JsonKey(name: 'player_id')
   final String? playerId;
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: 1)
   final int level;
-  @JsonKey(name: 'trust_level')
+  @JsonKey(name: 'trust_level', defaultValue: 50)
   final int trustLevel;
+  @JsonKey(defaultValue: 'visiting')
   final String status;
   @JsonKey(name: 'current_quest_id')
   final String? currentQuestId;
@@ -156,16 +166,26 @@ class Adventurer {
   @JsonKey(name: 'visit_end_time')
   final DateTime? visitEndTime;
   @JsonKey(name: 'created_at')
-  final DateTime createdAt;
+  final DateTime? createdAt;
   @JsonKey(name: 'updated_at')
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
   @JsonKey(name: 'adventurer_master')
   final AdventurerMaster? adventurerMaster;
   final List<AdventurerRequest> requests;
+  @JsonKey(name: 'current_quest')
+  final QuestProgress? currentQuest;
+  
+  // 固有キャラクターシステム
+  @JsonKey(name: 'is_named_character', defaultValue: false)
+  final bool isNamedCharacter;
+  @JsonKey(name: 'character_id')
+  final int? characterId;
+  @JsonKey(name: 'generic_name')
+  final String? genericName;
 
   const Adventurer({
     required this.id,
-    required this.adventurerMasterId,
+    this.adventurerMasterId,
     this.playerId,
     required this.name,
     required this.level,
@@ -174,14 +194,17 @@ class Adventurer {
     this.currentQuestId,
     this.visitStartTime,
     this.visitEndTime,
-    required this.createdAt,
-    required this.updatedAt,
+    this.createdAt,
+    this.updatedAt,
     this.adventurerMaster,
     this.requests = const [],
+    this.currentQuest,
+    required this.isNamedCharacter,
+    this.characterId,
+    this.genericName,
   });
 
-  factory Adventurer.fromJson(Map<String, dynamic> json) =>
-      _$AdventurerFromJson(json);
+  factory Adventurer.fromJson(Map<String, dynamic> json) => _$AdventurerFromJson(json);
   Map<String, dynamic> toJson() => _$AdventurerToJson(this);
 
   // 残り滞在時間（分）
@@ -297,50 +320,52 @@ enum AdventurerStatus {
 // クエストエリア
 @JsonSerializable()
 class QuestArea {
+  @JsonKey(defaultValue: 0)
   final int id;
+  @JsonKey(defaultValue: '')
   final String name;
-  @JsonKey(name: 'area_type')
+  @JsonKey(name: 'area_type', defaultValue: '')
   final String areaType;
+  @JsonKey(defaultValue: 1)
   final int difficulty;
-  @JsonKey(name: 'required_level')
-  final int requiredLevel;
-  @JsonKey(name: 'duration_minutes')
+  @JsonKey(name: 'required_level', defaultValue: 1)
+  final int? requiredLevel;
+  @JsonKey(name: 'duration_minutes', defaultValue: 60)
   final int durationMinutes;
   @JsonKey(name: 'image_url')
   final String? imageUrl;
-  @JsonKey(name: 'background_color')
+  @JsonKey(name: 'background_color', defaultValue: '#4CAF50')
   final String backgroundColor;
   final String? description;
   @JsonKey(name: 'unlock_condition')
   final String? unlockCondition;
-  @JsonKey(name: 'is_active')
-  final bool isActive;
-  @JsonKey(name: 'display_order')
-  final int displayOrder;
+  @JsonKey(name: 'is_active', defaultValue: true)
+  final bool? isActive;
+  @JsonKey(name: 'display_order', defaultValue: 1)
+  final int? displayOrder;
   @JsonKey(name: 'created_at')
-  final DateTime createdAt;
+  final DateTime? createdAt;
   @JsonKey(name: 'updated_at')
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
 
   const QuestArea({
     required this.id,
     required this.name,
     required this.areaType,
     required this.difficulty,
-    required this.requiredLevel,
+    this.requiredLevel,
     required this.durationMinutes,
     this.imageUrl,
     required this.backgroundColor,
     this.description,
     this.unlockCondition,
-    required this.isActive,
-    required this.displayOrder,
-    required this.createdAt,
-    required this.updatedAt,
+    this.isActive,
+    this.displayOrder,
+    this.createdAt,
+    this.updatedAt,
   });
 
-  factory QuestArea.fromJson(Map<String, dynamic> json) =>
-      _$QuestAreaFromJson(json);
+  factory QuestArea.fromJson(Map<String, dynamic> json) => _$QuestAreaFromJson(json);
   Map<String, dynamic> toJson() => _$QuestAreaToJson(this);
 
   // 難易度の表示名
@@ -368,16 +393,138 @@ class QuestArea {
   String get imageUrlCompat => imageUrl ?? '';
 }
 
+// クエスト進捗詳細情報
+@JsonSerializable()
+class QuestProgress {
+  @JsonKey(defaultValue: '')
+  final String id;
+  @JsonKey(defaultValue: 'in_progress')
+  final String status;
+  @JsonKey(name: 'start_time')
+  final DateTime startTime;
+  @JsonKey(name: 'end_time')
+  final DateTime endTime;
+  @JsonKey(name: 'progress_percentage', defaultValue: 0.0)
+  final double progressPercentage;
+  @JsonKey(name: 'remaining_time')
+  final RemainingTime remainingTime;
+  @JsonKey(name: 'is_completed')
+  final bool isCompleted;
+  @JsonKey(name: 'quest_area')
+  final QuestArea questArea;
+  @JsonKey(name: 'weapon_used')
+  final WeaponUsed weaponUsed;
+
+  const QuestProgress({
+    required this.id,
+    required this.status,
+    required this.startTime,
+    required this.endTime,
+    required this.progressPercentage,
+    required this.remainingTime,
+    required this.isCompleted,
+    required this.questArea,
+    required this.weaponUsed,
+  });
+
+  factory QuestProgress.fromJson(Map<String, dynamic> json) => _$QuestProgressFromJson(json);
+  Map<String, dynamic> toJson() => _$QuestProgressToJson(this);
+
+  // 進捗状況の表示テキスト
+  String get progressText {
+    if (isCompleted) return '完了';
+    return '${progressPercentage.toStringAsFixed(1)}%';
+  }
+
+  // 残り時間の表示テキスト
+  String get remainingTimeText {
+    if (isCompleted) return '完了';
+    if (remainingTime.hours > 0) {
+      return '${remainingTime.hours}時間${remainingTime.minutes}分';
+    } else {
+      return '${remainingTime.minutes}分';
+    }
+  }
+}
+
+// 残り時間情報
+@JsonSerializable()
+class RemainingTime {
+  @JsonKey(defaultValue: 0)
+  final int hours;
+  @JsonKey(defaultValue: 0)
+  final int minutes;
+  @JsonKey(name: 'total_minutes', defaultValue: 0)
+  final int totalMinutes;
+
+  const RemainingTime({
+    required this.hours,
+    required this.minutes,
+    required this.totalMinutes,
+  });
+
+  factory RemainingTime.fromJson(Map<String, dynamic> json) => _$RemainingTimeFromJson(json);
+  Map<String, dynamic> toJson() => _$RemainingTimeToJson(this);
+}
+
+// 使用武器情報
+@JsonSerializable()
+class WeaponUsed {
+  @JsonKey(defaultValue: '')
+  final String id;
+  @JsonKey(defaultValue: '')
+  final String name;
+  @JsonKey(defaultValue: 100)
+  final int attack;
+  @JsonKey(name: 'enchant_level', defaultValue: 0)
+  final int enchantLevel;
+  @JsonKey(name: 'weapon_type', defaultValue: '')
+  final String weaponType;
+  @JsonKey(name: 'display_name', defaultValue: '')
+  final String displayName;
+
+  const WeaponUsed({
+    required this.id,
+    required this.name,
+    required this.attack,
+    required this.enchantLevel,
+    required this.weaponType,
+    required this.displayName,
+  });
+
+  factory WeaponUsed.fromJson(Map<String, dynamic> json) => _$WeaponUsedFromJson(json);
+  Map<String, dynamic> toJson() => _$WeaponUsedToJson(this);
+
+  // エンチャントレベル表示
+  String get enchantText {
+    if (enchantLevel > 0) {
+      return '+$enchantLevel';
+    }
+    return '';
+  }
+
+  // 完全な武器名
+  String get fullDisplayName {
+    String result = displayName;
+    if (enchantLevel > 0) {
+      result += ' +$enchantLevel';
+    }
+    return result;
+  }
+}
+
 // クエスト報酬
 @JsonSerializable()
 class QuestReward {
+  @JsonKey(defaultValue: '')
   final String id;
-  @JsonKey(name: 'adventurer_quest_id')
+  @JsonKey(name: 'adventurer_quest_id', defaultValue: '')
   final String adventurerQuestId;
-  @JsonKey(name: 'item_type')
+  @JsonKey(name: 'item_type', defaultValue: '')
   final String itemType;
-  @JsonKey(name: 'item_id')
+  @JsonKey(name: 'item_id', defaultValue: '')
   final String itemId;
+  @JsonKey(defaultValue: 1)
   final int quantity;
   @JsonKey(name: 'buyback_price')
   final int? buybackPrice;
@@ -408,20 +555,22 @@ class QuestReward {
 // クエスト結果
 @JsonSerializable()
 class QuestResult {
+  @JsonKey(defaultValue: '')
   final String id;
-  @JsonKey(name: 'adventurer_instance_id')
+  @JsonKey(name: 'adventurer_instance_id', defaultValue: '')
   final String adventurerInstanceId;
-  @JsonKey(name: 'quest_area_id')
+  @JsonKey(name: 'quest_area_id', defaultValue: 0)
   final int questAreaId;
   @JsonKey(name: 'player_weapon_id')
   final String? playerWeaponId;
+  @JsonKey(defaultValue: 'pending')
   final String status;
   @JsonKey(name: 'start_time')
   final DateTime startTime;
   @JsonKey(name: 'end_time')
   final DateTime? endTime;
   final bool? success;
-  @JsonKey(name: 'gold_earned')
+  @JsonKey(name: 'gold_earned', defaultValue: 0)
   final int goldEarned;
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
@@ -499,13 +648,21 @@ class QuestResult {
 // 互換性のための QuestDrop
 @JsonSerializable()
 class QuestDrop {
+  @JsonKey(defaultValue: '')
   final String id;
+  @JsonKey(defaultValue: '')
   final String itemType;
+  @JsonKey(defaultValue: '')
   final String itemId;
+  @JsonKey(defaultValue: '')
   final String name;
+  @JsonKey(defaultValue: 'common')
   final String rarity;
+  @JsonKey(defaultValue: 1)
   final int quantity;
+  @JsonKey(defaultValue: 0)
   final int buybackPrice;
+  @JsonKey(defaultValue: '')
   final String description;
 
   const QuestDrop({

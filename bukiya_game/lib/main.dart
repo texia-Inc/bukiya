@@ -15,6 +15,8 @@ import 'features/idle/providers/idle_provider.dart';
 import 'features/enchantment/providers/enchantment_provider.dart';
 import 'features/settings/providers/settings_provider.dart';
 import 'features/tutorial/providers/tutorial_provider.dart';
+import 'features/dragon_event/providers/dragon_event_provider.dart';
+import 'features/character/providers/character_provider.dart';
 import 'core/services/api_service.dart';
 import 'core/services/seed_data_service.dart';
 import 'app/app.dart';
@@ -89,6 +91,14 @@ class BukiyaGameApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => EnchantmentProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => TutorialProvider()),
+        ChangeNotifierProxyProvider<ApiService, DragonEventProvider>(
+          create: (context) => DragonEventProvider(context.read<ApiService>()),
+          update: (context, apiService, previous) => previous ?? DragonEventProvider(apiService),
+        ),
+        ChangeNotifierProxyProvider<ApiService, CharacterProvider>(
+          create: (context) => CharacterProvider(context.read<ApiService>()),
+          update: (context, apiService, previous) => previous ?? CharacterProvider(apiService),
+        ),
       ],
       child: MaterialApp(
         title: '武器屋放置ゲーム',

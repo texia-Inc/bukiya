@@ -69,8 +69,8 @@ const MonsterList: React.FC = () => {
 
   const [deleteMonster] = useDeleteMonsterMutation();
 
-  const monsters = monstersResponse?.monsters || [];
-  const total = monstersResponse?.total || 0;
+  const monsters = monstersResponse?.data || [];
+  const total = monstersResponse?.pagination?.total || 0;
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -364,7 +364,7 @@ const MonsterList: React.FC = () => {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={monsters.length}
+          count={total}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

@@ -223,3 +223,218 @@ class TutorialContext {
   
   bool hasStep(TutorialStepType step) => availableSteps.contains(step);
 }
+
+/// 実績システム
+class Achievement {
+  final String id;
+  final String title;
+  final String description;
+  final String category;
+  final String iconName;
+  final bool isCompleted;
+  final DateTime? completedAt;
+  final int rewardGold;
+  final int rewardExp;
+  final String? rewardItem;
+  final int progress;
+  final int maxProgress;
+  final bool isHidden; // 隠し実績
+  
+  const Achievement({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.iconName,
+    this.isCompleted = false,
+    this.completedAt,
+    this.rewardGold = 0,
+    this.rewardExp = 0,
+    this.rewardItem,
+    this.progress = 0,
+    this.maxProgress = 1,
+    this.isHidden = false,
+  });
+  
+  double get progressPercentage {
+    if (maxProgress == 0) return 0.0;
+    return (progress / maxProgress).clamp(0.0, 1.0);
+  }
+  
+  Achievement copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? category,
+    String? iconName,
+    bool? isCompleted,
+    DateTime? completedAt,
+    int? rewardGold,
+    int? rewardExp,
+    String? rewardItem,
+    int? progress,
+    int? maxProgress,
+    bool? isHidden,
+  }) {
+    return Achievement(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      iconName: iconName ?? this.iconName,
+      isCompleted: isCompleted ?? this.isCompleted,
+      completedAt: completedAt ?? this.completedAt,
+      rewardGold: rewardGold ?? this.rewardGold,
+      rewardExp: rewardExp ?? this.rewardExp,
+      rewardItem: rewardItem ?? this.rewardItem,
+      progress: progress ?? this.progress,
+      maxProgress: maxProgress ?? this.maxProgress,
+      isHidden: isHidden ?? this.isHidden,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'description': description,
+    'category': category,
+    'icon_name': iconName,
+    'is_completed': isCompleted,
+    'completed_at': completedAt?.toIso8601String(),
+    'reward_gold': rewardGold,
+    'reward_exp': rewardExp,
+    'reward_item': rewardItem,
+    'progress': progress,
+    'max_progress': maxProgress,
+    'is_hidden': isHidden,
+  };
+
+  factory Achievement.fromJson(Map<String, dynamic> json) => Achievement(
+    id: json['id'],
+    title: json['title'],
+    description: json['description'],
+    category: json['category'],
+    iconName: json['icon_name'],
+    isCompleted: json['is_completed'] ?? false,
+    completedAt: json['completed_at'] != null 
+        ? DateTime.parse(json['completed_at'])
+        : null,
+    rewardGold: json['reward_gold'] ?? 0,
+    rewardExp: json['reward_exp'] ?? 0,
+    rewardItem: json['reward_item'],
+    progress: json['progress'] ?? 0,
+    maxProgress: json['max_progress'] ?? 1,
+    isHidden: json['is_hidden'] ?? false,
+  );
+}
+
+/// プレイヤーガイド状態
+class PlayerGuideState {
+  final bool hasCompletedTutorial;
+  final bool hasSeenWelcome;
+  final bool hasSeenShop;
+  final bool hasSeenCrafting;
+  final bool hasSeenAdventurer;
+  final bool hasCompletedFirstSale;
+  final bool hasCompletedFirstCraft;
+  final String? currentObjective;
+  final List<String> unlockedFeatures;
+  final DateTime? lastPlayedAt;
+  final int sessionCount;
+  final List<String> seenTooltips;
+  final int totalActionsCompleted;
+  
+  const PlayerGuideState({
+    this.hasCompletedTutorial = false,
+    this.hasSeenWelcome = false,
+    this.hasSeenShop = false,
+    this.hasSeenCrafting = false,
+    this.hasSeenAdventurer = false,
+    this.hasCompletedFirstSale = false,
+    this.hasCompletedFirstCraft = false,
+    this.currentObjective,
+    this.unlockedFeatures = const [],
+    this.lastPlayedAt,
+    this.sessionCount = 0,
+    this.seenTooltips = const [],
+    this.totalActionsCompleted = 0,
+  });
+  
+  bool get isNewPlayer => sessionCount <= 3;
+  bool get needsGuidance => !hasCompletedTutorial || isNewPlayer;
+  bool get isFirstTimeUser => sessionCount == 0;
+  
+  PlayerGuideState copyWith({
+    bool? hasCompletedTutorial,
+    bool? hasSeenWelcome,
+    bool? hasSeenShop,
+    bool? hasSeenCrafting,
+    bool? hasSeenAdventurer,
+    bool? hasCompletedFirstSale,
+    bool? hasCompletedFirstCraft,
+    String? currentObjective,
+    List<String>? unlockedFeatures,
+    DateTime? lastPlayedAt,
+    int? sessionCount,
+    List<String>? seenTooltips,
+    int? totalActionsCompleted,
+  }) {
+    return PlayerGuideState(
+      hasCompletedTutorial: hasCompletedTutorial ?? this.hasCompletedTutorial,
+      hasSeenWelcome: hasSeenWelcome ?? this.hasSeenWelcome,
+      hasSeenShop: hasSeenShop ?? this.hasSeenShop,
+      hasSeenCrafting: hasSeenCrafting ?? this.hasSeenCrafting,
+      hasSeenAdventurer: hasSeenAdventurer ?? this.hasSeenAdventurer,
+      hasCompletedFirstSale: hasCompletedFirstSale ?? this.hasCompletedFirstSale,
+      hasCompletedFirstCraft: hasCompletedFirstCraft ?? this.hasCompletedFirstCraft,
+      currentObjective: currentObjective ?? this.currentObjective,
+      unlockedFeatures: unlockedFeatures ?? this.unlockedFeatures,
+      lastPlayedAt: lastPlayedAt ?? this.lastPlayedAt,
+      sessionCount: sessionCount ?? this.sessionCount,
+      seenTooltips: seenTooltips ?? this.seenTooltips,
+      totalActionsCompleted: totalActionsCompleted ?? this.totalActionsCompleted,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'has_completed_tutorial': hasCompletedTutorial,
+    'has_seen_welcome': hasSeenWelcome,
+    'has_seen_shop': hasSeenShop,
+    'has_seen_crafting': hasSeenCrafting,
+    'has_seen_adventurer': hasSeenAdventurer,
+    'has_completed_first_sale': hasCompletedFirstSale,
+    'has_completed_first_craft': hasCompletedFirstCraft,
+    'current_objective': currentObjective,
+    'unlocked_features': unlockedFeatures,
+    'last_played_at': lastPlayedAt?.toIso8601String(),
+    'session_count': sessionCount,
+    'seen_tooltips': seenTooltips,
+    'total_actions_completed': totalActionsCompleted,
+  };
+
+  factory PlayerGuideState.fromJson(Map<String, dynamic> json) => PlayerGuideState(
+    hasCompletedTutorial: json['has_completed_tutorial'] ?? false,
+    hasSeenWelcome: json['has_seen_welcome'] ?? false,
+    hasSeenShop: json['has_seen_shop'] ?? false,
+    hasSeenCrafting: json['has_seen_crafting'] ?? false,
+    hasSeenAdventurer: json['has_seen_adventurer'] ?? false,
+    hasCompletedFirstSale: json['has_completed_first_sale'] ?? false,
+    hasCompletedFirstCraft: json['has_completed_first_craft'] ?? false,
+    currentObjective: json['current_objective'],
+    unlockedFeatures: (json['unlocked_features'] as List<dynamic>?)
+        ?.map((e) => e.toString()).toList() ?? [],
+    lastPlayedAt: json['last_played_at'] != null 
+        ? DateTime.parse(json['last_played_at'])
+        : null,
+    sessionCount: json['session_count'] ?? 0,
+    seenTooltips: (json['seen_tooltips'] as List<dynamic>?)
+        ?.map((e) => e.toString()).toList() ?? [],
+    totalActionsCompleted: json['total_actions_completed'] ?? 0,
+  );
+
+  static PlayerGuideState initial() => PlayerGuideState(
+    sessionCount: 0,
+    currentObjective: 'ようこそ！まずはショップを見てみましょう',
+    unlockedFeatures: ['shop', 'dashboard'],
+  );
+}

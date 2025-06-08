@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/models/weapon.dart';
 import '../../../core/models/player.dart';
+import '../../tutorial/providers/tutorial_provider.dart';
 
 class ShopProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
+  TutorialProvider? _tutorialProvider;
 
   List<Weapon> _weapons = [];
   List<Weapon> _filteredWeapons = [];
@@ -34,11 +36,17 @@ class ShopProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      _weapons = await _apiService.getWeapons();
+      // より多くの武器を取得するため、limitを増やす
+      _weapons = await _apiService.getWeapons(limit: 100);
+      debugPrint('取得した武器数: ${_weapons.length}');
+      for (var weapon in _weapons) {
+        debugPrint('武器: ${weapon.name}, タイプ: ${weapon.weaponType}, レベル: ${weapon.requiredLevel}');
+      }
       if (player != null) {
         _currentPlayer = player;
       }
       _applyFilters();
+      debugPrint('フィルター後の武器数: ${_filteredWeapons.length}');
       notifyListeners();
     } catch (e) {
       _setError('武器一覧の読み込みに失敗しました: $e');
@@ -54,13 +62,21 @@ class ShopProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // TutorialProviderを設定
+  void setTutorialProvider(TutorialProvider tutorialProvider) {
+    _tutorialProvider = tutorialProvider;
+  }
+
   // 武器を購入
-  Future<bool> purchaseWeapon(String weaponId) async {
+  Future<bool> purchaseWeapon(String weaponId, {String? weaponName, int? price}) async {
     try {
       await _apiService.purchaseWeapon(weaponId);
       
-      // ミッション進捗を記録（他のプロバイダーが利用可能な場合）
-      // 注意: 実際の実装では依存性注入やイベントバスを使用することを推奨
+      // 武器購入実績を記録
+      _tutorialProvider?.recordAction('weapon_purchase');
+      
+      // 購入成功を通知 (呼び出し側でフィードバック表示)
+      debugPrint('武器購入成功: $weaponName (${price}G)');
       
       return true;
     } catch (e) {
@@ -99,8 +115,11 @@ class ShopProvider extends ChangeNotifier {
 
     // 武器タイプでフィルター
     if (_currentFilters['weaponType'] != 'all') {
-      filtered = filtered.where((weapon) => 
-        weapon.weaponType == _currentFilters['weaponType']).toList();
+      debugPrint('武器タイプフィルター: ${_currentFilters['weaponType']}');
+      filtered = filtered.where((weapon) {
+        debugPrint('武器 ${weapon.name} のタイプ: ${weapon.weaponType}');
+        return weapon.weaponType == _currentFilters['weaponType'];
+      }).toList();
     }
 
     // レアリティでフィルター

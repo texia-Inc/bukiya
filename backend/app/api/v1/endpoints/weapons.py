@@ -20,6 +20,21 @@ from app.schemas import (
 router = APIRouter()
 
 # 管理画面用の認証不要エンドポイント
+@router.get("/", response_model=WeaponMasterListResponse)
+async def get_weapons_list(
+    page: int = Query(1, ge=1, description="ページ番号"),
+    limit: int = Query(20, ge=1, le=100, description="1ページあたりのアイテム数"),
+    weapon_type_id: Optional[str] = Query(None, description="武器タイプIDフィルター"),
+    rarity_id: Optional[int] = Query(None, description="レアリティIDフィルター"),
+    min_level: Optional[int] = Query(None, description="最小必要レベル"),
+    max_level: Optional[int] = Query(None, description="最大必要レベル"),
+    db: Session = Depends(get_db)
+):
+    """
+    武器マスター一覧を取得（認証不要・管理画面用）
+    """
+    return await get_weapons_admin(page, limit, weapon_type_id, rarity_id, min_level, max_level, db)
+
 @router.get("/admin/list", response_model=WeaponMasterListResponse)
 async def get_weapons_admin(
     page: int = Query(1, ge=1, description="ページ番号"),

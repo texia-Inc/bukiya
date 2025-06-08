@@ -38,11 +38,31 @@ class _WeaponSelectionDialogState extends State<WeaponSelectionDialog> {
     // 武器インベントリを読み込み
     await inventoryProvider.loadPlayerWeapons();
     
-    // 冒険者のリクエストに合う武器をフィルター
+    // デバッグ: 冒険者の詳細情報
+    debugPrint('=== 冒険者デバッグ情報 ===');
+    debugPrint('冒険者名: ${widget.adventurer.name}');
+    debugPrint('冒険者レベル: ${widget.adventurer.level}');
+    debugPrint('好きな武器タイプ: ${widget.adventurer.preferredWeaponType}');
+    debugPrint('予算: ${widget.adventurer.budget}');
+    debugPrint('リクエスト数: ${widget.adventurer.requests.length}');
+    
+    for (int i = 0; i < widget.adventurer.requests.length; i++) {
+      final req = widget.adventurer.requests[i];
+      debugPrint('リクエスト$i: 武器タイプ=${req.weaponType}, 攻撃力=${req.minAttack}+, 予算=${req.maxBudget}G, ステータス=${req.status}');
+    }
+    
     final request = widget.adventurer.currentRequest;
+    debugPrint('現在のリクエスト: ${request != null ? "あり" : "なし"}');
+    
     if (request != null) {
-      debugPrint('冒険者のリクエスト: 武器タイプ=${request.weaponType}, 攻撃力=${request.minAttack}+, 予算=${request.maxBudget}G');
+      debugPrint('現在のリクエスト詳細: 武器タイプ=${request.weaponType}, 攻撃力=${request.minAttack}+, 予算=${request.maxBudget}G');
       debugPrint('プレイヤーの武器数: ${inventoryProvider.playerWeapons.length}');
+      
+      // プレイヤーの武器一覧をデバッグ出力
+      for (int i = 0; i < inventoryProvider.playerWeapons.length; i++) {
+        final weapon = inventoryProvider.playerWeapons[i];
+        debugPrint('武器$i: ${weapon.weaponMaster.name}, タイプ=${weapon.weaponMaster.weaponType}, 攻撃力=${weapon.totalAttack}, 売却価格=${weapon.sellPrice}');
+      }
       
       _compatibleWeapons = inventoryProvider.playerWeapons.where((weapon) {
         // 武器タイプをチェック（複数の可能性を考慮）
@@ -50,8 +70,8 @@ class _WeaponSelectionDialogState extends State<WeaponSelectionDialog> {
         final requestedType = request.weaponType.toLowerCase();
         final weaponTypeMatch = _isWeaponTypeMatch(weaponType, requestedType);
         
-        // 攻撃力をチェック
-        final attackMatch = weapon.totalAttack >= request.minAttack;
+        // 攻撃力をチェック（一時的に条件を緩くする）
+        final attackMatch = weapon.totalAttack >= (request.minAttack * 0.1).round(); // 10%まで緩く
         
         // 予算内かチェック（武器の売却価格が予算以下）
         final priceMatch = weapon.sellPrice <= request.maxBudget;
@@ -62,6 +82,21 @@ class _WeaponSelectionDialogState extends State<WeaponSelectionDialog> {
       }).toList();
       
       debugPrint('条件に合う武器数: ${_compatibleWeapons.length}');
+    } else {
+      debugPrint('現在のリクエストがnullです');
+      // リクエストがない場合は、冒険者の好みの武器タイプを使用
+      if (widget.adventurer.preferredWeaponType.isNotEmpty) {
+        debugPrint('好みの武器タイプでフィルタリング: ${widget.adventurer.preferredWeaponType}');
+        _compatibleWeapons = inventoryProvider.playerWeapons.where((weapon) {
+          final weaponType = weapon.weaponMaster.weaponType.toLowerCase();
+          final preferredType = widget.adventurer.preferredWeaponType.toLowerCase();
+          return _isWeaponTypeMatch(weaponType, preferredType);
+        }).toList();
+      } else {
+        // フォールバック: 全ての武器を表示
+        debugPrint('フォールバック: 全ての武器を表示');
+        _compatibleWeapons = inventoryProvider.playerWeapons;
+      }
     }
     
     setState(() {

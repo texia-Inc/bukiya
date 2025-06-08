@@ -28,6 +28,7 @@ import { useGetMaterialsQuery } from '../services/api'
 import { MaterialCreateDialog } from '../components/MaterialCreateDialog'
 import { MaterialEditDialog } from '../components/MaterialEditDialog'
 import { MaterialDeleteDialog } from '../components/MaterialDeleteDialog'
+import Pagination from '../components/Pagination'
 
 // モックデータ
 const mockMaterials = [
@@ -79,7 +80,15 @@ const mockMaterials = [
 ]
 
 const MaterialList: React.FC = () => {
-  const { data: materialsData, isLoading, error, refetch } = useGetMaterialsQuery({})
+  // ページネーション関連の状態
+  const [page, setPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  
+  const { data: materialsData, isLoading, error, refetch } = useGetMaterialsQuery({
+    page,
+    limit: itemsPerPage,
+  })
+  
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -87,6 +96,8 @@ const MaterialList: React.FC = () => {
   
   // APIデータまたはモックデータを使用
   const materials = materialsData?.data || mockMaterials
+  const totalItems = materialsData?.total || mockMaterials.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   const handleEdit = (material: any) => {
     setSelectedMaterial(material)
@@ -108,6 +119,16 @@ const MaterialList: React.FC = () => {
 
   const handleCreateSuccess = () => {
     refetch() // データを再取得
+  }
+
+  // ページネーション関連のハンドラー
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setPage(1) // ページサイズが変更されたら最初のページに戻る
   }
 
   if (isLoading) {
@@ -282,6 +303,16 @@ const MaterialList: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          
+          {/* ページネーション */}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
         </CardContent>
       </Card>
 
