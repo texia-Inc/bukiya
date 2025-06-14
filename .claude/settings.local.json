@@ -51,7 +51,16 @@
       "Bash(psql:*)",
       "Bash(pip install:*)",
       "Bash(docker-compose exec:*)",
-      "mcp__playwright__browser_network_requests"
+      "mcp__playwright__browser_network_requests",
+      "Bash(npm run dev:*)",
+      "Bash(rg:*)",
+      "Bash(npm run build:*)",
+      "Bash(sed:*)",
+      "Bash(mkdir:*)",
+      "Bash(docker:*)",
+      "Bash(/usr/local/bin/docker ps -a)",
+      "mcp__playwright__browser_close",
+      "Bash(pip install:*)"
     ],
     "deny": []
   }

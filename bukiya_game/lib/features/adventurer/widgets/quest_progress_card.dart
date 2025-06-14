@@ -112,6 +112,51 @@ class _QuestProgressCardState extends State<QuestProgressCard> {
               
               const SizedBox(height: 8),
               
+              // モンスター情報
+              if (questProgress.monsterFighting != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warningColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.warningColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _getMonsterIcon(questProgress.monsterFighting!.monsterType),
+                        color: AppTheme.warningColor,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${questProgress.monsterFighting!.name} (Lv.${questProgress.monsterFighting!.level})',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.warningColor,
+                              ),
+                            ),
+                            if (questProgress.monsterFighting!.elementDisplayName.isNotEmpty)
+                              Text(
+                                '${questProgress.monsterFighting!.typeDisplayName} • ${questProgress.monsterFighting!.elementDisplayName}属性',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 10,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
               // 使用武器情報（簡略化）
               Row(
                 children: [
@@ -269,6 +314,27 @@ class _QuestProgressCardState extends State<QuestProgressCard> {
         return Icons.construction;
       default:
         return Icons.hardware;
+    }
+  }
+
+  IconData _getMonsterIcon(String monsterType) {
+    switch (monsterType.toLowerCase()) {
+      case 'beast':
+        return Icons.pets;
+      case 'humanoid':
+        return Icons.person;
+      case 'undead':
+        return Icons.dangerous;
+      case 'elemental':
+        return Icons.flash_on;
+      case 'dragon':
+        return Icons.whatshot;
+      case 'machine':
+        return Icons.precision_manufacturing;
+      case 'flying':
+        return Icons.flight;
+      default:
+        return Icons.bug_report;
     }
   }
 }

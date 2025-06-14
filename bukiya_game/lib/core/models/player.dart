@@ -38,7 +38,7 @@ class Player {
   final int gems;
   @JsonKey(name: 'shop_level')
   final int shopLevel;
-  @JsonKey(defaultValue: 0)
+  @JsonKey(name: 'shop_exp', defaultValue: 0)
   final int experience;
   final int reputation;
   @JsonKey(name: 'is_active')
@@ -49,6 +49,18 @@ class Player {
   final DateTime createdAt;
   @JsonKey(name: 'updated_at', fromJson: _dateTimeFromJsonNullable, toJson: _dateTimeToJson)
   final DateTime? updatedAt;
+  
+  // 放置収入システム
+  @JsonKey(name: 'idle_income_rate', defaultValue: 10)
+  final int idleIncomeRate;
+  @JsonKey(name: 'idle_income_multiplier', defaultValue: 100)
+  final int idleIncomeMultiplier;
+  @JsonKey(name: 'last_idle_collection_time', fromJson: _dateTimeFromJsonNullable, toJson: _dateTimeToJson)
+  final DateTime? lastIdleCollectionTime;
+  
+  // 訪問者スポーン制御
+  @JsonKey(name: 'last_visitor_spawn_time', fromJson: _dateTimeFromJsonNullable, toJson: _dateTimeToJson)
+  final DateTime? lastVisitorSpawnTime;
 
   const Player({
     required this.id,
@@ -63,38 +75,52 @@ class Player {
     this.lastLogin,
     required this.createdAt,
     this.updatedAt,
+    required this.idleIncomeRate,
+    required this.idleIncomeMultiplier,
+    this.lastIdleCollectionTime,
+    this.lastVisitorSpawnTime,
   });
 
   factory Player.fromJson(Map<String, dynamic> json) => _$PlayerFromJson(json);
   Map<String, dynamic> toJson() => _$PlayerToJson(this);
-
-  Player copyWith({
-    String? id,
-    String? username,
-    String? email,
-    int? gold,
-    int? gems,
-    int? shopLevel,
-    int? experience,
-    int? reputation,
-    bool? isActive,
-    DateTime? lastLogin,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return Player(
-      id: id ?? this.id,
-      username: username ?? this.username,
-      email: email ?? this.email,
-      gold: gold ?? this.gold,
-      gems: gems ?? this.gems,
-      shopLevel: shopLevel ?? this.shopLevel,
-      experience: experience ?? this.experience,
-      reputation: reputation ?? this.reputation,
-      isActive: isActive ?? this.isActive,
-      lastLogin: lastLogin ?? this.lastLogin,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt,
+  
+  // 放置収入システムの計算メソッド
+  
+  /// 放置収入倍率（表示用）
+  double get idleIncomeMultiplierDisplay => idleIncomeMultiplier / 100.0;
+  
+  /// 現在の1分あたり収入
+  double get currentIncomePerMinute {
+    final levelBonus = 1.0 + (shopLevel * 0.2);
+    return idleIncomeRate * levelBonus * idleIncomeMultiplierDisplay;
+  }
+  
+  /// 12時間（720分）での最大収入
+  int get maxIdleIncome => (720 * currentIncomePerMinute).floor();
+  
+  /// 放置収入を計算（現在時刻基準）
+  IdleIncomeCalculation calculateIdleIncome([DateTime? currentTime]) {
+    currentTime ??= DateTime.now();
+    final lastCollection = lastIdleCollectionTime ?? createdAt;
+    
+    // 経過時間（分）- 最大12時間（720分）まで
+    final elapsedSeconds = currentTime.difference(lastCollection).inSeconds;
+    final elapsedMinutes = (elapsedSeconds / 60).floor().clamp(0, 720);
+    
+    if (elapsedMinutes <= 0) {
+      return IdleIncomeCalculation(
+        income: 0,
+        elapsedMinutes: 0,
+        maxMinutes: 720,
+      );
+    }
+    
+    final totalIncome = (elapsedMinutes * currentIncomePerMinute).floor();
+    
+    return IdleIncomeCalculation(
+      income: totalIncome,
+      elapsedMinutes: elapsedMinutes,
+      maxMinutes: 720,
     );
   }
 
@@ -131,6 +157,77 @@ class Player {
 
   @override
   int get hashCode => id.hashCode;
+
+  Player copyWith({
+    String? id,
+    String? username,
+    String? email,
+    int? gold,
+    int? gems,
+    int? shopLevel,
+    int? experience,
+    int? reputation,
+    bool? isActive,
+    DateTime? lastLogin,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    int? idleIncomeRate,
+    int? idleIncomeMultiplier,
+    DateTime? lastIdleCollectionTime,
+    DateTime? lastVisitorSpawnTime,
+  }) {
+    return Player(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      gold: gold ?? this.gold,
+      gems: gems ?? this.gems,
+      shopLevel: shopLevel ?? this.shopLevel,
+      experience: experience ?? this.experience,
+      reputation: reputation ?? this.reputation,
+      isActive: isActive ?? this.isActive,
+      lastLogin: lastLogin ?? this.lastLogin,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      idleIncomeRate: idleIncomeRate ?? this.idleIncomeRate,
+      idleIncomeMultiplier: idleIncomeMultiplier ?? this.idleIncomeMultiplier,
+      lastIdleCollectionTime: lastIdleCollectionTime ?? this.lastIdleCollectionTime,
+      lastVisitorSpawnTime: lastVisitorSpawnTime ?? this.lastVisitorSpawnTime,
+    );
+  }
+}
+
+/// 放置収入計算結果
+class IdleIncomeCalculation {
+  final int income;
+  final int elapsedMinutes;
+  final int maxMinutes;
+  
+  const IdleIncomeCalculation({
+    required this.income,
+    required this.elapsedMinutes, 
+    required this.maxMinutes,
+  });
+  
+  /// 進捗率（0.0-1.0）
+  double get progressRatio => elapsedMinutes / maxMinutes;
+  
+  /// 進捗率（パーセント）
+  int get progressPercentage => (progressRatio * 100).floor();
+  
+  /// 残り時間（分）
+  int get remainingMinutes => maxMinutes - elapsedMinutes;
+  
+  /// 残り時間（時間と分）
+  String get remainingTimeDisplay {
+    final hours = remainingMinutes ~/ 60;
+    final minutes = remainingMinutes % 60;
+    if (hours > 0) {
+      return '${hours}時間${minutes}分';
+    } else {
+      return '${minutes}分';
+    }
+  }
 }
 
 @JsonSerializable()

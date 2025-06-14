@@ -12,7 +12,7 @@ import '../providers/shop_provider.dart';
 import '../widgets/weapon_card.dart';
 import '../widgets/weapon_detail_dialog.dart';
 import '../widgets/shop_filter_bar.dart';
-import '../widgets/purchase_confirmation_dialog.dart';
+import '../widgets/procurement_confirmation_dialog.dart';
 import '../../inventory/providers/inventory_provider.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -128,7 +128,7 @@ class _ShopScreenState extends State<ShopScreen>
           child: RefreshIndicator(
             onRefresh: _loadShopData,
             child: shopProvider.weapons.isEmpty
-                ? _buildEmptyState('購入可能な武器がありません')
+                ? _buildEmptyState('仕入れ可能な武器がありません')
                 : _buildWeaponGrid(shopProvider.weapons, true),
           ),
         ),
@@ -192,7 +192,7 @@ class _ShopScreenState extends State<ShopScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            '• 売却価格は購入価格の70%です\n'
+            '• 売却価格は仕入れ価格の70%です\n'
             '• 売却後の武器は回復できません\n'
             '• レア度の高い武器ほど高値で売れます',
             style: TextStyle(
@@ -230,7 +230,7 @@ class _ShopScreenState extends State<ShopScreen>
                   isPurchaseMode: isPurchaseMode,
                   onTap: () => _showWeaponDetail(weapons[index], isPurchaseMode),
                   onAction: isPurchaseMode
-                      ? () => _handlePurchase(weapons[index])
+                      ? () => _handleProcurement(weapons[index])
                       : () => _handleSell(weapons[index]),
                 ),
               ),
@@ -271,9 +271,9 @@ class _ShopScreenState extends State<ShopScreen>
         weapon: weapon,
         isPurchaseMode: isPurchaseMode,
         onPurchase: isPurchaseMode ? () {
-          // まず詳細ダイアログを閉じてから購入処理を開始
+          // まず詳細ダイアログを閉じてから仕入れ処理を開始
           Navigator.of(context).pop();
-          _handlePurchase(weapon);
+          _handleProcurement(weapon);
         } : null,
         onSell: !isPurchaseMode ? () {
           Navigator.of(context).pop();
@@ -283,7 +283,7 @@ class _ShopScreenState extends State<ShopScreen>
     );
   }
 
-  Future<void> _handlePurchase(Weapon weapon) async {
+  Future<void> _handleProcurement(Weapon weapon) async {
     final authProvider = context.read<AuthProvider>();
     final player = authProvider.currentPlayer;
     
@@ -325,10 +325,10 @@ class _ShopScreenState extends State<ShopScreen>
       return;
     }
 
-    // 購入確認ダイアログ
+    // 仕入れ確認ダイアログ
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => PurchaseConfirmationDialog(
+      builder: (context) => ProcurementConfirmationDialog(
         weapon: weapon,
         playerGold: currentPlayer.gold,
       ),
@@ -337,19 +337,19 @@ class _ShopScreenState extends State<ShopScreen>
     if (confirmed == true && mounted) {
       try {
         final shopProvider = context.read<ShopProvider>();
-        final success = await shopProvider.purchaseWeapon(weapon.id);
+        final success = await shopProvider.procureWeapon(weapon.id.toString());
         
         if (success && mounted) {
-          // 購入成功メッセージを表示
-          _showSuccessMessage('${weapon.name}を購入しました！');
+          // 仕入れ成功メッセージを表示
+          _showSuccessMessage('${weapon.name}を仕入れました！');
           
-          // 購入成功後にプレイヤー情報を更新
+          // 仕入れ成功後にプレイヤー情報を更新
           try {
             final updatedPlayer = await authProvider.apiService.getPlayerProfile();
             await authProvider.updatePlayer(updatedPlayer);
-            debugPrint('Player gold updated after purchase: ${updatedPlayer.gold}');
+            debugPrint('Player gold updated after procurement: ${updatedPlayer.gold}');
           } catch (e) {
-            debugPrint('Failed to update player data after purchase: $e');
+            debugPrint('Failed to update player data after procurement: $e');
           }
           
           // 少し待ってからダイアログを閉じる
@@ -358,12 +358,12 @@ class _ShopScreenState extends State<ShopScreen>
             Navigator.of(context).pop(true);
           }
         } else if (mounted) {
-          _showErrorMessage(shopProvider.errorMessage ?? '購入に失敗しました');
+          _showErrorMessage(shopProvider.errorMessage ?? '仕入れに失敗しました');
         }
       } catch (e) {
-        debugPrint('Purchase error: $e');
+        debugPrint('Procurement error: $e');
         if (mounted) {
-          _showErrorMessage('購入中にエラーが発生しました');
+          _showErrorMessage('仕入れ中にエラーが発生しました');
         }
       }
     }
@@ -372,7 +372,7 @@ class _ShopScreenState extends State<ShopScreen>
   Future<void> _handleSell(Weapon weapon) async {
     final inventoryProvider = context.read<InventoryProvider>();
     
-    // 売却価格を計算（購入価格の70%）
+    // 売却価格を計算（仕入れ価格の70%）
     final sellPrice = (weapon.price * 0.7).round();
     
     // 売却確認ダイアログ
@@ -384,7 +384,7 @@ class _ShopScreenState extends State<ShopScreen>
     if (confirmed == true) {
       try {
         // インベントリプロバイダーの売却メソッドを呼び出し
-        final success = await inventoryProvider.sellWeapon(weapon.id);
+        final success = await inventoryProvider.sellWeapon(weapon.id.toString());
         
         if (success) {
           Navigator.of(context).pop(); // 詳細ダイアログを閉じる
@@ -449,7 +449,7 @@ class _ShopScreenState extends State<ShopScreen>
                   _buildInfoRow('タイプ', weapon.weaponType),
                   _buildInfoRow('レアリティ', weapon.rarity),
                   _buildInfoRow('攻撃力', '${weapon.attack}'),
-                  _buildInfoRow('購入価格', '${weapon.price}G'),
+                  _buildInfoRow('仕入れ価格', '${weapon.price}G'),
                   _buildInfoRow('売却価格', '${sellPrice}G'),
                 ],
               ),
@@ -632,7 +632,7 @@ class _ShopScreenState extends State<ShopScreen>
                     : null,
                 ),
                 child: Text(
-                  '[1] 購入',
+                  '[1] 仕入れ',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: _tabController.index == 0 
@@ -705,7 +705,7 @@ class _ShopScreenState extends State<ShopScreen>
           const SizedBox(height: 8),
           if (shopProvider.weapons.isEmpty)
             Text(
-              '購入可能な武器がありません',
+              '仕入れ可能な武器がありません',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.textSecondary,
               ),
@@ -760,9 +760,9 @@ class _ShopScreenState extends State<ShopScreen>
             Expanded(
               flex: 1,
               child: GestureDetector(
-                onTap: () => _handlePurchase(weapon),
+                onTap: () => _handleProcurement(weapon),
                 child: Text(
-                  '[購入]',
+                  '[仕入れ]',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppTheme.successColor,
                   ),

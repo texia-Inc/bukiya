@@ -61,7 +61,7 @@ def get_adventurers(
     )
 
 @router.get("/adventurers/{adventurer_id}", response_model=AdventurerMasterSchema)
-def get_adventurer(adventurer_id: int, db: Session = Depends(get_db)):
+def get_adventurer(adventurer_id: str, db: Session = Depends(get_db)):
     """冒険者マスター詳細取得"""
     adventurer = db.query(AdventurerMaster).filter(AdventurerMaster.id == adventurer_id).first()
     if not adventurer:
@@ -88,7 +88,7 @@ def create_adventurer(adventurer: AdventurerMasterCreate, db: Session = Depends(
 
 @router.put("/adventurers/{adventurer_id}", response_model=AdventurerMasterSchema)
 def update_adventurer(
-    adventurer_id: int,
+    adventurer_id: str,
     adventurer: AdventurerMasterUpdate,
     db: Session = Depends(get_db)
 ):
@@ -123,7 +123,7 @@ def update_adventurer(
     return db_adventurer
 
 @router.delete("/adventurers/{adventurer_id}")
-def delete_adventurer(adventurer_id: int, db: Session = Depends(get_db)):
+def delete_adventurer(adventurer_id: str, db: Session = Depends(get_db)):
     """冒険者マスター削除"""
     db_adventurer = db.query(AdventurerMaster).filter(AdventurerMaster.id == adventurer_id).first()
     if not db_adventurer:
@@ -155,7 +155,8 @@ def get_monsters(
         query = query.filter(MonsterMaster.is_active == is_active)
     
     # 総件数取得
-    total = query.count()
+    from sqlalchemy import func
+    total = db.query(func.count(MonsterMaster.id)).filter(MonsterMaster.is_active == True).scalar()
     
     # ページネーション
     offset = (page - 1) * limit
@@ -169,7 +170,7 @@ def get_monsters(
     )
 
 @router.get("/monsters/{monster_id}", response_model=MonsterMasterSchema)
-def get_monster(monster_id: int, db: Session = Depends(get_db)):
+def get_monster(monster_id: str, db: Session = Depends(get_db)):
     """モンスターマスター詳細取得"""
     monster = db.query(MonsterMaster).filter(MonsterMaster.id == monster_id).first()
     if not monster:
@@ -192,7 +193,7 @@ def create_monster(monster: MonsterMasterCreate, db: Session = Depends(get_db)):
 
 @router.put("/monsters/{monster_id}", response_model=MonsterMasterSchema)
 def update_monster(
-    monster_id: int,
+    monster_id: str,
     monster: MonsterMasterUpdate,
     db: Session = Depends(get_db)
 ):
@@ -221,7 +222,7 @@ def update_monster(
     return db_monster
 
 @router.delete("/monsters/{monster_id}")
-def delete_monster(monster_id: int, db: Session = Depends(get_db)):
+def delete_monster(monster_id: str, db: Session = Depends(get_db)):
     """モンスターマスター削除"""
     db_monster = db.query(MonsterMaster).filter(MonsterMaster.id == monster_id).first()
     if not db_monster:

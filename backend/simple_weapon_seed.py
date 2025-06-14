@@ -57,13 +57,13 @@ def main():
             
             # 武器データ挿入（100個の武器）
             weapons_sql = """
-            INSERT INTO weapon_masters (name, description, weapon_type_id, rarity_id, base_attack, base_price, required_level, is_craftable, is_active, created_at, updated_at) VALUES
-            -- 剣系武器 (20個)
-            ('ブロンズソード', '初心者向けの青銅製の剣', 'sword', 1, 10, 50, 1, true, true, NOW(), NOW()),
-            ('アイアンソード', '鉄製の丈夫な剣', 'sword', 1, 18, 100, 3, true, true, NOW(), NOW()),
-            ('スチールブレード', '鋼鉄製の切れ味鋭い剣', 'sword', 2, 25, 200, 5, true, true, NOW(), NOW()),
-            ('シルバーソード', '銀の力を宿した美しい剣', 'sword', 3, 35, 500, 8, true, true, NOW(), NOW()),
-            ('フレイムブレード', '炎の力を宿した魔法の剣', 'sword', 4, 50, 1200, 12, true, true, NOW(), NOW()),
+            INSERT INTO weapon_masters (id, name, description, weapon_type_id, rarity_id, base_attack_min, base_attack_max, base_price_min, base_price_max, required_shop_level, is_active, created_at, updated_at) VALUES
+            -- 剣系武器 (5個)
+            ('bronze_sword_new', 'ブロンズソード', '初心者向けの青銅製の剣', 'sword', 1, 8, 12, 40, 60, 1, true, NOW(), NOW()),
+            ('iron_sword_new', 'アイアンソード', '鉄製の丈夫な剣', 'sword', 1, 15, 20, 80, 120, 2, true, NOW(), NOW()),
+            ('steel_blade', 'スチールブレード', '鋼鉄製の切れ味鋭い剣', 'sword', 2, 22, 28, 180, 220, 3, true, NOW(), NOW()),
+            ('silver_sword_new', 'シルバーソード', '銀の力を宿した美しい剣', 'sword', 3, 30, 40, 450, 550, 5, true, NOW(), NOW()),
+            ('flame_blade', 'フレイムブレード', '炎の力を宿った魔法の剣', 'sword', 4, 45, 55, 1000, 1400, 8, true, NOW(), NOW()),
             ('エクスカリバー', '伝説の聖剣', 'sword', 5, 80, 5000, 20, false, true, NOW(), NOW()),
             ('ロングソード', '長めの刃を持つ剣', 'sword', 1, 15, 80, 1, true, true, NOW(), NOW()),
             ('バスタードソード', '両手持ちの大剣', 'sword', 2, 30, 250, 6, true, true, NOW(), NOW()),

@@ -728,7 +728,7 @@ class AdventurerTransaction {
   String get transactionTypeName {
     switch (transactionType) {
       case 'purchase':
-        return '購入';
+        return '仕入れ';
       case 'sale':
         return '売却';
       case 'trade':

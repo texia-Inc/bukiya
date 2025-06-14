@@ -129,7 +129,7 @@ class AdventurerCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${adventurer.remainingVisitMinutes}分',
+                        _formatRemainingTime(adventurer.remainingVisitMinutes),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: adventurer.remainingVisitMinutes <= 10
                               ? AppTheme.errorColor
@@ -289,6 +289,22 @@ class AdventurerCard extends StatelessWidget {
         return '聖騎士';
       default:
         return profession;
+    }
+  }
+
+  String _formatRemainingTime(int minutes) {
+    if (minutes <= 0) {
+      return '出発準備中';  // 0分の場合は「出発準備中」と表示
+    } else if (minutes >= 60) {
+      final hours = minutes ~/ 60;
+      final remainingMinutes = minutes % 60;
+      if (remainingMinutes == 0) {
+        return '${hours}時間';
+      } else {
+        return '${hours}時間${remainingMinutes}分';
+      }
+    } else {
+      return '${minutes}分';
     }
   }
 

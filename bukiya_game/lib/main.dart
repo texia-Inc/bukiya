@@ -17,6 +17,7 @@ import 'features/settings/providers/settings_provider.dart';
 import 'features/tutorial/providers/tutorial_provider.dart';
 import 'features/dragon_event/providers/dragon_event_provider.dart';
 import 'features/character/providers/character_provider.dart';
+import 'features/puzzle/providers/puzzle_provider.dart';
 import 'core/services/api_service.dart';
 import 'core/services/seed_data_service.dart';
 import 'app/app.dart';
@@ -99,6 +100,7 @@ class BukiyaGameApp extends StatelessWidget {
           create: (context) => CharacterProvider(context.read<ApiService>()),
           update: (context, apiService, previous) => previous ?? CharacterProvider(apiService),
         ),
+        ChangeNotifierProvider(create: (_) => PuzzleProvider()),
       ],
       child: MaterialApp(
         title: '武器屋放置ゲーム',

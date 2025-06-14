@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from uuid import UUID
 
 from .common import BaseResponse, PaginatedResponse
+from .season import Season
 
 # 武器種別スキーマ
 class WeaponTypeBase(BaseModel):
@@ -22,7 +23,7 @@ class WeaponType(WeaponTypeBase):
     id: str
     is_active: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -47,10 +48,17 @@ class RarityLevelUpdate(BaseModel):
     is_active: Optional[bool] = Field(None, description="有効フラグ")
 
 class RarityLevel(RarityLevelBase):
-    id: int
+    id: str
+    level: int
+    star_display: Optional[str] = None
+    attack_multiplier: float = 1.00
+    max_enchant_level: int = 10
+    ability_slots: int = 0
+    base_drop_rate: float = 0.6000
+    price_multiplier: float = 1.00
     is_active: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -58,14 +66,16 @@ class RarityLevel(RarityLevelBase):
 # 武器マスタースキーマ
 class WeaponMasterBase(BaseModel):
     name: str = Field(..., max_length=100, description="武器名")
-    description: Optional[str] = Field(None, description="説明")
     weapon_type_id: str = Field(..., description="武器種別ID")
-    rarity_id: int = Field(..., description="レアリティID")
-    base_attack: int = Field(..., gt=0, description="基本攻撃力")
-    base_price: int = Field(..., ge=0, description="基本価格")
-    required_level: int = Field(1, ge=1, description="必要レベル")
-    image_url: Optional[str] = Field(None, max_length=255, description="画像URL")
-    is_craftable: bool = Field(True, description="合成可能フラグ")
+    rarity_id: str = Field(..., description="レアリティID")
+    season_id: Optional[int] = Field(None, description="シーズンID")
+    base_attack_min: int = Field(..., gt=0, description="基本攻撃力最小値")
+    base_attack_max: int = Field(..., gt=0, description="基本攻撃力最大値")
+    base_price_min: int = Field(..., ge=0, description="基本価格最小値")
+    base_price_max: int = Field(..., ge=0, description="基本価格最大値")
+    crafting_time_minutes: Optional[int] = Field(30, description="作成時間（分）")
+    required_shop_level: Optional[int] = Field(1, description="必要ショップレベル")
+    description: Optional[str] = Field(None, description="説明")
 
 class WeaponMasterCreate(WeaponMasterBase):
     pass
@@ -74,23 +84,38 @@ class WeaponMasterUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100, description="武器名")
     description: Optional[str] = Field(None, description="説明")
     weapon_type_id: Optional[str] = Field(None, description="武器種別ID")
-    rarity_id: Optional[int] = Field(None, description="レアリティID")
-    base_attack: Optional[int] = Field(None, gt=0, description="基本攻撃力")
-    base_price: Optional[int] = Field(None, ge=0, description="基本価格")
-    required_level: Optional[int] = Field(None, ge=1, description="必要レベル")
+    rarity_id: Optional[str] = Field(None, description="レアリティID")
+    season_id: Optional[int] = Field(None, description="シーズンID")
+    attribute_id: Optional[str] = Field(None, description="属性ID")
+    base_attack_min: Optional[int] = Field(None, gt=0, description="基本攻撃力最小値")
+    base_attack_max: Optional[int] = Field(None, gt=0, description="基本攻撃力最大値")
+    base_price_min: Optional[int] = Field(None, ge=0, description="基本価格最小値")
+    base_price_max: Optional[int] = Field(None, ge=0, description="基本価格最大値")
+    enchant_growth_rate: Optional[float] = Field(None, description="エンチャント成長率")
+    max_enchant_level: Optional[int] = Field(None, description="最大エンチャントレベル")
     image_url: Optional[str] = Field(None, max_length=255, description="画像URL")
-    is_craftable: Optional[bool] = Field(None, description="合成可能フラグ")
+    effect_color: Optional[str] = Field(None, max_length=7, description="エフェクト色")
+    crafting_time_minutes: Optional[int] = Field(None, description="作成時間（分）")
+    required_shop_level: Optional[int] = Field(None, description="必要ショップレベル")
+    required_adventurer_level: Optional[int] = Field(None, description="必要冒険者レベル")
+    drop_rate: Optional[float] = Field(None, description="ドロップ率")
     is_active: Optional[bool] = Field(None, description="有効フラグ")
+    is_test_only: Optional[bool] = Field(None, description="テスト専用フラグ")
 
 class WeaponMaster(WeaponMasterBase):
     id: int
+    season_id: Optional[int] = Field(None, description="シーズンID")
     is_active: bool
     created_at: datetime
     updated_at: datetime
     weapon_type: WeaponType
     rarity: RarityLevel
+    season: Optional[Season] = Field(None, description="所属シーズン")
+    base_attack: int = Field(..., description="平均攻撃力（後方互換性）")
+    base_price: int = Field(..., description="平均価格（後方互換性）")
     calculated_attack: int = Field(..., description="レアリティ倍率適用後攻撃力")
     calculated_price: int = Field(..., description="レアリティ倍率適用後価格")
+    required_level: int = Field(..., description="必要レベル（Flutter互換性）")
 
     class Config:
         from_attributes = True

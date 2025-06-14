@@ -153,9 +153,9 @@ class _MonsterManagementScreenState extends State<MonsterManagementScreen> {
                         : AdminDataTable(
                             columns: _getTableColumns(),
                             rows: _buildTableRows(adminProvider),
-                            selectedIds: adminProvider.selectedMonsterIds,
+                            selectedIds: adminProvider.selectedMonsterIds.map((id) => id.toString()).toSet(),
                             onSelectAll: adminProvider.toggleAllMonstersSelection,
-                            onSelectRow: adminProvider.toggleMonsterSelection,
+                            onSelectRow: (idString) => adminProvider.toggleMonsterSelection(int.parse(idString)),
                             pagination: adminProvider.monsterPagination,
                             onPageChanged: (page) => _changePage(page),
                           ),
@@ -354,7 +354,7 @@ class _MonsterManagementScreenState extends State<MonsterManagementScreen> {
         monster: monster,
         onSubmit: (monsterData) async {
           final adminProvider = context.read<AdminProvider>();
-          final success = await adminProvider.updateMonster(monster.id, monsterData);
+          final success = await adminProvider.updateMonster(monster.id.toString(), monsterData);
           if (success && mounted) {
             Navigator.of(context).pop();
             ScaffoldMessenger.of(context).showSnackBar(
@@ -418,7 +418,7 @@ class _MonsterManagementScreenState extends State<MonsterManagementScreen> {
           ElevatedButton(
             onPressed: () async {
               final adminProvider = context.read<AdminProvider>();
-              final success = await adminProvider.deleteMonster(monster.id);
+              final success = await adminProvider.deleteMonster(monster.id.toString());
               if (success && mounted) {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(

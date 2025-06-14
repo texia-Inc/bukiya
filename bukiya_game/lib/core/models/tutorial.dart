@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 enum TutorialStepType {
   welcome,           // ウェルカム
   shopBasics,        // ショップ基本操作
-  weaponPurchase,    // 武器購入
+  weaponProcure,    // 武器仕入れ
   adventurerIntro,   // 冒険者システム紹介
   weaponSale,        // 武器販売
   inventoryManage,   // インベントリ管理

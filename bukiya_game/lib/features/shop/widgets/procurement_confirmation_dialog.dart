@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../shared/themes/app_theme.dart';
 import '../../../core/models/weapon.dart';
 
-class PurchaseConfirmationDialog extends StatelessWidget {
+class ProcurementConfirmationDialog extends StatelessWidget {
   final Weapon weapon;
   final int playerGold;
 
-  const PurchaseConfirmationDialog({
+  const ProcurementConfirmationDialog({
     super.key,
     required this.weapon,
     required this.playerGold,
@@ -35,7 +35,7 @@ class PurchaseConfirmationDialog extends StatelessWidget {
           children: [
             // タイトル
             Text(
-              '=== 購入確認 ===',
+              '=== 仕入れ確認 ===',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: AppTheme.primaryColor,
@@ -232,7 +232,7 @@ class PurchaseConfirmationDialog extends StatelessWidget {
                       Expanded(
                         flex: 3,
                         child: Text(
-                          '購入後の所持金:',
+                          '仕入れ後の所持金:',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppTheme.textPrimary,
                             fontWeight: FontWeight.bold,
@@ -299,7 +299,7 @@ class PurchaseConfirmationDialog extends StatelessWidget {
                             : null,
                       ),
                       child: Text(
-                        remainingGold >= 0 ? '[購入する]' : '[資金不足]',
+                        remainingGold >= 0 ? '[仕入れる]' : '[資金不足]',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: remainingGold >= 0 

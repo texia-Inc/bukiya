@@ -1,6 +1,6 @@
 class AppConstants {
   // API設定
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static const String baseUrl = 'http://localhost:8000';
   static const String apiVersion = 'v1';
   
   // 認証設定
@@ -80,7 +80,7 @@ class AppConstants {
   static const String updateSuccessMessage = '更新しました';
   static const String deleteSuccessMessage = '削除しました';
   static const String craftSuccessMessage = '合成に成功しました';
-  static const String purchaseSuccessMessage = '購入しました';
+  static const String purchaseSuccessMessage = '仕入れしました';
   static const String sellSuccessMessage = '売却しました';
   
   // バリデーション
@@ -146,7 +146,7 @@ class ApiEndpoints {
   
   // ショップ
   static const String shop = '/api/v1/shop';
-  static const String purchase = '/api/v1/shop/purchase';
+  static const String purchase = '/api/v1/shop/procure';
   static const String sell = '/api/v1/shop/sell';
   
   // 放置システム

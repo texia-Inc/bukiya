@@ -12,16 +12,17 @@ class PlayerWeapon(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="CASCADE"), nullable=False)
     weapon_master_id = Column(Integer, ForeignKey("weapon_masters.id"), nullable=False)
-    attack = Column(Integer, nullable=False)
+    base_attack = Column(Integer, nullable=False)
     enchant_level = Column(Integer, default=0, nullable=False)
     custom_name = Column(String(100))  # プレイヤーが付けたカスタム名
     is_equipped = Column(Boolean, default=False, nullable=False)
+    attack = Column(Integer)  # 互換性のため残す
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # 制約
     __table_args__ = (
-        CheckConstraint('attack > 0', name='player_weapons_attack_check'),
+        CheckConstraint('base_attack > 0', name='player_weapons_base_attack_check'),
         CheckConstraint('enchant_level >= 0', name='player_weapons_enchant_level_check'),
     )
     
@@ -31,7 +32,7 @@ class PlayerWeapon(Base):
     enchantments = relationship("WeaponEnchantment", back_populates="weapon", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<PlayerWeapon(id={self.id}, weapon='{self.weapon_master.name if self.weapon_master else 'Unknown'}', attack={self.attack})>"
+        return f"<PlayerWeapon(id={self.id}, weapon='{self.weapon_master.name if self.weapon_master else 'Unknown'}', attack={self.base_attack})>"
     
     @property
     def display_name(self):
@@ -44,7 +45,7 @@ class PlayerWeapon(Base):
     def total_attack(self):
         """エンチャントレベルを含む総攻撃力"""
         enchant_bonus = self.enchant_level * 5  # エンチャント1レベルあたり+5攻撃力
-        return self.attack + enchant_bonus
+        return self.base_attack + enchant_bonus
     
     def can_enchant(self):
         """エンチャント可能かチェック（最大レベル10）"""

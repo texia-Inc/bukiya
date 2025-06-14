@@ -234,7 +234,7 @@ class BuybackDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _getItemDisplayName(reward.itemType, reward.itemId),
+                  reward.itemName.isNotEmpty ? reward.itemName : _getItemDisplayName(reward.itemType, reward.itemId),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

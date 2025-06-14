@@ -174,7 +174,7 @@ class MissionAutoProgressService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      await _apiService.dio.post('/missions/progress', data: {
+      await _apiService.dio.post('/api/v1/missions/progress', data: {
         'action_type': actionType,
         'count': count,
         'metadata': metadata ?? {},
@@ -191,7 +191,7 @@ class MissionAutoProgressService {
     
     try {
       // プレイヤーのアイドル設定から推定
-      final response = await _apiService.dio.get('/idle/estimate-actions', 
+      final response = await _apiService.dio.get('/api/v1/idle/estimate-actions', 
         queryParameters: {
           'offline_minutes': offlineTime.inMinutes,
         });
@@ -230,7 +230,7 @@ class MissionAutoProgressService {
   /// オフライン中のゴールド収益を計算
   Future<int> _calculateOfflineGold(Duration offlineTime) async {
     try {
-      final response = await _apiService.dio.get('/idle/calculate-offline-gold',
+      final response = await _apiService.dio.get('/api/v1/idle/calculate-offline-gold',
         queryParameters: {
           'offline_minutes': offlineTime.inMinutes,
         });

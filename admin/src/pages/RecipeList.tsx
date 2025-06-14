@@ -6,13 +6,6 @@ import {
   CardContent,
   Chip,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   IconButton,
   Tooltip,
   CircularProgress,
@@ -30,6 +23,8 @@ import { RecipeCreateDialog } from '../components/RecipeCreateDialog'
 import { RecipeEditDialog } from '../components/RecipeEditDialog'
 import { RecipeDeleteDialog } from '../components/RecipeDeleteDialog'
 import Pagination from '../components/Pagination'
+import SortableTable from '../components/SortableTable'
+import type { SortableColumn } from '../components/SortableTable'
 
 // モックデータ
 const mockRecipes = [
@@ -127,10 +122,195 @@ const RecipeList: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null)
   
-  // APIデータまたはモックデータを使用
-  const recipes = recipesData?.data || mockRecipes
-  const totalItems = recipesData?.total || mockRecipes.length
+  // APIデータを優先、エラー時のみモックデータ使用
+  const recipes = error ? mockRecipes : (recipesData?.data || [])
+  const totalItems = error ? mockRecipes.length : (recipesData?.pagination?.total || 0)
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+  
+  // デバッグ用ログ
+  React.useEffect(() => {
+    console.log('RecipeList Debug:', {
+      isLoading,
+      error,
+      hasRecipesData: !!recipesData,
+      recipesCount: recipes.length,
+      usingMockData: !!error
+    });
+    
+    if (recipesData?.data) {
+      const problemRecipes = recipesData.data.filter(r => 
+        r.name?.includes('クリスタルスタッフ') || r.name?.includes('マジックソード')
+      );
+      console.log('Problem recipes from API:', problemRecipes);
+    }
+  }, [isLoading, error, recipesData, recipes]);
+
+  // テーブルのカラム定義
+  const recipeColumns: SortableColumn[] = [
+    {
+      id: 'id',
+      label: 'ID',
+      numeric: true,
+      align: 'left',
+    },
+    {
+      id: 'name',
+      label: 'レシピ名',
+      renderCell: (recipe) => (
+        <Box>
+          <Typography variant="body2" fontWeight="medium">
+            {recipe.name}
+          </Typography>
+          <Typography variant="caption" color="textSecondary">
+            {recipe.description}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'weapon.name',
+      label: '生成武器',
+      renderCell: (recipe) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip
+            label={recipe.weapon.rarity.name}
+            size="small"
+            sx={{
+              backgroundColor: recipe.weapon.rarity.color_code,
+              color: 'white',
+            }}
+          />
+          <Box>
+            <Typography variant="body2" fontWeight="medium">
+              {recipe.weapon.name}
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              {recipe.weapon.weapon_type.name}
+            </Typography>
+          </Box>
+        </Box>
+      ),
+    },
+    {
+      id: 'materials',
+      label: '必要素材',
+      sortable: false,
+      renderCell: (recipe) => {
+        // デバッグ用ログ
+        if (recipe.name?.includes('クリスタルスタッフ') || recipe.name?.includes('マジックソード')) {
+          console.log(`DEBUG: Recipe ${recipe.name}:`, {
+            materials: recipe.materials,
+            materialsLength: recipe.materials?.length,
+            firstMaterial: recipe.materials?.[0]
+          });
+        }
+        
+        return (
+          <Stack spacing={0.5}>
+            {recipe.materials?.slice(0, 3).map((mat: any, index: number) => (
+              <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip
+                  label={mat.material?.rarity?.name || 'Unknown'}
+                  size="small"
+                  sx={{
+                    backgroundColor: mat.material?.rarity?.color_code || '#gray',
+                    color: 'white',
+                    minWidth: 60,
+                  }}
+                />
+                <Typography variant="caption">
+                  {mat.material?.name || 'Unknown'} x{mat.quantity}
+                </Typography>
+              </Box>
+            ))}
+            {recipe.materials && recipe.materials.length > 3 && (
+              <Typography variant="caption" color="textSecondary">
+                他{recipe.materials.length - 3}個...
+              </Typography>
+            )}
+          </Stack>
+        );
+      },
+    },
+    {
+      id: 'gold_cost',
+      label: 'コスト',
+      numeric: true,
+      align: 'right',
+      renderCell: (recipe) => `${recipe.gold_cost}G`,
+    },
+    {
+      id: 'success_rate',
+      label: '成功率',
+      numeric: true,
+      align: 'right',
+      renderCell: (recipe) => `${(recipe.success_rate * 100).toFixed(0)}%`,
+    },
+    {
+      id: 'required_level',
+      label: '必要Lv',
+      numeric: true,
+      align: 'right',
+      renderCell: (recipe) => `Lv.${recipe.required_level}`,
+    },
+    {
+      id: 'is_active',
+      label: '状態',
+      sortable: false,
+      renderCell: (recipe) => (
+        <Chip
+          label={recipe.is_active ? '有効' : '無効'}
+          size="small"
+          color={recipe.is_active ? 'success' : 'error'}
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      label: '操作',
+      align: 'center',
+      sortable: false,
+      renderCell: (recipe) => (
+        <Box>
+          <Tooltip title="詳細表示">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleView(recipe.id);
+              }}
+            >
+              <ViewIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="編集">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit(recipe);
+              }}
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="削除">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(recipe);
+              }}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
 
   const handleEdit = (recipe: any) => {
     setSelectedRecipe(recipe)
@@ -256,127 +436,12 @@ const RecipeList: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             レシピ一覧
           </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>レシピ名</TableCell>
-                  <TableCell>生成武器</TableCell>
-                  <TableCell>必要素材</TableCell>
-                  <TableCell align="right">コスト</TableCell>
-                  <TableCell align="right">成功率</TableCell>
-                  <TableCell align="right">必要Lv</TableCell>
-                  <TableCell>状態</TableCell>
-                  <TableCell align="center">操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {recipes.map((recipe) => (
-                  <TableRow key={recipe.id} hover>
-                    <TableCell>{recipe.id}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="medium">
-                        {recipe.name}
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {recipe.description}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="body2">
-                          {recipe.weapon?.name}
-                        </Typography>
-                        <Chip
-                          label={recipe.weapon?.rarity?.name}
-                          size="small"
-                          sx={{
-                            backgroundColor: recipe.weapon?.rarity?.color_code,
-                            color: 'white',
-                          }}
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Stack spacing={0.5}>
-                        {recipe.materials?.map((material: any, index: number) => (
-                          <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Chip
-                              label={material.material?.rarity?.name}
-                              size="small"
-                              sx={{
-                                backgroundColor: material.material?.rarity?.color_code,
-                                color: 'white',
-                                minWidth: 50,
-                                fontSize: '0.6rem',
-                              }}
-                            />
-                            <Typography variant="caption">
-                              {material.material?.name} ×{material.quantity}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Stack>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2">
-                        {recipe.gold_cost}G
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        label={`${Math.round((recipe.success_rate || 0) * 100)}%`}
-                        size="small"
-                        color={recipe.success_rate >= 0.8 ? 'success' : recipe.success_rate >= 0.5 ? 'warning' : 'error'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2">
-                        Lv.{recipe.required_level}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={recipe.is_active ? '有効' : '無効'}
-                        size="small"
-                        color={recipe.is_active ? 'success' : 'error'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="詳細表示">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleView(recipe.id)}
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="編集">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(recipe)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="削除">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(recipe)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <SortableTable
+            columns={recipeColumns}
+            data={recipes}
+            defaultSortBy="id"
+            defaultSortOrder="asc"
+          />
           
           {/* ページネーション */}
           <Pagination

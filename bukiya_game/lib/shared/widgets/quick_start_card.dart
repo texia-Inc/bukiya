@@ -119,7 +119,7 @@ class QuickStartCard extends StatelessWidget {
         color = AppTheme.primaryColor;
         onTap = () => _navigateToTab(context, 1);
         break;
-      case '武器を購入する':
+      case '武器を仕入れる':
         icon = Icons.shopping_cart;
         color = AppTheme.accentColor;
         onTap = () => _navigateToTab(context, 1);

@@ -177,7 +177,7 @@ class WeaponDetailDialog extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            isPurchaseMode ? '価格' : '売却価格',
+                            isPurchaseMode ? '仕入れ価格' : '売却価格',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -240,7 +240,7 @@ class WeaponDetailDialog extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            isPurchaseMode ? '購入する' : '売却する',
+                            isPurchaseMode ? '仕入れる' : '売却する',
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,

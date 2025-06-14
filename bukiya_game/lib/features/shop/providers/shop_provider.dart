@@ -67,20 +67,20 @@ class ShopProvider extends ChangeNotifier {
     _tutorialProvider = tutorialProvider;
   }
 
-  // 武器を購入
-  Future<bool> purchaseWeapon(String weaponId, {String? weaponName, int? price}) async {
+  // 武器を仕入れ
+  Future<bool> procureWeapon(String weaponId, {String? weaponName, int? price}) async {
     try {
-      await _apiService.purchaseWeapon(weaponId);
+      await _apiService.procureWeapon(weaponId);
       
-      // 武器購入実績を記録
-      _tutorialProvider?.recordAction('weapon_purchase');
+      // 武器仕入れ実績を記録
+      _tutorialProvider?.recordAction('weapon_procure');
       
-      // 購入成功を通知 (呼び出し側でフィードバック表示)
-      debugPrint('武器購入成功: $weaponName (${price}G)');
+      // 仕入れ成功を通知 (呼び出し側でフィードバック表示)
+      debugPrint('武器仕入れ成功: $weaponName (${price}G)');
       
       return true;
     } catch (e) {
-      _setError('武器の購入に失敗しました: $e');
+      _setError('武器の仕入れに失敗しました: $e');
       return false;
     }
   }
@@ -128,7 +128,7 @@ class ShopProvider extends ChangeNotifier {
         weapon.rarity == _currentFilters['rarity']).toList();
     }
 
-    // プレイヤーレベルでフィルター（購入できない武器を除外）
+    // プレイヤーレベルでフィルター（仕入れできない武器を除外）
     if (_currentPlayer != null) {
       filtered = filtered.where((weapon) => 
         _currentPlayer!.shopLevel >= weapon.requiredLevel).toList();

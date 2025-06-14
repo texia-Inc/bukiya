@@ -66,10 +66,12 @@ cd admin
 
 # Development
 npm install                            # Install dependencies
-npm run dev                           # Development server
+npm run dev                           # Development server (http://localhost:5173)
 npm run build                         # Production build
 npm run lint                          # ESLint check
-npm run typecheck                     # TypeScript check
+npm run preview                       # Preview production build
+
+# No explicit typecheck command - TypeScript checking happens during build
 ```
 
 ## Architecture Overview
@@ -96,18 +98,20 @@ Key patterns:
 - **JSON serialization** with code generation
 
 Key patterns:
-- Feature modules: `auth`, `shop`, `crafting`, `enchantment`, `inventory`, `mission`, `adventurer`, `idle`
+- Feature modules: `auth`, `shop`, `crafting`, `enchantment`, `inventory`, `mission`, `adventurer`, `idle`, `dragon_event`, `character`, `admin`, `puzzle`
 - Each feature has a dedicated Provider for state management
 - API services in `/lib/core/services/`
 - Shared models in `/lib/core/models/` with `.g.dart` generated files
 - App-wide constants in `/lib/core/constants/app_constants.dart`
+- Tutorial system with overlay widgets and tutorial wrapper
 
 ### Database Design
 The game uses a sophisticated **26+ table PostgreSQL schema**:
-- **Master data**: `weapon_masters`, `material_masters`, `rarity_levels`
+- **Master data**: `weapon_masters`, `material_masters`, `rarity_levels`, `season_masters`
 - **Player data**: `players`, `player_weapons`, `player_materials`, `player_statistics`
-- **Game systems**: Crafting recipes, enchantment system, adventurer interactions
+- **Game systems**: Crafting recipes, enchantment system, adventurer interactions, dragon events
 - **Real-time processes**: Active crafting, mission progress, idle income generation
+- **Advanced features**: Adventurer character system, material targeting, quest areas
 
 ## Service Integration
 
@@ -123,7 +127,11 @@ The game uses a sophisticated **26+ table PostgreSQL schema**:
 ├── enchantment/   # Weapon enhancement system
 ├── missions/      # Quest system and rewards
 ├── adventurers/   # NPC adventurer interactions
-└── idle/          # Passive income system
+├── idle/          # Passive income system
+├── idle-income/   # Enhanced idle income management
+├── seasons/       # Seasonal content and events
+├── dragon-events/ # Dragon raid events
+└── image-generation/ # AI weapon image generation
 ```
 
 ### Authentication Flow
@@ -162,6 +170,18 @@ class FeatureProvider extends ChangeNotifier {
 - **Flutter Web**: http://localhost:3000
 - **React Admin**: http://localhost:5173
 
+### Docker Environment Options
+```bash
+# Full environment (backend + database + admin)
+docker-compose up -d
+
+# Lightweight environment (backend + database only)
+docker-compose -f docker-compose.light.yml up -d
+
+# Production environment
+docker-compose -f docker-compose.production.yml up -d
+```
+
 ### Environment Variables
 Backend uses environment-based configuration:
 - `DATABASE_URL`: PostgreSQL connection string
@@ -192,6 +212,12 @@ docker-compose down -v
 docker-compose up -d
 # Wait for DB to initialize, then seed data
 python backend/seed_data.py
+
+# Alternative: Use provided database scripts
+python backend/create_adventurer_tables.py       # Create adventurer system
+python backend/enchantment_seed_data.py          # Seed enchantment data
+python backend/create_dragon_event_tables.py     # Create dragon event tables
+python backend/idle_seed_data.py                 # Seed idle system data
 ```
 
 **Authentication Token Expiry**:
@@ -241,15 +267,72 @@ For detailed processing flows and sequence diagrams of the game systems, see:
 - **SQLAlchemy 2.0.23**: Async ORM with relationship management
 - **Pydantic 2.5.0**: Data validation and serialization
 - **Redis 5.0.1**: Caching and session storage
+- **PostgreSQL**: Primary database with advanced features
+- **Alembic 1.12.1**: Database migration tool
 
 ### Flutter Core  
 - **Provider 6.1.1**: State management with ChangeNotifier
 - **Dio 5.4.0**: HTTP client with interceptors
 - **Hive 2.2.3**: Local NoSQL database
 - **flutter_secure_storage 9.0.0**: Encrypted token storage
+- **retrofit 4.0.3**: Type-safe HTTP client generation
+- **google_fonts 6.1.0**: Custom font integration
+
+### Admin Panel (React)
+- **React 18.3.1**: UI framework
+- **Material-UI 5.15.10**: Component library
+- **Redux Toolkit 2.8.2**: State management
+- **Vite 6.3.5**: Build tool and dev server
+- **TypeScript ~5.8.3**: Static type checking
 
 ### Development Tools
 - **build_runner**: Dart code generation
 - **retrofit_generator**: HTTP client generation  
 - **json_serializable**: JSON serialization
 - **black/isort/flake8**: Python code formatting and linting
+- **pytest**: Python testing framework
+- **flutter_lints**: Dart/Flutter linting
+
+## Common Development Tasks
+
+### Database Schema Changes
+When making model changes that affect the database schema:
+```bash
+# Stop containers and reset database
+docker-compose down -v
+docker-compose up -d
+
+# Or use the provided migration scripts
+python backend/database_migration_fix.py
+python backend/schema_migration.py
+```
+
+### Game Data Seeding
+Multiple specialized seed scripts are available:
+```bash
+# Basic game data
+python backend/seed_data.py
+
+# Specific systems
+python backend/comprehensive_material_seed.py
+python backend/comprehensive_monster_seed.py  
+python backend/massive_weapon_seed.py
+python backend/adventurer_system_seed.py
+```
+
+### Error Handling and Debugging
+- **Backend logs**: `docker logs bukiya_backend --tail 50`
+- **Database connection issues**: Check `backend/test_db_connection.py`
+- **API testing**: Use `backend/test_api.py` for endpoint validation
+- **Flutter debugging**: Enable verbose logging in `lib/core/services/`
+
+### Production Deployment
+```bash
+# Use production docker compose
+docker-compose -f docker-compose.production.yml up -d
+
+# Environment variables required:
+# - DATABASE_URL
+# - REDIS_URL  
+# - JWT_SECRET_KEY
+```

@@ -19,6 +19,34 @@ from ....schemas.idle import (
 router = APIRouter()
 
 
+@router.get("/estimate-actions")
+def estimate_actions(
+    offline_minutes: int = 0,
+    current_user: Player = Depends(get_current_player)
+):
+    """オフラインアクション推定（Flutter互換性のため）"""
+    return {
+        "estimated_actions": [],
+        "offline_minutes": offline_minutes,
+        "gold_earned": 0,
+        "actions_performed": 0
+    }
+
+
+@router.get("/calculate-offline-gold")
+def calculate_offline_gold(
+    offline_minutes: int = 0,
+    current_user: Player = Depends(get_current_player)
+):
+    """オフラインゴールド計算（Flutter互換性のため）"""
+    return {
+        "offline_gold": 0,
+        "offline_minutes": offline_minutes,
+        "income_rate": 10,
+        "multiplier": 1.0
+    }
+
+
 def get_or_create_idle_system(db: Session, player: Player) -> PlayerIdleSystem:
     """プレイヤーの放置システムを取得または作成"""
     idle_system = db.query(PlayerIdleSystem).filter(

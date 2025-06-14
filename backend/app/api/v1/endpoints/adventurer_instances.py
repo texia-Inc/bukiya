@@ -2,12 +2,13 @@
 冒険者インスタンスAPIエンドポイント
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import random
+from pydantic import BaseModel
 
 from app.core.dependencies import get_db, get_current_player
 from app.core.security import get_password_hash
@@ -182,9 +183,9 @@ def get_on_quest_adventurers_no_auth(
                 "trust_level": adventurer.trust_level,
                 "status": "completed" if is_completed else "on_quest",
                 "adventurer_master": {
-                    "name": adventurer.adventurer_master.name,
-                    "profession": adventurer.adventurer_master.profession,
-                    "personality": adventurer.adventurer_master.personality,
+                    "name": adventurer.adventurer_master.name if adventurer.adventurer_master else "Unknown",
+                    "profession": adventurer.adventurer_master.profession if adventurer.adventurer_master else "unknown",
+                    "personality": adventurer.adventurer_master.personality if adventurer.adventurer_master else "normal",
                 },
                 "current_quest": {
                     "id": str(quest.id),
@@ -268,7 +269,7 @@ def get_on_quest_adventurers(
         QuestAreaMaster,
         AdventurerQuest.quest_area_id == QuestAreaMaster.id
     ).filter(
-        PlayerWeapon.player_id == current_user.id
+        AdventurerInstance.player_id == current_user.id
     ).offset((page - 1) * limit).limit(limit).all()
     
     print(f"DEBUG: 冒険中冒険者クエリ結果: {len(adventurers_with_quests)}件")
@@ -337,9 +338,9 @@ def get_on_quest_adventurers(
             "trust_level": adventurer.trust_level,
             "status": "completed" if is_completed else "on_quest",
             "adventurer_master": {
-                "name": adventurer.adventurer_master.name,
-                "profession": adventurer.adventurer_master.profession,
-                "personality": adventurer.adventurer_master.personality,
+                "name": adventurer.adventurer_master.name if adventurer.adventurer_master else "Unknown",
+                "profession": adventurer.adventurer_master.profession if adventurer.adventurer_master else "unknown",
+                "personality": adventurer.adventurer_master.personality if adventurer.adventurer_master else "normal",
             },
             "current_quest": {
                 "id": str(quest.id),
@@ -698,7 +699,7 @@ def buyback_items(
                 player_material = db.query(PlayerMaterial).filter(
                     and_(
                         PlayerMaterial.player_id == current_user.id,
-                        PlayerMaterial.material_id == reward.item_id
+                        PlayerMaterial.material_master_id == reward.item_id
                     )
                 ).first()
                 
@@ -707,7 +708,7 @@ def buyback_items(
                 else:
                     player_material = PlayerMaterial(
                         player_id=current_user.id,
-                        material_id=reward.item_id,
+                        material_master_id=reward.item_id,
                         quantity=reward.quantity
                     )
                     db.add(player_material)
@@ -758,6 +759,278 @@ def reject_buyback(
     db.commit()
     
     return {"message": "買取を拒否しました"}
+
+
+@router.get("/buyback-summary")
+def get_buyback_summary(
+    current_user: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """買取可能なアイテムの概要を取得"""
+    try:
+        now = datetime.now(timezone.utc)
+        
+        # 買取期限内の未購入報酬を取得
+        rewards = db.query(QuestReward).join(
+            AdventurerQuest
+        ).join(
+            AdventurerInstance
+        ).join(
+            PlayerWeapon,
+            AdventurerQuest.player_weapon_id == PlayerWeapon.id
+        ).filter(
+            and_(
+                PlayerWeapon.player_id == current_user.id,
+                AdventurerQuest.status == "completed",
+                QuestReward.is_bought == False,
+                QuestReward.buyback_deadline > now
+            )
+        ).all()
+        
+        # 概要情報を計算
+        total_items = len(rewards)
+        total_cost = sum(reward.buyback_price for reward in rewards)
+        
+        # アイテムタイプ別の統計
+        item_types = {}
+        for reward in rewards:
+            item_type = reward.item_type
+            if item_type not in item_types:
+                item_types[item_type] = {"count": 0, "total_cost": 0}
+            item_types[item_type]["count"] += 1
+            item_types[item_type]["total_cost"] += reward.buyback_price
+        
+        # プレイヤーのゴールド残高で購入可能なアイテムを計算
+        affordable_items = 0
+        affordable_cost = 0
+        current_gold = current_user.gold
+        
+        # 安い順にソートして、購入可能なアイテムを計算
+        sorted_rewards = sorted(rewards, key=lambda r: r.buyback_price)
+        for reward in sorted_rewards:
+            if affordable_cost + reward.buyback_price <= current_gold:
+                affordable_items += 1
+                affordable_cost += reward.buyback_price
+            else:
+                break
+        
+        # 購入効率を計算（購入可能アイテム数 / 総アイテム数 * 100）
+        efficiency_percentage = (affordable_items / total_items * 100) if total_items > 0 else 0.0
+        
+        # プレイヤーのゴールド残高
+        can_afford_all = current_user.gold >= total_cost
+        
+        return {
+            "success": True,
+            "total_items": total_items,
+            "total_cost": total_cost,
+            "affordable_items": affordable_items,  # Flutter側が期待するフィールド
+            "affordable_cost": affordable_cost,    # Flutter側が期待するフィールド
+            "efficiency_percentage": efficiency_percentage,  # Flutter側が期待するフィールド
+            "summary": {
+                "total_items": total_items,
+                "total_cost": total_cost,
+                "can_afford_all": can_afford_all,
+                "player_gold": current_user.gold,
+                "item_types": item_types
+            },
+            "message": f"{total_items}個のアイテムが買取可能です（合計{total_cost}ゴールド）"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"買取概要の取得でエラーが発生しました: {str(e)}")
+
+
+class BulkBuybackRequest(BaseModel):
+    max_gold: Optional[int] = None
+
+@router.post("/bulk-buyback")
+def execute_bulk_buyback(
+    request: BulkBuybackRequest,
+    current_user: Player = Depends(get_current_player),
+    db: Session = Depends(get_db)
+):
+    """一括買取を実行"""
+    try:
+        now = datetime.now(timezone.utc)
+        
+        # 買取期限内の未購入報酬を取得
+        rewards = db.query(QuestReward).join(
+            AdventurerQuest
+        ).join(
+            AdventurerInstance
+        ).join(
+            PlayerWeapon,
+            AdventurerQuest.player_weapon_id == PlayerWeapon.id
+        ).filter(
+            and_(
+                PlayerWeapon.player_id == current_user.id,
+                AdventurerQuest.status == "completed",
+                QuestReward.is_bought == False,
+                QuestReward.buyback_deadline > now
+            )
+        ).order_by(QuestReward.buyback_price.asc()).all()  # 安い順に処理
+        
+        if not rewards:
+            return {
+                "success": True,
+                "message": "買取可能なアイテムがありません",
+                "purchased_items": [],
+                "total_cost": 0,
+                "total_items": 0
+            }
+        
+        # 予算制限がある場合は適用
+        available_gold = min(current_user.gold, request.max_gold) if request.max_gold else current_user.gold
+        
+        purchased_items = []
+        total_cost = 0
+        total_gold_gained = 0
+        
+        # 素材数量をまとめるための辞書
+        material_quantities = {}
+        
+        for reward in rewards:
+            net_cost = reward.buyback_price
+            if reward.item_type == "gold":
+                # ゴールド報酬の場合、実際のコストは buyback_price - reward_quantity
+                net_cost = reward.buyback_price - reward.quantity
+            
+            if total_cost + net_cost <= available_gold:
+                # 買取実行
+                total_cost += net_cost
+                reward.is_bought = True
+                
+                # プレイヤーのインベントリに追加
+                if reward.item_type == "material" and reward.item_id:
+                    # 素材の場合（item_idがNoneでない場合のみ）
+                    # item_id = "1" の場合は、特定の素材IDに変換する必要がある
+                    material_id = reward.item_id
+                    if material_id == "1":
+                        # "1" は鉄鉱石として扱う（デフォルト素材）
+                        material_id = "iron_ore"
+                    
+                    # 該当する素材マスターが存在するかチェック
+                    material_master = db.query(MaterialMaster).filter(
+                        MaterialMaster.id == material_id
+                    ).first()
+                    
+                    if material_master:
+                        # 素材数量を累積
+                        if material_id not in material_quantities:
+                            material_quantities[material_id] = 0
+                        material_quantities[material_id] += reward.quantity
+                
+                elif reward.item_type == "weapon" and reward.item_id:
+                    # 武器の場合
+                    player_weapon = PlayerWeapon(
+                        player_id=current_user.id,
+                        weapon_master_id=reward.item_id,
+                        base_attack=20,  # デフォルト攻撃力
+                        acquisition_method="buyback"
+                    )
+                    db.add(player_weapon)
+                
+                elif reward.item_type == "gold":
+                    # ゴールドの場合、報酬分を追加（net_costで差額は計算済み）
+                    total_gold_gained += reward.quantity
+                
+                # 購入アイテムの詳細情報を取得
+                item_name = "不明なアイテム"
+                if reward.item_type == "material" and reward.item_id:
+                    # 素材名を取得
+                    mat_id = reward.item_id
+                    if mat_id == "1":
+                        mat_id = "iron_ore"
+                    mat_master = db.query(MaterialMaster).filter(
+                        MaterialMaster.id == mat_id
+                    ).first()
+                    if mat_master:
+                        item_name = mat_master.name
+                elif reward.item_type == "gold":
+                    item_name = f"{reward.quantity}ゴールド"
+                elif reward.item_type == "weapon":
+                    # 武器マスター情報を取得（必要に応じて）
+                    item_name = "武器"
+                
+                # クエスト情報を取得
+                quest_info = db.query(AdventurerQuest).options(
+                    joinedload(AdventurerQuest.quest_area),
+                    joinedload(AdventurerQuest.adventurer)  # 正しいリレーション名
+                ).filter(
+                    AdventurerQuest.id == reward.adventurer_quest_id
+                ).first()
+                
+                quest_area_name = "不明なエリア"
+                adventurer_name = "不明な冒険者"
+                
+                if quest_info:
+                    # エリア名と冒険者名を取得
+                    if quest_info.quest_area:
+                        quest_area_name = quest_info.quest_area.name
+                    if quest_info.adventurer:  # 正しいリレーション名
+                        adventurer_name = quest_info.adventurer.name
+                
+                purchased_items.append({
+                    "item_type": reward.item_type,
+                    "item_name": item_name,
+                    "quantity": reward.quantity,
+                    "price": reward.buyback_price,  # Flutterはpriceを期待
+                    "quest_area_name": quest_area_name,
+                    "adventurer_name": adventurer_name
+                })
+            else:
+                # 予算超過で買取不可
+                break
+        
+        # 素材をまとめてプレイヤーインベントリに追加
+        for material_id, total_quantity in material_quantities.items():
+            player_material = db.query(PlayerMaterial).filter(
+                and_(
+                    PlayerMaterial.player_id == current_user.id,
+                    PlayerMaterial.material_master_id == material_id
+                )
+            ).first()
+            
+            if player_material:
+                player_material.quantity += total_quantity
+            else:
+                player_material = PlayerMaterial(
+                    player_id=current_user.id,
+                    material_master_id=material_id,
+                    quantity=total_quantity
+                )
+                db.add(player_material)
+        
+        # プレイヤーのゴールドを調整（コスト支払い + ゴールド報酬追加）
+        current_user.gold = current_user.gold - total_cost + total_gold_gained
+        
+        # ショップ経験値を追加
+        from app.core.shop_progression import ShopProgressionService
+        exp_result = ShopProgressionService.add_experience(
+            current_user, 
+            "bulk_buyback",
+            db,
+            multiplier=len(purchased_items)  # アイテム数に応じて経験値倍率
+        )
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"{len(purchased_items)}個のアイテムを{total_cost}ゴールドで買取しました",
+            "items_purchased": purchased_items,  # Flutter側が期待するフィールド名
+            "total_cost": total_cost,
+            "total_items": len(purchased_items),
+            "gold_remaining": current_user.gold,  # Flutter側が期待するフィールド名
+            "exp_gained": exp_result.get("exp_gained", 0),  # Flutter側が期待するフィールド名
+            "shop_level": current_user.shop_level,  # 現在のショップレベルを追加
+            "shop_level_up": exp_result if exp_result.get("leveled_up") else None  # Flutter側が期待するフィールド名
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"一括買取でエラーが発生しました: {str(e)}")
 
 
 def _calculate_weapon_requirements_for_tier(player_shop_level: int, tier: str) -> tuple:

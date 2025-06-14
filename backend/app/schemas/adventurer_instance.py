@@ -37,8 +37,8 @@ class AdventurerRequest(AdventurerRequestBase):
 
 # クエスト報酬スキーマ
 class QuestRewardBase(BaseModel):
-    item_type: str  # material, weapon
-    item_id: str
+    item_type: str  # material, weapon, gold
+    item_id: Optional[str] = None  # NULL for gold rewards
     quantity: int = Field(ge=1, default=1)
     buyback_price: Optional[int] = None
 
@@ -108,12 +108,12 @@ class AdventurerInstanceBase(BaseModel):
 
 
 class AdventurerInstanceCreate(BaseModel):
-    adventurer_master_id: int
+    adventurer_master_id: str
 
 
 class AdventurerInstance(AdventurerInstanceBase):
     id: UUID
-    adventurer_master_id: int
+    adventurer_master_id: Optional[str] = None  # Nullable for named characters
     player_id: Optional[UUID] = None
     status: str  # idle, visiting, on_quest, waiting_buyback
     current_quest_id: Optional[UUID] = None
@@ -123,6 +123,11 @@ class AdventurerInstance(AdventurerInstanceBase):
     updated_at: datetime
     adventurer_master: Optional[AdventurerMaster] = None
     requests: List[AdventurerRequest] = []
+    
+    # 固有キャラクターシステム用
+    is_named_character: bool = False
+    character_id: Optional[int] = None
+    generic_name: Optional[str] = None
     
     class Config:
         orm_mode = True
@@ -167,3 +172,34 @@ class QuestDispatchRequest(BaseModel):
 class BuybackRequest(BaseModel):
     quest_result_id: UUID
     item_ids: List[UUID]
+
+
+class BulkBuybackRequest(BaseModel):
+    """一括買取リクエスト"""
+    max_gold: Optional[int] = None  # 指定した場合は上限金額、Noneの場合は全所持金
+
+
+class BuybackItem(BaseModel):
+    """買取アイテム情報"""
+    reward_id: UUID
+    quest_id: UUID
+    item_type: str
+    item_id: str
+    item_name: str
+    quantity: int
+    price: int
+    quest_area_name: str
+    adventurer_name: str
+
+
+class BulkBuybackResponse(BaseModel):
+    """一括買取レスポンス"""
+    success: bool
+    message: str
+    total_cost: int
+    total_items: int
+    items_purchased: List[BuybackItem]
+    gold_remaining: int
+    exp_gained: int = 0
+    shop_level: int
+    shop_level_up: Optional[dict] = None

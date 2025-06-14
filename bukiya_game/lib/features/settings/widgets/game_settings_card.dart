@@ -55,10 +55,10 @@ class GameSettingsCard extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // 購入確認設定
+              // 仕入れ確認設定
               SettingsToggle(
-                title: '購入確認',
-                subtitle: 'アイテム購入時の確認ダイアログ表示',
+                title: '仕入れ確認',
+                subtitle: 'アイテム仕入れ時の確認ダイアログ表示',
                 value: settings.confirmPurchases,
                 onChanged: (value) => settingsProvider.updateConfirmPurchases(value),
               ),
@@ -98,7 +98,7 @@ class GameSettingsCard extends StatelessWidget {
                     Text(
                       '• 自動保存: データの損失を防ぐため推奨\n'
                       '• オフライン収入: アプリ終了時間に応じた収入を計算\n'
-                      '• 購入確認: 誤操作防止のための確認ダイアログ',
+                      '• 仕入れ確認: 誤操作防止のための確認ダイアログ',
                       style: TextStyle(
                         color: AppTheme.successColor,
                         fontSize: 11,

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:bukiya_game/core/models/crafting.dart';
+import 'package:bukiya_game/core/models/inventory.dart';
 import 'package:bukiya_game/core/services/api_service.dart';
+import 'package:dio/dio.dart';
 
 class CraftingProvider extends ChangeNotifier {
   final ApiService _apiService;
@@ -10,7 +12,7 @@ class CraftingProvider extends ChangeNotifier {
   // 錬成状態
   List<CraftingRecipe> _recipes = [];
   List<CraftingRecipe> _availableRecipes = [];
-  List<PlayerMaterial> _playerMaterials = [];
+  List<InventoryPlayerMaterial> _playerMaterials = [];
   bool _isLoading = false;
   String? _error;
   DateTime? _lastRefresh;
@@ -22,9 +24,10 @@ class CraftingProvider extends ChangeNotifier {
   // ゲッター
   List<CraftingRecipe> get recipes => _recipes;
   List<CraftingRecipe> get availableRecipes => _availableRecipes;
-  List<PlayerMaterial> get playerMaterials => _playerMaterials;
+  List<InventoryPlayerMaterial> get playerMaterials => _playerMaterials;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get errorMessage => _error;
   DateTime? get lastRefresh => _lastRefresh;
   bool get isCrafting => _isCrafting;
   CraftingResult? get lastCraftingResult => _lastCraftingResult;
@@ -39,11 +42,15 @@ class CraftingProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      // 基本データを並行で取得
       await Future.wait([
         fetchRecipes(),
-        fetchAvailableRecipes(),
         fetchPlayerMaterials(),
       ]);
+      
+      // 基本データが揃ってから可用性を判定
+      await fetchAvailableRecipes();
+      
       _lastRefresh = DateTime.now();
     } catch (e) {
       _setError('レシピの取得に失敗しました: $e');
@@ -95,7 +102,7 @@ class CraftingProvider extends ChangeNotifier {
       if (response.data['success']) {
         final List<dynamic> materialsData = response.data['data'];
         _playerMaterials = materialsData
-            .map((json) => PlayerMaterial.fromJson(json))
+            .map((json) => InventoryPlayerMaterial.fromJson(json))
             .toList();
         notifyListeners();
       }
@@ -107,13 +114,50 @@ class CraftingProvider extends ChangeNotifier {
   // 合成可能なレシピを取得
   Future<void> fetchAvailableRecipes() async {
     try {
-      // 一時的に通常のレシピ一覧を使用（availableエンドポイントが存在しないため）
-      // TODO: バックエンドに合成可能レシピ専用エンドポイントを追加
-      _availableRecipes = _recipes;
+      // 通常のレシピを取得して、プレイヤーの素材状況と照合して可用性を判断
+      _availableRecipes = _recipes.map((recipe) {
+        // 各レシピの合成可能性をチェック
+        bool canCraft = _canCraftRecipe(recipe);
+        List<String> missingRequirements = _getMissingRequirements(recipe);
+        
+        return recipe.copyWith(
+          canCraft: canCraft,
+          missingRequirements: missingRequirements,
+        );
+      }).toList();
+      
       notifyListeners();
     } catch (e) {
       _setError('合成可能レシピの取得に失敗しました: $e');
     }
+  }
+  
+  // レシピが合成可能かチェック
+  bool _canCraftRecipe(CraftingRecipe recipe) {
+    // 素材チェック
+    for (final recipeMaterial in recipe.materials) {
+      final playerQuantity = getMaterialQuantity(recipeMaterial.materialId.toString());
+      if (playerQuantity < recipeMaterial.quantity) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  // 不足要件を取得
+  List<String> _getMissingRequirements(CraftingRecipe recipe) {
+    List<String> missing = [];
+    
+    // 素材チェック
+    for (final recipeMaterial in recipe.materials) {
+      final playerQuantity = getMaterialQuantity(recipeMaterial.materialId.toString());
+      if (playerQuantity < recipeMaterial.quantity) {
+        final shortage = recipeMaterial.quantity - playerQuantity;
+        missing.add('${recipeMaterial.material.name}が${shortage}個不足');
+      }
+    }
+    
+    return missing;
   }
 
   // レシピ詳細を取得
@@ -164,15 +208,39 @@ class CraftingProvider extends ChangeNotifier {
         _lastCraftingResult = CraftingResult.fromJson(response.data['data']);
         
         // 合成後にデータを更新
-        await fetchAvailableRecipes();
         await fetchPlayerMaterials();
+        await fetchAvailableRecipes();
         
         notifyListeners();
         return _lastCraftingResult!.success;
       }
       return false;
     } catch (e) {
-      _setError('武器の合成に失敗しました: $e');
+      // DioExceptionの場合、サーバーからのエラーメッセージを取得
+      if (e is DioException) {
+        try {
+          if (e.response?.data != null && e.response!.data is Map) {
+            final responseData = e.response!.data as Map;
+            
+            // サーバーのエラー構造に基づいてメッセージを取得
+            if (responseData.containsKey('error') && 
+                responseData['error'] is Map &&
+                responseData['error']['message'] != null) {
+              _setError(responseData['error']['message']);
+            } else if (responseData.containsKey('message')) {
+              _setError(responseData['message']);
+            } else {
+              _setError('合成条件を満たしていません');
+            }
+          } else {
+            _setError('合成条件を満たしていません');
+          }
+        } catch (_) {
+          _setError('合成条件を満たしていません');
+        }
+      } else {
+        _setError('武器の合成に失敗しました: $e');
+      }
       return false;
     } finally {
       _setCrafting(false);
@@ -228,17 +296,16 @@ class CraftingProvider extends ChangeNotifier {
   }
 
   // 素材の所持数を取得
-  int getMaterialQuantity(int materialId) {
-    final material = _playerMaterials
-        .where((pm) => pm.materialId == materialId)
-        .firstOrNull;
+  int getMaterialQuantity(String materialId) {
+    final materials = _playerMaterials.where((pm) => pm.materialId == materialId);
+    final material = materials.isNotEmpty ? materials.first : null;
     return material?.quantity ?? 0;
   }
 
   // 素材が足りているかチェック
   bool hasSufficientMaterials(CraftingRecipe recipe) {
     for (final recipeMaterial in recipe.materials) {
-      final playerQuantity = getMaterialQuantity(recipeMaterial.materialId);
+      final playerQuantity = getMaterialQuantity(recipeMaterial.materialId.toString());
       if (playerQuantity < recipeMaterial.quantity) {
         return false;
       }
@@ -251,7 +318,7 @@ class CraftingProvider extends ChangeNotifier {
     final missing = <RecipeMaterial>[];
     
     for (final recipeMaterial in recipe.materials) {
-      final playerQuantity = getMaterialQuantity(recipeMaterial.materialId);
+      final playerQuantity = getMaterialQuantity(recipeMaterial.materialId.toString());
       if (playerQuantity < recipeMaterial.quantity) {
         missing.add(recipeMaterial);
       }
@@ -321,6 +388,11 @@ class CraftingProvider extends ChangeNotifier {
   void _clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  // エラーをクリア（パブリック）
+  void clearError() {
+    _clearError();
   }
 
   // リフレッシュ

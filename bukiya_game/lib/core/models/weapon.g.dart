@@ -7,7 +7,7 @@ part of 'weapon.dart';
 // **************************************************************************
 
 Weapon _$WeaponFromJson(Map<String, dynamic> json) => Weapon(
-      id: json['id'] as String,
+      id: (json['id'] as num).toInt(),
       name: json['name'] as String,
       description: json['description'] as String,
       attack: (json['attack'] as num).toInt(),
@@ -35,7 +35,7 @@ Map<String, dynamic> _$WeaponToJson(Weapon instance) => <String, dynamic>{
 PlayerWeapon _$PlayerWeaponFromJson(Map<String, dynamic> json) => PlayerWeapon(
       id: json['id'] as String,
       playerId: json['player_id'] as String,
-      weaponId: json['weapon_id'] as String,
+      weaponId: (json['weapon_id'] as num).toInt(),
       weaponName: json['weapon_name'] as String,
       attack: (json['attack'] as num).toInt(),
       enchantLevel: (json['enchant_level'] as num).toInt(),

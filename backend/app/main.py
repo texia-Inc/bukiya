@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import structlog
 from datetime import datetime
 import uuid
+from pathlib import Path
 
 from app.core.config import settings
 from app.core.database import engine, Base
@@ -31,7 +33,9 @@ if settings.ENVIRONMENT == "development":
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:8080",
-            "http://127.0.0.1:8080"
+            "http://127.0.0.1:8080",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173"
         ],
         allow_credentials=True,
         allow_methods=["*"],
@@ -45,6 +49,16 @@ else:
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["*"],
     )
+
+# 静的ファイルの配信設定
+try:
+    static_dir = Path("/app/static")
+    static_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    logger.info(f"Static files mounted at {static_dir}")
+except Exception as e:
+    logger.error(f"Failed to mount static files: {e}")
+    # Continue without static files for now
 
 # APIルーター登録
 app.include_router(api_router, prefix="/api/v1")
@@ -86,10 +100,22 @@ async def general_exception_handler(request, exc):
 # ヘルスチェックエンドポイント
 @app.get("/health")
 async def health_check():
+    # データベース接続チェック
+    db_status = "healthy"
+    try:
+        from app.core.database import SessionLocal
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+        logger.warning(f"Database health check failed: {e}")
+
     return {
         "success": True,
         "data": {
             "status": "healthy",
+            "database": db_status,
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "version": "1.0.0",
             "environment": settings.ENVIRONMENT
@@ -106,8 +132,12 @@ async def startup_event():
     
     # データベーステーブル作成（開発環境のみ）
     if settings.ENVIRONMENT == "development":
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created")
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create database tables: {e}")
+            logger.warning("API will start without database connection - some endpoints may not work")
     
     # Dragon event serviceの初期化（一時的に無効化）
     # try:

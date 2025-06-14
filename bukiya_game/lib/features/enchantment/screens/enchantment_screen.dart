@@ -8,6 +8,7 @@ import 'package:bukiya_game/features/enchantment/widgets/material_selection_card
 import 'package:bukiya_game/features/enchantment/widgets/enchantment_preview_card.dart';
 import 'package:bukiya_game/features/enchantment/widgets/enchantment_result_dialog.dart';
 import 'package:bukiya_game/shared/widgets/loading_screen.dart';
+import 'package:bukiya_game/shared/themes/app_theme.dart';
 
 class EnchantmentScreen extends StatefulWidget {
   const EnchantmentScreen({super.key});
@@ -262,29 +263,50 @@ class _EnchantmentScreenState extends State<EnchantmentScreen> {
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: provider.isEnchanting ? null : () => _performEnchantment(provider),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Theme.of(context).colorScheme.primary,
+            child: GestureDetector(
+              onTap: provider.isEnchanting ? null : () => _performEnchantment(provider),
+              child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: provider.isEnchanting ? AppTheme.textSecondary : AppTheme.primaryColor,
+                    width: 1,
+                  ),
+                  color: provider.isEnchanting 
+                      ? AppTheme.textSecondary.withValues(alpha: 0.1)
+                      : AppTheme.primaryColor.withValues(alpha: 0.1),
                 ),
-              ),
-              child: provider.isEnchanting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text(
-                      'エンチャント開始',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                child: provider.isEnchanting
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'エンチャント中...',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        'エンチャント開始',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ],

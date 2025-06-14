@@ -24,7 +24,7 @@ router = APIRouter()
 @router.get("/", response_model=MaterialMasterListResponse)
 async def get_materials_list(
     page: int = Query(1, ge=1, description="ページ番号"),
-    limit: int = Query(20, ge=1, le=100, description="1ページあたりのアイテム数"),
+    limit: int = Query(20, ge=1, le=1000, description="1ページあたりのアイテム数"),
     rarity_id: Optional[int] = Query(None, description="レアリティIDフィルター"),
     min_price: Optional[int] = Query(None, description="最小価格"),
     max_price: Optional[int] = Query(None, description="最大価格"),
@@ -38,7 +38,7 @@ async def get_materials_list(
 @router.get("/admin/list", response_model=MaterialMasterListResponse)
 async def get_materials_admin(
     page: int = Query(1, ge=1, description="ページ番号"),
-    limit: int = Query(20, ge=1, le=100, description="1ページあたりのアイテム数"),
+    limit: int = Query(20, ge=1, le=1000, description="1ページあたりのアイテム数"),
     rarity_id: Optional[int] = Query(None, description="レアリティIDフィルター"),
     min_price: Optional[int] = Query(None, description="最小価格"),
     max_price: Optional[int] = Query(None, description="最大価格"),
@@ -104,7 +104,7 @@ async def create_material_admin(
         description=material_data.description,
         rarity_id=material_data.rarity_id,
         base_price=material_data.base_price,
-        max_stack=material_data.max_stack,
+        stack_size=material_data.max_stack,
         image_url=material_data.image_url
     )
     
@@ -289,6 +289,7 @@ async def get_material_detail(
         request_id=str(uuid.uuid4())
     )
 
+
 @router.get("/player/inventory", response_model=PlayerMaterialListResponse)
 async def get_player_materials(
     current_player: Player = Depends(get_current_player),
@@ -297,6 +298,8 @@ async def get_player_materials(
     """
     プレイヤーの所持素材一覧を取得
     """
+    from app.schemas.material import FlutterMaterial
+    
     player_materials = db.query(PlayerMaterial).options(
         joinedload(PlayerMaterial.material).joinedload(MaterialMaster.rarity)
     ).filter(
@@ -304,9 +307,24 @@ async def get_player_materials(
         PlayerMaterial.quantity > 0
     ).all()
     
+    # FlutterMaterialを使用してレスポンスを作成
+    flutter_compatible_materials = []
+    for pm in player_materials:
+        flutter_material = FlutterMaterial.from_material_master(pm.material)
+        flutter_compatible_materials.append({
+            "material_id": pm.material_master_id,
+            "quantity": pm.quantity,
+            "player_id": pm.player_id,
+            "created_at": pm.created_at,
+            "updated_at": pm.updated_at,
+            "material": flutter_material.dict(),
+            "is_full": pm.is_full,
+            "remaining_capacity": pm.remaining_capacity
+        })
+    
     return PlayerMaterialListResponse(
         success=True,
-        data=player_materials,
+        data=flutter_compatible_materials,
         message="所持素材一覧を取得しました",
         timestamp=datetime.utcnow(),
         request_id=str(uuid.uuid4())
@@ -336,13 +354,13 @@ async def add_player_material(
     # プレイヤー素材の取得または作成
     player_material = db.query(PlayerMaterial).filter(
         PlayerMaterial.player_id == current_player.id,
-        PlayerMaterial.material_id == material_data.material_id
+        PlayerMaterial.material_master_id == material_data.material_id
     ).first()
     
     if not player_material:
         player_material = PlayerMaterial(
             player_id=current_player.id,
-            material_id=material_data.material_id,
+            material_master_id=material_data.material_id,
             quantity=0
         )
         db.add(player_material)
@@ -386,7 +404,7 @@ async def remove_player_material(
         joinedload(PlayerMaterial.material)
     ).filter(
         PlayerMaterial.player_id == current_player.id,
-        PlayerMaterial.material_id == material_data.material_id
+        PlayerMaterial.material_master_id == material_data.material_id
     ).first()
     
     if not player_material:
@@ -434,7 +452,7 @@ async def sell_player_material(
         joinedload(PlayerMaterial.material).joinedload(MaterialMaster.rarity)
     ).filter(
         PlayerMaterial.player_id == current_player.id,
-        PlayerMaterial.material_id == sell_data.material_id
+        PlayerMaterial.material_master_id == sell_data.material_id
     ).first()
     
     if not player_material:
@@ -488,7 +506,7 @@ async def get_player_material_detail(
         joinedload(PlayerMaterial.material).joinedload(MaterialMaster.rarity)
     ).filter(
         PlayerMaterial.player_id == current_player.id,
-        PlayerMaterial.material_id == material_id
+        PlayerMaterial.material_master_id == material_id
     ).first()
     
     if not player_material:
@@ -507,7 +525,7 @@ async def get_player_material_detail(
         # 0個の素材データを作成
         player_material = PlayerMaterial(
             player_id=current_player.id,
-            material_id=material_id,
+            material_master_id=material_id,
             quantity=0
         )
         player_material.material = material_master

@@ -4,7 +4,7 @@ part 'weapon.g.dart';
 
 @JsonSerializable()
 class Weapon {
-  final String id;
+  final int id;
   final String name;
   final String description;
   final int attack;
@@ -33,7 +33,7 @@ class Weapon {
   });
 
   factory Weapon.fromJson(Map<String, dynamic> json) => Weapon(
-    id: json['id'].toString(),
+    id: json['id'] as int,
     name: json['name']?.toString() ?? '',
     description: json['description']?.toString() ?? '',
     attack: (json['calculated_attack'] ?? json['base_attack'] ?? 0) is num ? (json['calculated_attack'] ?? json['base_attack'] ?? 0).toInt() : int.tryParse((json['calculated_attack'] ?? json['base_attack']).toString()) ?? 0,
@@ -47,7 +47,7 @@ class Weapon {
   Map<String, dynamic> toJson() => _$WeaponToJson(this);
 
   Weapon copyWith({
-    String? id,
+    int? id,
     String? name,
     String? description,
     int? attack,
@@ -93,7 +93,7 @@ class PlayerWeapon {
   @JsonKey(name: 'player_id')
   final String playerId;
   @JsonKey(name: 'weapon_id')
-  final String weaponId;
+  final int weaponId;
   @JsonKey(name: 'weapon_name')
   final String weaponName;
   final int attack;
@@ -118,7 +118,7 @@ class PlayerWeapon {
   factory PlayerWeapon.fromJson(Map<String, dynamic> json) => PlayerWeapon(
     id: json['id'].toString(),
     playerId: json['player_id'].toString(),
-    weaponId: json['weapon_id'].toString(),
+    weaponId: json['weapon_id'] as int,
     weaponName: json['weapon_name']?.toString() ?? '',
     attack: (json['attack'] ?? 0) is num ? (json['attack'] ?? 0).toInt() : int.tryParse(json['attack'].toString()) ?? 0,
     enchantLevel: (json['enchant_level'] ?? 0) is num ? (json['enchant_level'] ?? 0).toInt() : int.tryParse(json['enchant_level'].toString()) ?? 0,
@@ -130,7 +130,7 @@ class PlayerWeapon {
   PlayerWeapon copyWith({
     String? id,
     String? playerId,
-    String? weaponId,
+    int? weaponId,
     String? weaponName,
     int? attack,
     int? enchantLevel,

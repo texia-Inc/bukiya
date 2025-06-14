@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:bukiya_game/core/models/crafting.dart';
+import 'package:bukiya_game/core/models/inventory.dart';
 import 'package:bukiya_game/shared/themes/app_theme.dart';
 
 class RecipeCard extends StatelessWidget {
   final CraftingRecipe recipe;
-  final List<PlayerMaterial> playerMaterials;
+  final List<InventoryPlayerMaterial> playerMaterials;
   final VoidCallback onCraft;
   final bool isCrafting;
 
@@ -176,7 +177,7 @@ class RecipeCard extends StatelessWidget {
                         ),
                       ),
                       ...missingMaterials.map((material) => Text(
-                        '• ${material.material.name} (${_getPlayerMaterialQuantity(material.materialId)}/${material.quantity})',
+                        '• ${material.material.name} (${_getPlayerMaterialQuantity(material.materialId.toString())}/${material.quantity})',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.red,
@@ -268,7 +269,7 @@ class RecipeCard extends StatelessWidget {
   }
 
   Widget _buildMaterialRow(RecipeMaterial material) {
-    final playerQuantity = _getPlayerMaterialQuantity(material.materialId);
+    final playerQuantity = _getPlayerMaterialQuantity(material.materialId.toString());
     final hasEnough = playerQuantity >= material.quantity;
 
     return Padding(
@@ -338,7 +339,7 @@ class RecipeCard extends StatelessWidget {
 
     // 手動で素材チェック
     for (final material in recipe.materials) {
-      final playerQuantity = _getPlayerMaterialQuantity(material.materialId);
+      final playerQuantity = _getPlayerMaterialQuantity(material.materialId.toString());
       if (playerQuantity < material.quantity) {
         return false;
       }
@@ -350,7 +351,7 @@ class RecipeCard extends StatelessWidget {
     final missing = <RecipeMaterial>[];
     
     for (final material in recipe.materials) {
-      final playerQuantity = _getPlayerMaterialQuantity(material.materialId);
+      final playerQuantity = _getPlayerMaterialQuantity(material.materialId.toString());
       if (playerQuantity < material.quantity) {
         missing.add(material);
       }
@@ -359,10 +360,12 @@ class RecipeCard extends StatelessWidget {
     return missing;
   }
 
-  int _getPlayerMaterialQuantity(int materialId) {
+  int _getPlayerMaterialQuantity(String materialId) {
     final playerMaterial = playerMaterials
         .where((pm) => pm.materialId == materialId)
-        .firstOrNull;
+        .isNotEmpty 
+        ? playerMaterials.where((pm) => pm.materialId == materialId).first 
+        : null;
     return playerMaterial?.quantity ?? 0;
   }
 

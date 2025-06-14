@@ -224,7 +224,7 @@ class TutorialStartDialog extends StatelessWidget {
             Text(
               '武器屋ゲームの基本的な操作方法を学びませんか？\n'
               'チュートリアルでは以下のことを学べます：\n\n'
-              '• 武器の購入と販売\n'
+              '• 武器の仕入れと販売\n'
               '• 冒険者との取引\n'
               '• 武器の作成と強化\n'
               '• 放置システムの活用',

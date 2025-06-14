@@ -8,7 +8,7 @@ part of 'adventurer_new.dart';
 
 AdventurerMaster _$AdventurerMasterFromJson(Map<String, dynamic> json) =>
     AdventurerMaster(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: json['id'] as String?,
       name: json['name'] as String? ?? '',
       profession: json['profession'] as String? ?? '',
       level: (json['level'] as num?)?.toInt() ?? 1,
@@ -94,7 +94,7 @@ Map<String, dynamic> _$AdventurerRequestToJson(AdventurerRequest instance) =>
 
 Adventurer _$AdventurerFromJson(Map<String, dynamic> json) => Adventurer(
       id: json['id'] as String? ?? '',
-      adventurerMasterId: (json['adventurer_master_id'] as num?)?.toInt() ?? 0,
+      adventurerMasterId: json['adventurer_master_id'] as String?,
       playerId: json['player_id'] as String?,
       name: json['name'] as String? ?? '',
       level: (json['level'] as num?)?.toInt() ?? 1,
@@ -205,6 +205,10 @@ QuestProgress _$QuestProgressFromJson(Map<String, dynamic> json) =>
       questArea: QuestArea.fromJson(json['quest_area'] as Map<String, dynamic>),
       weaponUsed:
           WeaponUsed.fromJson(json['weapon_used'] as Map<String, dynamic>),
+      monsterFighting: json['monster_fighting'] == null
+          ? null
+          : MonsterFighting.fromJson(
+              json['monster_fighting'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$QuestProgressToJson(QuestProgress instance) =>
@@ -218,6 +222,7 @@ Map<String, dynamic> _$QuestProgressToJson(QuestProgress instance) =>
       'is_completed': instance.isCompleted,
       'quest_area': instance.questArea,
       'weapon_used': instance.weaponUsed,
+      'monster_fighting': instance.monsterFighting,
     };
 
 RemainingTime _$RemainingTimeFromJson(Map<String, dynamic> json) =>
@@ -232,6 +237,32 @@ Map<String, dynamic> _$RemainingTimeToJson(RemainingTime instance) =>
       'hours': instance.hours,
       'minutes': instance.minutes,
       'total_minutes': instance.totalMinutes,
+    };
+
+MonsterFighting _$MonsterFightingFromJson(Map<String, dynamic> json) =>
+    MonsterFighting(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String? ?? '',
+      level: (json['level'] as num?)?.toInt() ?? 1,
+      monsterType: json['monster_type'] as String? ?? '',
+      hp: (json['hp'] as num?)?.toInt() ?? 100,
+      attack: (json['attack'] as num?)?.toInt() ?? 20,
+      defense: (json['defense'] as num?)?.toInt() ?? 10,
+      element: json['element'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+    );
+
+Map<String, dynamic> _$MonsterFightingToJson(MonsterFighting instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'level': instance.level,
+      'monster_type': instance.monsterType,
+      'hp': instance.hp,
+      'attack': instance.attack,
+      'defense': instance.defense,
+      'element': instance.element,
+      'description': instance.description,
     };
 
 WeaponUsed _$WeaponUsedFromJson(Map<String, dynamic> json) => WeaponUsed(
@@ -258,6 +289,7 @@ QuestReward _$QuestRewardFromJson(Map<String, dynamic> json) => QuestReward(
       adventurerQuestId: json['adventurer_quest_id'] as String? ?? '',
       itemType: json['item_type'] as String? ?? '',
       itemId: json['item_id'] as String? ?? '',
+      itemName: json['item_name'] as String? ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       buybackPrice: (json['buyback_price'] as num?)?.toInt(),
       buybackDeadline: json['buyback_deadline'] == null
@@ -273,6 +305,7 @@ Map<String, dynamic> _$QuestRewardToJson(QuestReward instance) =>
       'adventurer_quest_id': instance.adventurerQuestId,
       'item_type': instance.itemType,
       'item_id': instance.itemId,
+      'item_name': instance.itemName,
       'quantity': instance.quantity,
       'buyback_price': instance.buybackPrice,
       'buyback_deadline': instance.buybackDeadline?.toIso8601String(),

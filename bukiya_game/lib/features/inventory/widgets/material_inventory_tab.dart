@@ -193,7 +193,7 @@ class MaterialInventoryTab extends StatelessWidget {
             onPressed: () async {
               Navigator.of(context).pop();
               final result = await inventoryProvider.sellMaterial(
-                material.materialId,
+                material.materialId.toString(),
                 quantity,
               );
               if (result != null && context.mounted) {

@@ -14,7 +14,7 @@ class AdventurerInstance(Base):
     __tablename__ = "adventurer_instances"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    adventurer_master_id = Column(Integer, ForeignKey("adventurer_masters.id"), nullable=False)
+    adventurer_master_id = Column(String(50), ForeignKey("adventurer_masters.id"), nullable=True)  # Allow NULL for named characters
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"))
     name = Column(String(100), nullable=False)
     level = Column(Integer, nullable=False, default=1)
@@ -91,6 +91,10 @@ class AdventurerQuest(Base):
     adventurer_instance_id = Column(UUID(as_uuid=True), ForeignKey("adventurer_instances.id", ondelete="CASCADE"), nullable=False)
     quest_area_id = Column(Integer, ForeignKey("quest_area_masters.id"), nullable=False)
     player_weapon_id = Column(UUID(as_uuid=True), ForeignKey("player_weapons.id"))
+    monster_id = Column(Integer, ForeignKey("monster_masters.id"))  # 戦闘するモンスター
+    target_material_id = Column(Integer, ForeignKey("material_masters.id"))  # 狙い素材
+    target_material_boost = Column(Float, default=1.0)  # ドロップ率倍率
+    target_cost = Column(Integer, default=0)  # ターゲティングコスト
     status = Column(String(20), nullable=False, default="in_progress")  # in_progress, completed, failed
     start_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     end_time = Column(DateTime(timezone=True))
@@ -103,6 +107,8 @@ class AdventurerQuest(Base):
     adventurer = relationship("AdventurerInstance", back_populates="quests")
     quest_area = relationship("QuestAreaMaster", lazy="joined")
     player_weapon = relationship("PlayerWeapon")
+    monster = relationship("MonsterMaster", lazy="joined")  # 戦闘するモンスター
+    target_material = relationship("MaterialMaster", lazy="joined")  # 狙い素材
     rewards = relationship("QuestReward", back_populates="quest", cascade="all, delete-orphan")
 
 
@@ -113,7 +119,7 @@ class QuestReward(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     adventurer_quest_id = Column(UUID(as_uuid=True), ForeignKey("adventurer_quests.id", ondelete="CASCADE"), nullable=False)
     item_type = Column(String(20), nullable=False)  # material, weapon
-    item_id = Column(String(50), nullable=False)
+    item_id = Column(String(50), nullable=True)  # NULL for gold rewards, string for material/weapon IDs
     quantity = Column(Integer, nullable=False, default=1)
     buyback_price = Column(Integer)
     buyback_deadline = Column(DateTime(timezone=True))
@@ -130,8 +136,8 @@ class AdventurerPurchase(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     adventurer_instance_id = Column(UUID(as_uuid=True), ForeignKey("adventurer_instances.id", ondelete="CASCADE"), nullable=False)
-    player_weapon_id = Column(UUID(as_uuid=True), ForeignKey("player_weapons.id"), nullable=False)
-    price = Column(Integer, nullable=False)
+    weapon_id = Column(UUID(as_uuid=True), ForeignKey("player_weapons.id"), nullable=False)
+    purchase_price = Column(Integer, nullable=False)
     purchased_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # リレーション

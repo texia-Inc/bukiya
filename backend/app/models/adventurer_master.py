@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, Numeric
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -7,7 +9,7 @@ from ..core.database import Base
 class AdventurerMaster(Base):
     __tablename__ = "adventurer_masters"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String(50), primary_key=True, index=True)
     name = Column(String(100), nullable=False, index=True)
     profession = Column(String(50), nullable=False)  # warrior, archer, mage, rogue, paladin
     level = Column(Integer, nullable=False, default=1)
@@ -44,7 +46,7 @@ class AdventurerMaster(Base):
 class MonsterMaster(Base):
     __tablename__ = "monster_masters"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     name = Column(String(100), nullable=False, index=True)
     monster_type = Column(String(50), nullable=False)  # beast, undead, dragon, elemental, etc.
     level = Column(Integer, nullable=False, default=1)
@@ -66,8 +68,7 @@ class MonsterMaster(Base):
     base_gold_reward = Column(Integer, nullable=False, default=100)
     experience_reward = Column(Integer, nullable=False, default=50)
     
-    # 見た目
-    image_url = Column(String(255), nullable=True)
+    # 見た目  
     description = Column(Text, nullable=True)
     
     # システム情報
@@ -108,21 +109,32 @@ class QuestAreaMaster(Base):
 class MonsterDropTable(Base):
     __tablename__ = "monster_drop_tables"
 
-    id = Column(Integer, primary_key=True, index=True)
-    monster_id = Column(Integer, nullable=False, index=True)
-    item_type = Column(String(50), nullable=False)  # material, weapon
-    item_id = Column(Integer, nullable=False)
-    drop_rate = Column(Float, nullable=False, default=0.1)  # 0.0-1.0
-    min_quantity = Column(Integer, nullable=False, default=1)
-    max_quantity = Column(Integer, nullable=False, default=1)
-    
-    # 条件
-    required_weapon_enchant = Column(Integer, nullable=False, default=0)
-    required_adventurer_level = Column(Integer, nullable=False, default=1)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    monster_master_id = Column(Integer, nullable=False, index=True)
+    drop_type = Column(String(50), nullable=False)  # material, weapon
+    drop_target_id = Column(String(50), nullable=False)
+    drop_rate = Column(Numeric(precision=10, scale=4), nullable=False, default=0.1)
+    quantity_min = Column(Integer, nullable=False, default=1)
+    quantity_max = Column(Integer, nullable=False, default=1)
+    required_weapon_type = Column(String(50), nullable=True)
+    bonus_rate = Column(Numeric(precision=10, scale=4), nullable=False, default=0.0)
     
     # システム情報
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
+    # Property aliases for backward compatibility
+    @property
+    def monster_id(self):
+        return self.monster_master_id
+    
+    @property
+    def item_type(self):
+        return self.drop_type
+    
+    @property
+    def item_id(self):
+        return self.drop_target_id
+
     def __repr__(self):
-        return f"<MonsterDropTable(monster_id={self.monster_id}, item_type='{self.item_type}', drop_rate={self.drop_rate})>"
+        return f"<MonsterDropTable(monster_id={self.monster_master_id}, item_type='{self.drop_type}', drop_rate={self.drop_rate})>"

@@ -119,9 +119,9 @@ class _WeaponManagementScreenState extends State<WeaponManagementScreen> {
                         : AdminDataTable(
                             columns: _getTableColumns(),
                             rows: _buildTableRows(adminProvider),
-                            selectedIds: adminProvider.selectedWeaponIds,
+                            selectedIds: adminProvider.selectedWeaponIds.map((id) => id.toString()).toSet(),
                             onSelectAll: adminProvider.toggleAllWeaponsSelection,
-                            onSelectRow: adminProvider.toggleWeaponSelection,
+                            onSelectRow: (idString) => adminProvider.toggleWeaponSelection(int.parse(idString)),
                             pagination: adminProvider.weaponPagination,
                             onPageChanged: (page) => _changePage(page),
                           ),

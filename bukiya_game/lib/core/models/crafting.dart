@@ -142,7 +142,7 @@ class RecipeMaterial {
 
   factory RecipeMaterial.fromJson(Map<String, dynamic> json) {
     return RecipeMaterial(
-      materialId: json['material_id'] is int ? json['material_id'] : int.tryParse(json['material_id'].toString()) ?? 0,
+      materialId: json['material_id'] as int,
       quantity: json['quantity'] is int ? json['quantity'] : int.tryParse(json['quantity'].toString()) ?? 0,
       material: Material.fromJson(json['material']),
     );
@@ -176,7 +176,7 @@ class Material {
 
   factory Material.fromJson(Map<String, dynamic> json) {
     return Material(
-      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+      id: json['id'] as int,
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       rarity: json['rarity']?.toString() ?? 'common',
@@ -284,9 +284,9 @@ class ConsumedMaterial {
 
   factory ConsumedMaterial.fromJson(Map<String, dynamic> json) {
     return ConsumedMaterial(
-      materialId: json['material_id'],
-      materialName: json['material_name'],
-      quantity: json['quantity'],
+      materialId: json['material_id'] as int,
+      materialName: json['material_name'] ?? '',
+      quantity: json['quantity'] ?? 0,
     );
   }
 
@@ -312,7 +312,7 @@ class PlayerMaterial {
 
   factory PlayerMaterial.fromJson(Map<String, dynamic> json) {
     return PlayerMaterial(
-      materialId: json['material_id'] is int ? json['material_id'] : int.tryParse(json['material_id'].toString()) ?? 0,
+      materialId: json['material_id'] as int,
       quantity: json['quantity'] is int ? json['quantity'] : int.tryParse(json['quantity'].toString()) ?? 0,
       material: Material.fromJson(json['material']),
     );
@@ -370,9 +370,9 @@ class RequiredMaterial {
 
   factory RequiredMaterial.fromJson(Map<String, dynamic> json) {
     return RequiredMaterial(
-      materialId: json['material_id'],
-      materialName: json['material_name'],
-      requiredQuantity: json['required_quantity'],
+      materialId: json['material_id'] as int,
+      materialName: json['material_name'] ?? '',
+      requiredQuantity: json['required_quantity'] ?? 0,
     );
   }
 }
@@ -388,8 +388,8 @@ class PlayerMaterialInfo {
 
   factory PlayerMaterialInfo.fromJson(Map<String, dynamic> json) {
     return PlayerMaterialInfo(
-      materialId: json['material_id'],
-      quantity: json['quantity'],
+      materialId: json['material_id'] as int,
+      quantity: json['quantity'] ?? 0,
     );
   }
 }

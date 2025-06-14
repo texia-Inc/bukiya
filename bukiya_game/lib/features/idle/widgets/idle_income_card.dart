@@ -207,35 +207,50 @@ class IdleIncomeCard extends StatelessWidget {
     final pendingIncome = idleProvider.currentPendingIncome;
     final isLoading = idleProvider.isLoading;
     
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: pendingIncome > 0 && !isLoading
-            ? () => _collectIncome(context, idleProvider)
-            : null,
-        icon: isLoading
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Icon(Icons.download),
-        label: Text(
-          pendingIncome > 0
-              ? '${pendingIncome}G を回収'
-              : '回収可能な収益なし',
+    return GestureDetector(
+      onTap: pendingIncome > 0 && !isLoading
+          ? () => _collectIncome(context, idleProvider)
+          : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: pendingIncome > 0 ? AppTheme.successColor : AppTheme.textSecondary,
+            width: 1,
+          ),
+          color: pendingIncome > 0 
+              ? AppTheme.successColor.withValues(alpha: 0.1)
+              : AppTheme.textSecondary.withValues(alpha: 0.1),
         ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: pendingIncome > 0
-              ? AppTheme.successColor
-              : AppTheme.surfaceColor,
-          foregroundColor: pendingIncome > 0
-              ? Colors.white
-              : AppTheme.textSecondary,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            isLoading
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: pendingIncome > 0 ? AppTheme.successColor : AppTheme.textSecondary,
+                    ),
+                  )
+                : Icon(
+                    Icons.download,
+                    color: pendingIncome > 0 ? AppTheme.successColor : AppTheme.textSecondary,
+                    size: 16,
+                  ),
+            const SizedBox(width: 8),
+            Text(
+              pendingIncome > 0
+                  ? '${pendingIncome}G を回収'
+                  : '回収可能な収益なし',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: pendingIncome > 0 ? AppTheme.successColor : AppTheme.textSecondary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );

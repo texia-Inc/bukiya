@@ -2,7 +2,8 @@
 固有冒険者キャラクターシステムのSQLAlchemyモデル
 名前ありキャラクター（育成対象）のデータモデル
 """
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, UUID, ARRAY, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ARRAY, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime

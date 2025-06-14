@@ -74,7 +74,7 @@ class PlayerInfoCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${player.experience} EXP',
+                      '${player.experience} / ${(player.level * 1000)} EXP',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppTheme.textSecondary,
                       ),
@@ -83,7 +83,7 @@ class PlayerInfoCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
-                  value: 0.5,
+                  value: player.levelProgress,
                   backgroundColor: AppTheme.backgroundColor,
                   valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                 ),

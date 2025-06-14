@@ -15,6 +15,7 @@ import MonsterList from './pages/MonsterList'
 import QuestAreaList from './pages/QuestAreaList'
 import MissionTemplateList from './pages/MissionTemplateList'
 import EnchantmentList from './pages/EnchantmentList'
+import { SeasonList } from './pages/SeasonList'
 
 const theme = createTheme({
   palette: {
@@ -45,6 +46,7 @@ function App() {
               <Route path="/weapons" element={<WeaponList />} />
               <Route path="/materials" element={<MaterialList />} />
               <Route path="/recipes" element={<RecipeList />} />
+              <Route path="/seasons" element={<SeasonList />} />
               <Route path="/players" element={<PlayerList />} />
               <Route path="/adventurers" element={<AdventurerList />} />
               <Route path="/monsters" element={<MonsterList />} />

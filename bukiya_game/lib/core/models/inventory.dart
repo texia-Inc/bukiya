@@ -27,9 +27,9 @@ class PlayerWeapon {
     return PlayerWeapon(
       id: json['id'],
       playerId: json['player_id'],
-      weaponMasterId: json['weapon_master_id'],
-      attack: json['attack'],
-      enchantLevel: json['enchant_level'],
+      weaponMasterId: json['weapon_master_id'] as int,
+      attack: json['attack'] ?? json['base_attack'] ?? 0,
+      enchantLevel: json['enchant_level'] ?? 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       weaponMaster: Weapon.fromJson(json['weapon_master']),
@@ -140,7 +140,7 @@ class InventoryPlayerMaterial {
 
   factory InventoryPlayerMaterial.fromJson(Map<String, dynamic> json) {
     return InventoryPlayerMaterial(
-      materialId: json['material_id'],
+      materialId: json['material_id'] as int,
       quantity: json['quantity'],
       material: crafting.Material.fromJson(json['material']),
     );

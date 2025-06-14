@@ -5,8 +5,8 @@ part 'adventurer_new.g.dart';
 // 冒険者マスター
 @JsonSerializable()
 class AdventurerMaster {
-  @JsonKey(defaultValue: 0)
-  final int? id;
+  @JsonKey()
+  final String? id;
   @JsonKey(defaultValue: '')
   final String name;
   @JsonKey(defaultValue: '')
@@ -68,7 +68,13 @@ class AdventurerMaster {
     this.updatedAt,
   });
 
-  factory AdventurerMaster.fromJson(Map<String, dynamic> json) => _$AdventurerMasterFromJson(json);
+  factory AdventurerMaster.fromJson(Map<String, dynamic> json) {
+    // idがintの場合はStringに変換
+    if (json['id'] != null && json['id'] is int) {
+      json['id'] = json['id'].toString();
+    }
+    return _$AdventurerMasterFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$AdventurerMasterToJson(this);
 }
 
@@ -147,8 +153,8 @@ class AdventurerRequest {
 class Adventurer {
   @JsonKey(defaultValue: '')
   final String id;
-  @JsonKey(name: 'adventurer_master_id', defaultValue: 0)
-  final int? adventurerMasterId;
+  @JsonKey(name: 'adventurer_master_id')
+  final String? adventurerMasterId;
   @JsonKey(name: 'player_id')
   final String? playerId;
   @JsonKey(defaultValue: '')
@@ -204,15 +210,34 @@ class Adventurer {
     this.genericName,
   });
 
-  factory Adventurer.fromJson(Map<String, dynamic> json) => _$AdventurerFromJson(json);
+  factory Adventurer.fromJson(Map<String, dynamic> json) {
+    // adventurer_master_idを安全に変換
+    if (json['adventurer_master_id'] != null && json['adventurer_master_id'] is int) {
+      json['adventurer_master_id'] = json['adventurer_master_id'].toString();
+    }
+    return _$AdventurerFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$AdventurerToJson(this);
 
   // 残り滞在時間（分）
   int get remainingVisitMinutes {
-    if (visitEndTime == null) return 0;
-    final now = DateTime.now();
-    if (now.isAfter(visitEndTime!)) return 0;
-    return visitEndTime!.difference(now).inMinutes;
+    if (visitEndTime == null) {
+      // 新しく訪問した冒険者の場合、デフォルトで60分間の滞在時間を想定
+      return 0; // UIでは「出発準備中」と表示される
+    }
+    
+    // UTC時間として扱う
+    final now = DateTime.now().toUtc();
+    final endTime = visitEndTime!.toUtc();
+    
+    if (now.isAfter(endTime)) {
+      return 0; // UIでは「出発準備中」と表示される
+    }
+    
+    final remaining = endTime.difference(now).inMinutes;
+    
+    // 1分未満の場合は1分として表示
+    return remaining > 0 ? remaining : 1;
   }
 
   // 信頼レベルの表示名
@@ -414,6 +439,8 @@ class QuestProgress {
   final QuestArea questArea;
   @JsonKey(name: 'weapon_used')
   final WeaponUsed weaponUsed;
+  @JsonKey(name: 'monster_fighting')
+  final MonsterFighting? monsterFighting;
 
   const QuestProgress({
     required this.id,
@@ -425,6 +452,7 @@ class QuestProgress {
     required this.isCompleted,
     required this.questArea,
     required this.weaponUsed,
+    this.monsterFighting,
   });
 
   factory QuestProgress.fromJson(Map<String, dynamic> json) => _$QuestProgressFromJson(json);
@@ -465,6 +493,96 @@ class RemainingTime {
 
   factory RemainingTime.fromJson(Map<String, dynamic> json) => _$RemainingTimeFromJson(json);
   Map<String, dynamic> toJson() => _$RemainingTimeToJson(this);
+}
+
+// 戦闘中モンスター情報
+@JsonSerializable()
+class MonsterFighting {
+  @JsonKey(defaultValue: 0)
+  final int? id;
+  @JsonKey(defaultValue: '')
+  final String name;
+  @JsonKey(defaultValue: 1)
+  final int level;
+  @JsonKey(name: 'monster_type', defaultValue: '')
+  final String monsterType;
+  @JsonKey(defaultValue: 100)
+  final int hp;
+  @JsonKey(defaultValue: 20)
+  final int attack;
+  @JsonKey(defaultValue: 10)
+  final int defense;
+  @JsonKey(defaultValue: '')
+  final String? element;
+  @JsonKey(defaultValue: '')
+  final String description;
+
+  const MonsterFighting({
+    this.id,
+    required this.name,
+    required this.level,
+    required this.monsterType,
+    required this.hp,
+    required this.attack,
+    required this.defense,
+    this.element,
+    required this.description,
+  });
+
+  factory MonsterFighting.fromJson(Map<String, dynamic> json) {
+    // idがintの場合は変換する必要はない（idは既にint?として定義されている）
+    return _$MonsterFightingFromJson(json);
+  }
+  Map<String, dynamic> toJson() => _$MonsterFightingToJson(this);
+
+  // モンスタータイプの表示名
+  String get typeDisplayName {
+    switch (monsterType.toLowerCase()) {
+      case 'beast':
+        return '野獣';
+      case 'humanoid':
+        return '人型';
+      case 'undead':
+        return 'アンデッド';
+      case 'elemental':
+        return '精霊';
+      case 'dragon':
+        return 'ドラゴン';
+      case 'machine':
+        return '機械';
+      case 'flying':
+        return '飛行';
+      default:
+        return 'モンスター';
+    }
+  }
+
+  // 属性の表示名
+  String get elementDisplayName {
+    if (element == null || element!.isEmpty) return '';
+    switch (element!.toLowerCase()) {
+      case 'fire':
+        return '火';
+      case 'water':
+        return '水';
+      case 'earth':
+        return '土';
+      case 'wind':
+        return '風';
+      case 'lightning':
+        return '雷';
+      case 'ice':
+        return '氷';
+      case 'light':
+        return '光';
+      case 'dark':
+        return '闇';
+      case 'poison':
+        return '毒';
+      default:
+        return element!;
+    }
+  }
 }
 
 // 使用武器情報
@@ -524,6 +642,8 @@ class QuestReward {
   final String itemType;
   @JsonKey(name: 'item_id', defaultValue: '')
   final String itemId;
+  @JsonKey(name: 'item_name', defaultValue: '')
+  final String itemName;
   @JsonKey(defaultValue: 1)
   final int quantity;
   @JsonKey(name: 'buyback_price')
@@ -540,6 +660,7 @@ class QuestReward {
     required this.adventurerQuestId,
     required this.itemType,
     required this.itemId,
+    required this.itemName,
     required this.quantity,
     this.buybackPrice,
     this.buybackDeadline,
@@ -547,8 +668,15 @@ class QuestReward {
     required this.createdAt,
   });
 
-  factory QuestReward.fromJson(Map<String, dynamic> json) =>
-      _$QuestRewardFromJson(json);
+  factory QuestReward.fromJson(Map<String, dynamic> json) {
+    // item_idがintの場合はStringに変換、nullの場合は空文字に
+    if (json['item_id'] != null && json['item_id'] is int) {
+      json['item_id'] = json['item_id'].toString();
+    } else if (json['item_id'] == null) {
+      json['item_id'] = '';
+    }
+    return _$QuestRewardFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$QuestRewardToJson(this);
 }
 

@@ -150,7 +150,7 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   // 素材を売却
-  Future<MaterialSellResult?> sellMaterial(int materialId, int quantity) async {
+  Future<MaterialSellResult?> sellMaterial(String materialId, int quantity) async {
     try {
       final response = await _apiService.dio.post(
         '/api/v1/materials/player/sell',

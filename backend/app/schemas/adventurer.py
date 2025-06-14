@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
+from uuid import UUID
 
 # 冒険者マスター関連のスキーマ
 class AdventurerMasterBase(BaseModel):
@@ -11,7 +12,7 @@ class AdventurerMasterBase(BaseModel):
     trust_level: int = Field(default=50, ge=0, le=100, description="信頼度")
     budget_min: int = Field(default=500, ge=0, description="最小予算")
     budget_max: int = Field(default=2000, ge=0, description="最大予算")
-    preferred_weapon_type: str = Field(..., description="好みの武器種")
+    preferred_weapon_type: Optional[str] = Field(None, description="好みの武器種")
     avatar_url: Optional[str] = Field(None, description="アバター画像URL")
     description: Optional[str] = Field(None, description="説明")
     
@@ -50,7 +51,7 @@ class AdventurerMasterUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class AdventurerMaster(AdventurerMasterBase):
-    id: int
+    id: str
     created_at: datetime
     updated_at: datetime
 
@@ -70,14 +71,13 @@ class MonsterMasterBase(BaseModel):
     weakness: Optional[str] = Field(None, description="弱点")
     resistance: Optional[str] = Field(None, description="耐性")
     
-    spawn_areas: str = Field(..., description="出現エリア（カンマ区切り）")
+    spawn_areas: Optional[str] = Field(None, description="出現エリア（カンマ区切り）")
     spawn_weight: int = Field(default=100, ge=0, description="出現確率の重み")
     min_required_weapon_level: int = Field(default=0, ge=0, description="必要武器レベル")
     
     base_gold_reward: int = Field(default=100, ge=0, description="基本ゴールド報酬")
     experience_reward: int = Field(default=50, ge=0, description="経験値報酬")
     
-    image_url: Optional[str] = Field(None, description="画像URL")
     description: Optional[str] = Field(None, description="説明")
     
     is_active: bool = Field(default=True, description="有効フラグ")
@@ -100,7 +100,6 @@ class MonsterMasterUpdate(BaseModel):
     min_required_weapon_level: Optional[int] = Field(None, ge=0)
     base_gold_reward: Optional[int] = Field(None, ge=0)
     experience_reward: Optional[int] = Field(None, ge=0)
-    image_url: Optional[str] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -155,35 +154,43 @@ class QuestAreaMaster(QuestAreaMasterBase):
 
 # ドロップテーブル関連のスキーマ
 class MonsterDropTableBase(BaseModel):
-    monster_id: int = Field(..., description="モンスターID")
-    item_type: str = Field(..., description="アイテムタイプ (material, weapon)")
-    item_id: int = Field(..., description="アイテムID")
+    monster_master_id: int = Field(..., description="モンスターID")
+    drop_type: str = Field(..., description="ドロップタイプ (material, weapon)")
+    drop_target_id: Optional[str] = Field(None, description="ドロップアイテムID")
     drop_rate: float = Field(..., ge=0.0, le=1.0, description="ドロップ率")
-    min_quantity: int = Field(default=1, ge=1, description="最小数量")
-    max_quantity: int = Field(default=1, ge=1, description="最大数量")
-    
-    required_weapon_enchant: int = Field(default=0, ge=0, description="必要武器エンチャントレベル")
-    required_adventurer_level: int = Field(default=1, ge=1, description="必要冒険者レベル")
+    quantity_min: int = Field(default=1, ge=1, description="最小数量")
+    quantity_max: int = Field(default=1, ge=1, description="最大数量")
+    required_weapon_type: Optional[str] = Field(None, description="必要武器タイプ")
+    bonus_rate: float = Field(default=0.0, ge=0.0, description="ボーナス率")
     
     is_active: bool = Field(default=True, description="有効フラグ")
 
-class MonsterDropTableCreate(MonsterDropTableBase):
-    pass
+class MonsterDropTableCreate(BaseModel):
+    drop_type: str = Field(..., description="ドロップタイプ (material, weapon)")
+    drop_target_id: Optional[str] = Field(None, description="ドロップアイテムID")
+    drop_rate: float = Field(..., ge=0.0, le=1.0, description="ドロップ率")
+    quantity_min: int = Field(default=1, ge=1, description="最小数量")
+    quantity_max: int = Field(default=1, ge=1, description="最大数量")
+    required_weapon_type: Optional[str] = Field(None, description="必要武器タイプ")
+    bonus_rate: float = Field(default=0.0, ge=0.0, description="ボーナス率")
+    
+    is_active: bool = Field(default=True, description="有効フラグ")
 
 class MonsterDropTableUpdate(BaseModel):
-    monster_id: Optional[int] = None
-    item_type: Optional[str] = None
-    item_id: Optional[int] = None
+    monster_master_id: Optional[int] = None
+    drop_type: Optional[str] = None
+    drop_target_id: Optional[str] = None
     drop_rate: Optional[float] = Field(None, ge=0.0, le=1.0)
-    min_quantity: Optional[int] = Field(None, ge=1)
-    max_quantity: Optional[int] = Field(None, ge=1)
-    required_weapon_enchant: Optional[int] = Field(None, ge=0)
-    required_adventurer_level: Optional[int] = Field(None, ge=1)
+    quantity_min: Optional[int] = Field(None, ge=1)
+    quantity_max: Optional[int] = Field(None, ge=1)
+    required_weapon_type: Optional[str] = None
+    bonus_rate: Optional[float] = Field(None, ge=0.0)
     is_active: Optional[bool] = None
 
 class MonsterDropTable(MonsterDropTableBase):
-    id: int
+    id: UUID
     created_at: datetime
+    item_name: Optional[str] = Field(None, description="アイテム名")
 
     class Config:
         from_attributes = True
@@ -212,3 +219,40 @@ class MonsterDropTableListResponse(BaseModel):
     total: int
     page: int
     limit: int
+
+# 素材ターゲティング関連のスキーマ
+class MaterialTargetRequest(BaseModel):
+    """素材ターゲティングリクエスト"""
+    target_material_id: Optional[int] = Field(None, description="狙い素材ID")
+    boost_level: int = Field(default=1, ge=1, le=3, description="ブーストレベル(1-3)")
+    
+    class Config:
+        from_attributes = True
+
+class QuestDispatchRequest(BaseModel):
+    """クエスト派遣リクエスト（素材ターゲティング対応）"""
+    quest_area_id: int = Field(..., description="クエストエリアID")
+    material_target: Optional[MaterialTargetRequest] = Field(None, description="素材ターゲティング設定")
+    
+    class Config:
+        from_attributes = True
+
+class MaterialTargetInfo(BaseModel):
+    """素材ターゲティング情報"""
+    material_id: int
+    material_name: str
+    boost_multiplier: float
+    target_cost: int
+    
+    class Config:
+        from_attributes = True
+
+class QuestAreaDropInfo(BaseModel):
+    """クエストエリアのドロップ情報"""
+    quest_area_id: int
+    quest_area_name: str
+    primary_materials: List[MaterialTargetInfo]
+    secondary_materials: List[MaterialTargetInfo]
+    
+    class Config:
+        from_attributes = True

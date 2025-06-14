@@ -205,9 +205,9 @@ class TutorialService extends ChangeNotifier {
         rewardExp: 25,
       ),
       Achievement(
-        id: 'first_weapon_purchase',
+        id: 'first_weapon_procure',
         title: '初めての仕入れ',
-        description: '初めて武器を購入しました',
+        description: '初めて武器を仕入れしました',
         category: 'trading',
         iconName: 'shopping_cart',
         rewardGold: 200,
@@ -363,7 +363,7 @@ class TutorialService extends ChangeNotifier {
     final stepOrder = [
       TutorialStepType.welcome,
       TutorialStepType.shopBasics,
-      TutorialStepType.weaponPurchase,
+      TutorialStepType.weaponProcure,
       TutorialStepType.adventurerIntro,
       TutorialStepType.weaponSale,
       TutorialStepType.inventoryManage,
@@ -399,20 +399,20 @@ class TutorialService extends ChangeNotifier {
       const TutorialStep(
         type: TutorialStepType.shopBasics,
         title: 'ショップ画面',
-        description: 'ここでは武器の購入と販売ができます。\n'
-                    '最初は武器を購入して在庫を増やしましょう。',
+        description: 'ここでは武器の仕入れと販売ができます。\n'
+                    '最初は武器を仕入れして在庫を増やしましょう。',
         targetWidgetKey: 'shop_tab',
         highlightShape: TutorialHighlightShape.circle,
         route: '/shop',
       ),
       
-      // 武器購入
+      // 武器仕入れ
       const TutorialStep(
-        type: TutorialStepType.weaponPurchase,
-        title: '武器を購入しよう',
-        description: '武器カードをタップして購入できます。\n'
+        type: TutorialStepType.weaponProcure,
+        title: '武器を仕入れしよう',
+        description: '武器カードをタップして仕入れできます。\n'
                     '右下の買い物カゴボタンを押してみましょう！',
-        targetWidgetKey: 'weapon_purchase_button',
+        targetWidgetKey: 'weapon_procure_button',
         highlightShape: TutorialHighlightShape.rectangle,
       ),
       
@@ -560,8 +560,8 @@ class TutorialService extends ChangeNotifier {
         newState = newState.copyWith(hasSeenShop: true);
         await updateAchievementProgress('first_shop_visit');
         break;
-      case 'weapon_purchase':
-        await updateAchievementProgress('first_weapon_purchase');
+      case 'weapon_procure':
+        await updateAchievementProgress('first_weapon_procure');
         break;
       case 'weapon_sale':
         newState = newState.copyWith(hasCompletedFirstSale: true);
@@ -594,7 +594,7 @@ class TutorialService extends ChangeNotifier {
     }
     
     if (!_guideState.hasCompletedFirstSale) {
-      return '武器を購入して冒険者に販売してみましょう';
+      return '武器を仕入れして冒険者に販売してみましょう';
     }
     
     if (!_guideState.hasSeenCrafting) {
@@ -621,7 +621,7 @@ class TutorialService extends ChangeNotifier {
     }
     
     if (_guideState.hasSeenShop && !_guideState.hasCompletedFirstSale) {
-      actions.add('武器を購入する');
+      actions.add('武器を仕入れる');
       actions.add('冒険者に武器を販売する');
     }
     

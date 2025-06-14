@@ -18,6 +18,10 @@ import type {
   PlayerListParams,
   WeaponType,
   RarityLevel,
+  Season,
+  SeasonCreate,
+  SeasonUpdate,
+  SeasonListParams,
   DashboardStats,
   AdventurerMaster,
   AdventurerMasterCreate,
@@ -27,6 +31,10 @@ import type {
   MonsterMasterCreate,
   MonsterMasterUpdate,
   MonsterListParams,
+  MonsterDropTable,
+  MonsterDropTableCreate,
+  MonsterDropTableUpdate,
+  MonsterDropTableListParams,
   QuestAreaMaster,
   QuestAreaMasterCreate,
   QuestAreaMasterUpdate,
@@ -53,7 +61,7 @@ const baseQuery = fetchBaseQuery({
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery,
-  tagTypes: ['Weapon', 'Material', 'Recipe', 'Player', 'WeaponType', 'Rarity', 'Adventurer', 'Monster', 'QuestArea', 'MissionTemplate', 'Dashboard'],
+  tagTypes: ['Weapon', 'Material', 'Recipe', 'Player', 'WeaponType', 'Rarity', 'Season', 'Adventurer', 'Monster', 'QuestArea', 'MissionTemplate', 'Dashboard'],
   endpoints: (builder) => ({
     // ダッシュボード統計
     getDashboardStats: builder.query<BaseResponse<DashboardStats>, void>({
@@ -73,15 +81,61 @@ export const adminApi = createApi({
       providesTags: ['Rarity'],
     }),
 
+    // シーズンマスター
+    getSeasons: builder.query<PaginatedResponse<Season>, SeasonListParams>({
+      query: (params) => ({
+        url: 'seasons/',
+        params: {
+          page: params.page || 1,
+          limit: params.limit || 20,
+          search: params.search,
+          is_active: params.is_active
+        }
+      }),
+      providesTags: ['Season'],
+    }),
+
+    getSeason: builder.query<BaseResponse<Season>, number>({
+      query: (id) => `seasons/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Season', id }],
+    }),
+
+    createSeason: builder.mutation<BaseResponse<Season>, SeasonCreate>({
+      query: (season) => ({
+        url: 'seasons/admin/create',
+        method: 'POST',
+        body: season,
+      }),
+      invalidatesTags: ['Season'],
+    }),
+
+    updateSeason: builder.mutation<BaseResponse<Season>, { id: number; season: SeasonUpdate }>({
+      query: ({ id, season }) => ({
+        url: `seasons/admin/${id}`,
+        method: 'PUT',
+        body: season,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Season', id }],
+    }),
+
+    deleteSeason: builder.mutation<BaseResponse<void>, number>({
+      query: (id) => ({
+        url: `seasons/admin/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Season'],
+    }),
+
     // 武器マスター（管理画面用・認証不要）
     getWeapons: builder.query<PaginatedResponse<WeaponMaster>, WeaponListParams>({
       query: (params) => ({
-        url: 'weapons/admin/list',
+        url: 'weapons/admin/list/',
         params: {
           page: params.page || 1,
           limit: params.limit || 20,
           weapon_type_id: params.weapon_type_id,
           rarity_id: params.rarity_id,
+          season_id: params.season_id,
           min_level: params.min_level,
           max_level: params.max_level
         }
@@ -123,7 +177,7 @@ export const adminApi = createApi({
     // 素材マスター（管理画面用）
     getMaterials: builder.query<PaginatedResponse<MaterialMaster>, MaterialListParams>({
       query: (params) => ({
-        url: 'materials',
+        url: 'materials/',
         params: {
           page: params.page,
           limit: params.limit,
@@ -169,7 +223,7 @@ export const adminApi = createApi({
     // クラフトレシピマスター（管理画面用）
     getRecipes: builder.query<PaginatedResponse<CraftingRecipe>, RecipeListParams>({
       query: (params) => ({
-        url: 'recipes',
+        url: 'recipes/',
         params: {
           page: params.page,
           limit: params.limit,
@@ -261,7 +315,7 @@ export const adminApi = createApi({
     // 冒険者マスター（管理画面用）
     getAdventurers: builder.query<PaginatedResponse<AdventurerMaster>, AdventurerListParams>({
       query: (params) => ({
-        url: 'admin/adventurers',
+        url: 'admin/adventurers/',
         params: {
           page: params.page,
           limit: params.limit,
@@ -307,7 +361,7 @@ export const adminApi = createApi({
     // モンスターマスター（管理画面用）
     getMonsters: builder.query<PaginatedResponse<MonsterMaster>, MonsterListParams>({
       query: (params) => ({
-        url: 'monsters',
+        url: 'monsters/',
         params: {
           page: params.page,
           limit: params.limit,
@@ -345,6 +399,47 @@ export const adminApi = createApi({
     deleteMonster: builder.mutation<BaseResponse<void>, number>({
       query: (id) => ({
         url: `admin/monsters/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Monster'],
+    }),
+
+    // モンスタードロップテーブル（管理画面用）
+    getMonsterDrops: builder.query<BaseResponse<MonsterDropTable[]>, MonsterDropTableListParams>({
+      query: (params) => {
+        const queryParams: Record<string, any> = {};
+        if (params.page) queryParams.page = params.page;
+        if (params.limit) queryParams.limit = params.limit;
+        
+        return {
+          url: `monsters/${params.monster_id}/drops`,
+          params: queryParams,
+        };
+      },
+      providesTags: (result, error, { monster_id }) => [{ type: 'Monster', id: monster_id }],
+    }),
+
+    createMonsterDrop: builder.mutation<BaseResponse<MonsterDropTable>, { monster_id: string; drop: MonsterDropTableCreate }>({
+      query: ({ monster_id, drop }) => ({
+        url: `monsters/${monster_id}/drops`,
+        method: 'POST',
+        body: drop,
+      }),
+      invalidatesTags: (result, error, { monster_id }) => [{ type: 'Monster', id: monster_id }],
+    }),
+
+    updateMonsterDrop: builder.mutation<BaseResponse<MonsterDropTable>, { drop_id: string; drop: MonsterDropTableUpdate }>({
+      query: ({ drop_id, drop }) => ({
+        url: `monsters/drops/${drop_id}`,
+        method: 'PUT',
+        body: drop,
+      }),
+      invalidatesTags: ['Monster'],
+    }),
+
+    deleteMonsterDrop: builder.mutation<BaseResponse<void>, string>({
+      query: (drop_id) => ({
+        url: `monsters/drops/${drop_id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Monster'],
@@ -442,6 +537,11 @@ export const {
   useGetDashboardStatsQuery,
   useGetWeaponTypesQuery,
   useGetRarityLevelsQuery,
+  useGetSeasonsQuery,
+  useGetSeasonQuery,
+  useCreateSeasonMutation,
+  useUpdateSeasonMutation,
+  useDeleteSeasonMutation,
   useGetWeaponsQuery,
   useGetWeaponQuery,
   useCreateWeaponMutation,
@@ -472,6 +572,10 @@ export const {
   useCreateMonsterMutation,
   useUpdateMonsterMutation,
   useDeleteMonsterMutation,
+  useGetMonsterDropsQuery,
+  useCreateMonsterDropMutation,
+  useUpdateMonsterDropMutation,
+  useDeleteMonsterDropMutation,
   useGetQuestAreasQuery,
   useGetQuestAreaQuery,
   useCreateQuestAreaMutation,

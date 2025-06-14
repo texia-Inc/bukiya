@@ -47,10 +47,12 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
       REFRESH_TOKEN_EXPIRE_DAYS: 365
       ENVIRONMENT: development
+      OPENAI_API_KEY: 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
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - weapon_images:/app/static/images/weapons
     depends_on:
       - postgres
       - redis
@@ -81,6 +83,7 @@ volumes:
   postgres_data:
   redis_data:
   pgadmin_data:
+  weapon_images:
 
 networks:
   bukiya_network:

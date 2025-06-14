@@ -303,19 +303,55 @@ class _CraftingScreenState extends State<CraftingScreen>
     );
 
     if (confirmed == true) {
-      await provider.craftWeapon(recipe.id);
+      final success = await provider.craftWeapon(recipe.id);
       
-      if (mounted && provider.lastCraftingResult != null) {
-        // 結果ダイアログを表示
-        await showDialog(
-          context: context,
-          builder: (context) => CraftingResultDialog(
-            result: provider.lastCraftingResult!,
-          ),
-        );
-        
-        // 結果をクリア
-        provider.clearLastCraftingResult();
+      if (mounted) {
+        if (success && provider.lastCraftingResult != null) {
+          // 成功時：結果ダイアログを表示
+          await showDialog(
+            context: context,
+            builder: (context) => CraftingResultDialog(
+              result: provider.lastCraftingResult!,
+            ),
+          );
+          
+          // 結果をクリア
+          provider.clearLastCraftingResult();
+        } else if (provider.errorMessage != null) {
+          // エラー時：分かりやすいスナックバーを表示
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFE53935),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          
+          // エラーメッセージをクリア
+          provider.clearError();
+        }
       }
     }
   }
@@ -473,7 +509,7 @@ class _CraftingScreenState extends State<CraftingScreen>
 
     final recipes = _tabController.index == 0 
       ? provider.recipes 
-      : provider.availableRecipes;
+      : provider.availableRecipes.where((recipe) => recipe.isCraftable).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -512,6 +548,7 @@ class _CraftingScreenState extends State<CraftingScreen>
   }
 
   Widget _buildRetroRecipeItem(CraftingRecipe recipe, CraftingProvider provider) {
+    final isAvailableTab = _tabController.index == 1;
     final canCraft = recipe.isCraftable;
     
     return GestureDetector(
@@ -547,15 +584,17 @@ class _CraftingScreenState extends State<CraftingScreen>
                 ),
               ),
             ),
-            Expanded(
-              flex: 1,
-              child: Text(
-                canCraft ? '[合成]' : '[不可]',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: canCraft ? AppTheme.successColor : AppTheme.textSecondary,
+            // 合成可能タブでのみ可用性表示
+            if (isAvailableTab)
+              Expanded(
+                flex: 1,
+                child: Text(
+                  '[合成]',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.successColor,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

@@ -10,7 +10,7 @@ class PlayerMission(Base):
     """プレイヤーミッション進捗モデル"""
     __tablename__ = "player_missions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id"), nullable=False, comment="プレイヤーID")
     mission_template_id = Column(Integer, ForeignKey("mission_templates.id"), nullable=False, comment="ミッションテンプレートID")
     
@@ -56,7 +56,7 @@ class MissionProgressLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id"), nullable=False, comment="プレイヤーID")
-    mission_id = Column(Integer, ForeignKey("player_missions.id"), nullable=False, comment="プレイヤーミッションID")
+    mission_id = Column(UUID(as_uuid=True), ForeignKey("player_missions.id"), nullable=False, comment="プレイヤーミッションID")
     
     # ログ情報
     action_type = Column(String(50), nullable=False, comment="アクションタイプ")

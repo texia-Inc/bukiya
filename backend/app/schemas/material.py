@@ -9,22 +9,28 @@ from .weapon import RarityLevel
 # 素材マスタースキーマ
 class MaterialMasterBase(BaseModel):
     name: str = Field(..., max_length=100, description="素材名")
+    category: Optional[str] = Field(None, description="カテゴリ")
+    rarity_id: str = Field(..., description="レアリティID")
     description: Optional[str] = Field(None, description="説明")
-    rarity_id: int = Field(..., description="レアリティID")
     base_price: int = Field(..., ge=0, description="基本価格")
-    max_stack: int = Field(999, gt=0, description="最大スタック数")
-    image_url: Optional[str] = Field(None, max_length=255, description="画像URL")
+    price_volatility: Optional[float] = Field(0.1, description="価格変動率")
+    stack_size: int = Field(999, gt=0, description="スタック数")
+    emoji: Optional[str] = Field(None, description="絵文字")
+    color_code: Optional[str] = Field(None, description="カラーコード")
 
 class MaterialMasterCreate(MaterialMasterBase):
     pass
 
 class MaterialMasterUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100, description="素材名")
+    category: Optional[str] = Field(None, description="カテゴリ")
+    rarity_id: Optional[str] = Field(None, description="レアリティID")
     description: Optional[str] = Field(None, description="説明")
-    rarity_id: Optional[int] = Field(None, description="レアリティID")
     base_price: Optional[int] = Field(None, ge=0, description="基本価格")
-    max_stack: Optional[int] = Field(None, gt=0, description="最大スタック数")
-    image_url: Optional[str] = Field(None, max_length=255, description="画像URL")
+    price_volatility: Optional[float] = Field(None, description="価格変動率")
+    stack_size: Optional[int] = Field(None, gt=0, description="スタック数")
+    emoji: Optional[str] = Field(None, description="絵文字")
+    color_code: Optional[str] = Field(None, description="カラーコード")
     is_active: Optional[bool] = Field(None, description="有効フラグ")
 
 class MaterialMaster(MaterialMasterBase):
@@ -49,11 +55,31 @@ class PlayerMaterialCreate(PlayerMaterialBase):
 class PlayerMaterialUpdate(BaseModel):
     quantity: int = Field(..., ge=0, description="所持数量")
 
+# Flutter互換のマテリアル情報
+class FlutterMaterial(BaseModel):
+    id: int
+    name: str
+    description: str
+    rarity: str
+    sell_price: int
+    is_active: bool
+
+    @classmethod
+    def from_material_master(cls, material_master: "MaterialMaster") -> "FlutterMaterial":
+        return cls(
+            id=material_master.id,
+            name=material_master.name,
+            description=material_master.description or "",
+            rarity=material_master.rarity.name if material_master.rarity else "common",
+            sell_price=material_master.calculated_price,
+            is_active=material_master.is_active
+        )
+
 class PlayerMaterial(PlayerMaterialBase):
     player_id: UUID
     created_at: datetime
     updated_at: datetime
-    material: MaterialMaster
+    material: FlutterMaterial
     is_full: bool = Field(..., description="スタック上限フラグ")
     remaining_capacity: int = Field(..., description="残りスタック容量")
 

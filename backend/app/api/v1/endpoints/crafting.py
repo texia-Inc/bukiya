@@ -7,6 +7,7 @@ import random
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_player
+from app.core.shop_progression import ShopProgressionService
 from app.models import Player, CraftingRecipe, RecipeMaterial, WeaponMaster, MaterialMaster, PlayerWeapon, PlayerMaterial
 from app.schemas import (
     CraftingRecipeListResponse, CraftingRecipeResponse,
@@ -353,7 +354,7 @@ async def get_available_crafting_recipes(
     
     # プレイヤーの所持素材を取得
     player_materials = {
-        pm.material_id: pm.quantity 
+        pm.material_master_id: pm.quantity 
         for pm in db.query(PlayerMaterial).filter(
             PlayerMaterial.player_id == current_player.id
         ).all()
@@ -412,7 +413,7 @@ async def check_crafting_availability(
     
     # プレイヤーの所持素材を取得
     player_materials = {
-        pm.material_id: pm.quantity 
+        pm.material_master_id: pm.quantity 
         for pm in db.query(PlayerMaterial).filter(
             PlayerMaterial.player_id == current_player.id
         ).all()
@@ -480,7 +481,7 @@ async def craft_weapon(
     
     # プレイヤーの所持素材を取得
     player_materials = {
-        pm.material_id: pm 
+        pm.material_master_id: pm 
         for pm in db.query(PlayerMaterial).filter(
             PlayerMaterial.player_id == current_player.id
         ).all()
@@ -528,12 +529,19 @@ async def craft_weapon(
         db.flush()  # IDを取得するため
         
         weapon_created = True
-        weapon_id = str(player_weapon.id)
+        weapon_id = player_weapon.id
         message = f"{recipe.weapon.name}の合成に成功しました！"
     else:
         message = "合成に失敗しました..."
     
     db.commit()
+    
+    # ショップ経験値を追加（成功時はより多く）
+    progression_action = "weapon_craft" if success else "weapon_craft"
+    multiplier = 1.0 if success else 0.3  # 失敗時は経験値減少
+    progression_result = ShopProgressionService.add_experience(
+        current_player, progression_action, db, multiplier
+    )
     
     result = CraftingResult(
         success=success,
@@ -544,15 +552,26 @@ async def craft_weapon(
         message=message
     )
     
+    # レベルアップ情報をレスポンスに追加
+    response_message = "合成を実行しました"
+    if progression_result.get("leveled_up"):
+        response_message += f" | {progression_result['level_up_message']}"
+    
     return CraftingResultResponse(
         success=True,
         data=result,
-        message="合成を実行しました",
+        message=response_message,
         timestamp=datetime.utcnow(),
-        request_id=str(uuid.uuid4())
+        request_id=str(uuid.uuid4()),
+        shop_progression={
+            "exp_gained": progression_result["exp_gained"],
+            "current_level": progression_result["new_level"],
+            "leveled_up": progression_result["leveled_up"],
+            "progress_percentage": progression_result["progress_percentage"]
+        }
     )
 
-def _check_recipe_availability(recipe: CraftingRecipe, player: Player, player_materials: dict) -> tuple[bool, list[str]]:
+def _check_recipe_availability(recipe: CraftingRecipe, player: Player, player_materials: dict):
     """
     レシピの合成可能性をチェック
     """

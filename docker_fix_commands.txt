@@ -1,0 +1,40 @@
+# Manual Docker Fix Commands
+# Run these commands one by one in Terminal
+
+# 1. Navigate to project directory
+cd /Users/texia/bukiya
+
+# 2. Stop all containers
+docker-compose down
+
+# 3. Clean up Docker system (optional)
+docker system prune -f
+
+# 4. Rebuild backend container without cache
+docker-compose build backend --no-cache
+
+# 5. Start all services
+docker-compose up -d
+
+# 6. Wait for services to start (wait ~15 seconds)
+sleep 15
+
+# 7. Check container status
+docker ps
+
+# 8. Check backend logs
+docker logs bukiya_backend --tail 20
+
+# 9. Test health endpoint
+curl http://localhost:8000/health
+
+# 10. If still having issues, check detailed logs
+docker logs bukiya_backend --follow
+
+# Alternative: Start with logs visible
+# docker-compose up backend
+
+# If you need to completely reset:
+# docker-compose down -v
+# docker-compose build --no-cache
+# docker-compose up -d

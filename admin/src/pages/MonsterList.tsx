@@ -4,12 +4,6 @@ import {
   Paper,
   Typography,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TablePagination,
   TextField,
   FormControl,
@@ -24,6 +18,7 @@ import {
   DialogActions,
   Alert,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,7 +26,7 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
   Refresh as RefreshIcon,
-  ViewList as DropIcon,
+  Inventory as DropIcon,
 } from '@mui/icons-material';
 import {
   useGetMonstersQuery,
@@ -40,6 +35,9 @@ import {
 import type { MonsterMaster } from '../types';
 import { MonsterCreateDialog } from '../components/MonsterCreateDialog';
 import { MonsterEditDialog } from '../components/MonsterEditDialog';
+import { MonsterDropTableDialog } from '../components/MonsterDropTableDialog';
+import SortableTable from '../components/SortableTable';
+import type { SortableColumn } from '../components/SortableTable';
 
 const MonsterList: React.FC = () => {
   const [page, setPage] = useState(0);
@@ -71,6 +69,152 @@ const MonsterList: React.FC = () => {
 
   const monsters = monstersResponse?.data || [];
   const total = monstersResponse?.pagination?.total || 0;
+
+  // テーブルのカラム定義
+  const monsterColumns: SortableColumn[] = [
+    {
+      id: 'id',
+      label: 'ID',
+      numeric: true,
+      align: 'left',
+    },
+    {
+      id: 'name',
+      label: '名前',
+      renderCell: (monster) => (
+        <Typography variant="body2" fontWeight="bold">
+          {monster.name}
+        </Typography>
+      ),
+    },
+    {
+      id: 'monster_type',
+      label: 'タイプ',
+      renderCell: (monster) => getMonsterTypeName(monster.monster_type),
+    },
+    {
+      id: 'level',
+      label: 'レベル',
+      numeric: true,
+    },
+    {
+      id: 'hp',
+      label: 'HP',
+      numeric: true,
+      renderCell: (monster) => monster.hp.toLocaleString(),
+    },
+    {
+      id: 'attack',
+      label: '攻撃力',
+      numeric: true,
+    },
+    {
+      id: 'defense',
+      label: '防御力',
+      numeric: true,
+    },
+    {
+      id: 'element',
+      label: '属性',
+      sortable: false,
+      renderCell: (monster) => (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography variant="caption">
+            属性: {getElementName(monster.element)}
+          </Typography>
+          <Typography variant="caption">
+            弱点: {getElementName(monster.weakness)}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'spawn_areas',
+      label: '出現エリア',
+      sortable: false,
+      renderCell: (monster) => (
+        <Typography variant="caption">
+          {getAreaNames(monster.spawn_areas)}
+        </Typography>
+      ),
+    },
+    {
+      id: 'base_gold_reward',
+      label: '報酬',
+      numeric: true,
+      sortable: false,
+      renderCell: (monster) => (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography variant="caption">
+            {monster.base_gold_reward}G
+          </Typography>
+          <Typography variant="caption">
+            EXP {monster.experience_reward}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'is_active',
+      label: '状態',
+      sortable: false,
+      renderCell: (monster) => (
+        <Chip
+          label={monster.is_active ? '有効' : '無効'}
+          size="small"
+          color={monster.is_active ? 'success' : 'default'}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      label: '操作',
+      sortable: false,
+      renderCell: (monster) => (
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Tooltip title="編集">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit(monster);
+              }}
+              color="primary"
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="ドロップテーブル管理">
+            <Button
+              size="small"
+              variant="outlined"
+              color="secondary"
+              startIcon={<DropIcon />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDropTable(monster);
+              }}
+              sx={{ minWidth: 'auto', fontSize: '0.75rem' }}
+            >
+              ドロップ
+            </Button>
+          </Tooltip>
+          <Tooltip title="削除">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(monster);
+              }}
+              color="error"
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -163,7 +307,10 @@ const MonsterList: React.FC = () => {
     return elementMap[element] || element;
   };
 
-  const getAreaNames = (areas: string) => {
+  const getAreaNames = (areas: string | null | undefined) => {
+    if (!areas) {
+      return '未設定';
+    }
     const areaMap: { [key: string]: string } = {
       forest: '森林',
       cave: '洞窟',
@@ -252,115 +399,25 @@ const MonsterList: React.FC = () => {
       </Paper>
 
       {/* テーブル */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>名前</TableCell>
-              <TableCell>タイプ</TableCell>
-              <TableCell>レベル</TableCell>
-              <TableCell>HP</TableCell>
-              <TableCell>攻撃力</TableCell>
-              <TableCell>防御力</TableCell>
-              <TableCell>属性</TableCell>
-              <TableCell>出現エリア</TableCell>
-              <TableCell>報酬</TableCell>
-              <TableCell>状態</TableCell>
-              <TableCell>操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={12} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
-            ) : monsters.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={12} align="center">
-                  <Typography color="text.secondary">
-                    データがありません
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              monsters.map((monster: any) => (
-                <TableRow key={monster.id} hover>
-                  <TableCell>{monster.id}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="bold">
-                      {monster.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{getMonsterTypeName(monster.monster_type)}</TableCell>
-                  <TableCell>{monster.level}</TableCell>
-                  <TableCell>{monster.hp.toLocaleString()}</TableCell>
-                  <TableCell>{monster.attack}</TableCell>
-                  <TableCell>{monster.defense}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption">
-                        属性: {getElementName(monster.element)}
-                      </Typography>
-                      <Typography variant="caption">
-                        弱点: {getElementName(monster.weakness)}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="caption">
-                      {getAreaNames(monster.spawn_areas)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption">
-                        {monster.base_gold_reward}G
-                      </Typography>
-                      <Typography variant="caption">
-                        EXP {monster.experience_reward}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={monster.is_active ? '有効' : '無効'}
-                      size="small"
-                      color={monster.is_active ? 'success' : 'default'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEdit(monster)}
-                        color="primary"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDropTable(monster)}
-                        color="info"
-                      >
-                        <DropIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(monster)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <Paper>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : monsters.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <Typography color="text.secondary">
+              データがありません
+            </Typography>
+          </Box>
+        ) : (
+          <SortableTable
+            columns={monsterColumns}
+            data={monsters}
+            defaultSortBy="id"
+            defaultSortOrder="asc"
+          />
+        )}
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
@@ -370,7 +427,7 @@ const MonsterList: React.FC = () => {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
-      </TableContainer>
+      </Paper>
 
       {/* 削除確認ダイアログ */}
       <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
@@ -413,23 +470,11 @@ const MonsterList: React.FC = () => {
       />
 
       {/* ドロップテーブル管理ダイアログ */}
-      <Dialog open={dropDialogOpen} onClose={handleCloseDropDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          ドロップテーブル管理 - {selectedMonster?.name}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            このモンスターがドロップするアイテムを管理します。
-          </Typography>
-          {/* ここにドロップテーブル管理コンポーネントを追加 */}
-          <Alert severity="info">
-            ドロップテーブル管理機能は今後実装予定です。
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDropDialog}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
+      <MonsterDropTableDialog
+        open={dropDialogOpen}
+        monster={selectedMonster}
+        onClose={handleCloseDropDialog}
+      />
     </Box>
   );
 };

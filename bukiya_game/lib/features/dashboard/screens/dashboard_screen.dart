@@ -28,6 +28,7 @@ import '../../idle/widgets/idle_income_card.dart';
 import '../../enchantment/screens/enchantment_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../dragon_event/screens/dragon_event_screen.dart';
+import '../../puzzle/screens/puzzle_game_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -189,6 +190,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 7:
         return _buildEnchantmentTab();
       case 8:
+        return const PuzzleGameScreen();
+      case 9:
         return const SettingsScreen();
       default:
         return _buildDashboardTab(player, dashboardProvider);
@@ -346,6 +349,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               showBadge: enchantableWeapons > 0,
               badgeColor: Colors.purple,
               animated: true,
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.games),
+              label: 'パズル',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.settings),
@@ -550,11 +557,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             runSpacing: 4,
             children: [
               _buildMenuOption('[1] ショップ管理', () => _setCurrentIndex(1)),
-              _buildMenuOption('[2] 武器錬成', () => _setCurrentIndex(5)),
-              _buildMenuOption('[3] 冒険者対応', () => _setCurrentIndex(3)),
+              _buildMenuOption('[2] 武器錬成', () => _setCurrentIndex(6)),
+              _buildMenuOption('[3] 冒険者対応', () => _setCurrentIndex(4)),
               _buildMenuOption('[4] ミッション確認', () => _setCurrentIndex(2)),
-              _buildMenuOption('[5] インベントリ', () => _setCurrentIndex(4)),
-              _buildMenuOption('[6] エンチャント', () => _setCurrentIndex(6)),
+              _buildMenuOption('[5] インベントリ', () => _setCurrentIndex(5)),
+              _buildMenuOption('[6] エンチャント', () => _setCurrentIndex(7)),
               _buildMenuOption('[7] オフライン収益', () => _collectOfflineIncome()),
             ],
           ),

@@ -6,13 +6,6 @@ import {
   CardContent,
   Chip,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   IconButton,
   Tooltip,
   CircularProgress,
@@ -29,6 +22,8 @@ import { MaterialCreateDialog } from '../components/MaterialCreateDialog'
 import { MaterialEditDialog } from '../components/MaterialEditDialog'
 import { MaterialDeleteDialog } from '../components/MaterialDeleteDialog'
 import Pagination from '../components/Pagination'
+import SortableTable from '../components/SortableTable'
+import type { SortableColumn } from '../components/SortableTable'
 
 // モックデータ
 const mockMaterials = [
@@ -96,8 +91,121 @@ const MaterialList: React.FC = () => {
   
   // APIデータまたはモックデータを使用
   const materials = materialsData?.data || mockMaterials
-  const totalItems = materialsData?.total || mockMaterials.length
+  const totalItems = materialsData?.pagination?.total || mockMaterials.length
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  // テーブルのカラム定義
+  const materialColumns: SortableColumn[] = [
+    {
+      id: 'id',
+      label: 'ID',
+      numeric: true,
+      align: 'left',
+    },
+    {
+      id: 'name',
+      label: '名前',
+      renderCell: (material) => (
+        <Typography variant="body2" fontWeight="medium">
+          {material.name}
+        </Typography>
+      ),
+    },
+    {
+      id: 'description',
+      label: '説明',
+      renderCell: (material) => (
+        <Typography variant="body2" color="textSecondary">
+          {material.description}
+        </Typography>
+      ),
+    },
+    {
+      id: 'rarity.name',
+      label: 'レアリティ',
+      renderCell: (material) => (
+        <Chip
+          label={material.rarity.name}
+          size="small"
+          sx={{
+            backgroundColor: material.rarity.color_code,
+            color: 'white',
+          }}
+        />
+      ),
+    },
+    {
+      id: 'base_price',
+      label: '価格',
+      numeric: true,
+      align: 'right',
+      renderCell: (material) => `${material.base_price}G`,
+    },
+    {
+      id: 'max_stack',
+      label: '最大スタック',
+      numeric: true,
+      align: 'right',
+      renderCell: (material) => material.max_stack || 99,
+    },
+    {
+      id: 'is_active',
+      label: '状態',
+      sortable: false,
+      renderCell: (material) => (
+        <Chip
+          label={material.is_active ? '有効' : '無効'}
+          size="small"
+          color={material.is_active ? 'success' : 'error'}
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      label: '操作',
+      align: 'center',
+      sortable: false,
+      renderCell: (material) => (
+        <Box>
+          <Tooltip title="詳細表示">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleView(material.id);
+              }}
+            >
+              <ViewIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="編集">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit(material);
+              }}
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="削除">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(material);
+              }}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
 
   const handleEdit = (material: any) => {
     setSelectedMaterial(material)
@@ -223,86 +331,12 @@ const MaterialList: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             素材一覧
           </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>名前</TableCell>
-                  <TableCell>説明</TableCell>
-                  <TableCell>レアリティ</TableCell>
-                  <TableCell align="right">価格</TableCell>
-                  <TableCell align="right">最大スタック</TableCell>
-                  <TableCell>状態</TableCell>
-                  <TableCell align="center">操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {materials.map((material) => (
-                  <TableRow key={material.id} hover>
-                    <TableCell>{material.id}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="medium">
-                        {material.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="textSecondary">
-                        {material.description}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={material.rarity.name}
-                        size="small"
-                        sx={{
-                          backgroundColor: material.rarity.color_code,
-                          color: 'white',
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">{material.base_price}G</TableCell>
-                    <TableCell align="right">{material.max_stack || 99}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={material.is_active ? '有効' : '無効'}
-                        size="small"
-                        color={material.is_active ? 'success' : 'error'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="詳細表示">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleView(material.id)}
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="編集">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(material)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="削除">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(material)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <SortableTable
+            columns={materialColumns}
+            data={materials}
+            defaultSortBy="id"
+            defaultSortOrder="asc"
+          />
           
           {/* ページネーション */}
           <Pagination

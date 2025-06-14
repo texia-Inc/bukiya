@@ -142,7 +142,7 @@ class AdventurerMockService {
       
       final adventurer = Adventurer(
         id: adventurerId,
-        adventurerMasterId: i + 1,
+        adventurerMasterId: (i + 1).toString(),
         name: '${master.name}_$instanceNumber',
         level: master.baseLevel + _random.nextInt(5),
         trustLevel: (master.baseTrustLevel + _random.nextInt(20) - 10).clamp(0, 100),
@@ -152,7 +152,7 @@ class AdventurerMockService {
         createdAt: now.subtract(Duration(days: _random.nextInt(30))),
         updatedAt: now,
         adventurerMaster: AdventurerMaster(
-          id: i + 1,
+          id: (i + 1).toString(),
           name: master.name,
           profession: master.profession,
           level: master.baseLevel,
@@ -197,7 +197,7 @@ class AdventurerMockService {
       
       final adventurer = Adventurer(
         id: adventurerId,
-        adventurerMasterId: i + 1,
+        adventurerMasterId: (i + 1).toString(),
         name: '${master.name}_$instanceNumber',
         level: master.baseLevel + _random.nextInt(5),
         trustLevel: (master.baseTrustLevel + _random.nextInt(20) - 10).clamp(0, 100),
@@ -206,7 +206,7 @@ class AdventurerMockService {
         createdAt: now.subtract(Duration(days: _random.nextInt(30))),
         updatedAt: now,
         adventurerMaster: AdventurerMaster(
-          id: i + 1,
+          id: (i + 1).toString(),
           name: master.name,
           profession: master.profession,
           level: master.baseLevel,
@@ -285,6 +285,7 @@ class AdventurerMockService {
           adventurerQuestId: 'result_$i',
           itemType: drop.itemType,
           itemId: drop.itemId,
+          itemName: _getMaterialName(drop.itemId), // 素材名を追加
           quantity: drop.quantity,
           buybackPrice: drop.buybackPrice,
           buybackDeadline: now.add(Duration(hours: 24)),
@@ -401,5 +402,59 @@ class AdventurerMockService {
     }
     
     return requests;
+  }
+
+  /// 素材IDから素材名を取得
+  static String _getMaterialName(String itemId) {
+    switch (itemId) {
+      case '1':
+        return '鉄鉱石';
+      case '2':
+        return '魔法の水晶';
+      case '3':
+        return '古代の木材';
+      case '4':
+        return '希少な宝石';
+      case '5':
+        return 'ドラゴンの鱗';
+      case '6':
+        return 'ミスリル鉱石';
+      case '7':
+        return '毒草';
+      case '8':
+        return '聖なる水';
+      case '9':
+        return 'プラチナ鉱石';
+      case '10':
+        return '木の枝';
+      case '11':
+        return '動物の毛皮';
+      case '12':
+        return '粘土';
+      case '13':
+        return '砂';
+      case '14':
+        return '炭';
+      case '15':
+        return '羊毛';
+      case '16':
+        return '麻紐';
+      case '17':
+        return '骨';
+      case '18':
+        return '小石';
+      case '19':
+        return '樹液';
+      case '20':
+        return '蜘蛛の糸';
+      case '21':
+        return '硫黄';
+      case '22':
+        return '鋼鉄塊';
+      case '23':
+        return '魔法の水晶';
+      default:
+        return '素材 #$itemId';
+    }
   }
 }

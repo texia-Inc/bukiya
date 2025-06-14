@@ -6,6 +6,7 @@ import uuid
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.shop_progression import ShopProgressionService
 from app.schemas.common import APIResponse
 from app.schemas.player import (
     PlayerResponse, 
@@ -52,6 +53,7 @@ async def get_players_admin(
             gold=player.gold,
             gems=player.gems,
             shop_level=player.shop_level,
+            shop_exp=player.shop_exp,
             reputation=player.reputation,
             created_at=player.created_at,
             last_login=player.last_login,
@@ -119,6 +121,7 @@ async def get_player_detail_admin(
         gold=player.gold,
         gems=player.gems,
         shop_level=player.shop_level,
+        shop_exp=player.shop_exp,
         reputation=player.reputation,
         created_at=player.created_at,
         last_login=player.last_login,
@@ -144,8 +147,8 @@ async def get_player_detail_admin(
             highest_weapon_attack=statistics.highest_weapon_attack,
             highest_enchant_level=statistics.highest_enchant_level,
             max_daily_gold=statistics.max_daily_gold,
-            enchant_success_rate=statistics.enchant_success_rate,
-            average_session_duration=statistics.average_session_duration,
+            enchant_success_rate=statistics.enchants_succeeded / statistics.enchants_attempted if statistics.enchants_attempted > 0 else 0.0,
+            average_session_duration=statistics.total_play_time_seconds / statistics.session_count if statistics.session_count > 0 else 0.0,
             updated_at=statistics.updated_at
         )
     
@@ -155,7 +158,7 @@ async def get_player_detail_admin(
         weapon_list.append({
             "id": str(weapon.id),
             "weapon_name": weapon.weapon_master.name,
-            "attack": weapon.attack,
+            "attack": weapon.total_attack,
             "enchant_level": weapon.enchant_level,
             "created_at": weapon.created_at
         })
@@ -226,6 +229,7 @@ async def update_player_admin(
         gold=player.gold,
         gems=player.gems,
         shop_level=player.shop_level,
+        shop_exp=player.shop_exp,
         reputation=player.reputation,
         created_at=player.created_at,
         last_login=player.last_login,
@@ -342,6 +346,7 @@ async def get_current_player_info(
         gold=current_user.gold,
         gems=current_user.gems,
         shop_level=current_user.shop_level,
+        shop_exp=current_user.shop_exp,
         reputation=current_user.reputation,
         created_at=current_user.created_at,
         last_login=current_user.last_login,
@@ -432,6 +437,7 @@ async def update_current_player(
         gold=current_user.gold,
         gems=current_user.gems,
         shop_level=current_user.shop_level,
+        shop_exp=current_user.shop_exp,
         reputation=current_user.reputation,
         created_at=current_user.created_at,
         last_login=current_user.last_login,
@@ -474,6 +480,7 @@ async def add_gold(
         gold=current_user.gold,
         gems=current_user.gems,
         shop_level=current_user.shop_level,
+        shop_exp=current_user.shop_exp,
         reputation=current_user.reputation,
         created_at=current_user.created_at,
         last_login=current_user.last_login,
@@ -516,6 +523,7 @@ async def add_gems(
         gold=current_user.gold,
         gems=current_user.gems,
         shop_level=current_user.shop_level,
+        shop_exp=current_user.shop_exp,
         reputation=current_user.reputation,
         created_at=current_user.created_at,
         last_login=current_user.last_login,
@@ -574,6 +582,40 @@ async def get_player_statistics(
         success=True,
         data=statistics_response,
         message="統計情報を取得しました",
+        timestamp=datetime.utcnow(),
+        request_id=str(uuid.uuid4())
+    )
+
+@router.get("/shop-progression")
+async def get_shop_progression(
+    player_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    ショップレベル進行情報を取得
+    
+    管理画面用：player_idを指定可能
+    ゲーム用：認証されたプレイヤーの情報を取得
+    """
+    if player_id:
+        # 管理画面用（player_id指定）
+        player = db.query(Player).filter(Player.id == player_id).first()
+        if not player:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="プレイヤーが見つかりません"
+            )
+    else:
+        # ゲーム用（認証必要）
+        from app.core.dependencies import get_current_player
+        player = Depends(get_current_player)
+    
+    progression_info = ShopProgressionService.get_progression_info(player)
+    
+    return APIResponse(
+        success=True,
+        data=progression_info,
+        message="ショップ進行情報を取得しました",
         timestamp=datetime.utcnow(),
         request_id=str(uuid.uuid4())
     )

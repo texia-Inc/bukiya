@@ -267,6 +267,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // プレイヤーデータを最新の状態に更新
+  Future<void> refreshPlayerData() async {
+    try {
+      await _loadPlayerProfile();
+    } catch (e) {
+      debugPrint('プレイヤーデータ更新失敗: $e');
+    }
+  }
+
   // プレイヤープロフィールを読み込み
   Future<void> _loadPlayerProfile() async {
     try {

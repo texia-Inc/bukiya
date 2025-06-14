@@ -13,12 +13,19 @@ Player _$PlayerFromJson(Map<String, dynamic> json) => Player(
       gold: (json['gold'] as num).toInt(),
       gems: (json['gems'] as num).toInt(),
       shopLevel: (json['shop_level'] as num).toInt(),
-      experience: (json['experience'] as num?)?.toInt() ?? 0,
+      experience: (json['shop_exp'] as num?)?.toInt() ?? 0,
       reputation: (json['reputation'] as num).toInt(),
       isActive: json['is_active'] as bool,
       lastLogin: _dateTimeFromJsonNullable(json['last_login'] as String?),
       createdAt: _dateTimeFromJson(json['created_at'] as String?),
       updatedAt: _dateTimeFromJsonNullable(json['updated_at'] as String?),
+      idleIncomeRate: (json['idle_income_rate'] as num?)?.toInt() ?? 10,
+      idleIncomeMultiplier:
+          (json['idle_income_multiplier'] as num?)?.toInt() ?? 100,
+      lastIdleCollectionTime: _dateTimeFromJsonNullable(
+          json['last_idle_collection_time'] as String?),
+      lastVisitorSpawnTime:
+          _dateTimeFromJsonNullable(json['last_visitor_spawn_time'] as String?),
     );
 
 Map<String, dynamic> _$PlayerToJson(Player instance) => <String, dynamic>{
@@ -28,12 +35,17 @@ Map<String, dynamic> _$PlayerToJson(Player instance) => <String, dynamic>{
       'gold': instance.gold,
       'gems': instance.gems,
       'shop_level': instance.shopLevel,
-      'experience': instance.experience,
+      'shop_exp': instance.experience,
       'reputation': instance.reputation,
       'is_active': instance.isActive,
       'last_login': _dateTimeToJson(instance.lastLogin),
       'created_at': _dateTimeToJson(instance.createdAt),
       'updated_at': _dateTimeToJson(instance.updatedAt),
+      'idle_income_rate': instance.idleIncomeRate,
+      'idle_income_multiplier': instance.idleIncomeMultiplier,
+      'last_idle_collection_time':
+          _dateTimeToJson(instance.lastIdleCollectionTime),
+      'last_visitor_spawn_time': _dateTimeToJson(instance.lastVisitorSpawnTime),
     };
 
 PlayerStatistics _$PlayerStatisticsFromJson(Map<String, dynamic> json) =>

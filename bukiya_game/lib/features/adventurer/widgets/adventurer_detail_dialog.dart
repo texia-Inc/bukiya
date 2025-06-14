@@ -118,6 +118,35 @@ class AdventurerDetailDialog extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (onDispatchQuest != null) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        onDispatchQuest!();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppTheme.primaryColor,
+                            width: 1,
+                          ),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        ),
+                        child: Text(
+                          '[派遣する]',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

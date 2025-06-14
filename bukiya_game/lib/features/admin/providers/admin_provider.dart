@@ -32,9 +32,9 @@ class AdminProvider extends ChangeNotifier {
   PaginationInfo? _monsterPagination;
   
   // 選択状態
-  final Set<String> _selectedWeaponIds = {};
+  final Set<int> _selectedWeaponIds = {};
   final Set<int> _selectedMaterialIds = {};
-  final Set<String> _selectedMonsterIds = {};
+  final Set<int> _selectedMonsterIds = {};
   
   AdminProvider(ApiService apiService) : _adminService = AdminService(apiService);
   
@@ -58,9 +58,9 @@ class AdminProvider extends ChangeNotifier {
   PaginationInfo? get materialPagination => _materialPagination;
   PaginationInfo? get monsterPagination => _monsterPagination;
   
-  Set<String> get selectedWeaponIds => _selectedWeaponIds;
+  Set<int> get selectedWeaponIds => _selectedWeaponIds;
   Set<int> get selectedMaterialIds => _selectedMaterialIds;
-  Set<String> get selectedMonsterIds => _selectedMonsterIds;
+  Set<int> get selectedMonsterIds => _selectedMonsterIds;
   
   bool get hasSelectedWeapons => _selectedWeaponIds.isNotEmpty;
   bool get hasSelectedMaterials => _selectedMaterialIds.isNotEmpty;
@@ -236,7 +236,7 @@ class AdminProvider extends ChangeNotifier {
     try {
       int successCount = 0;
       for (final weaponId in _selectedWeaponIds.toList()) {
-        final response = await _adminService.deleteWeapon(weaponId);
+        final response = await _adminService.deleteWeapon(weaponId.toString());
         if (response.success) {
           successCount++;
         }
@@ -529,7 +529,7 @@ class AdminProvider extends ChangeNotifier {
     try {
       int successCount = 0;
       for (final monsterId in _selectedMonsterIds.toList()) {
-        final response = await _adminService.deleteMonster(monsterId);
+        final response = await _adminService.deleteMonster(monsterId.toString());
         if (response.success) {
           successCount++;
         }
@@ -553,7 +553,7 @@ class AdminProvider extends ChangeNotifier {
   }
   
   /// モンスター選択切り替え
-  void toggleMonsterSelection(String monsterId) {
+  void toggleMonsterSelection(int monsterId) {
     if (_selectedMonsterIds.contains(monsterId)) {
       _selectedMonsterIds.remove(monsterId);
     } else {
@@ -676,7 +676,7 @@ class AdminProvider extends ChangeNotifier {
   // ================== 選択管理 ==================
   
   /// 武器選択/解除
-  void toggleWeaponSelection(String weaponId) {
+  void toggleWeaponSelection(int weaponId) {
     if (_selectedWeaponIds.contains(weaponId)) {
       _selectedWeaponIds.remove(weaponId);
     } else {

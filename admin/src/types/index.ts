@@ -26,6 +26,37 @@ export interface WeaponType {
   updated_at: string
 }
 
+export interface Season {
+  id: number
+  name: string
+  description?: string
+  start_date: string
+  end_date?: string
+  is_active: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SeasonCreate {
+  name: string
+  description?: string
+  start_date: string
+  end_date?: string
+  display_order: number
+}
+
+export interface SeasonUpdate extends Partial<SeasonCreate> {
+  is_active?: boolean
+}
+
+export interface SeasonListParams {
+  page?: number
+  limit?: number
+  search?: string
+  is_active?: boolean
+}
+
 export interface RarityLevel {
   id: number
   name: string
@@ -44,6 +75,7 @@ export interface WeaponMaster {
   description?: string
   weapon_type_id: string
   rarity_id: number
+  season_id?: number
   base_attack: number
   base_price: number
   required_level: number
@@ -54,6 +86,7 @@ export interface WeaponMaster {
   updated_at: string
   weapon_type: WeaponType
   rarity: RarityLevel
+  season?: Season
   calculated_attack: number
   calculated_price: number
 }
@@ -63,6 +96,7 @@ export interface WeaponMasterCreate {
   description?: string
   weapon_type_id: string
   rarity_id: number
+  season_id?: number
   base_attack: number
   base_price: number
   required_level: number
@@ -190,6 +224,7 @@ export interface WeaponListParams {
   limit?: number
   weapon_type_id?: string
   rarity_id?: number
+  season_id?: number
   min_level?: number
   max_level?: number
 }
@@ -250,6 +285,7 @@ export interface WeaponFormData {
   description: string
   weapon_type_id: string
   rarity_id: number
+  season_id?: number
   base_attack: number
   base_price: number
   required_level: number
@@ -426,6 +462,45 @@ export interface MonsterListParams {
   search?: string
   monster_type?: string
   is_active?: boolean
+}
+
+// モンスタードロップテーブル関連型
+export interface MonsterDropTable {
+  id: string
+  monster_master_id: string
+  drop_type: 'material' | 'weapon'
+  drop_target_id: string | null
+  drop_rate: number
+  quantity_min: number
+  quantity_max: number
+  required_weapon_type: string | null
+  bonus_rate: number
+  is_active: boolean
+  created_at: string
+  item_name?: string
+  // リレーション
+  material?: MaterialMaster
+  weapon?: WeaponMaster
+}
+
+export interface MonsterDropTableCreate {
+  drop_type: 'material' | 'weapon'
+  drop_target_id: string | null
+  drop_rate: number
+  quantity_min: number
+  quantity_max: number
+  required_weapon_type?: string | null
+  bonus_rate?: number
+}
+
+export interface MonsterDropTableUpdate extends Partial<MonsterDropTableCreate> {
+  is_active?: boolean
+}
+
+export interface MonsterDropTableListParams {
+  monster_id: string
+  page?: number
+  limit?: number
 }
 
 // クエストエリア関連型

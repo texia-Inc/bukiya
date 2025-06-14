@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// モンスターモデル
 class Monster {
-  final String id;
+  final int id;
   final String name;
   final String description;
   final String monsterType;
@@ -48,7 +48,7 @@ class Monster {
 
   factory Monster.fromJson(Map<String, dynamic> json) {
     return Monster(
-      id: json['id'].toString(),
+      id: json['id'] as int,
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       monsterType: json['monster_type'] ?? 'normal',
@@ -101,7 +101,7 @@ class Monster {
   }
 
   Monster copyWith({
-    String? id,
+    int? id,
     String? name,
     String? description,
     String? monsterType,

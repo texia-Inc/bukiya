@@ -99,6 +99,17 @@ class _WeaponSelectionDialogState extends State<WeaponSelectionDialog> {
       }
     }
     
+    // 条件に合う武器の中から最強の武器を自動選択
+    if (_compatibleWeapons.isNotEmpty) {
+      // 攻撃力で降順ソート（最強から弱い順）
+      _compatibleWeapons.sort((a, b) => b.totalAttack.compareTo(a.totalAttack));
+      
+      // 最強の武器を自動選択
+      _selectedWeapon = _compatibleWeapons.first;
+      
+      debugPrint('自動選択された武器: ${_selectedWeapon!.displayName} (攻撃力: ${_selectedWeapon!.totalAttack})');
+    }
+    
     setState(() {
       _isLoading = false;
     });

@@ -4,32 +4,31 @@ import {
   Typography,
   Card,
   CardContent,
-  Grid,
   Chip,
   Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   IconButton,
   Tooltip,
   CircularProgress,
   Alert,
+  TextField,
+  MenuItem,
+  Grid,
 } from '@mui/material'
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
   Visibility as ViewIcon,
+  AutoAwesome as MagicIcon,
 } from '@mui/icons-material'
-import { useGetWeaponsQuery } from '../services/api'
+import { useGetWeaponsQuery, useGetSeasonsQuery } from '../services/api'
 import { WeaponCreateDialog } from '../components/WeaponCreateDialog'
 import { WeaponEditDialog } from '../components/WeaponEditDialog'
 import { WeaponDeleteDialog } from '../components/WeaponDeleteDialog'
+import WeaponImageGenerationDialog from '../components/WeaponImageGenerationDialog'
 import Pagination from '../components/Pagination'
+import SortableTable from '../components/SortableTable'
+import type { SortableColumn } from '../components/SortableTable'
 
 // モックデータ
 const mockWeapons = [
@@ -95,20 +94,208 @@ const WeaponList: React.FC = () => {
   const [page, setPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
   
+  // フィルター関連の状態
+  const [weaponTypeFilter, setWeaponTypeFilter] = useState('')
+  const [rarityFilter, setRarityFilter] = useState('')
+  const [seasonFilter, setSeasonFilter] = useState('')
+  
   const { data: weaponsData, isLoading, error, refetch } = useGetWeaponsQuery({
     page,
     limit: itemsPerPage,
+    weapon_type_id: weaponTypeFilter || undefined,
+    rarity_id: rarityFilter ? parseInt(rarityFilter) : undefined,
+    season_id: seasonFilter ? parseInt(seasonFilter) : undefined,
+  })
+
+  const { data: seasonsData } = useGetSeasonsQuery({
+    page: 1,
+    limit: 100,
+    is_active: true,
   })
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isImageGenerationDialogOpen, setIsImageGenerationDialogOpen] = useState(false)
   const [selectedWeapon, setSelectedWeapon] = useState<any>(null)
   
   // APIデータまたはモックデータを使用
   const weapons = weaponsData?.data || mockWeapons
-  const totalItems = weaponsData?.total || mockWeapons.length
+  const totalItems = weaponsData?.pagination?.total || mockWeapons.length
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  // テーブルのカラム定義
+  const weaponColumns: SortableColumn[] = [
+    {
+      id: 'id',
+      label: 'ID',
+      numeric: true,
+      align: 'left',
+    },
+    {
+      id: 'name',
+      label: '名前',
+      renderCell: (weapon) => (
+        <Typography variant="body2" fontWeight="medium">
+          {weapon.name}
+        </Typography>
+      ),
+    },
+    {
+      id: 'weapon_type.name',
+      label: '種別',
+    },
+    {
+      id: 'rarity.name',
+      label: 'レアリティ',
+      renderCell: (weapon) => (
+        <Chip
+          label={weapon.rarity.name}
+          size="small"
+          sx={{
+            backgroundColor: weapon.rarity.color_code,
+            color: 'white',
+          }}
+        />
+      ),
+    },
+    {
+      id: 'season.name',
+      label: 'シーズン',
+      renderCell: (weapon) => (
+        <Typography variant="body2">
+          {weapon.season?.name || '未設定'}
+        </Typography>
+      ),
+    },
+    {
+      id: 'base_attack',
+      label: '攻撃力',
+      numeric: true,
+      align: 'right',
+    },
+    {
+      id: 'base_price',
+      label: '価格',
+      numeric: true,
+      align: 'right',
+      renderCell: (weapon) => `${weapon.base_price}G`,
+    },
+    {
+      id: 'image_url',
+      label: '画像',
+      renderCell: (weapon) => (
+        weapon.image_url ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <img 
+              src={weapon.image_url} 
+              alt={weapon.name}
+              style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none'
+              }}
+            />
+            <Typography variant="caption" color="success.main">
+              ✓
+            </Typography>
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            未設定
+          </Typography>
+        )
+      ),
+    },
+    {
+      id: 'required_level',
+      label: '必要レベル',
+      numeric: true,
+      align: 'right',
+      renderCell: (weapon) => `Lv.${weapon.required_level}`,
+    },
+    {
+      id: 'is_craftable',
+      label: '合成可能',
+      sortable: false,
+      renderCell: (weapon) => (
+        <Chip
+          label={weapon.is_craftable ? '可能' : '不可'}
+          size="small"
+          color={weapon.is_craftable ? 'success' : 'default'}
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      id: 'is_active',
+      label: '状態',
+      sortable: false,
+      renderCell: (weapon) => (
+        <Chip
+          label={weapon.is_active ? '有効' : '無効'}
+          size="small"
+          color={weapon.is_active ? 'success' : 'error'}
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      label: '操作',
+      align: 'center',
+      sortable: false,
+      renderCell: (weapon) => (
+        <Box>
+          <Tooltip title="詳細表示">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleView(weapon.id);
+              }}
+            >
+              <ViewIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="編集">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit(weapon);
+              }}
+            >
+              <EditIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="画像生成">
+            <IconButton
+              size="small"
+              color="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleImageGeneration(weapon);
+              }}
+            >
+              <MagicIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="削除">
+            <IconButton
+              size="small"
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(weapon);
+              }}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
 
   const handleEdit = (weapon: any) => {
     setSelectedWeapon(weapon)
@@ -118,6 +305,11 @@ const WeaponList: React.FC = () => {
   const handleDelete = (weapon: any) => {
     setSelectedWeapon(weapon)
     setIsDeleteDialogOpen(true)
+  }
+
+  const handleImageGeneration = (weapon: any) => {
+    setSelectedWeapon(weapon)
+    setIsImageGenerationDialogOpen(true)
   }
 
   const handleView = (id: number) => {
@@ -170,6 +362,82 @@ const WeaponList: React.FC = () => {
           新規武器追加
         </Button>
       </Box>
+
+      {/* フィルター */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            フィルター
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                select
+                label="武器種別"
+                value={weaponTypeFilter}
+                onChange={(e) => setWeaponTypeFilter(e.target.value)}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="sword">剣</MenuItem>
+                <MenuItem value="bow">弓</MenuItem>
+                <MenuItem value="staff">杖</MenuItem>
+                <MenuItem value="axe">斧</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                select
+                label="レアリティ"
+                value={rarityFilter}
+                onChange={(e) => setRarityFilter(e.target.value)}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="1">Common</MenuItem>
+                <MenuItem value="2">Uncommon</MenuItem>
+                <MenuItem value="3">Rare</MenuItem>
+                <MenuItem value="4">Epic</MenuItem>
+                <MenuItem value="5">Legendary</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                select
+                label="シーズン"
+                value={seasonFilter}
+                onChange={(e) => setSeasonFilter(e.target.value)}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                {seasonsData?.data?.map((season) => (
+                  <MenuItem key={season.id} value={season.id.toString()}>
+                    {season.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => {
+                  setWeaponTypeFilter('');
+                  setRarityFilter('');
+                  setSeasonFilter('');
+                }}
+                size="small"
+                sx={{ height: '40px' }}
+              >
+                フィルターをクリア
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* 統計カード */}
       <Box 
@@ -234,93 +502,12 @@ const WeaponList: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             武器一覧
           </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>名前</TableCell>
-                  <TableCell>種別</TableCell>
-                  <TableCell>レアリティ</TableCell>
-                  <TableCell align="right">攻撃力</TableCell>
-                  <TableCell align="right">価格</TableCell>
-                  <TableCell align="right">必要レベル</TableCell>
-                  <TableCell>合成可能</TableCell>
-                  <TableCell>状態</TableCell>
-                  <TableCell align="center">操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {weapons.map((weapon) => (
-                  <TableRow key={weapon.id} hover>
-                    <TableCell>{weapon.id}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="medium">
-                        {weapon.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{weapon.weapon_type.name}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={weapon.rarity.name}
-                        size="small"
-                        sx={{
-                          backgroundColor: weapon.rarity.color_code,
-                          color: 'white',
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">{weapon.base_attack}</TableCell>
-                    <TableCell align="right">{weapon.base_price}G</TableCell>
-                    <TableCell align="right">Lv.{weapon.required_level}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={weapon.is_craftable ? '可能' : '不可'}
-                        size="small"
-                        color={weapon.is_craftable ? 'success' : 'default'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={weapon.is_active ? '有効' : '無効'}
-                        size="small"
-                        color={weapon.is_active ? 'success' : 'error'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="詳細表示">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleView(weapon.id)}
-                        >
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="編集">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(weapon)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="削除">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(weapon)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <SortableTable
+            columns={weaponColumns}
+            data={weapons}
+            defaultSortBy="id"
+            defaultSortOrder="asc"
+          />
           
           {/* ページネーション */}
           <Pagination
@@ -361,6 +548,20 @@ const WeaponList: React.FC = () => {
           setSelectedWeapon(null)
         }}
         onSuccess={handleCreateSuccess}
+      />
+
+      {/* 武器画像生成ダイアログ */}
+      <WeaponImageGenerationDialog
+        open={isImageGenerationDialogOpen}
+        weapon={selectedWeapon}
+        onClose={() => {
+          setIsImageGenerationDialogOpen(false)
+          setSelectedWeapon(null)
+        }}
+        onSuccess={(imageData) => {
+          console.log('Generated image:', imageData)
+          // 今後、生成された画像をデータベースに保存する処理を追加
+        }}
       />
     </Box>
   )

@@ -26,6 +26,7 @@ async def get_weapons_list(
     limit: int = Query(20, ge=1, le=100, description="1ページあたりのアイテム数"),
     weapon_type_id: Optional[str] = Query(None, description="武器タイプIDフィルター"),
     rarity_id: Optional[int] = Query(None, description="レアリティIDフィルター"),
+    season_id: Optional[int] = Query(None, description="シーズンIDフィルター"),
     min_level: Optional[int] = Query(None, description="最小必要レベル"),
     max_level: Optional[int] = Query(None, description="最大必要レベル"),
     db: Session = Depends(get_db)
@@ -33,14 +34,15 @@ async def get_weapons_list(
     """
     武器マスター一覧を取得（認証不要・管理画面用）
     """
-    return await get_weapons_admin(page, limit, weapon_type_id, rarity_id, min_level, max_level, db)
+    return await get_weapons_admin(page, limit, weapon_type_id, rarity_id, season_id, min_level, max_level, db)
 
 @router.get("/admin/list", response_model=WeaponMasterListResponse)
 async def get_weapons_admin(
     page: int = Query(1, ge=1, description="ページ番号"),
-    limit: int = Query(20, ge=1, le=100, description="1ページあたりのアイテム数"),
+    limit: int = Query(20, ge=1, le=1000, description="1ページあたりのアイテム数"),
     weapon_type_id: Optional[str] = Query(None, description="武器タイプIDフィルター"),
     rarity_id: Optional[int] = Query(None, description="レアリティIDフィルター"),
+    season_id: Optional[int] = Query(None, description="シーズンIDフィルター"),
     min_level: Optional[int] = Query(None, description="最小必要レベル"),
     max_level: Optional[int] = Query(None, description="最大必要レベル"),
     db: Session = Depends(get_db)
@@ -50,7 +52,8 @@ async def get_weapons_admin(
     """
     query = db.query(WeaponMaster).options(
         joinedload(WeaponMaster.weapon_type),
-        joinedload(WeaponMaster.rarity)
+        joinedload(WeaponMaster.rarity),
+        joinedload(WeaponMaster.season)
     ).filter(WeaponMaster.is_active == True)
     
     # フィルター適用
@@ -58,10 +61,12 @@ async def get_weapons_admin(
         query = query.filter(WeaponMaster.weapon_type_id == weapon_type_id)
     if rarity_id:
         query = query.filter(WeaponMaster.rarity_id == rarity_id)
+    if season_id:
+        query = query.filter(WeaponMaster.season_id == season_id)
     if min_level:
-        query = query.filter(WeaponMaster.required_level >= min_level)
+        query = query.filter(WeaponMaster.required_shop_level >= min_level)
     if max_level:
-        query = query.filter(WeaponMaster.required_level <= max_level)
+        query = query.filter(WeaponMaster.required_shop_level <= max_level)
     
     # ページネーション
     total = query.count()
@@ -146,7 +151,7 @@ async def create_weapon_admin(
 
 @router.put("/admin/{weapon_id}", response_model=WeaponMasterResponse)
 async def update_weapon_admin(
-    weapon_id: int,
+    weapon_id: str,
     weapon_data: WeaponMasterUpdate,
     db: Session = Depends(get_db)
 ):
@@ -215,7 +220,7 @@ async def update_weapon_admin(
 
 @router.delete("/admin/{weapon_id}", response_model=BaseResponse[dict])
 async def delete_weapon_admin(
-    weapon_id: int,
+    weapon_id: str,
     db: Session = Depends(get_db)
 ):
     """

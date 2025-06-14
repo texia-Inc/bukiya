@@ -110,7 +110,7 @@ export const MonsterEditDialog: React.FC<MonsterEditDialogProps> = ({
         experience_reward: monster.experience_reward,
         is_active: monster.is_active,
       });
-      setSelectedAreas(monster.spawn_areas.split(',').filter(Boolean));
+      setSelectedAreas(monster.spawn_areas ? monster.spawn_areas.split(',').filter(Boolean) : []);
     }
   }, [monster]);
 

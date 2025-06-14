@@ -209,32 +209,41 @@ class IdleUpgradesCard extends StatelessWidget {
               
               // 購入ボタン
               if (!isMaxLevel)
-                ElevatedButton(
-                  onPressed: canAfford && !idleProvider.isLoading
+                GestureDetector(
+                  onTap: canAfford && !idleProvider.isLoading
                       ? () => _purchaseUpgrade(context, upgrade, idleProvider)
                       : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: canAfford
-                        ? AppTheme.primaryColor
-                        : AppTheme.surfaceColor,
-                    foregroundColor: canAfford
-                        ? Colors.white
-                        : AppTheme.textSecondary,
+                  child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 8,
                     ),
-                  ),
-                  child: idleProvider.isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: canAfford ? AppTheme.primaryColor : AppTheme.textSecondary,
+                        width: 1,
+                      ),
+                      color: canAfford 
+                          ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                          : AppTheme.textSecondary.withValues(alpha: 0.1),
+                    ),
+                    child: idleProvider.isLoading
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: canAfford ? AppTheme.primaryColor : AppTheme.textSecondary,
+                            ),
+                          )
+                        : Text(
+                            '${upgrade.nextLevelCost}G',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: canAfford ? AppTheme.primaryColor : AppTheme.textSecondary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        )
-                      : Text('${upgrade.nextLevelCost}G'),
+                  ),
                 ),
             ],
           ),

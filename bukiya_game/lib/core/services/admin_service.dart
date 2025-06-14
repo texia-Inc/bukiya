@@ -158,7 +158,7 @@ class AdminService {
         await _logAction(
           operation: CrudOperation.create,
           targetType: 'weapon',
-          targetId: weapon.id,
+          targetId: weapon.id.toString(),
           newData: weapon.toJson(),
           notes: '武器を作成しました: ${weapon.name}',
         );
@@ -176,7 +176,7 @@ class AdminService {
       await _logAction(
         operation: CrudOperation.create,
         targetType: 'weapon',
-        targetId: weapon.id,
+        targetId: weapon.id.toString(),
         newData: weapon.toJson(),
         notes: '武器を作成しました: ${weapon.name}',
       );
@@ -531,7 +531,7 @@ class AdminService {
         await _logAction(
           operation: CrudOperation.create,
           targetType: 'monster',
-          targetId: monster.id,
+          targetId: monster.id.toString(),
           newData: monster.toJson(),
           notes: 'モンスターを作成しました: ${monster.name}',
         );
@@ -549,7 +549,7 @@ class AdminService {
       await _logAction(
         operation: CrudOperation.create,
         targetType: 'monster',
-        targetId: monster.id,
+        targetId: monster.id.toString(),
         newData: monster.toJson(),
         notes: 'モンスターを作成しました: ${monster.name}',
       );
@@ -837,7 +837,7 @@ class AdminService {
     final now = DateTime.now();
     return [
       Weapon(
-        id: '1',
+        id: 1,
         name: '鉄の剣',
         description: '基本的な鉄製の剣',
         weaponType: 'sword',
@@ -849,7 +849,7 @@ class AdminService {
         updatedAt: now,
       ),
       Weapon(
-        id: '2',
+        id: 2,
         name: '鋼の斧',
         description: '頑丈な鋼でできた斧',
         weaponType: 'axe',
@@ -892,7 +892,7 @@ class AdminService {
     final now = DateTime.now();
     return [
       Monster(
-        id: '1',
+        id: 1,
         name: 'スライム',
         description: '基本的なスライムモンスター',
         monsterType: MonsterType.normal,
@@ -912,7 +912,7 @@ class AdminService {
         updatedAt: now,
       ),
       Monster(
-        id: '2',
+        id: 2,
         name: 'ゴブリン',
         description: '小型の戦士モンスター',
         monsterType: MonsterType.humanoid,
@@ -933,7 +933,7 @@ class AdminService {
         updatedAt: now,
       ),
       Monster(
-        id: '3',
+        id: 3,
         name: 'ドラゴン',
         description: '強力な龍族のボスモンスター',
         monsterType: MonsterType.dragon,
@@ -954,7 +954,7 @@ class AdminService {
         updatedAt: now,
       ),
       Monster(
-        id: '4',
+        id: 4,
         name: 'アンデッドナイト',
         description: '不死の騎士',
         monsterType: MonsterType.undead,
@@ -975,7 +975,7 @@ class AdminService {
         updatedAt: now,
       ),
       Monster(
-        id: '5',
+        id: 5,
         name: 'ウォーターエレメンタル',
         description: '水の精霊',
         monsterType: MonsterType.elemental,

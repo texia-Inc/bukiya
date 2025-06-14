@@ -238,7 +238,7 @@ class ApiService {
   }
 
   // ショップ関連
-  Future<Map<String, dynamic>> purchaseWeapon(String weaponId) async {
+  Future<Map<String, dynamic>> procureWeapon(String weaponId) async {
     try {
       final response = await _dio.post(
         ApiEndpoints.purchase,

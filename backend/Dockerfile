@@ -16,8 +16,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコードをコピー
 COPY . .
 
+# 静的ファイル用ディレクトリを作成
+RUN mkdir -p /app/static/images/weapons && \
+    chown -R 1000:1000 /app/static && \
+    chmod -R 755 /app/static
+
 # ポート8000を公開
 EXPOSE 8000
 
 # アプリケーションを起動
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["sh", "-c", "python startup_debug.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]

@@ -61,7 +61,7 @@ class CraftingRequest(BaseModel):
 class CraftingResult(BaseModel):
     success: bool = Field(..., description="成功フラグ")
     weapon_created: bool = Field(..., description="武器作成フラグ")
-    weapon_id: Optional[str] = Field(None, description="作成された武器ID")
+    weapon_id: Optional[int] = Field(None, description="作成された武器ID")
     gold_spent: int = Field(..., description="消費ゴールド")
     materials_consumed: List[dict] = Field(..., description="消費素材リスト")
     message: str = Field(..., description="結果メッセージ")

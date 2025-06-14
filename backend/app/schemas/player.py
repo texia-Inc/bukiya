@@ -14,6 +14,7 @@ class PlayerResponse(BaseSchema):
     gold: int = Field(..., description="所持ゴールド")
     gems: int = Field(..., description="所持ジェム")
     shop_level: int = Field(..., description="ショップレベル")
+    shop_exp: int = Field(..., description="ショップ経験値")
     reputation: int = Field(..., description="評判")
     created_at: datetime = Field(..., description="作成日時")
     last_login: datetime = Field(..., description="最終ログイン日時")
