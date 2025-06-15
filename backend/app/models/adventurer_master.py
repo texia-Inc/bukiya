@@ -6,10 +6,29 @@ from datetime import datetime
 
 from ..core.database import Base
 
+class AreaMaster(Base):
+    __tablename__ = "area_masters"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    required_shop_level = Column(Integer, default=1)
+    required_adventurer_level = Column(Integer, default=1)
+    base_expedition_time_minutes = Column(Integer, default=60)
+    danger_level = Column(Integer, default=1)
+    background_image = Column(String(255))
+    theme_color = Column(String(7))
+    is_active = Column(Boolean, default=True)
+    display_order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<AreaMaster(id={self.id}, name='{self.name}', danger_level={self.danger_level})>"
+
 class AdventurerMaster(Base):
     __tablename__ = "adventurer_masters"
 
-    id = Column(String(50), primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     name = Column(String(100), nullable=False, index=True)
     profession = Column(String(50), nullable=False)  # warrior, archer, mage, rogue, paladin
     level = Column(Integer, nullable=False, default=1)
@@ -48,33 +67,25 @@ class MonsterMaster(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     name = Column(String(100), nullable=False, index=True)
-    monster_type = Column(String(50), nullable=False)  # beast, undead, dragon, elemental, etc.
+    monster_type = Column(String(50), nullable=False, default="beast")
     level = Column(Integer, nullable=False, default=1)
-    hp = Column(Integer, nullable=False, default=100)
-    attack = Column(Integer, nullable=False, default=50)
-    defense = Column(Integer, nullable=False, default=20)
-    
-    # 属性
-    element = Column(String(50), nullable=True)  # fire, ice, thunder, earth, wind
+    hp = Column(Integer, nullable=False)
+    attack = Column(Integer, nullable=False)
+    defense = Column(Integer, nullable=False)
+    speed = Column(Integer, default=100)
+    attribute_id = Column(String(20))
+    element = Column(String(50), nullable=True)
     weakness = Column(String(50), nullable=True)
     resistance = Column(String(50), nullable=True)
-    
-    # 出現設定
-    spawn_areas = Column(String(255), nullable=False)  # カンマ区切りのエリアID
-    spawn_weight = Column(Integer, nullable=False, default=100)
-    min_required_weapon_level = Column(Integer, nullable=False, default=0)
-    
-    # 報酬設定
-    base_gold_reward = Column(Integer, nullable=False, default=100)
-    experience_reward = Column(Integer, nullable=False, default=50)
-    
-    # 見た目  
+    spawn_areas = Column(String(255), nullable=True)
+    spawn_weight = Column(Integer, default=100)
+    min_required_weapon_level = Column(Integer, default=0)
+    base_gold_reward = Column(Integer, default=100)
+    experience_reward = Column(Integer, default=50)
     description = Column(Text, nullable=True)
-    
-    # システム情報
-    is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f"<MonsterMaster(id={self.id}, name='{self.name}', level={self.level})>"
@@ -112,7 +123,7 @@ class MonsterDropTable(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     monster_master_id = Column(Integer, nullable=False, index=True)
     drop_type = Column(String(50), nullable=False)  # material, weapon
-    drop_target_id = Column(String(50), nullable=False)
+    drop_target_id = Column(String(50), nullable=True)  # NULL for gold drops
     drop_rate = Column(Numeric(precision=10, scale=4), nullable=False, default=0.1)
     quantity_min = Column(Integer, nullable=False, default=1)
     quantity_max = Column(Integer, nullable=False, default=1)

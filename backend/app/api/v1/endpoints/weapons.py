@@ -339,14 +339,111 @@ async def get_player_weapons(
     """
     プレイヤーの所持武器一覧を取得
     """
-    player_weapons = db.query(PlayerWeapon).options(
-        joinedload(PlayerWeapon.weapon_master).joinedload(WeaponMaster.weapon_type),
-        joinedload(PlayerWeapon.weapon_master).joinedload(WeaponMaster.rarity)
-    ).filter(PlayerWeapon.player_id == current_player.id).all()
+    # Get player weapons without the broken relationship
+    player_weapons = db.query(PlayerWeapon).filter(
+        PlayerWeapon.player_id == current_player.id
+    ).all()
+    
+    # Manually attach weapon master data for each weapon
+    enriched_weapons = []
+    for pw in player_weapons:
+        # Get weapon master separately since relationship is disabled
+        weapon_master = db.query(WeaponMaster).options(
+            joinedload(WeaponMaster.weapon_type),
+            joinedload(WeaponMaster.rarity),
+            joinedload(WeaponMaster.season)
+        ).filter(
+            WeaponMaster.id == int(pw.weapon_master_id)  # Convert string to int
+        ).first()
+        
+        if weapon_master:
+            # Create a dict with the weapon data and attach the weapon master
+            # Ensure all string fields are non-null for Flutter compatibility
+            weapon_dict = {
+                "id": str(pw.id),  # Convert UUID to string
+                "player_id": str(pw.player_id),  # Convert UUID to string
+                "weapon_id": int(pw.weapon_master_id),  # Flutter expects weapon_id as int
+                "weapon_master_id": int(pw.weapon_master_id),  # Keep for compatibility
+                "weapon_name": pw.custom_name if pw.custom_name else weapon_master.name,  # Flutter expects weapon_name
+                "base_attack": pw.base_attack,
+                "attack": pw.total_attack,  # Flutter expects attack field
+                "enchant_level": pw.enchant_level,
+                "current_durability": pw.current_durability or 100,
+                "max_durability": pw.max_durability or 100,
+                "abilities": pw.abilities or "",  # Ensure non-null string
+                "custom_name": pw.custom_name or "",  # Ensure non-null string
+                "is_favorite": pw.is_favorite or False,
+                "acquired_at": pw.acquired_at,
+                "last_used_at": pw.last_used_at,
+                "is_equipped": pw.is_equipped,
+                "is_locked": pw.is_locked or False,
+                "created_at": pw.acquired_at,  # Flutter expects created_at
+                "weapon_master": {
+                    "id": weapon_master.id,
+                    "name": weapon_master.name or "",  # Ensure non-null
+                    "description": weapon_master.description or "",  # Ensure non-null
+                    "image_url": weapon_master.image_url or "",  # Ensure non-null
+                    "effect_color": weapon_master.effect_color or "",  # Ensure non-null
+                    "attribute_id": weapon_master.attribute_id or "",  # Ensure non-null
+                    "base_attack": weapon_master.base_attack,
+                    "calculated_attack": weapon_master.calculated_attack,
+                    "base_price": weapon_master.base_price,
+                    "calculated_price": weapon_master.calculated_price,
+                    "required_level": weapon_master.required_level,
+                    "is_active": weapon_master.is_active,
+                    "created_at": weapon_master.created_at,
+                    "updated_at": weapon_master.updated_at,
+                    "weapon_type_id": weapon_master.weapon_type_id,
+                    "rarity_id": weapon_master.rarity_id,
+                    "season_id": weapon_master.season_id,
+                    "base_attack_min": weapon_master.base_attack_min,
+                    "base_attack_max": weapon_master.base_attack_max,
+                    "base_price_min": weapon_master.base_price_min,
+                    "base_price_max": weapon_master.base_price_max,
+                    "enchant_growth_rate": float(weapon_master.enchant_growth_rate) if weapon_master.enchant_growth_rate else 1.0,
+                    "max_enchant_level": weapon_master.max_enchant_level,
+                    "crafting_time_minutes": weapon_master.crafting_time_minutes,
+                    "required_shop_level": weapon_master.required_shop_level,
+                    "required_adventurer_level": weapon_master.required_adventurer_level,
+                    "drop_rate": float(weapon_master.drop_rate) if weapon_master.drop_rate else 0.0,
+                    "is_test_only": weapon_master.is_test_only,
+                    "version": weapon_master.version,
+                    "weapon_type": {
+                        "id": weapon_master.weapon_type.id if weapon_master.weapon_type else "",
+                        "name": weapon_master.weapon_type.name if weapon_master.weapon_type else "",
+                        "description": weapon_master.weapon_type.description if weapon_master.weapon_type else "",
+                        "is_active": weapon_master.weapon_type.is_active if weapon_master.weapon_type else True,
+                        "created_at": weapon_master.weapon_type.created_at if weapon_master.weapon_type else datetime.utcnow(),
+                        "updated_at": weapon_master.weapon_type.updated_at if weapon_master.weapon_type else None,
+                    } if weapon_master.weapon_type else None,
+                    "rarity": {
+                        "id": weapon_master.rarity.id if weapon_master.rarity else "",
+                        "name": weapon_master.rarity.name if weapon_master.rarity else "",
+                        "level": weapon_master.rarity.level if weapon_master.rarity else 1,
+                        "color_code": weapon_master.rarity.color_code if weapon_master.rarity else "",
+                        "star_display": weapon_master.rarity.star_display if weapon_master.rarity else "",
+                        "attack_multiplier": float(weapon_master.rarity.attack_multiplier) if weapon_master.rarity else 1.0,
+                        "price_multiplier": float(weapon_master.rarity.price_multiplier) if weapon_master.rarity else 1.0,
+                        "max_enchant_level": weapon_master.rarity.max_enchant_level if weapon_master.rarity else 10,
+                        "ability_slots": weapon_master.rarity.ability_slots if weapon_master.rarity else 0,
+                        "base_drop_rate": float(weapon_master.rarity.base_drop_rate) if weapon_master.rarity else 0.6,
+                        "is_active": weapon_master.rarity.is_active if weapon_master.rarity else True,
+                        "created_at": weapon_master.rarity.created_at if weapon_master.rarity else datetime.utcnow(),
+                        "updated_at": weapon_master.rarity.updated_at if weapon_master.rarity else None,
+                        "description": weapon_master.rarity.description if hasattr(weapon_master.rarity, 'description') and weapon_master.rarity.description else "",
+                        "multiplier": float(weapon_master.rarity.attack_multiplier) if weapon_master.rarity else 1.0,
+                        "drop_rate": float(weapon_master.rarity.base_drop_rate) if weapon_master.rarity else 0.6,
+                    } if weapon_master.rarity else None,
+                    "season": None  # Add season field for schema compatibility
+                },
+                "display_name": pw.custom_name if pw.custom_name else weapon_master.name,
+                "total_attack": pw.total_attack
+            }
+            enriched_weapons.append(weapon_dict)
     
     return PlayerWeaponListResponse(
         success=True,
-        data=player_weapons,
+        data=enriched_weapons,
         message="所持武器一覧を取得しました",
         timestamp=datetime.utcnow(),
         request_id=str(uuid.uuid4())

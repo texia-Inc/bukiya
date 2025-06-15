@@ -108,12 +108,12 @@ class AdventurerInstanceBase(BaseModel):
 
 
 class AdventurerInstanceCreate(BaseModel):
-    adventurer_master_id: str
+    adventurer_master_id: int
 
 
 class AdventurerInstance(AdventurerInstanceBase):
     id: UUID
-    adventurer_master_id: Optional[str] = None  # Nullable for named characters
+    adventurer_master_id: Optional[int] = None  # Nullable for named characters
     player_id: Optional[UUID] = None
     status: str  # idle, visiting, on_quest, waiting_buyback
     current_quest_id: Optional[UUID] = None

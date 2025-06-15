@@ -14,7 +14,7 @@ class AdventurerInstance(Base):
     __tablename__ = "adventurer_instances"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    adventurer_master_id = Column(String(50), ForeignKey("adventurer_masters.id"), nullable=True)  # Allow NULL for named characters
+    adventurer_master_id = Column(Integer, ForeignKey("adventurer_masters.id"), nullable=True)  # Allow NULL for named characters
     player_id = Column(UUID(as_uuid=True), ForeignKey("players.id", ondelete="SET NULL"))
     name = Column(String(100), nullable=False)
     level = Column(Integer, nullable=False, default=1)

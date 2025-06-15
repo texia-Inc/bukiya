@@ -24,15 +24,20 @@ class WeaponTypeSchema(BaseModel):
         from_attributes = True
 
 class RarityLevelSchema(BaseModel):
-    id: int
+    id: str
     name: str
-    description: str
-    color_code: str
-    multiplier: float
-    drop_rate: float
+    description: str = None
+    color_code: str = None
+    level: int
+    star_display: str = None
+    attack_multiplier: float
+    max_enchant_level: int
+    ability_slots: int
+    base_drop_rate: float
+    price_multiplier: float
     is_active: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime = None
 
     class Config:
         from_attributes = True

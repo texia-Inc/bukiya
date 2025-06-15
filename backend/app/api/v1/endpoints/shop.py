@@ -78,9 +78,8 @@ async def procure_weapon(
     # プレイヤー武器作成
     player_weapon = PlayerWeapon(
         player_id=current_player.id,
-        weapon_master_id=request.weapon_id,
+        weapon_master_id=str(request.weapon_id),  # Convert to string for database
         base_attack=weapon_master.base_attack,
-        attack=weapon_master.base_attack,
         enchant_level=0,
         custom_name=None
     )

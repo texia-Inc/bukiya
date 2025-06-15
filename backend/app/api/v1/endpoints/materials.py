@@ -300,9 +300,8 @@ async def get_player_materials(
     """
     from app.schemas.material import FlutterMaterial
     
-    player_materials = db.query(PlayerMaterial).options(
-        joinedload(PlayerMaterial.material).joinedload(MaterialMaster.rarity)
-    ).filter(
+    # Get player materials without the broken relationship
+    player_materials = db.query(PlayerMaterial).filter(
         PlayerMaterial.player_id == current_player.id,
         PlayerMaterial.quantity > 0
     ).all()
@@ -310,17 +309,23 @@ async def get_player_materials(
     # FlutterMaterialを使用してレスポンスを作成
     flutter_compatible_materials = []
     for pm in player_materials:
-        flutter_material = FlutterMaterial.from_material_master(pm.material)
-        flutter_compatible_materials.append({
-            "material_id": pm.material_master_id,
-            "quantity": pm.quantity,
-            "player_id": pm.player_id,
-            "created_at": pm.created_at,
-            "updated_at": pm.updated_at,
-            "material": flutter_material.dict(),
-            "is_full": pm.is_full,
-            "remaining_capacity": pm.remaining_capacity
-        })
+        # Get material master separately since relationship is disabled
+        material_master = db.query(MaterialMaster).filter(
+            MaterialMaster.id == int(pm.material_master_id)  # Convert string to int
+        ).first()
+        
+        if material_master:
+            flutter_material = FlutterMaterial.from_material_master(material_master)
+            flutter_compatible_materials.append({
+                "material_id": pm.material_master_id,
+                "quantity": pm.quantity,
+                "player_id": str(pm.player_id),
+                "created_at": pm.last_acquired_at,  # Use last_acquired_at instead of created_at
+                "updated_at": pm.last_acquired_at,  # Use last_acquired_at instead of updated_at
+                "material": flutter_material.dict(),
+                "is_full": pm.is_full,
+                "remaining_capacity": pm.remaining_capacity
+            })
     
     return PlayerMaterialListResponse(
         success=True,

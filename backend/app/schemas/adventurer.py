@@ -51,7 +51,7 @@ class AdventurerMasterUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class AdventurerMaster(AdventurerMasterBase):
-    id: str
+    id: int
     created_at: datetime
     updated_at: datetime
 

@@ -508,15 +508,20 @@ def sell_weapon_to_adventurer(
         raise HTTPException(status_code=404, detail="武器が見つかりません")
     
     # 冒険者の予算確認
-    adventurer_budget = adventurer.adventurer_master.budget_max
+    if adventurer.adventurer_master:
+        adventurer_budget = adventurer.adventurer_master.budget_max
+    else:
+        # Named characters or adventurers without master data use a default budget
+        adventurer_budget = 10000  # Default budget for named characters
+    
     if request.price > adventurer_budget:
         raise HTTPException(status_code=400, detail="冒険者の予算を超えています")
     
     # 購入記録を作成
     purchase = AdventurerPurchase(
         adventurer_instance_id=adventurer_id,
-        player_weapon_id=request.weapon_id,
-        price=request.price
+        weapon_id=request.weapon_id,
+        purchase_price=request.price
     )
     db.add(purchase)
     

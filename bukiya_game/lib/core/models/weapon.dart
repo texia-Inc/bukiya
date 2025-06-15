@@ -33,16 +33,26 @@ class Weapon {
   });
 
   factory Weapon.fromJson(Map<String, dynamic> json) => Weapon(
-    id: json['id'] as int,
-    name: json['name']?.toString() ?? '',
-    description: json['description']?.toString() ?? '',
-    attack: (json['calculated_attack'] ?? json['base_attack'] ?? 0) is num ? (json['calculated_attack'] ?? json['base_attack'] ?? 0).toInt() : int.tryParse((json['calculated_attack'] ?? json['base_attack']).toString()) ?? 0,
-    weaponType: json['weapon_type_id']?.toString() ?? json['weapon_type']?.toString() ?? '',
-    rarity: json['rarity']?['name']?.toString() ?? json['rarity_id']?.toString() ?? '',
-    price: (json['calculated_price'] ?? json['base_price'] ?? 0) is num ? (json['calculated_price'] ?? json['base_price'] ?? 0).toInt() : int.tryParse((json['calculated_price'] ?? json['base_price']).toString()) ?? 0,
-    requiredLevel: (json['required_level'] ?? 1) is num ? (json['required_level'] ?? 1).toInt() : int.tryParse(json['required_level'].toString()) ?? 1,
-    createdAt: DateTime.parse(json['created_at']),
-    updatedAt: DateTime.parse(json['updated_at']),
+    id: (json['id'] ?? 0) is num ? (json['id'] ?? 0).toInt() : int.tryParse((json['id'] ?? '0').toString()) ?? 0,
+    name: (json['name'] ?? '').toString(),
+    description: (json['description'] ?? '').toString(),
+    attack: (json['calculated_attack'] ?? json['base_attack'] ?? 0) is num 
+        ? (json['calculated_attack'] ?? json['base_attack'] ?? 0).toInt() 
+        : int.tryParse((json['calculated_attack'] ?? json['base_attack'] ?? '0').toString()) ?? 0,
+    weaponType: (json['weapon_type_id'] ?? json['weapon_type'] ?? '').toString(),
+    rarity: json['rarity']?['name']?.toString() ?? (json['rarity_id'] ?? '').toString(),
+    price: (json['calculated_price'] ?? json['base_price'] ?? 0) is num 
+        ? (json['calculated_price'] ?? json['base_price'] ?? 0).toInt() 
+        : int.tryParse((json['calculated_price'] ?? json['base_price'] ?? '0').toString()) ?? 0,
+    requiredLevel: (json['required_level'] ?? 1) is num 
+        ? (json['required_level'] ?? 1).toInt() 
+        : int.tryParse((json['required_level'] ?? '1').toString()) ?? 1,
+    createdAt: json['created_at'] != null 
+        ? DateTime.parse(json['created_at'].toString()) 
+        : DateTime.now(),
+    updatedAt: json['updated_at'] != null 
+        ? DateTime.parse(json['updated_at'].toString()) 
+        : DateTime.now(),
   );
   Map<String, dynamic> toJson() => _$WeaponToJson(this);
 
@@ -116,14 +126,24 @@ class PlayerWeapon {
   });
 
   factory PlayerWeapon.fromJson(Map<String, dynamic> json) => PlayerWeapon(
-    id: json['id'].toString(),
-    playerId: json['player_id'].toString(),
-    weaponId: json['weapon_id'] as int,
-    weaponName: json['weapon_name']?.toString() ?? '',
-    attack: (json['attack'] ?? 0) is num ? (json['attack'] ?? 0).toInt() : int.tryParse(json['attack'].toString()) ?? 0,
-    enchantLevel: (json['enchant_level'] ?? 0) is num ? (json['enchant_level'] ?? 0).toInt() : int.tryParse(json['enchant_level'].toString()) ?? 0,
+    id: (json['id'] ?? '').toString(),
+    playerId: (json['player_id'] ?? '').toString(),
+    weaponId: (json['weapon_id'] ?? json['weapon_master_id'] ?? 0) is num 
+        ? (json['weapon_id'] ?? json['weapon_master_id'] ?? 0).toInt() 
+        : int.tryParse((json['weapon_id'] ?? json['weapon_master_id'] ?? '0').toString()) ?? 0,
+    weaponName: (json['weapon_name'] ?? json['display_name'] ?? '').toString(),
+    attack: (json['attack'] ?? json['total_attack'] ?? json['base_attack'] ?? 0) is num 
+        ? (json['attack'] ?? json['total_attack'] ?? json['base_attack'] ?? 0).toInt() 
+        : int.tryParse((json['attack'] ?? json['total_attack'] ?? json['base_attack'] ?? '0').toString()) ?? 0,
+    enchantLevel: (json['enchant_level'] ?? 0) is num 
+        ? (json['enchant_level'] ?? 0).toInt() 
+        : int.tryParse((json['enchant_level'] ?? '0').toString()) ?? 0,
     isEquipped: json['is_equipped'] ?? false,
-    createdAt: DateTime.parse(json['created_at']),
+    createdAt: json['created_at'] != null 
+        ? DateTime.parse(json['created_at'].toString()) 
+        : (json['acquired_at'] != null 
+            ? DateTime.parse(json['acquired_at'].toString()) 
+            : DateTime.now()),
   );
   Map<String, dynamic> toJson() => _$PlayerWeaponToJson(this);
 
@@ -183,10 +203,12 @@ class WeaponType {
   });
 
   factory WeaponType.fromJson(Map<String, dynamic> json) => WeaponType(
-    id: json['id'].toString(),
-    name: json['name']?.toString() ?? '',
-    description: json['description']?.toString() ?? '',
-    attackMultiplier: (json['attack_multiplier'] ?? 1.0) is num ? (json['attack_multiplier'] ?? 1.0).toDouble() : double.tryParse(json['attack_multiplier'].toString()) ?? 1.0,
+    id: (json['id'] ?? '').toString(),
+    name: (json['name'] ?? '').toString(),
+    description: (json['description'] ?? '').toString(),
+    attackMultiplier: (json['attack_multiplier'] ?? 1.0) is num 
+        ? (json['attack_multiplier'] ?? 1.0).toDouble() 
+        : double.tryParse((json['attack_multiplier'] ?? '1.0').toString()) ?? 1.0,
   );
   Map<String, dynamic> toJson() => _$WeaponTypeToJson(this);
 

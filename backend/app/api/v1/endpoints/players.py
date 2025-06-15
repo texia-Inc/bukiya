@@ -372,8 +372,8 @@ async def get_current_player_info(
             highest_weapon_attack=statistics.highest_weapon_attack,
             highest_enchant_level=statistics.highest_enchant_level,
             max_daily_gold=statistics.max_daily_gold,
-            enchant_success_rate=statistics.enchant_success_rate,
-            average_session_duration=statistics.average_session_duration,
+            enchant_success_rate=statistics.enchants_succeeded / statistics.enchants_attempted if statistics.enchants_attempted > 0 else 0.0,
+            average_session_duration=statistics.total_play_time_seconds / statistics.session_count if statistics.session_count > 0 else 0.0,
             updated_at=statistics.updated_at
         )
     

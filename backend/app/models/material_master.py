@@ -29,7 +29,7 @@ class MaterialMaster(Base):
     
     # リレーションシップ
     rarity = relationship("RarityLevel", back_populates="materials")
-    player_materials = relationship("PlayerMaterial", back_populates="material")
+    # player_materials = relationship("PlayerMaterial", back_populates="material")  # Temporarily disabled due to type mismatch
     recipe_materials = relationship("RecipeMaterial", back_populates="material")
     
     def __repr__(self):

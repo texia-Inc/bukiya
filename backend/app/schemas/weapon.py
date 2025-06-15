@@ -69,13 +69,21 @@ class WeaponMasterBase(BaseModel):
     weapon_type_id: str = Field(..., description="武器種別ID")
     rarity_id: str = Field(..., description="レアリティID")
     season_id: Optional[int] = Field(None, description="シーズンID")
+    attribute_id: Optional[str] = Field(None, description="属性ID")
     base_attack_min: int = Field(..., gt=0, description="基本攻撃力最小値")
     base_attack_max: int = Field(..., gt=0, description="基本攻撃力最大値")
+    enchant_growth_rate: Optional[float] = Field(1.00, description="エンチャント成長率")
+    max_enchant_level: Optional[int] = Field(None, description="最大エンチャントレベル")
+    image_url: Optional[str] = Field(None, max_length=255, description="画像URL")
+    effect_color: Optional[str] = Field(None, max_length=7, description="エフェクト色")
+    description: Optional[str] = Field(None, description="説明")
     base_price_min: int = Field(..., ge=0, description="基本価格最小値")
     base_price_max: int = Field(..., ge=0, description="基本価格最大値")
     crafting_time_minutes: Optional[int] = Field(30, description="作成時間（分）")
     required_shop_level: Optional[int] = Field(1, description="必要ショップレベル")
-    description: Optional[str] = Field(None, description="説明")
+    required_adventurer_level: Optional[int] = Field(1, description="必要冒険者レベル")
+    drop_rate: Optional[float] = Field(0.0, description="ドロップ率")
+    is_test_only: Optional[bool] = Field(False, description="テスト専用フラグ")
 
 class WeaponMasterCreate(WeaponMasterBase):
     pass
@@ -101,11 +109,21 @@ class WeaponMasterUpdate(BaseModel):
     drop_rate: Optional[float] = Field(None, description="ドロップ率")
     is_active: Optional[bool] = Field(None, description="有効フラグ")
     is_test_only: Optional[bool] = Field(None, description="テスト専用フラグ")
+    version: Optional[int] = Field(None, description="バージョン")
 
 class WeaponMaster(WeaponMasterBase):
     id: int
     season_id: Optional[int] = Field(None, description="シーズンID")
+    attribute_id: Optional[str] = Field(None, description="属性ID")
+    enchant_growth_rate: Optional[float] = Field(None, description="エンチャント成長率")
+    max_enchant_level: Optional[int] = Field(None, description="最大エンチャントレベル")
+    image_url: Optional[str] = Field(None, description="画像URL")
+    effect_color: Optional[str] = Field(None, description="エフェクト色")
+    required_adventurer_level: Optional[int] = Field(None, description="必要冒険者レベル")
+    drop_rate: Optional[float] = Field(None, description="ドロップ率")
     is_active: bool
+    is_test_only: Optional[bool] = Field(None, description="テスト専用フラグ")
+    version: Optional[int] = Field(None, description="バージョン")
     created_at: datetime
     updated_at: datetime
     weapon_type: WeaponType
@@ -122,8 +140,8 @@ class WeaponMaster(WeaponMasterBase):
 
 # プレイヤー武器スキーマ
 class PlayerWeaponBase(BaseModel):
-    weapon_master_id: int = Field(..., description="武器マスターID")
-    attack: int = Field(..., gt=0, description="攻撃力")
+    weapon_master_id: int = Field(..., description="武器マスターID")  # Convert to int for Flutter compatibility
+    base_attack: int = Field(..., gt=0, description="基本攻撃力")
     enchant_level: int = Field(0, ge=0, description="エンチャントレベル")
     custom_name: Optional[str] = Field(None, max_length=100, description="カスタム名")
 
@@ -137,11 +155,16 @@ class PlayerWeaponUpdate(BaseModel):
 class PlayerWeapon(PlayerWeaponBase):
     id: UUID
     player_id: UUID
-    is_equipped: bool
-    created_at: datetime
-    updated_at: datetime
-    weapon_master: WeaponMaster
-    display_name: str = Field(..., description="表示名")
+    current_durability: Optional[int] = Field(None, description="現在の耐久度")
+    max_durability: Optional[int] = Field(None, description="最大耐久度")
+    abilities: Optional[str] = Field(None, description="特殊能力")
+    is_favorite: Optional[bool] = Field(None, description="お気に入りフラグ")
+    acquired_at: Optional[datetime] = Field(None, description="取得日時")
+    last_used_at: Optional[datetime] = Field(None, description="最終使用日時")
+    is_equipped: bool = Field(False, description="装備フラグ")
+    is_locked: Optional[bool] = Field(None, description="ロックフラグ")
+    weapon_master: Optional[WeaponMaster] = Field(None, description="武器マスター情報")
+    display_name: Optional[str] = Field(None, description="表示名")
     total_attack: int = Field(..., description="エンチャント込み総攻撃力")
 
     class Config:
