@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="鉱石をブルドーザーで押して炉へ運ぶ放置系採掘ゲームのプロトタイプ">
+<meta name="description" content="竜に奪われた10の山を、ドワーフのギルドが蒸気重機で取り戻す放置系採掘ゲーム">
 <style>[hidden] { display: none !important; }</style>
-<title>ゾンビ採掘場</title>
+<title>ドワーフドーザー</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=M+PLUS+Rounded+1c:wght@800&display=swap">
 <style>
@@ -152,10 +152,10 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .sheet button.ghost:active { transform: translateY(1px); box-shadow: inset 0 0 0 2px var(--gold); }
 .medal-ico {
   display: inline-block; width: 22px; height: 22px; border-radius: 50%; vertical-align: -5px; flex: none;
-  background: radial-gradient(circle at 35% 30%, #d9ffd0, #6fd04a 45%, #2f7a1e);
-  box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), 0 1px 0 #163d0e; position: relative;
+  background: radial-gradient(circle at 35% 30%, #ffe2a8, #d0902e 45%, #6a3a10);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), 0 1px 0 #3a1e06; position: relative;
 }
-.medal-ico::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #2f7a1e; box-shadow: inset 0 0 0 2px #b8f59c; }
+.medal-ico::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #8a5418; box-shadow: inset 0 0 0 2px #ffd48a; }
 .medals {
   position: absolute; top: calc(env(safe-area-inset-top, 0px) + 76px); right: 16px; pointer-events: auto; cursor: pointer;
   display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px;
@@ -267,7 +267,7 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
     <span><button class="reset" id="reset" type="button">リセット</button><button class="reset mute" id="mute" type="button" aria-pressed="false">音 ON</button><button class="reset mute" id="mapBtn" type="button">マップ</button></span>
   </div>
   <div class="coins" id="coinBox"><span id="coins">0</span><span class="coin-ico"></span></div>
-  <button class="medals" id="medalBtn" type="button" aria-label="勲章ショップを開く"><span class="medal-ico"></span>勲章 <b id="medalCount">0</b></button>
+  <button class="medals" id="medalBtn" type="button" aria-label="徽章ショップを開く"><span class="medal-ico"></span>徽章 <b id="medalCount">0</b></button>
   <div class="hint" id="hint">ドラッグ（またはWASD）で操作 ・ 鉱石を炉へ押し込もう</div>
   <div class="boss" id="boss" hidden><div class="bname"><span id="bossName">若き火竜</span><small id="bossPhase"></small></div><div class="btrack"><em id="bossLag"></em><i id="bossHp"></i><b id="bossHpTxt"></b></div></div>
   <div class="toast" id="toast"></div>
@@ -281,27 +281,27 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 <div class="clear" id="clear" hidden>
   <div class="sheet" role="dialog" aria-labelledby="clearTitle">
     <div class="eyebrow" id="clearEyebrow">鉱山1 ・ 紫水晶の坑道</div>
-    <h2 id="clearTitle">出荷完了！</h2>
+    <h2 id="clearTitle">山を取り戻した！</h2>
     <dl>
       <dt id="clearL1">プレイ時間</dt><dd id="clearTime">0:00</dd>
       <dt id="clearL2">稼いだコイン</dt><dd id="clearEarned">0</dd>
       <dt id="clearL3">出荷した鉱石</dt><dd id="clearShipped">0</dd>
     </dl>
-    <div class="gain"><div class="top"><span class="medal-ico"></span>ゾンビ勲章 <b id="gainTotal">+0</b></div><small id="gainDetail"></small></div>
+    <div class="gain"><div class="top"><span class="medal-ico"></span>ギルド徽章 <b id="gainTotal">+0</b></div><small id="gainDetail"></small></div>
     <p class="next" id="clearNext"></p>
     <div class="actions">
       <button type="button" id="clearBtn">次の鉱山へ</button>
       <button type="button" class="ghost" id="clearMapBtn">ワールドマップ</button>
-      <button type="button" class="ghost" id="clearShopBtn">勲章ショップ</button>
+      <button type="button" class="ghost" id="clearShopBtn">徽章ショップ</button>
     </div>
   </div>
 </div>
 
 <div class="map" id="map" hidden role="dialog" aria-labelledby="mapTitle">
   <div class="map-head">
-    <div><h2 id="mapTitle">WORLD MAP</h2><p>鉱山を選んで出発しよう</p></div>
+    <div><h2 id="mapTitle">WORLD MAP</h2><p>竜に奪われた山々を取り戻そう</p></div>
     <span class="spacer"></span>
-    <button class="medals" id="mapMedals" type="button" aria-label="勲章ショップを開く"><span class="medal-ico"></span>勲章 <b id="mapMedalCount">0</b></button>
+    <button class="medals" id="mapMedals" type="button" aria-label="徽章ショップを開く"><span class="medal-ico"></span>徽章 <b id="mapMedalCount">0</b></button>
     <button class="map-close" id="mapClose" type="button">閉じる</button>
   </div>
   <div class="map-stage"><div class="map-board" id="mapBoard"></div></div>
@@ -309,8 +309,8 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 </div>
 <div class="clear shop" id="shop" hidden>
   <div class="sheet" role="dialog" aria-labelledby="shopTitle">
-    <h2 id="shopTitle">勲章ショップ</h2>
-    <div class="have"><span class="medal-ico"></span>勲章 <b id="shopMedals">0</b><span class="scale-ico"></span>竜鱗 <b id="shopScales">0</b></div>
+    <h2 id="shopTitle">徽章ショップ</h2>
+    <div class="have"><span class="medal-ico"></span>徽章 <b id="shopMedals">0</b><span class="scale-ico"></span>竜鱗 <b id="shopScales">0</b></div>
     <div class="perks" id="perks"></div>
     <div class="actions"><button type="button" class="ghost" id="shopClose">閉じる</button></div>
   </div>
@@ -340,7 +340,7 @@ const MINES = [
       { name: "金塊", val: 5, shape: "nugget", color: 0xffb21e, metal: 1, rough: .22, emissive: 0x3a1c00 },
       { name: "ルビー", val: 20, shape: "gem", color: 0xe0204a, metal: .25, rough: .08, emissive: 0x4a0010 },
     ],
-    intro: "鉱石を炉に押し込んでコインを稼ごう",
+    intro: "竜に奪われた山を、ギルドの重機で取り戻せ！ 鉱石を溶鉱炉に押し込んでコインを稼ごう",
     crystals: true,
     // terrain per area. rock = solid; c: [x, z, r] circle, r: [x0, x1, z0, z1] rectangle
     terrain: [
@@ -526,7 +526,7 @@ const META_KEY = "zombie-mine-meta-v1";
 const PERKS = [
   { id: "scoop", name: "熟練スコップ", desc: "鉱山の開始時からスコップ Lv+1", cost: [2, 4, 7] },
   { id: "income", name: "鑑定眼", desc: "炉と出荷で得るコイン +10%", cost: [1, 2, 3, 4, 6] },
-  { id: "helper", name: "ゾンビ仲間", desc: "開始時から作業ゾンビ +1体", cost: [3, 6] },
+  { id: "helper", name: "ギルドの仲間", desc: "開始時から見習いドワーフ +1人", cost: [3, 6] },
   { id: "cash", name: "へそくり", desc: "開始時の資金 +150（鉱山の倍率つき）", cost: [1, 2, 4] },
   { id: "gun", name: "竜殺しの砲術", desc: "砲台のダメージ +20%", cost: [3, 6, 10], cur: "scales" },
   { id: "fireres", name: "耐火装甲", desc: "ブレスで止まる時間 -25%", cost: [2, 4, 7], cur: "scales" },
@@ -671,7 +671,7 @@ function buildRocks() {
 }
 
 // ---------- sinks: furnaces in mining areas, the shipping hopper in the yard ----------
-let SINKS = [], lavaL = null, ship = null;
+let SINKS = [], lavaL = null, ship = null, ship_chimX = 0;
 function makeLava() {
   lavaL = labelTex(128, 128);
   const g = lavaL.g;
@@ -689,12 +689,15 @@ function frame4(grp, hx, hz, t, h, mat) {
 }
 function makeFurnace(x, z, size, area) {
   const grp = new THREE.Group(); grp.position.set(x, 0, z);
-  frame4(grp, size / 2, size / 2, 0.5, 0.35, new THREE.MeshStandardMaterial({ color: M.slip ? 0x2b4a6e : 0x4b2a8a, roughness: .6 }));
+  frame4(grp, size / 2, size / 2, 0.5, 0.35, new THREE.MeshStandardMaterial({ color: 0x5a3a2e, roughness: .85 }));
+  const brick = new THREE.MeshStandardMaterial({ color: 0x7a3e2a, roughness: .9 }), iron = new THREE.MeshStandardMaterial({ color: 0x2a2628, metalness: .6, roughness: .45 });
+  const chim = new THREE.Mesh(new THREE.BoxGeometry(.8, 2.8, .8), brick); chim.position.set(size / 2 + .15, 1.4, -size / 2 - .15); chim.castShadow = true; grp.add(chim);
+  const chimTop = new THREE.Mesh(new THREE.BoxGeometry(1, .25, 1), iron); chimTop.position.set(size / 2 + .15, 2.9, -size / 2 - .15); grp.add(chimTop);
   const lava = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: lavaL.t }));
   lava.rotation.x = -Math.PI / 2; lava.position.y = 0.03; grp.add(lava);
   const light = new THREE.PointLight(0xff7a2a, 2.2, 9, 2); light.position.set(0, 1.4, 0); grp.add(light);
   add(grp);
-  SINKS.push({ x, z, hx: size / 2, hz: size / 2, area, pending: 0, count: 0, flash: 0, light, ship: false });
+  SINKS.push({ x, z, hx: size / 2, hz: size / 2, area, pending: 0, count: 0, flash: 0, light, ship: false, chim: [x + size / 2 + .15, z - size / 2 - .15] });
 }
 function makeShipping() {
   // hopper pit
@@ -736,6 +739,23 @@ function makeShipping() {
   const heapMat = new THREE.MeshStandardMaterial({ color: M.ores[1].color, metalness: M.ores[1].metal, roughness: .3, flatShading: true, emissive: M.ores[1].emissive });
   const heap = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6, 0, TAU, 0, Math.PI / 2), heapMat);
   heap.scale.set(bw / 2 - .1, 0.01, bd / 2 - .1); heap.position.y = 0.6; cart.add(heap);
+  {
+    const loco = new THREE.Group(); loco.position.x = bw / 2 + .4; cart.add(loco);
+    const iron = new THREE.MeshStandardMaterial({ color: 0x24242a, metalness: .6, roughness: .4 });
+    const red = new THREE.MeshStandardMaterial({ color: 0x8a1a12, roughness: .5 });
+    const brass = new THREE.MeshStandardMaterial({ color: 0xc89a3a, metalness: .9, roughness: .3 });
+    const part = (geo, mat, x, y, z, rz = 0, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, 0, rz); loco.add(m); return m; };
+    part(new THREE.BoxGeometry(3.9, .25, 1.6), iron, 2.1, .55, 0);
+    part(new THREE.BoxGeometry(1.3, 1.7, 1.9), red, .75, 1.4, 0);
+    part(new THREE.BoxGeometry(1.55, .16, 2.1), iron, .75, 2.3, 0);
+    part(new THREE.CylinderGeometry(.7, .7, 2.4, 18), iron, 2.6, 1.3, 0, Math.PI / 2);
+    for (const bx of [1.9, 2.7, 3.5]) part(new THREE.CylinderGeometry(.73, .73, .1, 18), brass, bx, 1.3, 0, Math.PI / 2);
+    part(new THREE.CylinderGeometry(.74, .74, .3, 18), red, 3.85, 1.3, 0, Math.PI / 2);
+    part(new THREE.CylinderGeometry(.24, .34, 1.1, 12), iron, 3.4, 2.4, 0);
+    part(new THREE.SphereGeometry(.3, 10, 8), brass, 2.4, 2.05, 0);
+    for (const sz of [-1, 1]) for (const wx of [.9, 2.2, 3.4]) part(new THREE.CylinderGeometry(.45, .45, .18, 16), red, wx, .45, sz * .85, 0, Math.PI / 2);
+    ship_chimX = bw / 2 + .4 + 3.4;
+  }
   cart.traverse(o => { if (o.isMesh) o.castShadow = true; });
   add(cart);
 
@@ -754,7 +774,7 @@ function drawShip() {
   rrect(g, 8, 8, 496, 240, 40); g.fillStyle = "#1c1426"; g.fill(); g.lineWidth = 10; g.strokeStyle = "#ffc53a"; g.stroke();
   g.textAlign = "center"; g.textBaseline = "middle";
   g.fillStyle = "rgba(255,248,236,.85)"; g.font = '800 34px "M PLUS Rounded 1c", sans-serif';
-  g.fillText("出荷トロッコ ▲ 鉱石を押し込め", 256, 58);
+  g.fillText("王都行き貨車 ▲ 鉱石を積み込め", 256, 58);
   const txt = `${v.toLocaleString("ja-JP")} / ${target.toLocaleString("ja-JP")}`;
   g.font = '72px "Lilita One", "Arial Black", sans-serif';
   g.lineWidth = 12; g.strokeStyle = "#140a24"; g.strokeText(txt, 256, 136); g.fillStyle = "#fff8ec"; g.fillText(txt, 256, 136);
@@ -1100,7 +1120,7 @@ function updateEvents(dt) {
 function openChest(s) {
   const r = Math.random();
   let big, small;
-  if (r < 0.25) { P.medals += 1; big = "勲章 +1"; small = "宝箱からゾンビ勲章！"; }
+  if (r < 0.25) { P.medals += 1; big = "徽章 +1"; small = "宝箱からギルド徽章！"; }
   else if (r < 0.6 && FX.fever <= 0) { FX.gauge = 100; startFever(); return; }
   else { const c = 250 * M.mult * (S.gates + 1); S.coins += c; S.earned += c; big = `+${fmt(c)} コイン`; small = "宝箱からコイン袋！"; }
   toast("宝箱！ " + big, small); sfx.buy(); shake(.3); buzz(40);
@@ -1138,7 +1158,7 @@ function completeMission() {
   S.coins += m.coins; S.earned += m.coins;
   if (m.medal) P.medals += 1;
   S.missionsDone++;
-  toast("ミッション達成！", `+${fmt(m.coins)} コイン${m.medal ? " ・ 勲章 +1" : ""}`);
+  toast("ミッション達成！", `+${fmt(m.coins)} コイン${m.medal ? " ・ 徽章 +1" : ""}`);
   sfx.buy(); buzz(30);
   const box = document.getElementById("missionBox"); box.classList.remove("done"); void box.offsetWidth; box.classList.add("done");
   newMission(); writeSave();
@@ -1183,7 +1203,7 @@ const PRICE = {
   speed: [300, 800, 2000, 5000],
   helper: [500, 1500, 4000],
 };
-const PAD_TITLE = { cdmg: "砲台 威力", crate: "砲台 連射", cadd: "砲台 増設", repair: "砲台 修理", scoop: "スコップ拡大", speed: "エンジン強化", helper: "作業ゾンビ雇用", belt: "コンベア延長" };
+const PAD_TITLE = { cdmg: "砲台 威力", crate: "砲台 連射", cadd: "砲台 増設", repair: "砲台 修理", scoop: "スコップ拡大", speed: "エンジン強化", helper: "見習い雇用", belt: "コンベア延長" };
 const BELT_PRICE = [300, 900, 2500, 6000], BELT_AREA_MULT = [1, 3, 8], BELT_SEG = 4, BELT_SPEED = 3.4;
 const ARENA_PRICE = { cdmg: [1500, 4000, 10000, 25000], crate: [1200, 3500, 9000], cadd: [5000, 15000], repair: [2500] };
 function padList(p) {
@@ -1326,7 +1346,11 @@ function makeDozer(isPlayer) {
   const wheelMat = new THREE.MeshStandardMaterial({ color: 0x3a3842, roughness: .5, metalness: .3 });
   const paint = new THREE.MeshStandardMaterial({ color: isPlayer ? 0xf2b705 : 0xd8322a, roughness: .45, metalness: .1 });
   const stripe = new THREE.MeshStandardMaterial({ color: isPlayer ? 0x6b6672 : 0xf3efe8, roughness: .5 });
-  const zomb = new THREE.MeshStandardMaterial({ color: 0x5fbf3a, roughness: .7 });
+  const tunic = new THREE.MeshStandardMaterial({ color: isPlayer ? 0x2e5aa8 : 0x7a4a24, roughness: .85 });
+  const skinM = new THREE.MeshStandardMaterial({ color: 0xf0b48a, roughness: .7 });
+  const beardM = new THREE.MeshStandardMaterial({ color: isPlayer ? 0xd2691e : 0x6a3a1a, roughness: .95, flatShading: true });
+  const sootM = new THREE.MeshStandardMaterial({ color: 0x26242a, metalness: .6, roughness: .4 });
+  const brassM = new THREE.MeshStandardMaterial({ color: 0xc89a3a, metalness: .9, roughness: .3 });
   const helm = new THREE.MeshStandardMaterial({ color: 0xffc400, roughness: .35, metalness: .2 });
   const box = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = true; grp.add(b); return b; };
   for (const sx of [-1, 1]) {
@@ -1336,8 +1360,13 @@ function makeDozer(isPlayer) {
   box(1.05, 0.45, 1.55, paint, 0, 0.62, -0.15);
   box(1.08, 0.1, 1.58, stripe, 0, 0.88, -0.15);
   box(0.8, 0.5, 0.5, paint, 0, 1.0, -0.75);
-  box(0.5, 0.55, 0.38, zomb, 0, 1.2, -0.35);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 10), zomb); head.position.set(0, 1.68, -0.32); head.castShadow = true; grp.add(head);
+  box(0.56, 0.55, 0.42, tunic, 0, 1.2, -0.35);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 10), skinM); head.position.set(0, 1.68, -0.32); head.castShadow = true; grp.add(head);
+  const beard = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), beardM); beard.scale.set(.25, .3, .17); beard.position.set(0, 1.5, -0.17); beard.castShadow = true; grp.add(beard);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(.075, 8, 6), skinM); nose.position.set(0, 1.66, -0.09); grp.add(nose);
+  // steam stack at the back
+  const stack = new THREE.Mesh(new THREE.CylinderGeometry(.09, .12, .75, 10), sootM); stack.position.set(.34, 1.25, -.95); stack.castShadow = true; grp.add(stack);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(.14, .11, .1, 10), brassM); cap.position.set(.34, 1.65, -.95); grp.add(cap);
   const hat = new THREE.Mesh(new THREE.SphereGeometry(0.27, 14, 8, 0, TAU, 0, Math.PI / 2), helm); hat.position.set(0, 1.74, -0.32); grp.add(hat);
   const lampM = new THREE.Mesh(new THREE.BoxGeometry(.12, .1, .06), new THREE.MeshBasicMaterial({ color: 0xfff6c8 })); lampM.position.set(0, 1.86, -0.06); grp.add(lampM);
   for (const sx of [-1, 1]) box(0.14, 0.14, 0.6, paint, sx * 0.4, 0.55, 0.75);
@@ -1416,15 +1445,15 @@ const reduceMotion = (() => { try { return matchMedia("(prefers-reduced-motion: 
 function shake(a) { if (!reduceMotion) FX.shake = Math.max(FX.shake, a); }
 
 // particles: sparks out of the furnaces, glitter in front of a loaded scoop
-const PN = 600, ppos = new Float32Array(PN * 3), pcol = new Float32Array(PN * 3), pvel = new Float32Array(PN * 3), plife = new Float32Array(PN);
+const PN = 700, ppos = new Float32Array(PN * 3), pcol = new Float32Array(PN * 3), pvel = new Float32Array(PN * 3), plife = new Float32Array(PN), pgrav = new Float32Array(PN);
 const pgeo = new THREE.BufferGeometry();
 pgeo.setAttribute("position", new THREE.BufferAttribute(ppos, 3)); pgeo.setAttribute("color", new THREE.BufferAttribute(pcol, 3));
 const points = new THREE.Points(pgeo, new THREE.PointsMaterial({ size: .32, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
 points.frustumCulled = false; scene.add(points);
 let pnext = 0;
 for (let k = 0; k < PN; k++) ppos[k * 3 + 1] = -50;
-function emit(x, y, z, vx, vy, vz, r, g, b, life) {
-  const k = pnext; pnext = (pnext + 1) % PN;
+function emit(x, y, z, vx, vy, vz, r, g, b, life, grav = 9) {
+  const k = pnext; pnext = (pnext + 1) % PN; pgrav[k] = grav;
   ppos[k * 3] = x; ppos[k * 3 + 1] = y; ppos[k * 3 + 2] = z;
   pvel[k * 3] = vx; pvel[k * 3 + 1] = vy; pvel[k * 3 + 2] = vz;
   pcol[k * 3] = r; pcol[k * 3 + 1] = g; pcol[k * 3 + 2] = b; plife[k] = life;
@@ -1434,7 +1463,7 @@ function updateParticles(dt) {
     if (plife[k] <= 0) continue;
     plife[k] -= dt;
     if (plife[k] <= 0) { ppos[k * 3 + 1] = -50; continue; }
-    pvel[k * 3 + 1] -= 9 * dt;
+    pvel[k * 3 + 1] -= pgrav[k] * dt;
     ppos[k * 3] += pvel[k * 3] * dt; ppos[k * 3 + 1] += pvel[k * 3 + 1] * dt; ppos[k * 3 + 2] += pvel[k * 3 + 2] * dt;
     if (ppos[k * 3 + 1] < 0.05) { ppos[k * 3 + 1] = 0.05; pvel[k * 3 + 1] *= -0.3; }
     const f = Math.min(1, plife[k] * 2.5);
@@ -1442,6 +1471,8 @@ function updateParticles(dt) {
   }
   pgeo.attributes.position.needsUpdate = true; pgeo.attributes.color.needsUpdate = true;
 }
+// rising steam / smoke puff
+function puff(x, y, z, n, c = .62) { for (let k = 0; k < n; k++) emit(x + rand(-.15, .15), y, z + rand(-.15, .15), rand(-.4, .4), rand(1.6, 2.6), rand(-.4, .4), c, c, c * 1.04, rand(.7, 1.2), -.4); }
 function sparks(s, n) {
   const cnt = Math.min(70, 6 + n * 0.5);
   for (let k = 0; k < cnt; k++) {
@@ -1521,6 +1552,13 @@ function updateFx(dt) {
   }
   FX.dashCd = Math.max(0, FX.dashCd - dt);
   FX.shake = Math.max(0, FX.shake - dt * 1.8);
+  // steam from the dozers' stacks
+  for (const d of DOZERS) {
+    if (Math.random() < dt * (Math.abs(d.speed) > .3 ? 9 : 2.5)) {
+      const c = Math.cos(d.h), s = Math.sin(d.h);
+      puff(d.x + c * .34 + s * -.95, 1.75, d.z - s * .34 + c * -.95, 1);
+    }
+  }
   // glitter in front of a loaded scoop
   for (const d of DOZERS) {
     if (d.load > 25 && Math.abs(d.speed) > 1 && Math.random() < Math.min(1, d.load / 150)) {
@@ -1899,7 +1937,7 @@ function updateHud(dt) {
     text = `${AREAS[S.gates].short}の門を開けよう（${S.gates}/${GATES.length}）`;
     ratio = clamp(((pad ? pad.paid : 0) + S.coins) / price, 0, 1);
   } else {
-    text = `出荷トロッコを満たそう ${fmt(Math.min(M.ship, Math.floor(S.shipped)))} / ${fmt(M.ship)}`;
+    text = `貨車を満たして出発させよう ${fmt(Math.min(M.ship, Math.floor(S.shipped)))} / ${fmt(M.ship)}`;
     ratio = clamp(S.shipped / M.ship, 0, 1);
   }
   if (text !== goalKey) { goalKey = text; goalText.textContent = text; }
@@ -1911,7 +1949,7 @@ function updateHud(dt) {
     const t = `${m.text}${m.n > 1 ? `（${Math.min(m.n, Math.floor(m.prog))}/${m.n}）` : ""}`;
     if (missionText.textContent !== t) missionText.textContent = t;
     missionBar.style.width = (Math.min(1, m.prog / m.n) * 100).toFixed(1) + "%";
-    const rw = `報酬 ${fmt(m.coins)}コイン${m.medal ? " ＋ 勲章1" : ""}`;
+    const rw = `報酬 ${fmt(m.coins)}コイン${m.medal ? " ＋ 徽章1" : ""}`;
     if (missionReward.textContent !== rw) missionReward.textContent = rw;
   }
   // edge arrow toward an eruption that is off screen
@@ -1955,11 +1993,11 @@ function applyPurchase(p) {
   else if (p.kind === "cadd") { S.can.add++; makeCannon(2 + S.can.add); toast("砲台 増設！", "撃てる弾の数が増えた"); }
   else if (p.kind === "repair") { ARENA.cannons.forEach(repairCannon); toast("砲台を修理！", "すべての砲台が元通り"); }
   else if (p.kind === "belt") { S.belts[p.gate]++; syncBelts(); toast("コンベア延長！", "乗せた鉱石が自動で炉へ運ばれる"); }
-  else if (p.kind === "helper") { S.helpers++; spawnHelper(); toast("作業ゾンビ到着！", "あなたのいる鉱区で鉱石を運んでくれる"); }
+  else if (p.kind === "helper") { S.helpers++; spawnHelper(); toast("見習いドワーフ到着！", "あなたのいる鉱区で鉱石を運んでくれる"); }
   else if (p.kind === "gate") {
     S.gates = p.gate + 1; syncGates();
     const next = AREAS[S.gates];
-    if (S.gates === GATES.length) toast("出荷場 解放！", `トロッコに ${fmt(M.ship)} ぶん出荷すればクリア`);
+    if (S.gates === GATES.length) toast("出荷場 解放！", `貨車に ${fmt(M.ship)} ぶん積めば山を取り戻せる`);
     else toast(`${next.label} 解放！`, `${M.ores[next.mix[2] > 0 ? 2 : 1].name}がたくさん眠っている`);
   }
   if (p.kind === "gate") { sfx.gate(); shake(0.8); buzz([60, 40, 120]); } else { sfx.buy(); shake(0.2); buzz(25); }
@@ -2394,9 +2432,9 @@ function showBossResult(win) {
   if (win) {
     const g = S.gain;
     $("gainTotal").textContent = "+" + g.medals;
-    $("gainDetail").textContent = `竜鱗 +${g.scales}${g.first ? `（初討伐ボーナス +${L.scales}）` : ""} ・ スピード +${g.fast}（${L.par / 60}分以内で+4） ・ 竜鱗は勲章ショップで砲台や装甲の強化に使える`;
+    $("gainDetail").textContent = `竜鱗 +${g.scales}${g.first ? `（初討伐ボーナス +${L.scales}）` : ""} ・ スピード +${g.fast}（${L.par / 60}分以内で+4） ・ 竜鱗は徽章ショップで砲台や装甲の強化に使える`;
   }
-  $("clearNext").textContent = win ? "ワールドマップから鉱山の続きへ戻れます。" : "砲台がすべて壊された。炉でコインを稼いで砲台を強化し、赤く光る場所を避けよう。勲章ショップの強化も役に立つ。";
+  $("clearNext").textContent = win ? "ワールドマップから鉱山の続きへ戻れます。" : "砲台がすべて壊された。炉でコインを稼いで砲台を強化し、赤く光る場所を避けよう。徽章ショップの強化も役に立つ。";
   $("clearBtn").textContent = win ? "ワールドマップへ" : "もう一度挑む";
   $("clearMapBtn").hidden = win; $("clearMapBtn").textContent = "ワールドマップへ";
   clearEl.hidden = false; $("clearBtn").focus();
@@ -2419,17 +2457,17 @@ function showClear() {
   $("clearEyebrow").textContent = `鉱山${S.mine + 1} ・ ${M.name}`;
   $("clearL1").textContent = "プレイ時間"; $("clearL2").textContent = "稼いだコイン"; $("clearL3").textContent = "出荷した鉱石";
   document.querySelector("#clear .gain").hidden = false; $("clearMapBtn").hidden = false;
-  $("clearTitle").textContent = last ? "全鉱山制覇！" : "出荷完了！";
+  $("clearTitle").textContent = last ? "すべての山を奪還！" : "山を取り戻した！";
   const sec = Math.floor(S.time);
   $("clearTime").textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
   $("clearEarned").textContent = Math.floor(S.earned).toLocaleString("ja-JP");
   $("clearShipped").textContent = Math.floor(S.shipped).toLocaleString("ja-JP");
   if (last) {
-    $("clearNext").textContent = "試作版の鉱山はここまで。勲章の強化を持ったまま、ワールドマップから好きな鉱山を周回できます。周回するたびに勲章のボーナスが増えます。";
+    $("clearNext").textContent = "試作版の鉱山はここまで。徽章の強化を持ったまま、ワールドマップから好きな鉱山を周回できます。周回するたびに徽章のボーナスが増えます。";
     $("clearBtn").textContent = "ワールドマップへ";
   } else {
     const nx = MINES[S.mine + 1];
-    $("clearNext").textContent = `次は「${nx.name}」。${nx.intro}\nスコップ・エンジン・作業ゾンビはリセット（勲章の強化は引き継ぎ）、鉱石の価値は×${nx.mult / M.mult}になります。`;
+    $("clearNext").textContent = `次は「${nx.name}」。${nx.intro}\nスコップ・エンジン・見習いドワーフはリセット（徽章の強化は引き継ぎ）、鉱石の価値は×${nx.mult / M.mult}になります。`;
     $("clearBtn").textContent = "次の鉱山へ";
   }
   const g = S.gain || { base: 0, fast: 0, lap: 0, total: 0, par: 0 };
@@ -2453,7 +2491,7 @@ function renderShop() {
     for (let k = 0; k < max; k++) { const i = document.createElement("i"); if (k < lv) i.className = "on"; pips.append(i); }
     const b = document.createElement("button"); b.type = "button"; b.id = "perk-" + pk.id;
     if (maxed) { b.textContent = "MAX"; b.disabled = true; }
-    else { const ico = document.createElement("span"); ico.className = cur === "scales" ? "scale-ico" : "medal-ico"; b.append(ico, String(cost)); b.disabled = P[cur] < cost; b.setAttribute("aria-label", `${pk.name}を${cur === "scales" ? "竜鱗" : "勲章"}${cost}で強化`); }
+    else { const ico = document.createElement("span"); ico.className = cur === "scales" ? "scale-ico" : "medal-ico"; b.append(ico, String(cost)); b.disabled = P[cur] < cost; b.setAttribute("aria-label", `${pk.name}を${cur === "scales" ? "竜鱗" : "徽章"}${cost}で強化`); }
     b.addEventListener("click", () => buyPerk(pk));
     row.append(h, b, d, pips); perksEl.append(row);
   }
@@ -2613,7 +2651,7 @@ function renderLairSheet(i) {
   if (!locked) {
     const stats = document.createElement("div"); stats.className = "map-stats";
     const stat = (label, val) => { const d = document.createElement("span"); d.append(label); const b = document.createElement("b"); b.textContent = val; d.append(b); stats.append(d); };
-    stat("竜の体力", fmt(L.hp)); stat("ベスト", P.lairBest[i] != null ? fmtTime(P.lairBest[i]) : "—"); stat("報酬", `勲章${L.medals}〜 ＋ 竜鱗${P.lairKills & (1 << i) ? L.scales : L.scales * 2}`);
+    stat("竜の体力", fmt(L.hp)); stat("ベスト", P.lairBest[i] != null ? fmtTime(P.lairBest[i]) : "—"); stat("報酬", `徽章${L.medals}〜 ＋ 竜鱗${P.lairKills & (1 << i) ? L.scales : L.scales * 2}`);
     mapSheet.append(stats);
   }
   const acts = document.createElement("div"); acts.className = "acts";
@@ -2669,12 +2707,13 @@ function checkClear(dt) {
   if (ARENA) return;
   if (!S.cleared && S.shipped >= M.ship) {
     S.cleared = true; ship.clearT = 0; awardMedals(); writeSave();
-    toast("出荷！", "トロッコが走り出した");
+    toast("出発進行！", "蒸気鉄道が王都へ走り出した");
   }
   if (S.cleared) {
     ship.clearT += dt;
     const t = Math.max(0, ship.clearT - 0.5);
     ship.cart.position.x = CART_X0 + t * t * 4;
+    if (Math.random() < .7) puff(ship.cart.position.x + ship_chimX, 3.1, CART_Z, 2, .7);
     if (ship.clearT > 2.8 && clearEl.hidden) showClear();
   }
 }
@@ -2785,6 +2824,7 @@ function frame(now) {
   updatePads(dt);
   checkClear(dt);
   drawShip();
+  if (ship && !ARENA && !S.cleared && Math.random() < dt * 1.5) puff(ship.cart.position.x + ship_chimX, 3.1, CART_Z, 1, .6);
   areaEl.textContent = ARENA ? "竜の巣" : AREAS[areaOf(player.z)].label;
 
   for (const d of DOZERS) {
@@ -2794,6 +2834,7 @@ function frame(now) {
     d.grp.rotation.y = d.h;
   }
   lavaL.t.offset.set(Math.sin(time * 0.3) * 0.1, time * 0.05);
+  for (const f of SINKS) if (f.chim && Math.random() < dt * (2 + f.flash * 3)) puff(f.chim[0], 3.1, f.chim[1], 1, .42);
   for (const f of SINKS) { f.flash = Math.max(0, f.flash - dt * 4); f.light.intensity = (f.ship ? 1.2 : 2) + Math.sin(time * 5 + f.x) * 0.3 + f.flash; }
   popTimer += dt;
   if (popTimer > 0.3) {
@@ -2852,7 +2893,7 @@ resetBtn.addEventListener("click", () => {
     resetArmed = 0; resetBtn.textContent = "リセット";
     P = freshMeta(); S = fresh(); writeSave(); clearEl.hidden = true; shopEl.hidden = true; mapEl.hidden = true; buildMine(); return;
   }
-  resetArmed = Date.now(); resetBtn.textContent = "もう一度押すと勲章も含めて全リセット";
+  resetArmed = Date.now(); resetBtn.textContent = "もう一度押すと徽章も含めて全リセット";
   setTimeout(() => { resetBtn.textContent = "リセット"; }, 2500);
 });
 
@@ -2861,7 +2902,7 @@ function start(data) {
   resize();
   buildMine();
   if (document.fonts && document.fonts.load) {
-    Promise.all([document.fonts.load('96px "Lilita One"'), document.fonts.load('800 28px "M PLUS Rounded 1c"', "出荷トロッコ鉱区解放")])
+    Promise.all([document.fonts.load('96px "Lilita One"'), document.fonts.load('800 28px "M PLUS Rounded 1c"', "王都行き貨車鉱区解放徽章")])
       .then(() => { PADS.forEach(drawPad); ship.shown = -1; drawShip(); }).catch(() => {});
   }
   window.claude?.hot?.snapshot?.(() => ({ save: S, meta: P }));
