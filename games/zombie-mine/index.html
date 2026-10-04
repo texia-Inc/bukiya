@@ -132,7 +132,7 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255,255,255,.55); }
 
 .clear { z-index: 6; position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(10,6,18,.55); pointer-events: auto; }
-.clear[hidden], .stick[hidden], .shop[hidden], .rankline[hidden], .nick[hidden], .arrow[hidden], .goal[hidden] { display: none; }
+.clear[hidden], .party[hidden], .stick[hidden], .shop[hidden], .rankline[hidden], .nick[hidden], .arrow[hidden], .goal[hidden] { display: none; }
 .sheet {
   width: min(360px, 100%); padding: 26px 22px 22px; border-radius: 26px; text-align: center;
   background: var(--plum); border: 3px solid var(--gold);
@@ -174,6 +174,23 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .gain .top b { margin-left: auto; font: 26px/1 var(--font-num); color: #a8f58a; }
 .gain small { display: block; margin-top: 6px; font-size: 12px; opacity: .75; }
 .shop .sheet { text-align: left; }
+/* co-op raid */
+.raid-code { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 14px; }
+.raid-code b { font: 40px/1 var(--font-num); letter-spacing: .18em; color: var(--gold); text-transform: uppercase; }
+.raid-row { display: flex; gap: 8px; margin: 0 0 10px; align-items: center; }
+.raid-row > * { min-width: 0; }
+.raid-row input, .raid-row select { flex: 1; padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.3); color: var(--chalk); font: 800 15px var(--font-jp); }
+.raid-row input { text-transform: lowercase; letter-spacing: .14em; }
+.raid-row input:focus-visible, .raid-row select:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.sheet .raid-row button { width: auto; flex: none; padding: 10px 16px; }
+.raid-or { text-align: center; font-size: 11px; opacity: .6; margin: 4px 0 10px; }
+.lb li .tag { font: 800 10px var(--font-jp); padding: 2px 6px; border-radius: 999px; background: var(--gold); color: #2a1500; }
+.party { position: absolute; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 160px); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: min(440px, calc(100% - 32px)); }
+.party span { display: flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: color-mix(in srgb, var(--night) 82%, transparent); font: 800 11px var(--font-jp); max-width: 46%; }
+.party span em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.party span i { flex: none; width: 34px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.15); overflow: hidden; }
+.party span i::after { content: ""; display: block; height: 100%; width: var(--hp, 100%); background: #6fd04a; }
+.party span.me { box-shadow: inset 0 0 0 1.5px var(--gold); }
 /* rankings & world dragon */
 .panel .sheet { text-align: left; width: min(400px, 100%); max-height: calc(100% - 32px); overflow-y: auto; }
 .panel h2 { text-align: center; margin-bottom: 4px; }
@@ -197,7 +214,7 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .nick input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 .rankline { margin: -6px 0 16px; font-size: 13px; color: var(--gold); }
 .map-sheet button.rank-btn { justify-self: start; padding: 6px 12px; border: 0; border-radius: 999px; cursor: pointer; background: rgba(255,255,255,.1); color: var(--chalk); font: 800 12px var(--font-jp); }
-.map-head .wd-btn { pointer-events: auto; border: 0; cursor: pointer; border-radius: 999px; padding: 8px 12px; font: 800 12px var(--font-jp); white-space: nowrap; flex: none;
+.map-head .wd-btn { pointer-events: auto; border: 0; cursor: pointer; border-radius: 999px; padding: 8px 11px; font: 800 12px var(--font-jp); white-space: nowrap; flex: none;
   color: #ffe0d0; background: linear-gradient(135deg, #7a1424, #c8402a); box-shadow: 0 3px 0 #3a0810; }
 .map-head .wd-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 /* boss */
@@ -225,6 +242,8 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .map[hidden] { display: none; }
 .map-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .map-head > div { min-width: 0; }
+.map-head { flex-wrap: wrap; row-gap: 8px; }
+@media (max-width: 560px) { .map-head > div:first-child { flex: 1 1 100%; } .map-head .spacer { display: none; } }
 .map-head .medals, .map-close { white-space: nowrap; flex: none; }
 .map-head h2 { margin: 0; white-space: nowrap; font: clamp(18px, 5.4vw, 28px)/1 var(--font-num); letter-spacing: .04em; color: var(--gold); text-shadow: 0 3px 0 #3b1f00; }
 .map-head p { margin: 2px 0 0; font-size: 12px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -301,6 +320,7 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
   <button class="medals" id="medalBtn" type="button" aria-label="徽章ショップを開く"><span class="medal-ico"></span>徽章 <b id="medalCount">0</b></button>
   <div class="hint" id="hint">ドラッグ（またはWASD）で操作 ・ 鉱石を炉へ押し込もう</div>
   <div class="boss" id="boss" hidden><div class="bname"><span id="bossName">若き火竜</span><small id="bossPhase"></small></div><div class="btrack"><em id="bossLag"></em><i id="bossHp"></i><b id="bossHpTxt"></b></div></div>
+  <div class="party" id="party" hidden></div>
   <div class="toast" id="toast"></div>
   <div class="arrow" id="veinArrow" hidden><span>鉱脈</span></div>
   <div class="chain" id="chain" style="opacity:0">連続 0</div>
@@ -334,7 +354,8 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
     <div><h2 id="mapTitle">WORLD MAP</h2><p>竜に奪われた山々を取り戻そう</p></div>
     <span class="spacer"></span>
     <button class="medals" id="mapMedals" type="button" aria-label="徽章ショップを開く"><span class="medal-ico"></span>徽章 <b id="mapMedalCount">0</b></button>
-    <button class="wd-btn" id="wdBtn" type="button">ワールドドラゴン</button>
+    <button class="wd-btn" id="raidBtn" type="button">協力レイド</button>
+    <button class="wd-btn" id="wdBtn" type="button" aria-label="ワールドドラゴン">ワールド竜</button>
     <button class="map-close" id="mapClose" type="button">閉じる</button>
   </div>
   <div class="map-stage"><div class="map-board" id="mapBoard"></div></div>
@@ -347,6 +368,15 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
     <ol class="lb" id="rankList"></ol>
     <p class="netnote" id="rankNote"></p>
     <div class="actions"><button type="button" class="ghost" id="rankClose">閉じる</button></div>
+  </div>
+</div>
+<div class="clear panel" id="raidPanel" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="raidTitle">
+    <h2 id="raidTitle">協力レイド</h2>
+    <p class="sub">2〜4人で竜の巣に挑む。部屋を作って、コードを仲間に伝えよう</p>
+    <div id="raidBody"></div>
+    <p class="netnote" id="raidNote"></p>
+    <div class="actions"><button type="button" class="ghost" id="raidClose">閉じる</button></div>
   </div>
 </div>
 <div class="clear panel" id="wdPanel" hidden>
@@ -1271,7 +1301,7 @@ function padList(p) {
 }
 function padLevel(p) {
   if (p.kind === "cdmg") return S.can.dmg; if (p.kind === "crate") return S.can.rate; if (p.kind === "cadd") return S.can.add;
-  if (p.kind === "repair") return ARENA && ARENA.cannons.every(c => c.hp >= 100) ? 1 : 0;
+  if (p.kind === "repair") return ARENA && ARENA.cannons.filter(c => c.mine).every(c => c.hp >= 100) ? 1 : 0;
   if (p.kind === "gate") return S.gates > p.gate ? 1 : 0;
   if (p.kind === "belt") return S.belts[p.gate];
   return S[p.kind === "helper" ? "helpers" : p.kind];
@@ -1898,7 +1928,11 @@ function step(dt) {
       if (s.area <= S.gates && Math.abs(X[i] - s.x) < s.hx - 0.12 && Math.abs(Z[i] - s.z) < s.hz - 0.12) {
         ST[i] = 2; TT[i] = 0; FI[i] = SINKS.indexOf(s);
         const t = tierOf(i);
-        if (s.cannon) { s.ammo[Math.min(2, t)]++; s.count++; onDeliver(s); continue; }
+        if (s.cannon) {
+          if (s.mine) s.ammo[Math.min(2, t)]++;
+          else { const k = ARENA.cannons.indexOf(s); (RAID.gifts[k] = RAID.gifts[k] || [0, 0, 0])[Math.min(2, t)]++; }
+          s.count++; onDeliver(s); continue;
+        }
         if (t === CHEST) { openChest(s); advanceMission("chest", 1); continue; }
         const base = t === GIANT ? GIANT_VAL * M.mult : M.ores[t].val, v = base * incomeMult() * (FX.fever > 0 ? 2 : 1);
         S.coins += v; S.earned += v; s.pending += v; onDeliver(s); worldAdd(t === GIANT ? 30 : [1, 3, 10][t]);
@@ -2048,7 +2082,7 @@ function applyPurchase(p) {
   else if (p.kind === "cdmg") { S.can.dmg++; toast("砲台 威力UP！", `ダメージ ×${(1 + .5 * S.can.dmg).toFixed(1)}`); }
   else if (p.kind === "crate") { S.can.rate++; toast("砲台 連射UP！", "弾を撃つ間隔が短くなった"); }
   else if (p.kind === "cadd") { S.can.add++; makeCannon(2 + S.can.add); toast("砲台 増設！", "撃てる弾の数が増えた"); }
-  else if (p.kind === "repair") { ARENA.cannons.forEach(repairCannon); toast("砲台を修理！", "すべての砲台が元通り"); }
+  else if (p.kind === "repair") { ARENA.cannons.filter(c => c.mine).forEach(repairCannon); toast("砲台を修理！", "あなたの砲台が元通り"); }
   else if (p.kind === "belt") { S.belts[p.gate]++; syncBelts(); toast("コンベア延長！", "乗せた鉱石が自動で炉へ運ばれる"); }
   else if (p.kind === "helper") { S.helpers++; spawnHelper(); toast("見習いドワーフ到着！", "あなたのいる鉱区で鉱石を運んでくれる"); }
   else if (p.kind === "gate") {
@@ -2085,6 +2119,262 @@ function updatePads(dt) {
     if (redraw) drawPad(p);
   }
 }
+
+// ---------- co-op raid (room capability) ----------
+// Each player simulates their own ore locally. Shared over the room: dozer positions and cannon status
+// (presence), dragon attacks and health (host -> everyone), damage and ammo gifts (player -> host / owner).
+const RAID = { api: null, room: null, code: "", lair: 0, on: false, host: false, slot: -1, n: 1, slots: {}, ghosts: {},
+  hitAcc: [0, 0, 0], hitT: 0, stT: 0, presT: 0, gifts: {}, giftT: 0, unsub: [], msg: "", names: {} };
+const raidPanel = $("raidPanel"), partyEl = $("party");
+async function raidInit() { try { if (window.claude && claude.use) RAID.api = await claude.use("room"); } catch (e) { RAID.api = null; } }
+const raidCodeGen = () => { const a = "abcdefghjkmnpqrstuvwxyz23456789"; let c = ""; for (let k = 0; k < 4; k++) c += a[(Math.random() * a.length) | 0]; return c; };
+const raidPeers = () => RAID.room ? RAID.room.peers().filter(p => p.kind === "viewer") : [];
+const myPeer = () => { const m = raidPeers().find(p => p.sameTab); return m ? m.peer : ""; };
+function hostPeer() {
+  const ps = raidPeers().slice().sort((a, b) => a.peer < b.peer ? -1 : 1);
+  const flagged = ps.find(p => p.presence && p.presence.host);
+  return (flagged || ps[0] || {}).peer || "";
+}
+function peerName(p) {
+  const nm = RAID.names[p.by];
+  return nm || (p.presence && typeof p.presence.nm === "string" && p.presence.nm.slice(0, 16)) || "ドワーフ";
+}
+async function resolveNames() {
+  if (NET.mode !== "artifact" || !NET.user) return;
+  const ids = raidPeers().map(p => p.by).filter(Boolean);
+  if (!ids.length) return;
+  const ps = await NET.user.profiles(ids);
+  for (const id of ids) if (ps[id] && ps[id].name) RAID.names[id] = ps[id].name;
+}
+function raidEmit(topic, data) { if (RAID.room) RAID.room.emit(topic, data).catch(e => { if (e && e.code === "not_permitted") { RAID.msg = "この共有設定では協力レイドに参加できません（Contributor 以上が必要）"; renderRaid(); } }); }
+const isAuth = () => !RAID.on || RAID.host;          // who drives the dragon
+
+async function raidJoin(code, asHost) {
+  if (!RAID.api) return;
+  code = String(code || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+  if (code.length < 3) { RAID.msg = "部屋コードを入れてください"; renderRaid(); return; }
+  if (RAID.room) await raidLeave();
+  try { RAID.room = await RAID.api.join("raid-" + code); }
+  catch (e) { RAID.msg = "部屋に入れませんでした（" + ((e && e.code) || "error") + "）"; renderRaid(); return; }
+  Object.assign(RAID, { code, msg: "" });
+  const R = RAID.room;
+  RAID.unsub.push(R.on("raid", onRaidMsg, () => {}), R.on("rctl", onRaidCtl, () => {}), R.on("rhit", onRaidHit, () => {}),
+    R.onPeers(onRaidPeers, () => {}));
+  R.presence({ nm: P.nick, host: !!asHost, lair: RAID.lair, st: "lobby" }).catch(() => {});
+  renderRaid();
+}
+async function raidLeave() {
+  RAID.unsub.forEach(u => { try { u(); } catch (e) {} }); RAID.unsub = [];
+  const r = RAID.room; RAID.room = null; RAID.on = false; RAID.code = "";
+  if (r) { try { await r.leave(); } catch (e) {} }
+  partyEl.hidden = true; renderRaid();
+}
+function onRaidPeers() {
+  const wasHost = RAID.host;
+  RAID.host = !!RAID.room && hostPeer() === myPeer();
+  if (RAID.on && RAID.host && !wasHost) { toast("ホストを引き継いだ", "竜の動きはあなたの端末で計算します"); RAID.room.presence({ host: true }).catch(() => {}); }
+  resolveNames().then(() => { renderRaid(); });
+  if (RAID.on) syncRemoteCannons();
+}
+function raidStart() {
+  if (!RAID.room || !RAID.host) return;
+  const ps = raidPeers().filter(p => p.presence && p.presence.st === "lobby").sort((a, b) => (a.peer === myPeer() ? -1 : b.peer === myPeer() ? 1 : a.peer < b.peer ? -1 : 1)).slice(0, 4);
+  const slots = {}; ps.forEach((p, k) => slots[p.peer] = k);
+  raidEmit("rctl", { t: "start", lair: RAID.lair, slots, n: ps.length });
+}
+function onRaidCtl(m) {
+  const d = m.data; if (!d || typeof d !== "object") return;
+  if (d.t === "start") {
+    const me = myPeer();
+    if (d.slots && typeof d.slots === "object" && d.slots[me] != null && !RAID.on && LAIRS[d.lair | 0]) startRaid(d);
+  } else if (d.t === "gift" && RAID.on && ARENA) {
+    const c = ARENA.cannons[d.k | 0];
+    if (c && c.mine && c.alive && Array.isArray(d.am)) {
+      let n = 0; for (let t = 0; t < 3; t++) { const v = Math.max(0, Math.min(400, d.am[t] | 0)); c.ammo[t] += v; n += v; }
+      if (n) popAt(c.x, 3.2, c.z, `差し入れ +${n}`, "big", 22);
+    }
+  }
+}
+function startRaid(d) {
+  RAID.on = true; RAID.slots = d.slots; RAID.n = Math.max(1, Math.min(4, d.n | 0)); RAID.slot = d.slots[myPeer()] | 0; RAID.lair = d.lair | 0;
+  RAID.host = hostPeer() === myPeer();
+  if (S.boss == null && !S.cleared && S.time > 0) P.runs[S.mine] = S;
+  S = freshBoss(RAID.lair); S.raid = { n: RAID.n };
+  writeSave();
+  raidPanel.hidden = true; clearEl.hidden = true; mapEl.hidden = true;
+  buildMine();
+  RAID.room.presence({ st: "raid", slot: RAID.slot }).catch(() => {});
+}
+// --- host <-> players ---
+function onRaidMsg(m) {
+  const d = m.data; if (!d || typeof d !== "object" || !RAID.on || !ARENA || m.sameTab) return;
+  const A = ARENA, D = A.dragon;
+  if (d.t === "st" && !RAID.host) {
+    if (typeof d.hp === "number") D.hp = Math.max(0, Math.min(D.max, d.hp));
+    if (d.p2 && !D.phase2) { D.phase2 = true; toast(A.lair.angry[0], A.lair.angry[1]); roarSfx(); }
+    if (d.rg && !D.rage) { D.rage = true; toast("竜王が激怒した！", "攻撃が速くなり、ブレスを2連発してくる"); D.skin.color.offsetHSL(0, .2, .06); }
+    if (!!d.fl !== D.flying) { D.flying = !!d.fl; D.obs.alive = !D.flying; if (D.flying) toast("竜が飛んだ！", "中位・上位の鉱石を砲台へ！"); }
+  } else if (d.t === "br" && !RAID.host) {
+    A.breath = { ox: +d.ox, oz: +d.oz, dx: +d.dx, dz: +d.dz, hit: new Set(), second: !!d.second };
+    A.sector.position.set(A.breath.ox, .05, A.breath.oz); A.sector.rotation.y = Math.atan2(-A.breath.dz, A.breath.dx); A.sector.visible = true;
+    A.sectorMat.color.set(A.lair.breath === "frost" ? 0x40a8ff : 0xff3020);
+    D.state = "tele"; D.atk = "breath"; D.t = Math.min(3, +d.tele || 1.4);
+  } else if (d.t === "hz" && !RAID.host) {
+    addHazard(String(d.k), +d.x, +d.z, Math.min(12, +d.r || 2), Math.min(3, +d.t || 1.4), Math.min(60, d.dmg | 0));
+  } else if (d.t === "stag" && !RAID.host) {
+    staggerDragon(D);
+  } else if (d.t === "end") {
+    if (d.win) { if (!D.dead) killDragon(D); } else if (!A.result) finishBoss(false);
+  }
+}
+function onRaidHit(m) {
+  const d = m.data; if (!RAID.on || !RAID.host || !ARENA || m.sameTab || !d || !Array.isArray(d.dm)) return;
+  for (let t = 0; t < 3; t++) { const v = Math.max(0, Math.min(5000, +d.dm[t] || 0)); if (v) applyDragonDamage(v, t); }
+}
+// --- remote players: ghost dozers & their cannons ---
+function syncRemoteCannons() {
+  if (!ARENA) return;
+  for (const p of raidPeers()) {
+    if (p.sameTab || !p.presence || !Array.isArray(p.presence.cs)) continue;
+    for (const e of p.presence.cs) {
+      if (!Array.isArray(e)) continue;
+      const c = ARENA.cannons[e[0] | 0]; if (!c || c.mine) continue;
+      const hp = Math.max(0, Math.min(100, +e[1] || 0));
+      if (c.alive && hp <= 0) { c.alive = false; c.turret.rotation.set(.5, 0, .35); c.turret.position.y = 1.1; c.steel.color.set(0x1a1a1e); }
+      if (!c.alive && hp > 0) repairCannon(c);
+      c.hp = hp; c.ammo = [Math.max(0, e[2] | 0), 0, 0];
+      const shots = Math.max(0, e[3] | 0);
+      if (c.shotsSeen != null && shots > c.shotsSeen && c.alive) for (let k = 0; k < Math.min(3, shots - c.shotsSeen); k++) fireCannon(c, 1, true);
+      c.shotsSeen = shots;
+      c.frozen = e[4] ? 1 : 0; c.steel.color.set(!c.alive ? 0x1a1a1e : c.frozen ? 0x7ac8f0 : 0x3a3a44);
+    }
+  }
+}
+function updateGhosts(dt) {
+  const seen = new Set();
+  for (const p of raidPeers()) {
+    if (p.sameTab || !p.presence || p.presence.st !== "raid" || typeof p.presence.x !== "number") continue;
+    seen.add(p.peer);
+    let g = RAID.ghosts[p.peer];
+    if (!g) {
+      const d = makeDozer(false); DOZERS.pop();                   // visual only: never pushes local ore
+      d.grp.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .6; } });
+      const L = labelTex(256, 64), sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: L.t, depthTest: false, transparent: true }));
+      sp.scale.set(3.2, .8, 1); sp.position.y = 2.7; sp.renderOrder = 6; d.grp.add(sp);
+      g = RAID.ghosts[p.peer] = { d, L, name: "" };
+      d.x = p.presence.x; d.z = p.presence.z;
+    }
+    const nm = peerName(p);
+    if (g.name !== nm) { g.name = nm; const c = g.L.g; c.clearRect(0, 0, 256, 64); c.font = '800 30px "M PLUS Rounded 1c", sans-serif'; c.textAlign = "center"; c.textBaseline = "middle"; c.lineWidth = 6; c.strokeStyle = "rgba(0,0,0,.7)"; c.strokeText(nm, 128, 32); c.fillStyle = "#ffe9b0"; c.fillText(nm, 128, 32); g.L.t.needsUpdate = true; }
+    const k = Math.min(1, dt * 10);
+    g.d.x += (p.presence.x - g.d.x) * k; g.d.z += (p.presence.z - g.d.z) * k; g.d.h += wrapA(+p.presence.h - g.d.h) * k;
+    buildScoop(g.d, Math.max(0, Math.min(8, p.presence.sc | 0)));
+    g.d.grp.position.set(g.d.x, 0, g.d.z); g.d.grp.rotation.y = g.d.h;
+  }
+  for (const id in RAID.ghosts) if (!seen.has(id)) { world.remove(RAID.ghosts[id].d.grp); delete RAID.ghosts[id]; }
+}
+function renderParty() {
+  if (!RAID.on || !ARENA) { partyEl.hidden = true; return; }
+  partyEl.hidden = false;
+  const ps = raidPeers().filter(p => p.presence && p.presence.st === "raid");
+  const key = ps.map(p => p.peer + (p.presence.cs || []).map(e => e[1]).join(",") + peerName(p)).join("|");
+  if (key === partyEl.dataset.key) return; partyEl.dataset.key = key;
+  partyEl.innerHTML = "";
+  for (const p of ps) {
+    const cs = p.presence.cs || [], hp = cs.length ? cs.reduce((a, e) => a + (+e[1] || 0), 0) / cs.length : 0;
+    const el = document.createElement("span"); if (p.sameTab) el.className = "me";
+    const nm = document.createElement("em"); nm.textContent = peerName(p) + (p.sameTab ? "（あなた）" : "");
+    const bar = document.createElement("i"); bar.style.setProperty("--hp", Math.round(hp) + "%");
+    el.append(nm, bar); partyEl.append(el);
+  }
+}
+function raidTick(dt) {
+  if (!RAID.on || !RAID.room || !ARENA) return;
+  const A = ARENA, D = A.dragon;
+  RAID.presT += dt;
+  if (RAID.presT > .1) {
+    RAID.presT = 0;
+    RAID.room.presence({ x: +player.x.toFixed(2), z: +player.z.toFixed(2), h: +player.h.toFixed(2), sc: player.lv,
+      cs: A.cannons.filter(c => c.mine).map(c => [A.cannons.indexOf(c), Math.round(c.hp), c.ammo[0] + c.ammo[1] + c.ammo[2], c.shots | 0, c.frozen > 0 ? 1 : 0]) }).catch(() => {});
+  }
+  RAID.hitT += dt;
+  if (RAID.hitT > .25) {
+    RAID.hitT = 0;
+    if (!RAID.host && RAID.hitAcc.some(v => v > 0)) { raidEmit("rhit", { dm: RAID.hitAcc.map(v => Math.round(v)) }); RAID.hitAcc = [0, 0, 0]; }
+  }
+  RAID.giftT += dt;
+  if (RAID.giftT > .5) {
+    RAID.giftT = 0;
+    for (const k in RAID.gifts) { const am = RAID.gifts[k]; if (am.some(v => v > 0)) raidEmit("rctl", { t: "gift", k: +k, am }); }
+    RAID.gifts = {};
+  }
+  if (RAID.host) {
+    RAID.stT += dt;
+    if (RAID.stT > .2) { RAID.stT = 0; raidEmit("raid", { t: "st", hp: Math.round(D.hp), p2: D.phase2 ? 1 : 0, rg: D.rage ? 1 : 0, fl: D.flying ? 1 : 0 }); }
+  }
+  syncRemoteCannons(); updateGhosts(dt); renderParty();
+}
+
+// --- lobby panel ---
+function lairOptions() { return LAIRS.map((L, i) => ({ i, L, open: P.best[L.after] != null })).filter(o => o.open); }
+function renderRaid() {
+  if (raidPanel.hidden) return;
+  const body = $("raidBody"); body.innerHTML = "";
+  const note = $("raidNote");
+  note.textContent = RAID.msg;
+  if (!RAID.api) { note.textContent = "協力レイドは Claude 上の版で遊べます（GitHub Pages 版は準備中）。"; return; }
+  if (!RAID.room) {
+    const opts = lairOptions();
+    const row1 = document.createElement("div"); row1.className = "raid-row";
+    const sel = document.createElement("select"); sel.id = "raidLair"; sel.setAttribute("aria-label", "挑む竜の巣");
+    opts.forEach(o => { const op = document.createElement("option"); op.value = o.i; op.textContent = `竜の巣${o.i + 1}「${o.L.name}」`; sel.append(op); });
+    if (opts.some(o => o.i === RAID.lair)) sel.value = RAID.lair;
+    const mk = document.createElement("button"); mk.type = "button"; mk.textContent = "部屋を作る"; mk.disabled = !opts.length;
+    mk.addEventListener("click", () => { RAID.lair = +sel.value; raidJoin(raidCodeGen(), true); });
+    row1.append(sel, mk); body.append(row1);
+    if (!opts.length) { const p = document.createElement("p"); p.className = "netnote"; p.textContent = "部屋を作るには竜の巣を1つ以上解放してください（鉱山3クリア）。参加は今すぐできます。"; body.append(p); }
+    const or = document.createElement("p"); or.className = "raid-or"; or.textContent = "または、仲間の部屋に入る"; body.append(or);
+    const row2 = document.createElement("div"); row2.className = "raid-row";
+    const inp = document.createElement("input"); inp.id = "raidCodeInput"; inp.placeholder = "部屋コード"; inp.maxLength = 8; inp.autocomplete = "off"; inp.setAttribute("aria-label", "部屋コード");
+    const jn = document.createElement("button"); jn.type = "button"; jn.textContent = "参加";
+    jn.addEventListener("click", () => raidJoin(inp.value, false));
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") raidJoin(inp.value, false); });
+    row2.append(inp, jn); body.append(row2);
+    if (!RAID.msg) note.textContent = "このページを開ける仲間と遊べます。共有するときは Contributor（参加者）以上にしてください。";
+    return;
+  }
+  const code = document.createElement("div"); code.className = "raid-code";
+  const cb = document.createElement("b"); cb.textContent = RAID.code;
+  const copy = document.createElement("button"); copy.type = "button"; copy.className = "rank-btn"; copy.textContent = "コピー";
+  copy.addEventListener("click", () => { navigator.clipboard && navigator.clipboard.writeText(RAID.code).then(() => { copy.textContent = "コピーした"; }, () => {}); });
+  code.append(cb, copy); body.append(code);
+  const ps = raidPeers(), hp = hostPeer(), hostP = ps.find(p => p.peer === hp);
+  const lairIdx = RAID.host ? RAID.lair : ((hostP && hostP.presence && hostP.presence.lair) | 0);
+  const info = document.createElement("p"); info.className = "sub"; info.textContent = `挑む竜：竜の巣${lairIdx + 1}「${LAIRS[lairIdx] ? LAIRS[lairIdx].name : "?"}」 ・ ${ps.length}/4人`;
+  body.append(info);
+  const list = document.createElement("ol"); list.className = "lb";
+  ps.forEach((p, k) => {
+    const li = document.createElement("li"); if (p.sameTab) li.className = "me";
+    const rk = document.createElement("span"); rk.className = "rk"; rk.textContent = k + 1;
+    const nm = document.createElement("span"); nm.textContent = peerName(p) + (p.sameTab ? "（あなた）" : "");
+    const tag = document.createElement("span"); tag.className = p.peer === hp ? "tag" : ""; tag.textContent = p.peer === hp ? "ホスト" : (p.presence && p.presence.st === "raid" ? "戦闘中" : "待機中");
+    li.append(rk, nm, tag); list.append(li);
+  });
+  body.append(list);
+  if (RAID.host) {
+    const row = document.createElement("div"); row.className = "raid-row";
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", "挑む竜の巣");
+    lairOptions().forEach(o => { const op = document.createElement("option"); op.value = o.i; op.textContent = `竜の巣${o.i + 1}「${o.L.name}」`; sel.append(op); });
+    sel.value = RAID.lair;
+    sel.addEventListener("change", () => { RAID.lair = +sel.value; RAID.room.presence({ lair: RAID.lair }).catch(() => {}); renderRaid(); });
+    const go = document.createElement("button"); go.type = "button"; go.id = "raidGo"; go.textContent = ps.length > 1 ? `${ps.length}人で出発！` : "1人で出発";
+    go.addEventListener("click", raidStart);
+    row.append(sel, go); body.append(row);
+  } else { const w = document.createElement("p"); w.className = "netnote"; w.textContent = "ホストが出発するのを待っています…"; body.append(w); }
+  const lv = document.createElement("button"); lv.type = "button"; lv.className = "rank-btn"; lv.textContent = "部屋を抜ける";
+  lv.addEventListener("click", raidLeave); body.append(lv);
+}
+function openRaid() { panelFrom = document.activeElement; raidPanel.hidden = false; renderRaid(); $("raidClose").focus(); }
 
 // ---------- dragon lair (boss fight) ----------
 // each lair: looks, health, which attacks it uses (weights) and how its phases behave
@@ -2127,7 +2417,8 @@ function makeCannon(slot) {
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: L.t, depthTest: false, transparent: true })); label.scale.set(2.6, 1.04, 1); label.position.y = 3.3; label.renderOrder = 5; grp.add(label);
   add(grp);
   const c = { x, z, hx: .95, hz: .95, area: 0, pending: 0, count: 0, flash: 0, light: { intensity: 0 }, ship: false, cannon: true,
-    hp: 100, alive: true, ammo: [0, 0, 0], cd: 0, frozen: 0, grp, turret, barrel, steel, L, key: "", slot };
+    hp: 100, alive: true, ammo: [0, 0, 0], cd: 0, frozen: 0, grp, turret, barrel, steel, L, key: "", slot,
+    owner: S.raid ? slot % S.raid.n : 0, mine: !S.raid || slot % S.raid.n === RAID.slot, shots: 0 };
   SINKS.push(c); ARENA.cannons.push(c); drawCannon(c);
   return c;
 }
@@ -2136,6 +2427,13 @@ function drawCannon(c) {
   if (key === c.key) return; c.key = key;
   const g = c.L.g; g.clearRect(0, 0, 160, 64);
   rrect(g, 4, 4, 152, 56, 14); g.fillStyle = "rgba(20,10,20,.82)"; g.fill();
+  if (!c.mine) {           // a teammate's cannon: whose it is, and its health
+    rrect(g, 14, 12, 132, 12, 6); g.fillStyle = "#3a2a30"; g.fill();
+    if (c.alive) { const r = c.hp / 100; rrect(g, 14, 12, Math.max(12, 132 * r), 12, 6); g.fillStyle = "#5ab8ff"; g.fill(); }
+    const who = raidPeers().find(p => RAID.slots[p.peer] === c.owner);
+    g.fillStyle = c.alive ? "#cfe8ff" : "#ff6a5a"; g.font = '800 20px "M PLUS Rounded 1c", sans-serif'; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(c.alive ? (who ? peerName(who) : "仲間") + "の砲台" : "破壊された", 80, 43); c.L.t.needsUpdate = true; return;
+  }
   if (!c.alive) { g.fillStyle = "#ff6a5a"; g.font = '800 22px "M PLUS Rounded 1c", sans-serif'; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("破壊された", 80, 33); c.L.t.needsUpdate = true; return; }
   rrect(g, 14, 12, 132, 12, 6); g.fillStyle = "#3a2a30"; g.fill();
   const r = c.hp / 100; rrect(g, 14, 12, Math.max(12, 132 * r), 12, 6); g.fillStyle = r > .5 ? "#6fd04a" : r > .25 ? "#ffc53a" : "#ff4a3a"; g.fill();
@@ -2144,7 +2442,7 @@ function drawCannon(c) {
   c.L.t.needsUpdate = true;
 }
 function damageCannon(c, n) {
-  if (!c.alive || !ARENA || ARENA.result) return;
+  if (!c.alive || !ARENA || ARENA.result || !c.mine) return;
   c.hp -= n; c.flash = 2;
   for (let k = 0; k < 14; k++) emit(c.x, 1.6, c.z, rand(-3, 3), rand(2, 6), rand(-3, 3), 1, .5, .2, rand(.4, .8));
   if (c.hp <= 0) {
@@ -2157,7 +2455,7 @@ function damageCannon(c, n) {
   PADS.forEach(drawPad);
 }
 function freezeCannon(c, t) {
-  if (!c.alive) return;
+  if (!c.alive || !c.mine) return;
   c.frozen = Math.max(c.frozen, t); c.steel.color.set(0x7ac8f0);
   for (let k = 0; k < 16; k++) emit(c.x, 1.8, c.z, rand(-2, 2), rand(1, 4), rand(-2, 2), .7, .9, 1, .7);
 }
@@ -2213,10 +2511,13 @@ function buildArena() {
   OBS = []; zoneMeshes = []; bushMesh = null; ship = null;
   // furnace for coins, cannons for ammo
   makeFurnace(9.8, 10.8, 3.4, 0);
-  for (let k = 0; k < 3 + S.can.add; k++) makeCannon(k);
-  makePad("cdmg", -12.6, 11.6); makePad("crate", -8.8, 11.6); makePad("cadd", -5, 11.6); makePad("repair", -1.2, 11.6); makePad("scoop", 2.6, 11.6);
+  const nCan = S.raid ? Math.max(3, S.raid.n) : 3 + S.can.add;
+  RAID.ghosts = {};
+  for (let k = 0; k < nCan; k++) makeCannon(k);
+  makePad("cdmg", -12.6, 11.6); makePad("crate", -8.8, 11.6); if (!S.raid) makePad("cadd", -5, 11.6); makePad("repair", -1.2, 11.6); makePad("scoop", 2.6, 11.6);
   // the dragon (solid while on the ground)
-  const D = Object.assign(makeDragon(L), { hp: L.hp, max: L.hp, x: 0, z: -6.2, y: 0, state: "idle", t: 0, cd: 3, atk: null, phase2: false, flying: false, flyT: 0, flyCd: 4, fbCd: 0, anim: 0, hitFlash: 0, dead: false, deadT: 0, look: 0 });
+  const maxHp = Math.round(L.hp * (S.raid ? 1 + .8 * (S.raid.n - 1) : 1));
+  const D = Object.assign(makeDragon(L), { hp: maxHp, max: maxHp, x: 0, z: -6.2, y: 0, state: "idle", t: 0, cd: 3, atk: null, phase2: false, flying: false, flyT: 0, flyCd: 4, fbCd: 0, anim: 0, hitFlash: 0, dead: false, deadT: 0, look: 0 });
   D.obs = { k: "rock", c: [0, -6.2, 3 * L.scale], alive: true, area: 0, id: 0 }; OBS.push(D.obs);
   ARENA.patches = []; ARENA.pillars = [];
   ARENA.dragon = D;
@@ -2248,10 +2549,15 @@ function spawnArenaOre(pop) {
 function headPos(D) { return [D.x, D.z + 3.2 * ARENA.lair.scale]; }
 function pickTarget() {
   const live = ARENA.cannons.filter(c => c.alive);
+  if (RAID.on && Math.random() < .5) {          // any player, not only the host
+    const ds = [player].concat(Object.values(RAID.ghosts).map(g => g.d)), d = ds[(Math.random() * ds.length) | 0];
+    return [d.x, d.z, null];
+  }
   if (!live.length || Math.random() < .5) return [player.x, player.z, null];
   const c = live[(Math.random() * live.length) | 0]; return [c.x, c.z, c];
 }
 function addHazard(kind, x, z, r, t, dmg) {
+  if (RAID.on && RAID.host) raidEmit("raid", { t: "hz", k: kind, x: +x.toFixed(2), z: +z.toFixed(2), r, t, dmg });
   const mesh = ARENA.circles.find(c => !c.visible);
   if (!mesh) return;
   mesh.material.color.set(kind === "icicle" ? (ARENA.lair.breath === "frost" ? 0x40a8ff : 0xa04aff) : 0xff3020);
@@ -2306,32 +2612,47 @@ function hitDragon(dmg, tier, at) {
   const D = ARENA.dragon; if (D.dead || ARENA.result) return;
   if (D.flying) { if (tier === 0) { popAt(at[0], at[1], at[2], "MISS", "miss", 16); return; } if (tier === 1) dmg *= .5; }
   if (FX.fever > 0) dmg *= 1.5;
-  D.hp -= dmg; D.hitFlash = .12; worldAdd(Math.round(dmg / 2));
+  D.hitFlash = .12; worldAdd(Math.round(dmg / 2));
   popAt(at[0], at[1], at[2], fmt(Math.round(dmg)), "dmg" + (tier === 2 ? " crit" : ""), tier === 2 ? 30 : tier === 1 ? 22 : 16);
+  if (!isAuth()) { RAID.hitAcc[tier] += dmg; return; }          // teammates report to the host, who owns the dragon's health
+  applyDragonDamage(dmg, tier);
+}
+function staggerDragon(D) {
+  D.state = "idle"; D.cd = 2.2; ARENA.sector.visible = false;
+  ARENA.hazards = ARENA.hazards.filter(h => { if (h.kind === "stomp" || h.kind === "roar") { h.mesh.visible = false; return false; } return true; });
+  popAt(D.x, 7.5, D.z, "ひるんだ！", "big", 30); D.head.rotation.x = -.6;
+}
+function killDragon(D) {
+  D.hp = 0; D.dead = true; D.deadT = 0; D.state = "dead"; ARENA.sector.visible = false;
+  ARENA.hazards.forEach(h => h.mesh.visible = false); ARENA.hazards = [];
+  D.obs.alive = false; FX.ts = .3; ARENA.slowT = 1.8;
+  roarSfx(); shake(1); buzz([80, 40, 160]);
+  toast("竜を倒した！", "宝の雨が降ってくる");
+}
+function applyDragonDamage(dmg, tier) {
+  const D = ARENA.dragon; if (D.dead || ARENA.result) return;
+  D.hp -= dmg; D.hitFlash = .12;
   if (tier === 2 && D.state === "tele" && D.atk !== "fly") {           // big hit interrupts the wind-up
-    D.state = "idle"; D.cd = 2.2; ARENA.sector.visible = false;
-    ARENA.hazards = ARENA.hazards.filter(h => { if (h.kind === "stomp" || h.kind === "roar") { h.mesh.visible = false; return false; } return true; });
-    popAt(D.x, 7.5, D.z, "ひるんだ！", "big", 30); D.head.rotation.x = -.6;
+    staggerDragon(D);
+    if (RAID.on) raidEmit("raid", { t: "stag" });
   }
   const L = ARENA.lair;
   if (!D.phase2 && D.hp <= D.max * L.flyAt) { D.phase2 = true; D.flyCd = 2; toast(L.angry[0], L.angry[1]); roarSfx(); shake(.6); }
   if (L.rageAt && !D.rage && D.hp <= D.max * L.rageAt) { D.rage = true; toast("竜王が激怒した！", "攻撃が速くなり、ブレスを2連発してくる"); roarSfx(); shake(.9); buzz([60, 30, 60]); D.skin.color.offsetHSL(0, .2, .06); }
   if (D.hp <= 0) {
-    D.hp = 0; D.dead = true; D.deadT = 0; D.state = "dead"; ARENA.sector.visible = false;
-    ARENA.hazards.forEach(h => h.mesh.visible = false); ARENA.hazards = [];
-    D.obs.alive = false; FX.ts = .3; ARENA.slowT = 1.8;
-    roarSfx(); shake(1); buzz([80, 40, 160]);
-    toast("竜を倒した！", "宝の雨が降ってくる");
+    killDragon(D);
+    if (RAID.on) raidEmit("raid", { t: "end", win: true });
   }
 }
-function fireCannon(c, t) {
+function fireCannon(c, t, visualOnly) {
   const D = ARENA.dragon;
+  if (!visualOnly) c.shots = (c.shots | 0) + 1;
   const dir = Math.atan2(D.x - c.x, D.z - c.z);
   const mx = c.x + Math.sin(dir) * 1.2, mz = c.z + Math.cos(dir) * 1.2, my = 2.6;
   const mesh = new THREE.Mesh(ARENA.shotGeo, ARENA.shotMats[t]); mesh.scale.setScalar(t === 2 ? 1.6 : t === 1 ? 1.25 : 1); add(mesh);
   const tx = D.x + rand(-1.2, 1.2), ty = 2.6 + D.y + rand(-.5, .8), tz = D.z + rand(-1, 1);
   const dmg = SHOT_DMG[t] * (1 + .5 * S.can.dmg) * (1 + .2 * P.perks.gun);
-  ARENA.shots.push({ mesh, t: 0, dur: .45 + Math.hypot(tx - mx, tz - mz) * .02, sx: mx, sy: my, sz: mz, ex: tx, ey: ty, ez: tz, tier: t, dmg });
+  ARENA.shots.push({ mesh, t: 0, dur: .45 + Math.hypot(tx - mx, tz - mz) * .02, sx: mx, sy: my, sz: mz, ex: tx, ey: ty, ez: tz, tier: t, dmg, visual: !!visualOnly });
   for (let k = 0; k < 6; k++) emit(mx, my, mz, Math.sin(dir) * rand(2, 5) + rand(-1, 1), rand(1, 3), Math.cos(dir) * rand(2, 5) + rand(-1, 1), 1, .8, .4, .3);
   tone(t === 2 ? 120 : 180, .12, "square", .05, 0, .5); if (t === 2) hiss(.2, .12, 900, 0, .8, .5);
   c.turret.position.y = 1.5;          // recoil
@@ -2344,6 +2665,7 @@ function updateArena(dt) {
     if (c.alive && c.frozen > 0) { c.frozen -= dt; if (c.frozen <= 0) c.steel.color.set(0x3a3a44); }
     if (c.alive && c.frozen <= 0) {
       const dir = Math.atan2(D.x - c.x, D.z - c.z); c.turret.rotation.y = dir;
+      if (!c.mine) { c.turret.position.y += (1.65 - c.turret.position.y) * Math.min(1, dt * 10); drawCannon(c); continue; }
       c.turret.position.y += (1.65 - c.turret.position.y) * Math.min(1, dt * 10);
       c.cd -= dt;
       if (c.cd <= 0 && !D.dead && !A.result) {
@@ -2361,7 +2683,7 @@ function updateArena(dt) {
     if (Math.random() < .6) emit(s.mesh.position.x, s.mesh.position.y, s.mesh.position.z, 0, 0, 0, 1, .85, .5, .25);
     if (s.t >= 1) {
       for (let q = 0; q < (s.tier + 1) * 8; q++) emit(s.ex, s.ey, s.ez, rand(-3, 3), rand(-1, 4), rand(-3, 3), 1, .7, .3, rand(.3, .6));
-      hitDragon(s.dmg, s.tier, [s.ex, s.ey + 1, s.ez]);
+      if (!s.visual) hitDragon(s.dmg, s.tier, [s.ex, s.ey + 1, s.ez]);
       world.remove(s.mesh); A.shots.splice(k, 1);
     }
   }
@@ -2388,7 +2710,7 @@ function updateArena(dt) {
     return;
   }
   if (A.result) return;
-  if (!A.cannons.some(c => c.alive)) { A.endT += dt; if (A.endT > 1) finishBoss(false); return; }
+  if (isAuth() && !A.cannons.some(c => c.alive)) { A.endT += dt; if (A.endT > 1) { if (RAID.on) raidEmit("raid", { t: "end", win: false }); finishBoss(false); } return; }
   // hazards (stomps, fireballs, roar)
   for (let k = A.hazards.length - 1; k >= 0; k--) {
     const h = A.hazards[k]; h.t -= dt;
@@ -2400,6 +2722,7 @@ function updateArena(dt) {
   for (let k = A.pillars.length - 1; k >= 0; k--) { const p = A.pillars[k]; p.t -= dt; if (p.t < .6) p.o.mesh.scale.setScalar(Math.max(.01, p.t / .6)); if (p.t <= 0) { p.o.alive = false; world.remove(p.o.mesh); A.pillars.splice(k, 1); OBS.splice(OBS.indexOf(p.o), 1); } }
   const L = A.lair, cdMul = (D.phase2 ? .75 : 1) * (D.rage ? .6 : 1);
   // flight (phase 2)
+  if (D.flying && !isAuth()) return;         // teammates only play out the host's fireballs
   if (D.flying) {
     D.flyT -= dt; D.fbCd -= dt;
     if (D.fbCd <= 0) {
@@ -2414,6 +2737,7 @@ function updateArena(dt) {
   }
   switch (D.state) {
     case "idle":
+      if (!isAuth()) break;
       D.cd -= dt; if (D.phase2) D.flyCd -= dt;
       if (D.cd > 0) break;
       if (D.phase2 && D.flyCd <= 0) { D.flying = true; D.flyT = 10; D.fbCd = 1.5; D.obs.alive = false; roarSfx(); toast("竜が飛んだ！", "中位・上位の鉱石を砲台へ！ 下位の弾は届かない"); break; }
@@ -2449,7 +2773,7 @@ function updateArena(dt) {
       if (D.t <= 0) {
         A.sector.visible = false;
         if (frost) addPatch(B);
-        if (D.rage && !B.second) { startBreath(D, .8, true); break; }       // enraged: a second breath right away
+        if (D.rage && !B.second && isAuth()) { startBreath(D, .8, true); break; }       // enraged: a second breath right away
         D.state = "idle"; D.cd = rand(2.6, 4) * cdMul;
       }
       break;
@@ -2462,6 +2786,7 @@ function startBreath(D, tele, second) {
   A.sector.position.set(ox, .05, oz); A.sector.rotation.y = Math.atan2(-A.breath.dz, A.breath.dx); A.sector.visible = true;
   A.sectorMat.color.set(A.lair.breath === "frost" ? 0x40a8ff : 0xff3020);
   D.state = "tele"; D.atk = "breath"; D.t = tele;
+  if (RAID.on && RAID.host) raidEmit("raid", { t: "br", ox: +ox.toFixed(2), oz: +oz.toFixed(2), dx: +A.breath.dx.toFixed(3), dz: +A.breath.dz.toFixed(3), tele, second: !!second });
 }
 function finishBoss(win) {
   const A = ARENA, L = A.lair, i = S.boss;
@@ -2471,9 +2796,12 @@ function finishBoss(win) {
     const fast = S.time < L.par ? 4 : S.time < L.par * 1.5 ? 2 : 0, first = !(P.lairKills & (1 << i));
     const medals = L.medals + fast, scales = L.scales + (first ? L.scales : 0);
     P.medals += medals; P.scales += scales; P.lairKills |= (1 << i);
-    if (!(P.lairBest[i] <= S.time)) P.lairBest[i] = Math.round(S.time);
-    netSubmit("l" + i, P.lairBest[i]);
-    S.gain = { medals, scales, fast, first };
+    if (S.raid) { P.medals += 3; S.gain = { medals: medals + 3, scales, fast, first, coop: true }; }
+    else {
+      if (!(P.lairBest[i] <= S.time)) P.lairBest[i] = Math.round(S.time);
+      netSubmit("l" + i, P.lairBest[i]);
+      S.gain = { medals, scales, fast, first };
+    }
   }
   writeSave();
   showBossResult(win);
@@ -2490,16 +2818,18 @@ function showBossResult(win) {
   if (win) {
     const g = S.gain;
     $("gainTotal").textContent = "+" + g.medals;
-    $("gainDetail").textContent = `竜鱗 +${g.scales}${g.first ? `（初討伐ボーナス +${L.scales}）` : ""} ・ スピード +${g.fast}（${L.par / 60}分以内で+4） ・ 竜鱗は徽章ショップで砲台や装甲の強化に使える`;
+    $("gainDetail").textContent = `竜鱗 +${g.scales}${g.first ? `（初討伐ボーナス +${L.scales}）` : ""}${g.coop ? " ・ 協力ボーナス +3" : ""} ・ スピード +${g.fast}（${L.par / 60}分以内で+4） ・ 竜鱗は徽章ショップで砲台や装甲の強化に使える`;
   }
   $("clearNext").textContent = win ? "ワールドマップから鉱山の続きへ戻れます。" : "砲台がすべて壊された。炉でコインを稼いで砲台を強化し、赤く光る場所を避けよう。徽章ショップの強化も役に立つ。";
-  $("clearBtn").textContent = win ? "ワールドマップへ" : "もう一度挑む";
-  $("clearMapBtn").hidden = win; $("clearMapBtn").textContent = "ワールドマップへ";
-  if (win) showRankLine("l" + S.boss); else $("clearRank").hidden = true;
+  $("clearBtn").textContent = S.raid ? "ロビーに戻る" : win ? "ワールドマップへ" : "もう一度挑む";
+  $("clearMapBtn").hidden = win && !S.raid; $("clearMapBtn").textContent = "ワールドマップへ";
+  if (win && !S.raid) showRankLine("l" + S.boss); else $("clearRank").hidden = true;
+  if (S.raid) $("clearNext").textContent = win ? "協力レイド成功！ ロビーに戻ると、同じ仲間でもう一度挑めます。" : "全員の砲台が壊された。ロビーに戻って作戦を立て直そう。";
   clearEl.hidden = false; $("clearBtn").focus();
 }
 function startLair(i) {
   const L = LAIRS[i];
+  if (RAID.on) raidLeave();
   if (P.best[L.after] == null) return;
   if (S.boss === i && !S.cleared) { closeMap(); return; }
   if (S.boss == null && !S.cleared && S.time > 0) P.runs[S.mine] = S;
@@ -2702,6 +3032,8 @@ async function renderWorld() {
   $("wdNote").textContent = NET_NOTE[NET.mode] + (NET.readOnly ? " このページは閲覧のみのため、あなたの記録は共有されません。" : "") + (defeated && P.worldClaimed === si.id ? " 今週の報酬は受け取り済み。" : "");
 }
 function refreshPanels() { renderRank(); renderWorld(); }
+$("raidClose").addEventListener("click", () => { raidPanel.hidden = true; if (panelFrom && panelFrom.focus) panelFrom.focus(); });
+$("raidBtn").addEventListener("click", openRaid);
 $("rankClose").addEventListener("click", () => { rankPanel.hidden = true; if (panelFrom && panelFrom.focus) panelFrom.focus(); });
 $("wdClose").addEventListener("click", () => { wdPanel.hidden = true; if (panelFrom && panelFrom.focus) panelFrom.focus(); });
 $("wdBtn").addEventListener("click", openWorld);
@@ -2717,7 +3049,7 @@ $("nickInput").addEventListener("change", e => {
 });
 addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
-  if (!rankPanel.hidden) $("rankClose").click(); else if (!wdPanel.hidden) $("wdClose").click();
+  if (!rankPanel.hidden) $("rankClose").click(); else if (!wdPanel.hidden) $("wdClose").click(); else if (!raidPanel.hidden) $("raidClose").click();
 });
 addEventListener("visibilitychange", () => { if (document.hidden) { netFlush(); writeSave(); } });
 
@@ -2794,11 +3126,17 @@ $("medalBtn").addEventListener("click", () => openShop($("medalBtn")));
 $("clearShopBtn").addEventListener("click", () => openShop($("clearShopBtn")));
 
 $("clearBtn").addEventListener("click", () => {
+  if (ARENA && S.raid) { backToMine(); RAID.on = false; if (RAID.room) RAID.room.presence({ st: "lobby" }).catch(() => {}); openRaid(); return; }
   if (ARENA) { if (ARENA.result === "win") openMap("L" + S.boss); else startLair(S.boss); return; }
   if (S.mine >= MINES.length - 1) { openMap(S.mine); return; }
   startMine(S.mine + 1);
 });
-$("clearMapBtn").addEventListener("click", () => openMap(ARENA ? "L" + S.boss : Math.min(MINES.length - 1, S.mine + 1)));
+function backToMine() {
+  const k = LAIRS[S.boss].after, saved = P.runs[k]; delete P.runs[k];
+  S = saved && !saved.cleared ? saved : fresh(k); clearEl.hidden = true; buildMine();
+}
+$("clearMapBtn").addEventListener("click", () => { if (S.raid) { raidLeave(); backToMine(); } });     // then the listener below opens the map
+$("clearMapBtn").addEventListener("click", () => !S.raid && openMap(ARENA ? "L" + S.boss : Math.min(MINES.length - 1, S.mine + 1)));
 
 // ---------- world map ----------
 const mapEl = $("map"), mapBoard = $("mapBoard"), mapSheet = $("mapSheet");
@@ -2940,6 +3278,7 @@ function renderLairSheet(i) {
   go.addEventListener("click", () => startLair(i));
   acts.append(go); mapSheet.append(acts);
   if (!locked) { const rb = document.createElement("button"); rb.type = "button"; rb.className = "rank-btn"; rb.textContent = "ランキングを見る"; rb.addEventListener("click", () => openRank("l" + i)); mapSheet.append(rb); }
+  if (!locked) { const cb = document.createElement("button"); cb.type = "button"; cb.className = "rank-btn"; cb.textContent = "仲間と協力して挑む"; cb.addEventListener("click", () => { RAID.lair = i; openRaid(); }); mapSheet.append(cb); }
   if (!locked && !fighting && S.boss == null && !S.cleared && S.time > 0) {
     const w = document.createElement("p"); w.className = "warn"; w.textContent = `いま遊んでいる「${M.name}」の進行は保存され、あとで続きから遊べます。`; mapSheet.append(w);
   }
@@ -2960,6 +3299,7 @@ function closeMap() {
 // switch to mine k: the current run is stashed so each mine keeps its own progress
 function startMine(k) {
   if (k > P.unlocked) return;
+  if (RAID.on) raidLeave();
   if (k === S.mine && S.boss == null && !S.cleared) { clearEl.hidden = true; closeMap(); return; }
   if (S.boss == null && !S.cleared && S.time > 0) P.runs[S.mine] = S;
   const saved = P.runs[k];
@@ -3055,6 +3395,7 @@ function buildMine() {
 
 function buildArenaRun() {
   S.can = S.can || { dmg: 0, rate: 0, add: 0 };
+  if (S.raid && !RAID.on) S.cleared = true;      // a raid cannot be resumed after a reload
   if (S.cleared) {             // a finished fight is not resumed: go back to that mine's saved run
     const k = LAIRS[S.boss].after, saved = P.runs[k]; delete P.runs[k];
     S = saved && !saved.cleared ? saved : fresh(k); ARENA = null; buildMine(); setTimeout(() => openMap(), 0); return;
@@ -3062,6 +3403,7 @@ function buildArenaRun() {
   buildArena();
   buildOreMeshes(); resetPool();
   player = makeDozer(true); player.x = 0; player.z = 8.5; player.h = Math.PI;
+  if (S.raid) { const c = ARENA.cannons.find(c => c.mine); if (c) { player.x = clamp(c.x, -12, 12); player.z = Math.min(12, c.z + 3.5); } }
   for (let k = 0; k < S.helpers; k++) spawnHelper();
   syncScoops();
   for (let n = 0; n < 900; n++) spawnArenaOre(false);
@@ -3071,7 +3413,7 @@ function buildArenaRun() {
   hintEl.textContent = ARENA.lair.intro; hintEl.style.opacity = "1";
   shownCoins = -1; goalKey = ""; snapCam = true;
   Object.assign(FX, { chain: 0, chainT: 9, gauge: 0, fever: 0, dash: 0, dashCd: 0, shake: 0 });
-  toast("竜の巣", ARENA.lair.name + "が現れた！"); roarSfx();
+  toast(S.raid ? `協力レイド（${S.raid.n}人）` : "竜の巣", ARENA.lair.name + "が現れた！"); roarSfx();
 }
 const bossName = $("bossName");
 
@@ -3157,6 +3499,7 @@ function frame(now) {
 
   updateHud(dt);
   netTick(dt);
+  raidTick(dt);
   saveTimer += dt; if (saveTimer > 4) { saveTimer = 0; writeSave(); }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -3191,7 +3534,7 @@ function start(data) {
   window.claude?.hot?.snapshot?.(() => ({ save: S, meta: P }));
   window.__zm = { get S() { return S; }, set: o => Object.assign(S, o), sync: () => { syncGates(); syncScoops(); PADS.forEach(drawPad); }, tp: (x, z) => { player.x = x; player.z = z; } };
   requestAnimationFrame(t => { last = t; frame(t); });
-  netInit();
+  netInit(); raidInit();
 }
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
