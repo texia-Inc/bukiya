@@ -1200,7 +1200,7 @@ function updateEvents(dt) {
   }
   if (EV.chestCd <= 0) {
     EV.chestCd = rand(30, 50);
-    if (aliveOf(CHEST) < 2) { const a = areaOf(player.z) <= S.gates ? Math.min(areaOf(player.z), 3) : 0, p = spawnSpot(a, true); if (p) { spawnOreAt(CHEST, p[0], p[1], a, true, 0, 0); toast("宝箱鉱石 出現！", "炉に押し込むと中身が手に入る"); } }
+    if (aliveOf(CHEST) < 2) { const a = areaOf(player.z) <= S.gates ? Math.min(areaOf(player.z), 3) : 0, p = spawnSpot(a, true); if (p) { spawnOreAt(CHEST, p[0], p[1], a, true, 0, 0); toast("宝箱 出現！", "炉に押し込むと中身が手に入る"); } }
   }
   EV.blockedT = Math.max(0, EV.blockedT - dt);
 }
@@ -1222,7 +1222,7 @@ function newMission() {
     { type: "batch", n: [25, 50, 90, 140, 200][Math.min(4, Math.floor(k / 2))], text: n => `一度に${n}個押し込め` },
     { type: "tier1", n: 15 + 5 * Math.min(6, k), text: n => `${M1}を${n}個運ぼう` },
     { type: "fever", n: 1, text: () => "フィーバーを発動しよう" },
-    { type: "chest", n: 1, text: () => "宝箱鉱石を炉に入れよう" },
+    { type: "chest", n: 1, text: () => "宝箱を炉に入れよう" },
     { type: "vein", n: 1, text: () => "鉱脈噴出の光に触れよう" },
   ];
   if (OBS.some(o => o.k === "bush" && o.alive)) pool.push({ type: "bush", n: 6 + 2 * Math.min(5, k), text: n => `茂みを${n}個切り開こう` });
@@ -1338,7 +1338,7 @@ function drawPad(p) {
 // ---------- ore pool ----------
 // tiers 0-2: the mine's three ores; 3: giant ore (needs a big scoop); 4: treasure chest
 const CAPS = [3600, 1700, 1000, 6, 4], OFF = [0, 3600, 5300, 6300, 6306], N = 6310;
-const RAD = [0.17, 0.33, 0.3, 0.95, 0.45];
+const RAD = [0.17, 0.33, 0.3, 0.95, 0.55];
 const GIANT = 3, CHEST = 4, BIG = OFF[3], GIANT_LV = 2, GIANT_VAL = 250;
 const tierOf = i => i < OFF[1] ? 0 : i < OFF[2] ? 1 : i < OFF[3] ? 2 : i < OFF[4] ? 3 : 4;
 const X = new Float32Array(N), Z = new Float32Array(N), PX = new Float32Array(N), PZ = new Float32Array(N);
@@ -1361,14 +1361,40 @@ function oreGeo(shape) {
   }
   g.computeVertexNormals(); return g;
 }
+// a treasure chest built from parts, each with its own vertex colour (one instanced draw for all chests)
+function chestGeo() {
+  const WOOD = 0x8a4a1e, WOOD_DARK = 0x5e3012, GOLD = 0xffc23a, HOLE = 0x1e1206;
+  const parts = [];
+  const box = (w, h, d, x, y, z, c) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); parts.push([g, c]); };
+  const lid = (r, len, x, c) => { const g = new THREE.CylinderGeometry(r, r, len, 14); g.rotateZ(Math.PI / 2); g.translate(x, .3, 0); parts.push([g, c]); };
+  box(2.2, 1.15, 1.5, 0, -.27, 0, WOOD);                  // body
+  for (const y of [-.55, -.1]) box(2.22, .05, 1.52, 0, y, 0, WOOD_DARK);   // plank seams
+  lid(.75, 2.2, 0, WOOD);                                  // rounded lid
+  box(2.26, .14, 1.56, 0, .3, 0, GOLD);                    // rim between body and lid
+  for (const x of [-.72, .72]) { box(.2, 1.2, 1.56, x, -.27, 0, GOLD); lid(.79, .2, x, GOLD); }   // straps
+  for (const x of [-1.11, 1.11]) for (const y of [-.8, .25]) box(.08, .14, 1.56, x, y, 0, GOLD); // corner caps
+  box(.46, .52, .1, 0, .12, .8, GOLD);                     // lock plate
+  box(.1, .2, .04, 0, .06, .86, HOLE);                     // keyhole
+  const pos = [], nor = [], col = [], c = new THREE.Color();
+  for (const [g0, hex] of parts) {
+    const g = g0.index ? g0.toNonIndexed() : g0; g.computeVertexNormals();
+    const p = g.attributes.position, n = g.attributes.normal; c.set(hex).convertSRGBToLinear();
+    for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); nor.push(n.getX(i), n.getY(i), n.getZ(i)); col.push(c.r, c.g, c.b); }
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  return out;
+}
 function buildOreMeshes() {
   const looks = M.ores.concat([
     Object.assign({}, M.ores[1], { shape: "nugget" }),
-    { shape: "chest", color: 0xb8732e, metal: .3, rough: .45, emissive: 0x4a2400 },
+    { shape: "chest", color: 0xffffff, metal: .4, rough: .42, emissive: 0x241000 },
   ]);
   oreMeshes = looks.map((o, t) => {
-    const geo = o.shape === "chest" ? new THREE.BoxGeometry(2, 1.5, 1.5) : oreGeo(o.shape);
-    const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: o.color, metalness: o.metal, roughness: o.rough, flatShading: true, emissive: o.emissive }), CAPS[t]);
+    const geo = o.shape === "chest" ? chestGeo() : oreGeo(o.shape);
+    const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: o.color, metalness: o.metal, roughness: o.rough, flatShading: true, emissive: o.emissive, vertexColors: o.shape === "chest" }), CAPS[t]);
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
     for (let i = 0; i < CAPS[t]; i++) m.setMatrixAt(i, ZERO);
     add(m); return m;
@@ -1645,6 +1671,11 @@ function updateFx(dt) {
       const c = Math.cos(d.h), s = Math.sin(d.h);
       puff(d.x + c * .34 + s * -.95, 1.75, d.z - s * .34 + c * -.95, 1);
     }
+  }
+  // treasure chests sparkle so they stand out in a pile
+  for (let i = OFF[CHEST]; i < N; i++) if (ST[i] === 1 && Math.random() < dt * 7) {
+    const a = rand(0, TAU), r = RR[i] * rand(.6, 1.4);
+    emit(X[i] + Math.cos(a) * r, RR[i] * 1.6 + YH[i], Z[i] + Math.sin(a) * r, 0, rand(.6, 1.4), 0, 1, .85, .35, rand(.5, .9), -.5);
   }
   // glitter in front of a loaded scoop
   for (const d of DOZERS) {
