@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import auth, players, weapons, materials, crafting, adventurers, missions, idle, enchantments, adventurer_instances, shop, device_auth, recipes, monsters, dashboard, master_data, idle_income, adventurer_characters, seasons
+from app.api.v1.endpoints import dwarf_dozer
 # 一時的に無効化 (openaiモジュール未インストールのため)
 # from app.api.v1.endpoints import image_generation
 # 一時的に無効化 (依存関係の問題)
@@ -33,6 +34,7 @@ api_router.include_router(master_data.router, prefix="", tags=["マスターデ�
 # api_router.include_router(adventurer_migration.router, prefix="/adventurer-migration", tags=["冒険者移行"])
 # api_router.include_router(adventurer_progression.router, prefix="/adventurer-progression", tags=["冒険者成長"])
 api_router.include_router(adventurer_characters.router, prefix="/characters", tags=["固有キャラクター"])
+api_router.include_router(dwarf_dozer.router, prefix="/dwarf-dozer", tags=["ドワーフドーザー"])
 # 一時的に無効化 (openaiモジュール未インストールのため)
 # api_router.include_router(image_generation.router, prefix="/image-generation", tags=["画像生成"])
 # api_router.include_router(dragon_events.router, prefix="/dragon-events", tags=["ドラゴンイベント"])

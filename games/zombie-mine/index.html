@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="竜に奪われた10の山を、ドワーフのギルドが蒸気重機で取り戻す放置系採掘ゲーム">
 <style>[hidden] { display: none !important; }</style>
+<script>
+  // ランキングとワールドドラゴンのサーバー（bukiya バックエンドの /api/v1/dwarf-dozer）。
+  // 空のままならオフライン（自分の記録だけ）で動く。?api=URL でも一時的に指定できる。
+  window.DD_API_BASE = "";
+</script>
 <title>ドワーフドーザー</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=M+PLUS+Rounded+1c:wght@800&display=swap">
@@ -127,7 +132,7 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255,255,255,.55); }
 
 .clear { z-index: 6; position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(10,6,18,.55); pointer-events: auto; }
-.clear[hidden], .stick[hidden], .shop[hidden], .arrow[hidden], .goal[hidden] { display: none; }
+.clear[hidden], .stick[hidden], .shop[hidden], .rankline[hidden], .nick[hidden], .arrow[hidden], .goal[hidden] { display: none; }
 .sheet {
   width: min(360px, 100%); padding: 26px 22px 22px; border-radius: 26px; text-align: center;
   background: var(--plum); border: 3px solid var(--gold);
@@ -169,6 +174,32 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .gain .top b { margin-left: auto; font: 26px/1 var(--font-num); color: #a8f58a; }
 .gain small { display: block; margin-top: 6px; font-size: 12px; opacity: .75; }
 .shop .sheet { text-align: left; }
+/* rankings & world dragon */
+.panel .sheet { text-align: left; width: min(400px, 100%); max-height: calc(100% - 32px); overflow-y: auto; }
+.panel h2 { text-align: center; margin-bottom: 4px; }
+.panel .sub { text-align: center; font-size: 12px; opacity: .75; margin: 0 0 14px; }
+.lb { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 5px; }
+.lb li { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 10px; background: rgba(0,0,0,.28); font-size: 13px; }
+.lb li > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb li b { font: 16px/1 var(--font-num); font-variant-numeric: tabular-nums; }
+.lb li .rk { font: 16px/1 var(--font-num); color: var(--gold); text-align: center; }
+.lb li.me { box-shadow: inset 0 0 0 2px var(--gold); background: rgba(255,197,58,.12); }
+.lb .empty { display: block; text-align: center; opacity: .7; background: none; }
+.netnote { font-size: 11px; opacity: .65; text-align: center; margin: 0 0 12px; line-height: 1.5; }
+.wd-track { position: relative; height: 22px; border-radius: 11px; background: rgba(10,4,8,.8); box-shadow: inset 0 0 0 2px rgba(255,150,90,.45); overflow: hidden; margin: 4px 0 6px; }
+.wd-track i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b0203a, #ff7a3a); border-radius: 11px; transition: width .4s; }
+.wd-track b { position: absolute; inset: 0; display: grid; place-items: center; font: 13px/1 var(--font-num); text-shadow: 0 1px 0 #000; font-variant-numeric: tabular-nums; }
+.wd-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 14px; }
+.wd-stats div { padding: 10px; border-radius: 12px; background: rgba(0,0,0,.28); font-size: 11px; }
+.wd-stats b { display: block; margin-top: 4px; font: 20px/1 var(--font-num); color: var(--gold); font-variant-numeric: tabular-nums; }
+.nick { display: flex; gap: 8px; align-items: center; margin: 0 0 14px; font-size: 12px; }
+.nick input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.3); color: var(--chalk); font: 800 14px var(--font-jp); }
+.nick input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.rankline { margin: -6px 0 16px; font-size: 13px; color: var(--gold); }
+.map-sheet button.rank-btn { justify-self: start; padding: 6px 12px; border: 0; border-radius: 999px; cursor: pointer; background: rgba(255,255,255,.1); color: var(--chalk); font: 800 12px var(--font-jp); }
+.map-head .wd-btn { pointer-events: auto; border: 0; cursor: pointer; border-radius: 999px; padding: 8px 12px; font: 800 12px var(--font-jp); white-space: nowrap; flex: none;
+  color: #ffe0d0; background: linear-gradient(135deg, #7a1424, #c8402a); box-shadow: 0 3px 0 #3a0810; }
+.map-head .wd-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 /* boss */
 .boss { position: absolute; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 120px); width: min(440px, calc(100% - 32px)); display: grid; gap: 4px; }
 .boss .bname { display: flex; align-items: baseline; gap: 8px; font: 20px/1 var(--font-num); letter-spacing: .04em; color: #ffb59a; text-shadow: 0 2px 0 #000; }
@@ -288,6 +319,7 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
       <dt id="clearL3">出荷した鉱石</dt><dd id="clearShipped">0</dd>
     </dl>
     <div class="gain"><div class="top"><span class="medal-ico"></span>ギルド徽章 <b id="gainTotal">+0</b></div><small id="gainDetail"></small></div>
+    <p class="rankline" id="clearRank" hidden></p>
     <p class="next" id="clearNext"></p>
     <div class="actions">
       <button type="button" id="clearBtn">次の鉱山へ</button>
@@ -302,10 +334,33 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
     <div><h2 id="mapTitle">WORLD MAP</h2><p>竜に奪われた山々を取り戻そう</p></div>
     <span class="spacer"></span>
     <button class="medals" id="mapMedals" type="button" aria-label="徽章ショップを開く"><span class="medal-ico"></span>徽章 <b id="mapMedalCount">0</b></button>
+    <button class="wd-btn" id="wdBtn" type="button">ワールドドラゴン</button>
     <button class="map-close" id="mapClose" type="button">閉じる</button>
   </div>
   <div class="map-stage"><div class="map-board" id="mapBoard"></div></div>
   <div class="map-sheet" id="mapSheet"></div>
+</div>
+<div class="clear panel" id="rankPanel" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="rankTitle">
+    <h2 id="rankTitle">ランキング</h2>
+    <p class="sub" id="rankSub"></p>
+    <ol class="lb" id="rankList"></ol>
+    <p class="netnote" id="rankNote"></p>
+    <div class="actions"><button type="button" class="ghost" id="rankClose">閉じる</button></div>
+  </div>
+</div>
+<div class="clear panel" id="wdPanel" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="wdTitle">
+    <h2 id="wdTitle">ワールドドラゴン</h2>
+    <p class="sub" id="wdSub"></p>
+    <div class="wd-track"><i id="wdBar"></i><b id="wdHp"></b></div>
+    <div class="wd-stats"><div>あなたの貢献<b id="wdMine">0</b></div><div>貢献順位<b id="wdRank">—</b></div></div>
+    <p class="netnote" id="wdHow">どの鉱山でも、炉に鉱石を入れるたびに竜へダメージが入る（上位の鉱石ほど大きい）。竜の巣で砲台が与えたダメージも加算。1週間で倒せれば、300以上貢献した全員に報酬。</p>
+    <label class="nick" id="nickRow" hidden>名前<input id="nickInput" maxlength="16" autocomplete="off"></label>
+    <ol class="lb" id="wdList"></ol>
+    <p class="netnote" id="wdNote"></p>
+    <div class="actions"><button type="button" id="wdClaim" hidden>報酬を受け取る</button><button type="button" class="ghost" id="wdClose">閉じる</button></div>
+  </div>
 </div>
 <div class="clear shop" id="shop" hidden>
   <div class="sheet" role="dialog" aria-labelledby="shopTitle">
@@ -531,7 +586,7 @@ const PERKS = [
   { id: "gun", name: "竜殺しの砲術", desc: "砲台のダメージ +20%", cost: [3, 6, 10], cur: "scales" },
   { id: "fireres", name: "耐火装甲", desc: "ブレスで止まる時間 -25%", cost: [2, 4, 7], cur: "scales" },
 ];
-const freshMeta = () => ({ medals: 0, scales: 0, clears: 0, unlocked: 0, best: {}, runs: {}, lairBest: {}, lairKills: 0, perks: { scoop: 0, income: 0, helper: 0, cash: 0, gun: 0, fireres: 0 } });
+const freshMeta = () => ({ pid: "", nick: "", world: null, worldClaimed: "", medals: 0, scales: 0, clears: 0, unlocked: 0, best: {}, runs: {}, lairBest: {}, lairKills: 0, perks: { scoop: 0, income: 0, helper: 0, cash: 0, gun: 0, fireres: 0 } });
 let P = freshMeta();
 const incomeMult = () => 1 + 0.1 * P.perks.income;
 // a new run in a mine starts from the permanent perks
@@ -546,6 +601,8 @@ function loadSave(data) {
   S.mine = clamp(S.mine | 0, 0, MINES.length - 1);
   // older saves: everything up to the mine being played counts as unlocked
   P.unlocked = clamp(Math.max(P.unlocked | 0, S.mine), 0, MINES.length - 1);
+  if (!P.pid) P.pid = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/-/g, "").slice(0, 24);
+  if (!P.nick) P.nick = "ドワーフ" + String(Math.floor(Math.random() * 9000) + 1000);
   P.best = P.best || {}; P.runs = P.runs || {}; P.lairBest = P.lairBest || {}; P.scales = P.scales | 0;
 }
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); localStorage.setItem(META_KEY, JSON.stringify(P)); } catch (e) {} }
@@ -1844,7 +1901,7 @@ function step(dt) {
         if (s.cannon) { s.ammo[Math.min(2, t)]++; s.count++; onDeliver(s); continue; }
         if (t === CHEST) { openChest(s); advanceMission("chest", 1); continue; }
         const base = t === GIANT ? GIANT_VAL * M.mult : M.ores[t].val, v = base * incomeMult() * (FX.fever > 0 ? 2 : 1);
-        S.coins += v; S.earned += v; s.pending += v; onDeliver(s);
+        S.coins += v; S.earned += v; s.pending += v; onDeliver(s); worldAdd(t === GIANT ? 30 : [1, 3, 10][t]);
         if (t === GIANT) { advanceMission("giant", 1); toast("巨大鉱石！", `+${fmt(Math.round(v))} コイン`); shake(.6); buzz(80); }
         else if (t === 1) advanceMission("tier1", 1); else if (t === 2) advanceMission("tier2", 1);
         if (s.ship && !S.cleared) S.shipped += base;
@@ -2249,7 +2306,7 @@ function hitDragon(dmg, tier, at) {
   const D = ARENA.dragon; if (D.dead || ARENA.result) return;
   if (D.flying) { if (tier === 0) { popAt(at[0], at[1], at[2], "MISS", "miss", 16); return; } if (tier === 1) dmg *= .5; }
   if (FX.fever > 0) dmg *= 1.5;
-  D.hp -= dmg; D.hitFlash = .12;
+  D.hp -= dmg; D.hitFlash = .12; worldAdd(Math.round(dmg / 2));
   popAt(at[0], at[1], at[2], fmt(Math.round(dmg)), "dmg" + (tier === 2 ? " crit" : ""), tier === 2 ? 30 : tier === 1 ? 22 : 16);
   if (tier === 2 && D.state === "tele" && D.atk !== "fly") {           // big hit interrupts the wind-up
     D.state = "idle"; D.cd = 2.2; ARENA.sector.visible = false;
@@ -2415,6 +2472,7 @@ function finishBoss(win) {
     const medals = L.medals + fast, scales = L.scales + (first ? L.scales : 0);
     P.medals += medals; P.scales += scales; P.lairKills |= (1 << i);
     if (!(P.lairBest[i] <= S.time)) P.lairBest[i] = Math.round(S.time);
+    netSubmit("l" + i, P.lairBest[i]);
     S.gain = { medals, scales, fast, first };
   }
   writeSave();
@@ -2437,6 +2495,7 @@ function showBossResult(win) {
   $("clearNext").textContent = win ? "ワールドマップから鉱山の続きへ戻れます。" : "砲台がすべて壊された。炉でコインを稼いで砲台を強化し、赤く光る場所を避けよう。徽章ショップの強化も役に立つ。";
   $("clearBtn").textContent = win ? "ワールドマップへ" : "もう一度挑む";
   $("clearMapBtn").hidden = win; $("clearMapBtn").textContent = "ワールドマップへ";
+  if (win) showRankLine("l" + S.boss); else $("clearRank").hidden = true;
   clearEl.hidden = false; $("clearBtn").focus();
 }
 function startLair(i) {
@@ -2450,9 +2509,229 @@ function startLair(i) {
   buildMine();
 }
 
+// ---------- online: rankings & world dragon ----------
+// Three backends behind one interface: the artifact's shared db (inside Claude), a REST server
+// (set window.DD_API_BASE or ?api=), or offline (own records only).
+const API_BASE = (() => { try { return new URLSearchParams(location.search).get("api") || window.DD_API_BASE || ""; } catch (e) { return window.DD_API_BASE || ""; } })().replace(/\/$/, "");
+const WORLD_MAX = { artifact: 120000, offline: 40000 };
+const WORLD_NAMES = ["古竜ヴォルガノス", "深淵竜アビサル", "嵐竜テンペスタ", "黄金竜オーラム", "影竜ノクス"];
+const WORLD_MIN_CONTRIB = 300, WORLD_REWARD = { medals: 10, scales: 3 };
+const NET = { mode: "offline", uid: null, db: null, user: null, readOnly: false, ranks: {}, worldRows: [], restWorld: null, unsub: [], flushT: 0, busy: false };
+function jstNow() { return new Date(Date.now() + 9 * 3600e3); }
+function seasonInfo() {
+  const d = jstNow(), day = (d.getUTCDay() + 6) % 7;                 // Monday = 0, in JST
+  const monday = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day);
+  const thursday = new Date(monday + 3 * 864e5), y = thursday.getUTCFullYear();
+  const week = Math.floor((thursday - Date.UTC(y, 0, 1)) / 864e5 / 7) + 1;
+  return { id: `${y}-W${String(week).padStart(2, "0")}`, week, endsAt: monday + 7 * 864e5 - 9 * 3600e3 };
+}
+const boardName = b => b[0] === "m" ? `鉱山${+b.slice(1) + 1}「${MINES[+b.slice(1)].name}」` : `竜の巣「${LAIRS[+b.slice(1)].name}」`;
+function myBest(b) { return b[0] === "m" ? P.best[+b.slice(1)] : P.lairBest[+b.slice(1)]; }
+function allMyBests() {
+  const o = {};
+  for (const k in P.best) if (P.best[k] != null) o["m" + k] = P.best[k];
+  for (const k in P.lairBest) if (P.lairBest[k] != null) o["l" + k] = P.lairBest[k];
+  return o;
+}
+async function netInit() {
+  try {
+    if (window.claude && claude.use) {
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      const uid = user ? await user.id() : null;
+      if (db && uid) {
+        Object.assign(NET, { mode: "artifact", db, user, uid });
+        NET.unsub.push(db.collection("ranks").limit(1000).onSnapshot(snap => {
+          NET.ranks = {}; snap.docs.forEach(d => { const v = d.data(); if (v && v.best) NET.ranks[d.id] = v.best; });
+          if (!NET.synced && !snap.metadata.fromCache) {        // first definitive read: upload local bests only if they differ
+            NET.synced = true;
+            const mine = allMyBests(), shared = NET.ranks[NET.uid] || {};
+            if (Object.keys(mine).some(k => mine[k] !== shared[k])) netPushRanks();
+          }
+          refreshPanels();
+        }, () => {}));
+        subscribeWorld();
+        return;
+      }
+    }
+  } catch (e) {}
+  if (API_BASE) {
+    try { const r = await fetch(API_BASE + "/dragon?player_id=" + P.pid); if (r.ok) { NET.mode = "rest"; NET.restWorld = await r.json(); refreshPanels(); return; } } catch (e) {}
+  }
+  NET.mode = "offline";
+}
+function subscribeWorld() {
+  if (NET.mode !== "artifact") return;
+  const season = seasonInfo().id;
+  if (NET.worldSeason === season) return;
+  NET.worldSeason = season;
+  if (NET.worldUnsub) NET.worldUnsub();
+  NET.worldUnsub = NET.db.collection("world").where("season", "==", season).limit(1000).onSnapshot(snap => {
+    NET.worldRows = snap.docs.map(d => ({ id: d.id, dmg: +(d.data().dmg || 0) }));
+    refreshPanels();
+  }, () => {});
+}
+async function netPushRanks() {
+  if (NET.mode !== "artifact" || NET.readOnly) return;
+  try { await NET.db.doc("ranks/" + NET.uid).set({ best: allMyBests(), at: new Date().toISOString() }); }
+  catch (e) { if (e && e.code === "invalid_argument") NET.readOnly = true; }
+}
+async function netSubmit(board, secs) {
+  if (secs == null) return;
+  if (NET.mode === "artifact") return netPushRanks();
+  if (NET.mode === "rest") {
+    try { await fetch(API_BASE + "/scores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ player_id: P.pid, name: P.nick, board, time: Math.round(secs) }) }); } catch (e) {}
+  }
+}
+// rows for one board: [{id, name?, time, me}]
+async function boardRows(board) {
+  if (NET.mode === "artifact") {
+    const rows = Object.entries(NET.ranks).filter(([, b]) => b[board] != null).map(([id, b]) => ({ id, time: b[board], me: id === NET.uid }));
+    const mine = myBest(board);
+    if (mine != null && !rows.some(r => r.me)) rows.push({ id: NET.uid, time: mine, me: true });
+    rows.sort((a, b) => a.time - b.time);
+    const ps = await NET.user.profiles(rows.map(r => r.id));
+    rows.forEach((r, k) => r.name = (ps[r.id] && ps[r.id].name) || (r.me ? "あなた" : "ドワーフ" + (k + 1)));
+    return { rows, total: rows.length };
+  }
+  if (NET.mode === "rest") {
+    try {
+      const r = await fetch(`${API_BASE}/scores/${board}?player_id=${P.pid}&limit=10`); const j = await r.json();
+      const rows = j.rows.map(x => ({ id: x.player_id, name: x.name, time: x.time, me: x.player_id === P.pid }));
+      if (j.you && !rows.some(r => r.me)) rows.push({ id: P.pid, name: P.nick, time: j.you.time, me: true, rank: j.you.rank });
+      return { rows, total: j.total };
+    } catch (e) { /* fall through to local */ }
+  }
+  const mine = myBest(board);
+  return { rows: mine != null ? [{ id: "me", name: P.nick, time: mine, me: true }] : [], total: mine != null ? 1 : 0 };
+}
+// world dragon: contributions add up across every player this week
+function worldMine() { const s = seasonInfo().id; if (!P.world || P.world.season !== s) P.world = { season: s, dmg: 0, sent: 0 }; return P.world; }
+function worldAdd(units) { if (units > 0) worldMine().dmg += units; }
+function worldState() {
+  const season = seasonInfo(), me = worldMine();
+  if (NET.mode === "rest" && NET.restWorld && NET.restWorld.season === season.id) {
+    const w = NET.restWorld, unsent = me.dmg - me.sent;
+    return { max: w.max, dealt: w.dealt + unsent, top: w.top.map(t => ({ id: t.player_id, name: t.name, dmg: t.dmg + (t.player_id === P.pid ? unsent : 0), me: t.player_id === P.pid })), myRank: w.you ? w.you.rank : null, mine: me.dmg, players: w.players };
+  }
+  if (NET.mode === "artifact") {
+    const rows = NET.worldRows.filter(r => r.id !== NET.uid).concat([{ id: NET.uid, dmg: me.dmg }]).map(r => ({ ...r, me: r.id === NET.uid }));
+    rows.sort((a, b) => b.dmg - a.dmg);
+    return { max: WORLD_MAX.artifact, dealt: rows.reduce((a, r) => a + r.dmg, 0), top: rows.slice(0, 10), myRank: rows.findIndex(r => r.me) + 1, mine: me.dmg, players: rows.filter(r => r.dmg > 0).length };
+  }
+  return { max: WORLD_MAX.offline, dealt: me.dmg, top: [{ id: "me", name: P.nick, dmg: me.dmg, me: true }], myRank: 1, mine: me.dmg, players: 1 };
+}
+async function netFlush() {
+  const me = worldMine();
+  if (NET.busy || me.dmg === me.sent) return;
+  NET.busy = true;
+  try {
+    if (NET.mode === "artifact" && !NET.readOnly) { const v = me.dmg; await NET.db.doc("world/" + NET.uid).set({ season: me.season, dmg: v }); me.sent = v; }
+    else if (NET.mode === "rest") {
+      const delta = Math.min(5000, me.dmg - me.sent);
+      const r = await fetch(API_BASE + "/dragon/hit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ player_id: P.pid, name: P.nick, season: me.season, dmg: delta }) });
+      if (r.ok) { me.sent += delta; NET.restWorld = await r.json(); }
+    } else me.sent = me.dmg;
+  } catch (e) { if (e && e.code === "invalid_argument") NET.readOnly = true; }
+  NET.busy = false;
+}
+function netTick(dt) {
+  NET.flushT += dt;
+  if (NET.flushT > 20) { NET.flushT = 0; netFlush(); subscribeWorld(); if (NET.mode === "rest" && !wdPanel.hidden) pollRest(); }
+}
+async function pollRest() { try { const r = await fetch(API_BASE + "/dragon?player_id=" + P.pid); if (r.ok) { NET.restWorld = await r.json(); refreshPanels(); } } catch (e) {} }
+const NET_NOTE = {
+  artifact: "このページを開ける人どうしでランキングと竜の体力を共有しています。",
+  rest: "オンライン：全プレイヤーで共有しています。",
+  offline: "オフライン：サーバーにつながっていないため、自分の記録だけを表示しています。",
+};
+
+// --- panels ---
+const rankPanel = $("rankPanel"), wdPanel = $("wdPanel");
+let rankBoard = null, panelFrom = null;
+async function openRank(board) {
+  rankBoard = board; panelFrom = document.activeElement;
+  $("rankSub").textContent = boardName(board) + " ・ クリアタイムが速い順";
+  rankPanel.hidden = false; $("rankClose").focus();
+  await renderRank();
+}
+async function renderRank() {
+  if (rankPanel.hidden || !rankBoard) return;
+  const { rows, total } = await boardRows(rankBoard), list = $("rankList");
+  list.innerHTML = "";
+  if (!rows.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "まだ記録がありません。最初のクリアを目指そう"; list.append(li); }
+  rows.slice(0, 10).concat(rows.slice(10).filter(r => r.me)).forEach(r => {
+    const li = document.createElement("li"); if (r.me) li.className = "me";
+    const rk = document.createElement("span"); rk.className = "rk"; rk.textContent = r.rank || rows.indexOf(r) + 1;
+    const nm = document.createElement("span"); nm.textContent = r.name + (r.me ? "（あなた）" : "");
+    const tm = document.createElement("b"); tm.textContent = fmtTime(r.time);
+    li.append(rk, nm, tm); list.append(li);
+  });
+  $("rankNote").textContent = NET_NOTE[NET.mode] + (total > 10 ? ` 全${total}人中の上位10人。` : "");
+}
+function openWorld() {
+  panelFrom = document.activeElement;
+  wdPanel.hidden = false; $("wdClose").focus();
+  if (NET.mode === "rest") pollRest();
+  netFlush();
+  renderWorld();
+}
+async function renderWorld() {
+  if (wdPanel.hidden) return;
+  const si = seasonInfo(), w = worldState(), left = Math.max(0, si.endsAt - Date.now());
+  const name = WORLD_NAMES[si.week % WORLD_NAMES.length], hp = Math.max(0, w.max - w.dealt), defeated = w.dealt >= w.max;
+  $("wdTitle").textContent = name;
+  $("wdSub").textContent = defeated ? "討伐成功！ 次の竜は月曜0時に現れる" : `今週のワールドドラゴン ・ 残り ${Math.floor(left / 864e5)}日${Math.floor(left / 36e5) % 24}時間 ・ 参加 ${w.players}人`;
+  $("wdBar").style.width = (hp / w.max * 100).toFixed(1) + "%";
+  $("wdHp").textContent = `${fmt(Math.round(hp))} / ${fmt(w.max)}`;
+  $("wdMine").textContent = fmt(Math.round(w.mine));
+  $("wdRank").textContent = w.myRank ? `${w.myRank}位` : "—";
+  $("nickRow").hidden = NET.mode === "artifact";
+  if (document.activeElement !== $("nickInput")) $("nickInput").value = P.nick;
+  const list = $("wdList"); list.innerHTML = "";
+  let names = {};
+  if (NET.mode === "artifact") { const ps = await NET.user.profiles(w.top.map(r => r.id)); w.top.forEach((r, k) => r.name = (ps[r.id] && ps[r.id].name) || (r.me ? "あなた" : "ドワーフ" + (k + 1))); }
+  w.top.filter(r => r.dmg > 0 || r.me).forEach((r, k) => {
+    const li = document.createElement("li"); if (r.me) li.className = "me";
+    const rk = document.createElement("span"); rk.className = "rk"; rk.textContent = k + 1;
+    const nm = document.createElement("span"); nm.textContent = r.name + (r.me ? "（あなた）" : "");
+    const v = document.createElement("b"); v.textContent = fmt(Math.round(r.dmg));
+    li.append(rk, nm, v); list.append(li);
+  });
+  const claim = $("wdClaim"), eligible = defeated && w.mine >= WORLD_MIN_CONTRIB && P.worldClaimed !== si.id;
+  claim.hidden = !eligible;
+  $("wdNote").textContent = NET_NOTE[NET.mode] + (NET.readOnly ? " このページは閲覧のみのため、あなたの記録は共有されません。" : "") + (defeated && P.worldClaimed === si.id ? " 今週の報酬は受け取り済み。" : "");
+}
+function refreshPanels() { renderRank(); renderWorld(); }
+$("rankClose").addEventListener("click", () => { rankPanel.hidden = true; if (panelFrom && panelFrom.focus) panelFrom.focus(); });
+$("wdClose").addEventListener("click", () => { wdPanel.hidden = true; if (panelFrom && panelFrom.focus) panelFrom.focus(); });
+$("wdBtn").addEventListener("click", openWorld);
+$("wdClaim").addEventListener("click", () => {
+  const si = seasonInfo(); if (P.worldClaimed === si.id) return;
+  P.worldClaimed = si.id; P.medals += WORLD_REWARD.medals; P.scales += WORLD_REWARD.scales; writeSave();
+  toast("ワールドドラゴン討伐報酬！", `徽章 +${WORLD_REWARD.medals} ・ 竜鱗 +${WORLD_REWARD.scales}`); sfx.buy();
+  renderWorld(); if (!mapEl.hidden) renderMap();
+});
+$("nickInput").addEventListener("change", e => {
+  const v = e.target.value.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 16);
+  if (v) { P.nick = v; writeSave(); netPushRanks(); if (NET.mode === "rest") Object.entries(allMyBests()).forEach(([bd, t]) => netSubmit(bd, t)); }
+});
+addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!rankPanel.hidden) $("rankClose").click(); else if (!wdPanel.hidden) $("wdClose").click();
+});
+addEventListener("visibilitychange", () => { if (document.hidden) { netFlush(); writeSave(); } });
+
 // ---------- clear flow ----------
 const clearEl = $("clear");
+async function showRankLine(board) {
+  const el = $("clearRank"); el.hidden = true;
+  const { rows, total } = await boardRows(board), me = rows.find(r => r.me);
+  if (!me) return;
+  el.textContent = `ランキング ${me.rank || rows.indexOf(me) + 1}位 / ${Math.max(total, rows.length)}人（ベスト ${fmtTime(me.time)}）`;
+  el.hidden = false;
+}
 function showClear() {
+  showRankLine("m" + S.mine);
   const last = S.mine >= MINES.length - 1;
   $("clearEyebrow").textContent = `鉱山${S.mine + 1} ・ ${M.name}`;
   $("clearL1").textContent = "プレイ時間"; $("clearL2").textContent = "稼いだコイン"; $("clearL3").textContent = "出荷した鉱石";
@@ -2630,6 +2909,7 @@ function renderMapSheet() {
     acts.append(alt);
   }
   mapSheet.append(acts);
+  if (!locked) { const rb = document.createElement("button"); rb.type = "button"; rb.className = "rank-btn"; rb.textContent = "ランキングを見る"; rb.addEventListener("click", () => openRank("m" + k)); mapSheet.append(rb); }
   if (!locked && !playing && S.boss == null && !S.cleared && S.time > 0) {
     const w = document.createElement("p"); w.className = "warn"; w.textContent = `いま遊んでいる「${M.name}」の進行は保存され、あとで続きから遊べます。`;
     mapSheet.append(w);
@@ -2659,6 +2939,7 @@ function renderLairSheet(i) {
   go.textContent = locked ? "ロック中" : fighting ? "戦いに戻る" : "挑む！";
   go.addEventListener("click", () => startLair(i));
   acts.append(go); mapSheet.append(acts);
+  if (!locked) { const rb = document.createElement("button"); rb.type = "button"; rb.className = "rank-btn"; rb.textContent = "ランキングを見る"; rb.addEventListener("click", () => openRank("l" + i)); mapSheet.append(rb); }
   if (!locked && !fighting && S.boss == null && !S.cleared && S.time > 0) {
     const w = document.createElement("p"); w.className = "warn"; w.textContent = `いま遊んでいる「${M.name}」の進行は保存され、あとで続きから遊べます。`; mapSheet.append(w);
   }
@@ -2701,6 +2982,7 @@ function awardMedals() {
   P.medals += total; P.clears++;
   P.unlocked = Math.min(MINES.length - 1, Math.max(P.unlocked, S.mine + 1));
   if (!(P.best[S.mine] <= S.time)) P.best[S.mine] = Math.round(S.time);
+  netSubmit("m" + S.mine, P.best[S.mine]);
   S.gain = { base, fast, lap, total, par };
 }
 function checkClear(dt) {
@@ -2874,6 +3156,7 @@ function frame(now) {
   sun.position.set(camLook.x - 8, 20, camLook.z + 10); sun.target.position.copy(camLook);
 
   updateHud(dt);
+  netTick(dt);
   saveTimer += dt; if (saveTimer > 4) { saveTimer = 0; writeSave(); }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -2908,6 +3191,7 @@ function start(data) {
   window.claude?.hot?.snapshot?.(() => ({ save: S, meta: P }));
   window.__zm = { get S() { return S; }, set: o => Object.assign(S, o), sync: () => { syncGates(); syncScoops(); PADS.forEach(drawPad); }, tp: (x, z) => { player.x = x; player.z = z; } };
   requestAnimationFrame(t => { last = t; frame(t); });
+  netInit();
 }
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
