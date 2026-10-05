@@ -73,3 +73,31 @@ test('ステージ1は真ん中の門を狙い続ければクリアできる', (
 test('全ステージの門は32個以下（ビットマスクで管理）', () => {
   for (const lv of LEVELS) assert.ok(lv.gates.length <= 32, lv.name);
 });
+
+test('ボーナスブロックは最初に触れた1回だけ兵が増え、消える', () => {
+  const g = new Game(empty({ enemies: { total: 1, initial: 0, rate: 0 }, pickups: [{ x: 160, y: 420, w: 40, h: 12, value: 7 }] }), 1);
+  g.firing = true;
+  run(g, 1.5, 180);
+  g.firing = false;
+  run(g, 2);
+  assert.strictEqual(g.pickups[0].alive, false);
+  assert.strictEqual(g.blue.n, g.fired + 7);
+});
+
+test('バリケードも兵の体当たりで壊れ、奥の通路へ進める', () => {
+  const lv = LEVELS.find((l) => l.name === '宝物の道');
+  const g = new Game(lv, 1);
+  g.firing = true;
+  run(g, 12, 300);
+  assert.strictEqual(g.obstacles.find((o) => o.kind === 'barricade').alive, false);
+  assert.ok(g.pickups.some((p) => p.value === 99 && !p.alive));
+});
+
+test('ボスは設定した体力を持ち、防衛ラインを越えると砦に大ダメージ', () => {
+  const g = new Game(empty({ enemies: { total: 0, initial: 0, rate: 0, bosses: [{ x: 180, y: 560, hp: 40 }] } }), 1);
+  const i = g.red.n - 1;
+  assert.strictEqual(g.red.giant[i], 2);
+  assert.strictEqual(g.red.hp[i], 40);
+  run(g, 10);
+  assert.strictEqual(g.baseHp, CFG.baseHp - 25);
+});

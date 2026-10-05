@@ -87,6 +87,7 @@
         blue: makeUnitSprite(COLORS.blue, COLORS.blueLight, 1, this.pxRatio),
         red: makeUnitSprite(COLORS.red, COLORS.redLight, 1, this.pxRatio),
         giant: makeUnitSprite('#b0261f', COLORS.red, 2.3, this.pxRatio),
+        boss: makeUnitSprite('#8f1a14', '#f0a060', 4.6, this.pxRatio),
       };
       this.bg = null;
     }
@@ -257,9 +258,10 @@
       g.setTransform(this.pxRatio, 0, 0, this.pxRatio, (Math.random() - 0.5) * sh * this.pxRatio, (Math.random() - 0.5) * sh * this.pxRatio);
 
       for (const gate of game.gates) this.drawGate(g, gate);
+      for (const p of game.pickups) this.drawPickup(g, p);
 
       // 兵（敵 → 味方の順）
-      this.drawTeam(g, game.red, this.sprites.red, this.sprites.giant);
+      this.drawTeam(g, game.red, this.sprites.red, this.sprites.giant, this.sprites.boss);
       this.drawTeam(g, game.blue, this.sprites.blue, null);
 
       // 障害物は兵より手前に描く（上から見下ろした立体感）
@@ -267,6 +269,10 @@
         if (!o.alive) continue;
         if (o.kind === 'fence') this.drawFence(g, o);
         else if (o.kind === 'bush') this.drawBush(g, o, 1);
+        else if (o.kind === 'barricade') {
+          this.drawBarricade(g, o);
+          this.drawHedgeHp(g, o);
+        }
         else {
           const ratio = o.hp / o.maxHp;
           this.drawBush(g, o, 0.45 + 0.55 * ratio);
@@ -282,6 +288,66 @@
       this.drawParticles(g, dt);
     }
 
+    // 黄色と黒の縞模様のバリケード
+    drawBarricade(g, o) {
+      const ratio = o.hp / o.maxHp;
+      g.save();
+      g.globalAlpha = 0.5 + 0.5 * ratio;
+      g.beginPath();
+      g.rect(o.x, o.y, o.w, o.h);
+      g.clip();
+      g.fillStyle = '#f5c518';
+      g.fillRect(o.x, o.y, o.w, o.h);
+      g.fillStyle = '#23262d';
+      for (let x = o.x - o.h; x < o.x + o.w; x += 14) {
+        g.beginPath();
+        g.moveTo(x, o.y + o.h);
+        g.lineTo(x + 7, o.y + o.h);
+        g.lineTo(x + 7 + o.h, o.y);
+        g.lineTo(x + o.h, o.y);
+        g.closePath();
+        g.fill();
+      }
+      if (o.hitFlash > 0) {
+        g.fillStyle = `rgba(255,255,255,${o.hitFlash * 0.4})`;
+        g.fillRect(o.x, o.y, o.w, o.h);
+      }
+      g.restore();
+      g.fillStyle = 'rgba(0,0,0,0.25)';
+      g.fillRect(o.x, o.y + o.h, o.w, 3);
+    }
+
+    // ボーナスブロック（触れると1回だけ兵が増える）
+    drawPickup(g, p) {
+      if (!p.alive && p.pop <= 0) return;
+      const big = p.value >= 50;
+      const label = '+' + p.value;
+      g.save();
+      if (!p.alive) {
+        // 取った瞬間に膨らんで消える
+        const k = 1 + (1 - p.pop) * 0.6;
+        g.globalAlpha = p.pop;
+        g.translate(p.x + p.w / 2, p.y + p.h / 2);
+        g.scale(k, k);
+        g.translate(-(p.x + p.w / 2), -(p.y + p.h / 2));
+      }
+      g.fillStyle = big ? '#b58a00' : '#1d4fc4';
+      g.fillRect(p.x, p.y + 3, p.w, p.h);
+      g.fillStyle = big ? COLORS.gateYellow : COLORS.gateBlue;
+      g.fillRect(p.x, p.y, p.w, p.h);
+      g.fillStyle = 'rgba(255,255,255,0.25)';
+      g.fillRect(p.x, p.y, p.w, 2);
+      g.font = '900 11px "Arial Black", "Hiragino Sans", sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.lineWidth = 3;
+      g.strokeStyle = 'rgba(20,30,60,0.85)';
+      g.strokeText(label, p.x + p.w / 2, p.y + p.h / 2 + 1);
+      g.fillStyle = '#fff';
+      g.fillText(label, p.x + p.w / 2, p.y + p.h / 2 + 1);
+      g.restore();
+    }
+
     drawHedgeHp(g, o) {
       const cx = o.x + o.w / 2;
       const cy = o.y + o.h / 2;
@@ -295,13 +361,15 @@
       g.fillText(String(o.hp), cx, cy);
     }
 
-    drawTeam(g, t, sprite, giantSprite) {
+    drawTeam(g, t, sprite, giantSprite, bossSprite) {
       const s = 12 / this.pxRatio;
       const unit = sprite.width / this.pxRatio;
       for (let i = 0; i < t.n; i++) {
         const y = t.y[i];
-        if (y < -12 || y > H + 12) continue;
-        if (giantSprite && t.giant[i]) {
+        if (y < -30 || y > H + 12) continue;
+        if (bossSprite && t.giant[i] === 2) {
+          this.drawBoss(g, bossSprite, t.x[i], y, t.hp[i] / t.maxHp[i]);
+        } else if (giantSprite && t.giant[i]) {
           const gs = giantSprite.width / this.pxRatio;
           g.drawImage(giantSprite, t.x[i] - gs / 2, y - gs * 0.6, gs, gs);
         } else {
@@ -309,6 +377,18 @@
         }
       }
       return s;
+    }
+
+    drawBoss(g, sprite, x, y, ratio) {
+      const bs = sprite.width / this.pxRatio;
+      g.drawImage(sprite, x - bs / 2, y - bs * 0.6, bs, bs);
+      // 頭上の体力ゲージ
+      const w = 40;
+      const top = y - bs * 0.6 - 6;
+      g.fillStyle = 'rgba(20,20,30,0.75)';
+      g.fillRect(x - w / 2 - 1, top - 1, w + 2, 6);
+      g.fillStyle = '#ff5a4a';
+      g.fillRect(x - w / 2, top, w * Math.max(0, ratio), 4);
     }
 
     drawParticles(g, dt) {
@@ -319,7 +399,7 @@
         p.life -= dt * 2.2;
         if (p.life <= 0) continue;
         p.y -= dt * 18;
-        const r = (p.big ? 7 : 3) * (1.4 - p.life * 0.4);
+        const r = (p.big === 2 ? 22 : p.big ? 7 : 3) * (1.4 - p.life * 0.4);
         g.globalAlpha = p.life * 0.8;
         g.fillStyle = p.team ? '#ffe2dc' : '#ffffff';
         g.beginPath();

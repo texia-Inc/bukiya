@@ -16,6 +16,8 @@
     redRadius: 3.4,
     giantRadius: 7,
     giantHp: 12,
+    bossRadius: 15,
+    bossHp: 250,
     blueSpeed: 78,
     redSpeed: 20,
     fireInterval: 0.1,
@@ -64,6 +66,7 @@
       this.vy = new Float32Array(cap);
       this.r = new Float32Array(cap);
       this.hp = new Int16Array(cap);
+      this.maxHp = new Int16Array(cap);
       this.gates = new Uint32Array(cap);
       this.giant = new Uint8Array(cap);
       this.seek = new Uint8Array(cap);
@@ -83,6 +86,7 @@
       this.vy[i] = vy;
       this.r[i] = r;
       this.hp[i] = hp;
+      this.maxHp[i] = hp;
       this.gates[i] = gates;
       this.giant[i] = giant;
       this.seek[i] = 0;
@@ -120,6 +124,7 @@
           this.vy[j] = this.vy[i];
           this.r[j] = this.r[i];
           this.hp[j] = this.hp[i];
+          this.maxHp[j] = this.maxHp[i];
           this.gates[j] = this.gates[i];
           this.giant[j] = this.giant[i];
           this.seek[j] = this.seek[i];
@@ -138,7 +143,7 @@
     const blocked = new Uint8Array(NCELLS);
     for (const o of obstacles) {
       if (!o.alive) continue;
-      if (team === 'blue' && !foe && o.kind === 'hedge') continue;
+      if (team === 'blue' && !foe && isBreakable(o)) continue;
       const cx0 = cellX(o.x + 0.01);
       const cx1 = cellX(o.x + o.w - 0.01);
       const cy0 = cellY(o.y + 0.01);
@@ -188,11 +193,17 @@
         }
       }
     }
-    while (head < tail) {
-      const c = queue[head++];
+    const inQ = new Uint8Array(NCELLS);
+    for (let k = 0; k < tail; k++) inQ[queue[k]] = 1;
+    let count = tail;
+    tail %= NCELLS;
+    while (count > 0) {
+      const c = queue[head];
+      head = (head + 1) % NCELLS;
+      count--;
+      inQ[c] = 0;
       const cx = c % GW;
       const cy = (c / GW) | 0;
-      const d = dist[c] + 1;
       for (let oy = -1; oy <= 1; oy++) {
         for (let ox = -1; ox <= 1; ox++) {
           if (!ox && !oy) continue;
@@ -200,10 +211,16 @@
           const ny = cy + oy;
           if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
           const nc = ny * GW + nx;
+          const d = dist[c] + 1;
           if (blocked[nc] || dist[nc] <= d) continue;
           if (ox && oy && (blocked[cy * GW + nx] || blocked[ny * GW + cx])) continue;
           dist[nc] = d;
-          queue[tail++] = nc;
+          if (!inQ[nc]) {
+            inQ[nc] = 1;
+            queue[tail] = nc;
+            tail = (tail + 1) % NCELLS;
+            count++;
+          }
         }
       }
     }
@@ -261,7 +278,29 @@
         }
       }
     }
+    // 味方の基本経路: 真上に壊せない障害物がなければまっすぐ上へ進む
+    // （行き止まりの通路でも、遠回りせず生け垣やバリケードに突っ込ませる）
+    if (team === 'blue' && !foe) {
+      for (let cy = 0; cy < GH; cy++) {
+        for (let cx = 0; cx < GW; cx++) {
+          let clear = true;
+          for (let k = 1; k <= 3 && clear; k++) {
+            const ny = cy - k;
+            if (ny >= 0 && blocked[ny * GW + cx]) clear = false;
+          }
+          if (clear && !blocked[cy * GW + cx]) {
+            dirX[cy * GW + cx] = 0;
+            dirY[cy * GW + cx] = -1;
+          }
+        }
+      }
+    }
     return { dirX, dirY };
+  }
+
+  // 味方の体当たりで壊せる障害物（生け垣・バリケード）
+  function isBreakable(o) {
+    return o.kind === 'hedge' || o.kind === 'barricade';
   }
 
   function cloneLevel(level) {
@@ -289,6 +328,16 @@
         move: g.move || null,
         flash: 0,
       })),
+      // ボーナスブロック: 最初に触れた兵がいると1回だけ value 人増え、消える
+      pickups: (level.pickups || []).map((p) => ({
+        x: p.x,
+        y: p.y,
+        w: p.w,
+        h: p.h,
+        value: p.value,
+        alive: true,
+        pop: 0,
+      })),
     };
   }
 
@@ -299,6 +348,7 @@
       const c = cloneLevel(level);
       this.obstacles = c.obstacles;
       this.gates = c.gates;
+      this.pickups = c.pickups;
       this.blue = new Team(CFG.maxBlue);
       this.red = new Team(CFG.maxRed);
       this.cannon = { x: W / 2, targetX: W / 2, recoil: 0 };
@@ -319,9 +369,13 @@
       let laneTop = H;
       for (const o of this.obstacles) if (o.kind !== 'bush') laneTop = Math.min(laneTop, o.y);
       for (const g of this.gates) laneTop = Math.min(laneTop, g.y);
+      for (const p of this.pickups) laneTop = Math.min(laneTop, p.y);
       this.laneTop = laneTop - 6;
       this.updateFlow();
       this.spawnInitialRed(level.enemies.initial);
+      for (const b of level.enemies.bosses || []) {
+        this.red.add(b.x, b.y, 0, CFG.redSpeed, CFG.bossRadius, b.hp || CFG.bossHp, 0, 2);
+      }
       this.seekFlow = buildFlow(this.obstacles, 'blue', this.red);
     }
 
@@ -399,6 +453,7 @@
         g.flash = Math.max(0, g.flash - dt * 4);
       }
       for (const o of this.obstacles) o.hitFlash = Math.max(0, o.hitFlash - dt * 6);
+      for (const p of this.pickups) p.pop = Math.max(0, p.pop - dt * 3);
 
       // 砲台
       const c = this.cannon;
@@ -494,7 +549,8 @@
             }
           }
         }
-        const sp = team.giant[i] ? speed * 0.75 : speed;
+        const gi = team.giant[i];
+        const sp = gi === 2 ? speed * 0.55 : gi ? speed * 0.75 : speed;
         let dx;
         let dy;
         if (best < sd2) {
@@ -543,6 +599,19 @@
           }
         }
 
+        // ボーナスブロックに触れたら、その場で兵が増える
+        for (const p of this.pickups) {
+          if (!p.alive) continue;
+          if (x < p.x - 3 || x > p.x + p.w + 3 || y < p.y - 3 || y > p.y + p.h + 3) continue;
+          p.alive = false;
+          p.pop = 1;
+          for (let k = 0; k < p.value; k++) {
+            const nx = clamp(p.x + this.rand() * p.w, CFG.minX, CFG.maxX);
+            const ny = p.y - this.rand() * Math.min(30, 4 + p.value * 0.3);
+            if (b.add(nx, ny, (this.rand() - 0.5) * 30, b.vy[i], CFG.blueRadius, 1, b.gates[i], 0) < 0) break;
+          }
+        }
+
         if (y < WORLD_TOP + 6) {
           b.dead[i] = 1;
           continue;
@@ -560,7 +629,7 @@
         if (r.y[i] >= CFG.defenseY && !r.dead[i]) {
           // 防衛ラインを越えた敵は砦にダメージを与えて消える
           r.dead[i] = 1;
-          this.baseHp -= r.giant[i] ? 5 : 1;
+          this.baseHp -= r.giant[i] === 2 ? 25 : r.giant[i] ? 5 : 1;
           this.baseHit = 1;
           this.pushDeath(r.x[i], r.y[i], 1, r.giant[i]);
           if (this.baseHp <= 0) {
@@ -585,7 +654,7 @@
         const d2 = dx * dx + dy * dy;
         if (d2 >= rad * rad) continue;
 
-        if (isBlue && o.kind === 'hedge') {
+        if (isBlue && isBreakable(o)) {
           // 生け垣に体当たりして削る
           t.dead[i] = 1;
           o.hp -= 1;
@@ -654,7 +723,7 @@
               const d = Math.sqrt(d2);
               const f = ((min - d) / d) * 0.5;
               // 巨人は押されにくい
-              const w = t.giant[i] && !t.giant[j] ? 0.15 : 1;
+              const w = t.giant[i] > t.giant[j] ? 0.15 : 1;
               px += dx * f * w;
               py += dy * f * w;
             }
@@ -735,7 +804,7 @@
     }
   }
 
-  const api = { Game, CFG, W, H, WORLD_TOP, CELL, buildFlow, makeRng };
+  const api = { Game, CFG, isBreakable, W, H, WORLD_TOP, CELL, buildFlow, makeRng };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.CrowdSim = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -3,7 +3,10 @@
 //   obstacles.kind: 'bush'  = 壊せない植え込み
 //                   'hedge' = 味方の体当たりで壊せる生け垣（hp）
 //                   'fence' = 柵（壊せない）
+//                   'barricade' = 生け垣と同じく壊せる縞模様のバリケード
 //   gates.type    : 'mul' = ×value / 'add' = +value（味方1人が通るたび）
+//   pickups       : ボーナスブロック。最初に触れた1回だけ +value 人（取ると消える）
+//   enemies.bosses: 最初から出てくるボス [{ x, y, hp }]
 (function (root) {
   'use strict';
 
@@ -13,6 +16,12 @@
       { kind: 'bush', x: 0, y: 60, w: gapX0, h: 150 },
       { kind: 'bush', x: gapX1, y: 60, w: 360 - gapX1, h: 150 },
     ];
+  }
+  // 縦一列に並んだボーナスブロック
+  function pickupColumn(x, w, yBottom, count, step, value) {
+    const out = [];
+    for (let i = 0; i < count; i++) out.push({ x: x, y: yBottom - i * step, w: w, h: 12, value: value });
+    return out;
   }
   function fence(x, y0, y1) {
     return { kind: 'fence', x: x, y: y0, w: 6, h: y1 - y0 };
@@ -91,6 +100,18 @@
         { x0: 240, x1: 350, y: 440, type: 'add', value: 10 },
         { x0: 240, x1: 350, y: 330, type: 'mul', value: 4 },
       ],
+    },
+    {
+      name: '宝物の道',
+      hint: '青い+1は取り放題。縞模様のバリケードを壊せば+99が並ぶ道へ！ ボスにも注意',
+      enemies: { total: 2400, initial: 900, rate: 32, giantEvery: 25, bosses: [{ x: 180, y: -40, hp: 150 }] },
+      obstacles: [
+        ...funnel(120, 240),
+        fence(244, 250, 485),
+        { kind: 'barricade', x: 250, y: 462, w: 100, h: 22, hp: 70 },
+      ],
+      gates: [{ x0: 70, x1: 244, y: 495, type: 'mul', value: 4 }],
+      pickups: [...pickupColumn(14, 46, 530, 15, 20, 1), ...pickupColumn(266, 68, 432, 7, 27, 99)],
     },
   ];
 
