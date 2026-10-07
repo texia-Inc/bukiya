@@ -19,6 +19,11 @@
     redLight: '#ff8a7a',
     gateBlue: '#3b82f6',
     gateYellow: '#f5c518',
+    gatePurple: '#8b3cf0',
+    door: '#a8794a',
+    doorDark: '#6b4a2b',
+    rock: '#9a7550',
+    rockDark: '#6e5136',
     gateGreen: '#22b07d',
     gatePost: '#7b5a3a',
     defense: 'rgba(232,72,63,0.35)',
@@ -170,7 +175,8 @@
       const h = 15;
       const y = gate.y - h / 2;
       let color = COLORS.gateBlue;
-      if (gate.type === 'add') color = COLORS.gateGreen;
+      if (gate.color === 'purple') color = COLORS.gatePurple;
+      else if (gate.type === 'add') color = COLORS.gateGreen;
       else if (gate.value >= 50) color = COLORS.gateYellow;
       g.fillStyle = 'rgba(0,0,0,0.15)';
       g.fillRect(gate.x0 + 2, y + 3, w, h);
@@ -185,8 +191,14 @@
       g.fillStyle = COLORS.gatePost;
       g.fillRect(gate.x0 - 1.5, y - 2, 3, h + 4);
       g.fillRect(gate.x1 - 1.5, y - 2, 3, h + 4);
+    }
+
+    // 倍率の文字は兵より手前に描く（群れに隠れないように）
+    drawGateLabel(g, gate) {
+      const w = gate.x1 - gate.x0;
       const label = (gate.type === 'mul' ? 'x' : '+') + gate.value;
-      g.font = '900 13px "Arial Black", "Hiragino Sans", sans-serif';
+      const size = 13 + gate.flash * 4;
+      g.font = `900 ${size}px "Arial Black", "Hiragino Sans", sans-serif`;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.lineWidth = 3;
@@ -216,20 +228,33 @@
         g.fill();
         g.fillStyle = '#3a3f47';
       }
-      const grad = g.createLinearGradient(c.x - 8, 0, c.x + 8, 0);
-      grad.addColorStop(0, '#4b5260');
-      grad.addColorStop(0.5, '#9aa3b2');
-      grad.addColorStop(1, '#4b5260');
-      g.fillStyle = grad;
-      g.beginPath();
-      g.moveTo(c.x - 8, y + 2);
-      g.lineTo(c.x - 6, y - 20);
-      g.lineTo(c.x + 6, y - 20);
-      g.lineTo(c.x + 8, y + 2);
-      g.closePath();
-      g.fill();
-      g.fillStyle = '#5aa0ff';
-      g.fillRect(c.x - 6.5, y - 21, 13, 3);
+      // 封印を解いた砲台は砲身が増える
+      const n = c.shots;
+      const bw = n > 1 ? 6 : 8;
+      for (let k = 0; k < n; k++) {
+        const bx = c.x + (k - (n - 1) / 2) * 9;
+        const grad = g.createLinearGradient(bx - bw, 0, bx + bw, 0);
+        grad.addColorStop(0, '#4b5260');
+        grad.addColorStop(0.5, '#9aa3b2');
+        grad.addColorStop(1, '#4b5260');
+        g.fillStyle = grad;
+        g.beginPath();
+        g.moveTo(bx - bw, y + 2);
+        g.lineTo(bx - bw + 2, y - 20);
+        g.lineTo(bx + bw - 2, y - 20);
+        g.lineTo(bx + bw, y + 2);
+        g.closePath();
+        g.fill();
+        g.fillStyle = '#5aa0ff';
+        g.fillRect(bx - bw + 1.5, y - 21, (bw - 1.5) * 2, 3);
+      }
+      if (c.upgrade > 0) {
+        g.strokeStyle = `rgba(120,190,255,${c.upgrade})`;
+        g.lineWidth = 3;
+        g.beginPath();
+        g.arc(c.x, y - 6, 22 + (1 - c.upgrade) * 30, 0, Math.PI * 2);
+        g.stroke();
+      }
       g.fillStyle = '#9fd0ff';
       g.beginPath();
       g.arc(c.x, y + 2, 3, 0, Math.PI * 2);
@@ -259,17 +284,22 @@
 
       for (const gate of game.gates) this.drawGate(g, gate);
       for (const p of game.pickups) this.drawPickup(g, p);
+      for (const f of game.feeders) this.drawFeeder(g, game, f);
 
       // 兵（敵 → 味方の順）
       this.drawTeam(g, game.red, this.sprites.red, this.sprites.giant, this.sprites.boss);
       this.drawTeam(g, game.blue, this.sprites.blue, null);
+      for (const gate of game.gates) this.drawGateLabel(g, gate);
 
       // 障害物は兵より手前に描く（上から見下ろした立体感）
       for (const o of game.obstacles) {
         if (!o.alive) continue;
         if (o.kind === 'fence') this.drawFence(g, o);
         else if (o.kind === 'bush') this.drawBush(g, o, 1);
-        else if (o.kind === 'barricade') {
+        else if (o.kind === 'crate') {
+          this.drawCrate(g, o);
+          this.drawHedgeHp(g, o, o.h / 2 + 9);
+        } else if (o.kind === 'barricade') {
           this.drawBarricade(g, o);
           this.drawHedgeHp(g, o);
         }
@@ -284,8 +314,143 @@
         }
       }
 
+      for (const d of game.doors) this.drawDoor(g, d);
       this.drawCannon(g, game);
       this.drawParticles(g, dt);
+    }
+
+    // 支点を中心に振れる木の扉
+    drawDoor(g, d) {
+      g.lineCap = 'round';
+      g.strokeStyle = 'rgba(0,0,0,0.25)';
+      g.lineWidth = 9;
+      g.beginPath();
+      g.moveTo(d.px + 2, d.py + 3);
+      g.lineTo(d.x2 + 2, d.y2 + 3);
+      g.stroke();
+      g.strokeStyle = COLORS.doorDark;
+      g.lineWidth = 8;
+      g.beginPath();
+      g.moveTo(d.px, d.py);
+      g.lineTo(d.x2, d.y2);
+      g.stroke();
+      g.strokeStyle = COLORS.door;
+      g.lineWidth = 5;
+      g.beginPath();
+      g.moveTo(d.px, d.py);
+      g.lineTo(d.x2, d.y2);
+      g.stroke();
+      // 板の継ぎ目
+      g.strokeStyle = COLORS.doorDark;
+      g.lineWidth = 1;
+      for (let t = 0.2; t < 1; t += 0.2) {
+        const x = d.px + (d.x2 - d.px) * t;
+        const y = d.py + (d.y2 - d.py) * t;
+        const nx = -Math.sin(d.theta) * 3;
+        const ny = Math.cos(d.theta) * 3;
+        g.beginPath();
+        g.moveTo(x - nx, y - ny);
+        g.lineTo(x + nx, y + ny);
+        g.stroke();
+      }
+      g.lineCap = 'butt';
+      g.fillStyle = COLORS.railDark;
+      g.beginPath();
+      g.arc(d.px, d.py, 6, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = COLORS.rail;
+      g.beginPath();
+      g.arc(d.px, d.py, 3.5, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    // レーンを流れてくる「+10」の帯。門へ飛び込むと倍率に加算
+    drawFeeder(g, game, f) {
+      const gate = game.gates[f.gate];
+      const w = f.x1 - f.x0 - 12;
+      const h = 13;
+      const label = '+' + f.add;
+      g.font = '900 11px "Arial Black", "Hiragino Sans", sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      for (const it of f.items) {
+        let cx = (f.x0 + f.x1) / 2;
+        let cy = it.y;
+        let k = 1;
+        let a = 1;
+        if (it.fly >= 0) {
+          const t = it.fly;
+          const tx = (gate.x0 + gate.x1) / 2;
+          cx = cx + (tx - cx) * t;
+          cy = it.sy + (gate.y - it.sy) * t - Math.sin(t * Math.PI) * 30;
+          k = 1 - t * 0.4;
+          a = 1 - t * 0.3;
+        }
+        g.globalAlpha = a;
+        g.fillStyle = '#5b1fae';
+        g.fillRect(cx - (w * k) / 2, cy - (h * k) / 2 + 3, w * k, h * k);
+        g.fillStyle = COLORS.gatePurple;
+        g.fillRect(cx - (w * k) / 2, cy - (h * k) / 2, w * k, h * k);
+        g.lineWidth = 3;
+        g.strokeStyle = 'rgba(30,10,60,0.85)';
+        g.strokeText(label, cx, cy + 1);
+        g.fillStyle = '#fff';
+        g.fillText(label, cx, cy + 1);
+      }
+      g.globalAlpha = 1;
+    }
+
+    // 岩に封印された砲台
+    drawCrate(g, o) {
+      const ratio = o.hp / o.maxHp;
+      const cx = o.x + o.w / 2;
+      const cy = o.y + o.h / 2;
+      g.save();
+      g.globalAlpha = 0.55 + 0.45 * ratio;
+      // 岩の塊
+      g.globalAlpha = 0.25 + 0.75 * ratio;
+      g.fillStyle = COLORS.rockDark;
+      g.beginPath();
+      g.ellipse(cx, cy + 4, o.w / 2, o.h / 2 - 2, 0, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = COLORS.rock;
+      g.beginPath();
+      g.ellipse(cx, cy, o.w / 2 - 2, o.h / 2 - 4, 0, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = COLORS.rockDark;
+      for (let i = 0; i < 14; i++) {
+        const a = seeded(i + o.x) * Math.PI * 2;
+        const r = seeded(i * 7 + o.y) * 0.8;
+        g.beginPath();
+        g.arc(cx + Math.cos(a) * r * (o.w / 2 - 6), cy + Math.sin(a) * r * (o.h / 2 - 8), 1.6, 0, Math.PI * 2);
+        g.fill();
+      }
+      // 岩から突き出た砲身の束（壊すとこの砲台が手に入る）
+      g.globalAlpha = 1;
+      for (let k = -1; k <= 1; k++) {
+        const bx = cx + k * 11;
+        const by = cy - 10 + Math.abs(k) * 3;
+        g.fillStyle = '#244a9e';
+        g.beginPath();
+        g.arc(bx, by + 1.5, 6, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#3a6fd8';
+        g.beginPath();
+        g.arc(bx, by, 6, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#1b2230';
+        g.beginPath();
+        g.arc(bx, by, 3, 0, Math.PI * 2);
+        g.fill();
+      }
+      if (o.hitFlash > 0) {
+        g.globalAlpha = o.hitFlash * 0.35;
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.ellipse(cx, cy, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.restore();
     }
 
     // 黄色と黒の縞模様のバリケード
@@ -348,9 +513,9 @@
       g.restore();
     }
 
-    drawHedgeHp(g, o) {
+    drawHedgeHp(g, o, dy) {
       const cx = o.x + o.w / 2;
-      const cy = o.y + o.h / 2;
+      const cy = o.y + o.h / 2 + (dy || 0);
       g.font = '900 12px "Arial Black", "Hiragino Sans", sans-serif';
       g.textAlign = 'center';
       g.textBaseline = 'middle';

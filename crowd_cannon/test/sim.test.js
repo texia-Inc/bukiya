@@ -101,3 +101,38 @@ test('ボスは設定した体力を持ち、防衛ラインを越えると砦�
   run(g, 10);
   assert.strictEqual(g.baseHp, CFG.baseHp - 25);
 });
+
+test('扉は2つの角度を行き来し、紫のレーンが開いている間だけ+10が門に加算される', () => {
+  const lv = LEVELS.find((l) => l.name === '開閉する扉');
+  const g = new Game({ ...lv, enemies: { total: 1, initial: 0, rate: 0 } }, 1);
+  const door = lv.doors[0];
+  const start = g.gates[0].value;
+  // 最初は紫のレーンがふさがっていて、門は変わらない
+  run(g, door.hold[0] - 0.5);
+  assert.strictEqual(g.laneBlocked(g.feeders[0]), true);
+  assert.strictEqual(g.gates[0].value, start);
+  // 扉が振れて赤の道をふさぐと、+10が流れ込む
+  run(g, door.swing + door.hold[1]);
+  assert.strictEqual(g.laneBlocked(g.feeders[0]), false);
+  assert.ok(g.gates[0].value > start);
+  assert.strictEqual((g.gates[0].value - start) % 10, 0);
+});
+
+test('扉は兵を通さない', () => {
+  const g = new Game(empty({ enemies: { total: 1, initial: 0, rate: 0 }, doors: [{ px: 10, py: 300, len: 340, angles: [0, 0], hold: [99, 99], swing: 1 }] }), 1);
+  g.firing = true;
+  run(g, 6, 180);
+  for (let i = 0; i < g.blue.n; i++) assert.ok(g.blue.y[i] > 300, `兵 ${i} が扉を抜けた: y=${g.blue.y[i]}`);
+});
+
+test('岩の砲台を壊すと1回で3人撃てるようになる', () => {
+  const g = new Game(empty({ enemies: { total: 1, initial: 0, rate: 0 }, obstacles: [{ kind: 'crate', x: 150, y: 400, w: 60, h: 40, hp: 5, reward: 'multishot', shots: 3 }] }), 1);
+  assert.strictEqual(g.cannon.shots, 1);
+  g.firing = true;
+  run(g, 3, 180);
+  assert.strictEqual(g.obstacles[0].alive, false);
+  assert.strictEqual(g.cannon.shots, 3);
+  const before = g.fired;
+  g.fireOne();
+  assert.strictEqual(g.fired - before, 3);
+});

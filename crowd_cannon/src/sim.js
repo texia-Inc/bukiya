@@ -18,6 +18,7 @@
     giantHp: 12,
     bossRadius: 15,
     bossHp: 250,
+    doorHalf: 3.5,
     blueSpeed: 78,
     redSpeed: 20,
     fireInterval: 0.1,
@@ -139,8 +140,19 @@
   // 障害物を考慮した経路（フローフィールド）
   // blue: 上方向へ。破壊可能な生け垣は「通れる」扱い → 突っ込んで壊す
   // red : 防衛ラインへ。生きている障害物はすべて避ける
-  function buildFlow(obstacles, team, foe) {
+  function buildFlow(obstacles, team, foe, doors) {
     const blocked = new Uint8Array(NCELLS);
+    // 扉（線分）が通るマスもふさぐ
+    for (const d of doors || []) {
+      const len = Math.hypot(d.x2 - d.px, d.y2 - d.py);
+      for (let t = 0; t <= len; t += 3) {
+        const x = d.px + ((d.x2 - d.px) * t) / len;
+        const y = d.py + ((d.y2 - d.py) * t) / len;
+        for (const [ox, oy] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) {
+          blocked[cellY(y + oy) * GW + cellX(x + ox)] = 1;
+        }
+      }
+    }
     for (const o of obstacles) {
       if (!o.alive) continue;
       if (team === 'blue' && !foe && isBreakable(o)) continue;
@@ -300,7 +312,24 @@
 
   // 味方の体当たりで壊せる障害物（生け垣・バリケード）
   function isBreakable(o) {
-    return o.kind === 'hedge' || o.kind === 'barricade';
+    return o.kind === 'hedge' || o.kind === 'barricade' || o.kind === 'crate';
+  }
+
+  function smooth(t) {
+    const u = clamp(t, 0, 1);
+    return u * u * (3 - 2 * u);
+  }
+
+  // 開閉する扉: angles[0] で待機 → 振れる → angles[1] で待機 → 戻る、を繰り返す
+  function updateDoorGeom(d) {
+    const a = d.angles[0];
+    const b = d.angles[1];
+    if (d.phase === 0) d.theta = a;
+    else if (d.phase === 1) d.theta = a + (b - a) * smooth(d.phaseT / d.swing);
+    else if (d.phase === 2) d.theta = b;
+    else d.theta = b + (a - b) * smooth(d.phaseT / d.swing);
+    d.x2 = d.px + Math.cos(d.theta) * d.len;
+    d.y2 = d.py + Math.sin(d.theta) * d.len;
   }
 
   function cloneLevel(level) {
@@ -313,6 +342,8 @@
         h: o.h,
         hp: o.hp || 0,
         maxHp: o.hp || 0,
+        reward: o.reward || null,
+        shots: o.shots || 0,
         alive: true,
         hitFlash: 0,
       })),
@@ -325,6 +356,7 @@
         y: g.y,
         type: g.type,
         value: g.value,
+        color: g.color || null,
         move: g.move || null,
         flash: 0,
       })),
@@ -338,6 +370,24 @@
         alive: true,
         pop: 0,
       })),
+      doors: (level.doors || []).map((d) => {
+        const door = { px: d.px, py: d.py, len: d.len, angles: d.angles, hold: d.hold, swing: d.swing, phase: 0, phaseT: 0 };
+        updateDoorGeom(door);
+        return door;
+      }),
+      // 流れてくる「+N」の帯: 扉が開いている間だけレーンを下って、門の倍率に加算される
+      feeders: (level.feeders || []).map((f) => ({
+        x0: f.x0,
+        x1: f.x1,
+        spacing: f.spacing,
+        speed: f.speed,
+        releaseY: f.releaseY,
+        gate: f.gate,
+        add: f.add,
+        door: f.door,
+        top: f.startY - (f.count - 1) * f.spacing - 12,
+        items: Array.from({ length: f.count }, (_, k) => ({ y: f.startY - k * f.spacing, fly: -1, sy: 0 })),
+      })),
     };
   }
 
@@ -349,9 +399,11 @@
       this.obstacles = c.obstacles;
       this.gates = c.gates;
       this.pickups = c.pickups;
+      this.doors = c.doors;
+      this.feeders = c.feeders;
       this.blue = new Team(CFG.maxBlue);
       this.red = new Team(CFG.maxRed);
-      this.cannon = { x: W / 2, targetX: W / 2, recoil: 0 };
+      this.cannon = { x: W / 2, targetX: W / 2, recoil: 0, shots: 1, upgrade: 0 };
       this.firing = false;
       this.fireTimer = 0;
       this.time = 0;
@@ -370,13 +422,14 @@
       for (const o of this.obstacles) if (o.kind !== 'bush') laneTop = Math.min(laneTop, o.y);
       for (const g of this.gates) laneTop = Math.min(laneTop, g.y);
       for (const p of this.pickups) laneTop = Math.min(laneTop, p.y);
+      for (const d of this.doors) laneTop = Math.min(laneTop, d.py);
       this.laneTop = laneTop - 6;
       this.updateFlow();
       this.spawnInitialRed(level.enemies.initial);
       for (const b of level.enemies.bosses || []) {
         this.red.add(b.x, b.y, 0, CFG.redSpeed, CFG.bossRadius, b.hp || CFG.bossHp, 0, 2);
       }
-      this.seekFlow = buildFlow(this.obstacles, 'blue', this.red);
+      this.seekFlow = buildFlow(this.obstacles, 'blue', this.red, this.doors);
     }
 
     get enemiesLeft() {
@@ -386,8 +439,8 @@
 
     // 生け垣が壊れたら経路を引き直す
     updateFlow() {
-      this.blueFlow = buildFlow(this.obstacles, 'blue');
-      this.redFlow = buildFlow(this.obstacles, 'red');
+      this.blueFlow = buildFlow(this.obstacles, 'blue', null, this.doors);
+      this.redFlow = buildFlow(this.obstacles, 'red', null, this.doors);
       this.flowDirty = false;
       this.seekTimer = 0;
     }
@@ -428,11 +481,89 @@
 
     fireOne() {
       const c = this.cannon;
-      const x = c.x + (this.rand() - 0.5) * 6;
-      const i = this.blue.add(x, CFG.cannonY - 18, (this.rand() - 0.5) * 10, -CFG.blueSpeed * 1.8, CFG.blueRadius, 1, 0, 0);
-      if (i >= 0) {
-        this.fired++;
-        c.recoil = 1;
+      // 封印された砲台を解放すると、1回で複数の兵を撃ち出す
+      for (let k = 0; k < c.shots; k++) {
+        const off = (k - (c.shots - 1) / 2) * 8;
+        const x = clamp(c.x + off + (this.rand() - 0.5) * 6, CFG.minX, CFG.maxX);
+        const i = this.blue.add(x, CFG.cannonY - 18, off * 0.5 + (this.rand() - 0.5) * 10, -CFG.blueSpeed * 1.8, CFG.blueRadius, 1, 0, 0);
+        if (i >= 0) {
+          this.fired++;
+          c.recoil = 1;
+        }
+      }
+    }
+
+    updateDoors(dt) {
+      for (const d of this.doors) {
+        d.phaseT += dt;
+        const dur = d.phase === 0 ? d.hold[0] : d.phase === 2 ? d.hold[1] : d.swing;
+        if (d.phaseT >= dur) {
+          d.phaseT -= dur;
+          d.phase = (d.phase + 1) % 4;
+          this.flowDirty = true;
+        }
+        updateDoorGeom(d);
+      }
+    }
+
+    // 扉の先端がレーンの入口をふさいでいるか
+    laneBlocked(f) {
+      const d = this.doors[f.door];
+      return !!d && d.y2 < d.py + 25 && d.x2 > f.x0 - 10 && d.x2 < f.x1 + 10;
+    }
+
+    updateFeeders(dt) {
+      for (const f of this.feeders) {
+        const d = this.doors[f.door];
+        const blocked = this.laneBlocked(f);
+        let cap = blocked ? d.py - 9 : Infinity;
+        const gate = this.gates[f.gate];
+        for (const it of f.items) {
+          if (it.fly >= 0) {
+            it.fly += dt / 0.45;
+            if (it.fly >= 1) {
+              it.done = true;
+              gate.value += f.add;
+              gate.flash = 1;
+            }
+            continue;
+          }
+          it.y = Math.min(it.y + f.speed * dt, cap);
+          if (!blocked && it.y >= f.releaseY) {
+            it.fly = 0;
+            it.sy = it.y;
+            continue;
+          }
+          cap = it.y - f.spacing;
+        }
+        f.items = f.items.filter((it) => !it.done);
+      }
+    }
+
+    collideDoors(t, i) {
+      // 紫のレーン（帯専用）に押し込まれた兵は柵の手前に戻す
+      for (const f of this.feeders) {
+        const d = this.doors[f.door];
+        if (t.x[i] > f.x0 && t.x[i] < f.x1 && t.y[i] < d.py + 8 && t.y[i] > f.top) t.y[i] = d.py + 14;
+      }
+      const rad = t.r[i] + CFG.doorHalf;
+      for (const d of this.doors) {
+        const ex = d.x2 - d.px;
+        const ey = d.y2 - d.py;
+        const x = t.x[i];
+        const y = t.y[i];
+        const u = clamp(((x - d.px) * ex + (y - d.py) * ey) / (ex * ex + ey * ey), 0, 1);
+        const dx = x - (d.px + ex * u);
+        const dy = y - (d.py + ey * u);
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= rad * rad) continue;
+        if (d2 > 1e-6) {
+          const dd = Math.sqrt(d2);
+          t.x[i] = x + (dx / dd) * (rad - dd);
+          t.y[i] = y + (dy / dd) * (rad - dd);
+        } else {
+          t.y[i] = y + rad;
+        }
       }
     }
 
@@ -454,11 +585,14 @@
       }
       for (const o of this.obstacles) o.hitFlash = Math.max(0, o.hitFlash - dt * 6);
       for (const p of this.pickups) p.pop = Math.max(0, p.pop - dt * 3);
+      this.updateDoors(dt);
+      this.updateFeeders(dt);
 
       // 砲台
       const c = this.cannon;
       c.x += (c.targetX - c.x) * Math.min(1, dt * 14);
       c.recoil = Math.max(0, c.recoil - dt * 8);
+      c.upgrade = Math.max(0, c.upgrade - dt * 0.8);
       this.baseHit = Math.max(0, this.baseHit - dt * 3);
       if (this.firing) {
         this.fireTimer -= dt;
@@ -506,7 +640,7 @@
       if (this.flowDirty) this.updateFlow();
       this.seekTimer -= dt;
       if (this.seekTimer <= 0) {
-        this.seekFlow = buildFlow(this.obstacles, 'blue', red);
+        this.seekFlow = buildFlow(this.obstacles, 'blue', red, this.doors);
         this.seekTimer = 0.25;
       }
       if (blue.n > this.peakBlue) this.peakBlue = blue.n;
@@ -617,6 +751,7 @@
           continue;
         }
         this.collideObstacles(b, i, true);
+        if (!b.dead[i]) this.collideDoors(b, i);
       }
     }
 
@@ -626,6 +761,7 @@
         r.x[i] = clamp(r.x[i] + r.vx[i] * dt, CFG.minX, CFG.maxX);
         r.y[i] += r.vy[i] * dt;
         this.collideObstacles(r, i, false);
+        this.collideDoors(r, i);
         if (r.y[i] >= CFG.defenseY && !r.dead[i]) {
           // 防衛ラインを越えた敵は砦にダメージを与えて消える
           r.dead[i] = 1;
@@ -663,6 +799,10 @@
           if (o.hp <= 0) {
             o.alive = false;
             this.flowDirty = true;
+            if (o.reward === 'multishot') {
+              this.cannon.shots = o.shots || 3;
+              this.cannon.upgrade = 1;
+            }
           }
           return;
         }

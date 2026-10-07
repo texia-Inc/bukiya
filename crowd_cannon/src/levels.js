@@ -6,7 +6,10 @@
 //                   'barricade' = 生け垣と同じく壊せる縞模様のバリケード
 //   gates.type    : 'mul' = ×value / 'add' = +value（味方1人が通るたび）
 //   pickups       : ボーナスブロック。最初に触れた1回だけ +value 人（取ると消える）
+//                   'crate' = 岩に封印された砲台。壊すと1回で reward の数だけ撃てる（shots）
 //   enemies.bosses: 最初から出てくるボス [{ x, y, hp }]
+//   doors         : 開閉する扉。支点(px,py)・長さ len・角度 angles[0]⇔[1] を hold 秒ずつ待って swing 秒で振れる
+//   feeders       : 扉の向こうから流れてくる「+add」の帯。門 gate の倍率に加算される
 (function (root) {
   'use strict';
 
@@ -112,6 +115,24 @@
       ],
       gates: [{ x0: 70, x1: 244, y: 495, type: 'mul', value: 4 }],
       pickups: [...pickupColumn(14, 46, 530, 15, 20, 1), ...pickupColumn(266, 68, 432, 7, 27, 99)],
+    },
+    {
+      name: '開閉する扉',
+      hint: '扉が赤の道をふさぐと紫の+10が流れ込み、門の倍率が上がる。岩の砲台を壊せば3連射！',
+      enemies: { total: 9000, initial: 2800, rate: 170, giantEvery: 6, bosses: [{ x: 115, y: -80, hp: 400 }] },
+      obstacles: [
+        { kind: 'bush', x: 0, y: 60, w: 60, h: 270 },
+        { kind: 'bush', x: 170, y: 20, w: 190, h: 60 },
+        { kind: 'bush', x: 170, y: 80, w: 20, h: 220 },
+        { kind: 'bush', x: 300, y: 80, w: 60, h: 250 },
+        // 紫のレーンの入口の低い柵（兵は通れない。+10の帯だけが越えて流れてくる）
+        { kind: 'fence', x: 184, y: 300, w: 120, h: 8 },
+        fence(236, 360, 430),
+        { kind: 'crate', x: 262, y: 372, w: 70, h: 52, hp: 60, reward: 'multishot', shots: 3 },
+      ],
+      gates: [{ x0: 60, x1: 236, y: 400, type: 'mul', value: 2, color: 'purple' }],
+      doors: [{ px: 180, py: 302, len: 116, angles: [0, Math.PI], hold: [8, 4], swing: 1.2 }],
+      feeders: [{ x0: 190, x1: 300, count: 12, startY: 282, spacing: 18, speed: 15, releaseY: 318, gate: 0, add: 10, door: 0 }],
     },
   ];
 
