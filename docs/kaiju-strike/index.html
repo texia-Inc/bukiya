@@ -703,7 +703,10 @@ const KAIJU = [
 ];
 function kaijuDef(w) {
   const base = KAIJU[(w - 1) % KAIJU.length], loop = Math.floor((w - 1) / KAIJU.length);
-  return Object.assign({}, base, { hp: Math.round(base.hp * Math.pow(1.6, loop)), speed: base.speed + loop * 1.2, name: base.name + (loop ? ` Mk.${loop + 1}` : '') });
+  const tier = w >= 7 ? '超巨大 ' : w >= 4 ? '巨大 ' : '';
+  // every wave is bigger and tougher than the last
+  return Object.assign({}, base, { key: base.name, hp: Math.round(2200 * Math.pow(1.42, w - 1)), speed: 8 + (w - 1) * .5,
+    scale: Math.min(5.2, 2.4 * Math.pow(1.17, w - 1)), name: tier + base.name + (loop ? ` Mk.${loop + 1}` : '') });
 }
 // ---------- kaiju sculpting: signed distance fields meshed with surface nets ----------
 // Every body part is a smooth blend of ellipsoids and tapered capsules, so muscles, neck and tail
@@ -857,7 +860,7 @@ const ROCK_GEO = new THREE.DodecahedronGeometry(1, 0);
 
 const KAIJU_SHAPES = {};
 function kaijuShapes(def) {
-  if (KAIJU_SHAPES[def.name]) return KAIJU_SHAPES[def.name];
+  if (KAIJU_SHAPES[def.key]) return KAIJU_SHAPES[def.key];
   const torsoF = blend([
     ell([0, 2, -1], [13.5, 10, 11.5]),                       // pelvis
     ell([0, 11, 2.5], [12.5, 11, 11]),                       // gut
@@ -903,7 +906,7 @@ function kaijuShapes(def) {
     legs: [-1, 1].map(s => { const f = legF(s); return paint(surfaceNet(f, [-13, -30, -13], [13, 8, 15], .65), f, def, null, (x, y, z, nx, ny, nz) => (sstep(.3, .8, -nz) + sstep(.55, .9, nx * s) * .8) * sstep(-16, -3, y) * .8); }),
     tail: Array.from({ length: 10 }, (_, i) => { const f = tailF(i), r = tailR(i) + 1; return paint(surfaceNet(f, [-r, -r - 1, -8 - tailR(i + 1)], [r, r, 1.2 + r], .5), f, def, (x, y, z, nx, ny) => sstep(.2, .7, -ny), (x, y, z, nx, ny) => sstep(.15, .65, ny) * (i < 8 ? 1 : 0)); }),
   };
-  KAIJU_SHAPES[def.name] = S;
+  KAIJU_SHAPES[def.key] = S;
   return S;
 }
 function buildKaiju(def) {
@@ -979,7 +982,7 @@ function buildKaiju(def) {
     }
   }
   if (def.rocks) {
-    const r = seeded(def.name.length * 13 + 5);
+    const r = seeded(def.key.length * 13 + 5);
     for (let i = 0; i < 46; i++) {
       const x = (r() - .5) * 20, y = 6 + r() * 26;
       const hit = surfAt(S.torsoF, new V3(x, y, -26), new V3(x, y, 4)); if (!hit) continue;
@@ -1076,13 +1079,14 @@ const stats = {
   misCdMax: () => Math.max(4, 9 - G.up.mis),
 };
 
-function spawnKaiju(mode) {
+function spawnKaiju(mode, from) {
   if (K) scene.remove(K.p.g);
-  const def = kaijuDef(G.wave);
-  const p = buildKaiju(def);
+  const def = from ? from.def : kaijuDef(G.wave);
+  const p = from ? from.p : buildKaiju(def);
   scene.add(p.g);
-  K = { def, p, hp: def.hp, maxHp: def.hp, z: mode === 'idle' ? -470 : -520, x0: mode === 'idle' ? 10 : rand(-40, 40), phase: 0, lastSin: 0,
-    mode, mt: 0, beamT: rand(9, 11), orbT: rand(5, 7), chargeDmg: 0, flash: 0, y: mode === 'emerge' ? -170 : -8, beamTgt: null, beamHit: false };
+  const z = from ? from.z : mode === 'idle' ? -470 : -520;
+  K = { def, p, hp: def.hp, maxHp: def.hp, z, x0: from ? from.x - Math.sin(z * .012) * 35 : mode === 'idle' ? 10 : rand(-40, 40), phase: from ? from.phase : 0, lastSin: 0,
+    mode, mt: 0, beamT: rand(9, 11), orbT: rand(5, 7), chargeDmg: 0, flash: 0, y: mode === 'emerge' ? -70 * def.scale : -12, beamTgt: null, beamHit: false };
   p.cores.forEach(c => c.hp = def.hp * .1);
   p.g.position.set(K.x0, K.y, K.z);
   updateBossUI(true);
@@ -1216,6 +1220,7 @@ function damageKaiju(base, h, pos, quiet) {
   }
   if (Math.random() < (h.kind === 'weak' ? .4 : .16)) dropCoins(pos, 1, .6);
   if (K.hp <= 0) killKaiju();
+  else if (!NX && K.hp < K.maxHp * .55 && G.state === 'play') spawnNext();
   updateBossUI();
 }
 function stagger() {
@@ -1432,14 +1437,14 @@ function updateKaiju(dt) {
   let glowI = 2.2 + Math.sin(t * 3) * .5;
   P.cores.forEach(c => { if (!c.broken) { c.mat.emissiveIntensity = 2.6 + Math.sin(t * 5) * .8; c.halo.material.opacity = .4 + Math.sin(t * 5) * .15; } });
   K.flash = Math.max(0, K.flash - dt);
-  P.skin.emissive.setHex(K.flash > 0 ? 0x553322 : 0x000000);
+  P.skin.emissive.setHex(K.flash > 0 ? 0x2a160c : 0x000000);
   if (G.state !== 'play' && (K.mode === 'charge' || K.mode === 'beam')) { K.mode = 'walk'; beam.visible = false; P.jaw.rotation.x = 0; P.mouthGlow.scale.set(.1, .1, 1); $('warn').hidden = true; }
 
   const inSea = K.z < COAST + 10;
   const walking = K.mode === 'walk' && G.state === 'play';
   if (K.mode === 'idle') { P.headPivot.rotation.x = Math.sin(t * .7) * .1 - .1; P.headPivot.rotation.y = Math.sin(t * .4) * .3; }
   if (K.mode === 'emerge') {
-    K.y = -170 + Math.min(1, K.mt / 3.4) * 162;
+    K.y = (-70 + Math.min(1, K.mt / 3.4) * 65) * d.scale;
     if (Math.random() < dt * 14) splash(new V3(P.g.position.x + rand(-26, 26), 0, K.z + rand(-20, 20)), 3);
     P.headPivot.rotation.x = -.45;
     P.g.position.y = K.y;
@@ -1458,7 +1463,7 @@ function updateKaiju(dt) {
     K.beamT -= dt; K.orbT -= dt;
     if (K.beamT <= 0 && K.z > -540) { K.mode = 'charge'; K.mt = 0; K.chargeDmg = 0; K.beamHit = false; K.beamTgt = null; $('warn').hidden = false; sfx.charge(); }
     if (d.plates && K.orbT <= 0) { launchOrbs(); K.orbT = rand(6, 9); }
-    if (K.z > -110) { crush(P.g.position.x, -60, 60); gameOver('防衛線突破', 'DEFENSE LINE BROKEN'); }
+    if (K.z > -50 - 28 * d.scale) { crush(P.g.position.x, -60, 60); gameOver('防衛線突破', 'DEFENSE LINE BROKEN'); }
   } else if (K.mode !== 'dead' && K.mode !== 'emerge') {
     P.g.position.y += (K.y - P.g.position.y) * dt * 3;
   }
@@ -1483,11 +1488,11 @@ function updateKaiju(dt) {
   } else if (K.mode === 'beam') {
     P.headPivot.rotation.x += (.05 - P.headPivot.rotation.x) * dt * 6;
     P.mouth.getWorldPosition(_w);
-    const w = (2.6 + Math.sin(G.t * 40) * .5) * d.scale;
+    const bs = Math.min(d.scale, 2.8), w = (2.6 + Math.sin(G.t * 40) * .5) * bs;
     aimBeam(_w, w); glowI = 6;
     for (let i = 0; i < 3; i++) FIRE.spawn(BEAM_TIP.clone().add(new V3(rand(-5, 5), rand(-5, 5), rand(-5, 5))), { v: rv(20), life: .35, s0: 5, s1: 11, c0: 0xfff0b0, hdr: 2.4, c1: d.beam });
     const f = $('flash');
-    if (segSphere(_w, BEAM_END, camera.position, 13 * d.scale) >= 0) {
+    if (segSphere(_w, BEAM_END, camera.position, 13 * bs) >= 0) {
       K.beamHit = true; hurtTowerSoft(26 * dt); G.shake = Math.max(G.shake, .45);
       f.style.background = 'radial-gradient(circle at 50% 100%,rgba(255,170,60,.6),transparent 70%)'; f.style.opacity = .9;
     } else { f.style.opacity = 0; G.shake = Math.max(G.shake, .15); }
@@ -1635,8 +1640,7 @@ function openShop() {
   addCoins(100 + 40 * G.wave);
   $('shopTitle').textContent = `WAVE ${G.wave} 撃破`;
   renderShop(); $('shop').hidden = false;
-  // sculpt the next kaiju while the player is shopping, so the next wave starts without a hitch
-  setTimeout(() => kaijuShapes(kaijuDef(G.wave + 1)), 400);
+  if (!NX) spawnNext();
 }
 function gameOver(title, tag) {
   if (G.state !== 'play') return;
@@ -1649,14 +1653,49 @@ function gameOver(title, tag) {
 function startWave() {
   G.state = 'play'; G.misCd = 0;
   for (const o of orbs) { o.life = 0; o.m.visible = false; }
-  spawnKaiju('emerge'); sfx.roar(); G.shake = .8;
+  const promoted = !!NX;
+  if (NX) { spawnKaiju('walk', NX); NX = null; } else spawnKaiju('emerge');
+  sfx.roar(); G.shake = .8;
   MECH.active = true; MECH.x = -230; MECH.z = clamp(K.z + 160, COAST + 30, -160); MECH.atk = 6;
-  showBanner(`<small>WAVE ${G.wave}</small><b>${K.def.name}</b><em>上陸！</em>`);
+  showBanner(`<small>WAVE ${G.wave}</small><b>${K.def.name}</b><em>${promoted ? '襲来！' : '上陸！'}</em>`);
   updateMisUI();
+  // sculpt the next, bigger kaiju early so it can walk in mid-fight without a hitch
+  setTimeout(() => kaijuShapes(kaijuDef(G.wave + 1)), 2500);
 }
+// ---------- the next kaiju, approaching from behind ----------
+let NX = null;
+function spawnNext() {
+  if (NX) return;
+  const def = kaijuDef(G.wave + 1), p = buildKaiju(def);
+  scene.add(p.g);
+  const side = Math.random() < .5 ? -1 : 1;
+  NX = { def, p, z: -1300, x: side * rand(80, 150), phase: 0, lastSin: 0, y: -12 };
+  p.g.position.set(NX.x, NX.y, NX.z);
+  showBanner(`<small>WARNING</small><b>後方から巨大反応</b><em>${def.name} 接近中</em>`);
+  tone('sawtooth', 70, 38, 2.4, .25); noise(2.2, 'lowpass', 300, 60, .35);
+}
+function updateNext(dt) {
+  if (!NX) return;
+  const P = NX.p, d = NX.def;
+  const walking = NX.z < -720 && G.state === 'play';
+  if (walking) { NX.z += d.speed * 1.5 * dt; NX.phase += dt * d.speed * 1.5 * .26 / d.scale; }
+  const sn = Math.sin(NX.phase);
+  P.legs.forEach(l => { l.p.rotation.x = walking ? sn * .42 * l.s : l.p.rotation.x * .95; });
+  P.tail.forEach((s, i) => { s.rotation.y = Math.sin(G.t * 1.1 - i * .55) * .13; });
+  P.hips.position.y = 27 + Math.sin(G.t * 1.4) * .5;
+  P.headPivot.rotation.x = Math.sin(G.t * .6) * .12 - .15;
+  P.g.position.set(NX.x, NX.y + (walking ? Math.abs(Math.cos(NX.phase)) * 1.4 : 0), NX.z);
+  P.g.rotation.y = Math.atan2(G.pos.x - NX.x, G.pos.z - NX.z) * .6;
+  P.U.uGlow.value = 2.2 + Math.sin(G.t * 2) * .6; P.glow.emissiveIntensity = 1 + Math.sin(G.t * 2) * .3;
+  if (walking && Math.sign(sn) !== Math.sign(NX.lastSin) && NX.lastSin !== 0) {
+    P.legs[sn > 0 ? 0 : 1].fm.getWorldPosition(_w); splash(new V3(_w.x, 0, _w.z), 3.5); G.shake = Math.max(G.shake, .25); sfx.stomp();
+  }
+  NX.lastSin = sn;
+}
+function clearNext() { if (NX) { scene.remove(NX.p.g); NX = null; } }
 function newGame() {
   Object.assign(G, { wave: 1, coins: 0, earned: 0, kills: 0, tower: 100, up: { dmg: 0, rate: 0, mis: 0 }, yaw: 0, pitch: -.14, roll: 0, combo: 0 });
-  G.pos.copy(CAM_POS); G.vel.set(0, 0, 0);
+  G.pos.copy(CAM_POS); G.vel.set(0, 0, 0); clearNext();
   $('coinVal').textContent = 0; resetCity(); updateTowerUI();
   PARTS.forEach(p => p.clear());
   startWave();
@@ -1750,7 +1789,7 @@ function frame(now) {
     G.yaw -= (mx * .45 + tx * 1.2) * dt;
     G.pitch -= (-my * .12 + ty * .9) * dt;
     G.yaw += I.ax; G.pitch += I.ay; I.ax = I.ay = 0;
-    G.yaw = clamp(G.yaw, -1.1, 1.1); G.pitch = clamp(G.pitch, -.9, .3);
+    G.yaw = clamp(G.yaw, -1.1, 1.1); G.pitch = clamp(G.pitch, -.9, .75);
     G.roll += (-mx * .22 - G.roll) * Math.min(1, dt * 4);
     G.comboT -= dt; if (G.comboT <= 0 && G.combo) { G.combo = 0; $('combo').hidden = true; }
   } else if (G.state === 'title') { G.yaw = Math.sin(G.t * .15) * .1; G.pitch = -.1; G.roll = 0; G.pos.copy(CAM_POS); }
@@ -1774,6 +1813,7 @@ function frame(now) {
   }
 
   updateKaiju(dt);
+  updateNext(dt);
   updateHitboxes();
   updateMech(dt);
   updateBullets(dt);
