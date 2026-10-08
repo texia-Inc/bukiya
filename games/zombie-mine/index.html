@@ -119,6 +119,14 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .dash:focus-visible { outline: 2px solid var(--chalk); outline-offset: 3px; }
 .dash small { display: block; font: 10px var(--font-num); opacity: .7; }
 .mute { margin-left: 6px; }
+.magbadge {
+  position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 108px); display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px 5px 7px; border-radius: 999px; background: color-mix(in srgb, var(--night) 82%, transparent); box-shadow: inset 0 0 0 2px #7ad8ff;
+  color: var(--chalk); font: 800 13px var(--font-jp); animation: magpulse .8s ease-in-out infinite alternate;
+}
+.magbadge b { font: 18px/1 var(--font-num); color: #9ae4ff; min-width: 1.2em; text-align: right; }
+.mag-ico { width: 18px; height: 16px; border: 5px solid #e8283c; border-top: 0; border-radius: 0 0 10px 10px; border-right-color: #2a6bff; box-sizing: border-box; }
+@keyframes magpulse { to { box-shadow: inset 0 0 0 2px #7ad8ff, 0 0 14px rgba(122,216,255,.6); } }
 .pop {
   position: absolute; font: 26px/1 var(--font-num); color: var(--gold);
   text-shadow: 0 3px 0 #3b1f00; transform: translate(-50%, -50%);
@@ -322,6 +330,7 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
   <div class="arrow" id="veinArrow" hidden><span>鉱脈</span></div>
   <div class="chain" id="chain" style="opacity:0">連続 0</div>
   <div class="fever" id="fever"><div class="lbl" id="feverLbl">FEVER</div><div class="track"><i id="feverBar"></i></div></div>
+  <div class="magbadge" id="magBadge" hidden><span class="mag-ico" aria-hidden="true"></span>磁石 <b>10</b></div>
   <button class="dash" id="dash" type="button" aria-label="ダッシュ（スペースキー）">ダッシュ<small id="dashCd"></small></button>
   <div class="stick" id="stick" hidden><i id="knob"></i></div>
   <div id="pops"></div>
@@ -427,8 +436,8 @@ const MINES = [
     // terrain per area. rock = solid; c: [x, z, r] circle, r: [x0, x1, z0, z1] rectangle
     terrain: [
       [{ k: "rock", c: [-8, 2, 1.2] }],
-      [{ k: "rock", r: [-14, -3, -24.5, -22.5] }],
-      [{ k: "rock", c: [-9, -46, 1.5] }, { k: "rock", c: [-3, -49, 1.2] }, { k: "rock", c: [2, -44, 1.3] }, { k: "rock", c: [-7, -53, 1.3] }],
+      [{ k: "rock", r: [-14, -3, -24.5, -22.5] }, { k: "high", r: [-14, -5, -33.5, -27.5], h: 1.5 }, { k: "ramp", r: [-5, -2.6, -33, -29.5], dir: [1, 0], h: 1.5 }],
+      [{ k: "rock", c: [-6, -44.5, 1.3] }, { k: "rock", c: [2, -44, 1.3] }, { k: "high", r: [-14, -4, -57.5, -50], h: 1.6 }, { k: "ramp", r: [-12.5, -9, -50, -46.5], dir: [0, 1], h: 1.6 }],
       [],
     ],
   },
@@ -444,7 +453,7 @@ const MINES = [
     intro: "床が凍っていて、鉱石もブルドーザーもよく滑る！ 氷の穴に落ちた鉱石は戻ってこない",
     terrain: [
       [{ k: "rock", c: [-5, 0, 1.5] }],
-      [{ k: "rock", r: [-14, -4, -20, -18.5] }, { k: "rock", r: [-8, 7, -27.5, -26] }],
+      [{ k: "rock", r: [-14, -4, -20, -18.5] }, { k: "rock", r: [-8, 7, -27.5, -26] }, { k: "high", r: [-14, -5, -33.5, -28.5], h: 1.5 }, { k: "ramp", r: [-5, -2.6, -33, -29.5], dir: [1, 0], h: 1.5 }],
       [{ k: "pit", c: [-6, -47, 2.2] }, { k: "rock", c: [2, -52, 1.2] }, { k: "pit", c: [-11, -54, 1.6] }],
       [{ k: "pit", c: [-7, -64, 1.4] }, { k: "pit", c: [7, -64, 1.4] }],
     ],
@@ -477,7 +486,7 @@ const MINES = [
     ],
     intro: "流砂に注意！ 入ると遅くなり、鉱石は沈んでしまう。ピラミッドの周りを回り込もう",
     terrain: [
-      [{ k: "sand", c: [-6, 1, 2.6] }, { k: "obelisk", c: [2.5, -2, 0.8] }],
+      [{ k: "sand", c: [-6, 1, 2.6] }, { k: "obelisk", c: [2.5, -2, 0.8] }, { k: "high", r: [-14, -6, -9.5, -4.5], h: 1.5 }, { k: "ramp", r: [-12, -8.5, -4.5, -1.8], dir: [0, 1], h: 1.5 }],
       [{ k: "pyramid", r: [-11, -1.6, -28.5, -19] }, { k: "sand", r: [-14, -11.6, -32.5, -29.8] }],
       [{ k: "rock", r: [-14, -2, -44.5, -43] }, { k: "rock", r: [-8, 7, -50.5, -49] }, { k: "sand", c: [-9, -54.5, 1.8] }, { k: "obelisk", c: [4, -46, 0.8] }],
       [{ k: "sand", c: [-7, -64, 1.8] }, { k: "sand", c: [7, -64, 1.8] }],
@@ -545,7 +554,7 @@ const MINES = [
     ],
     intro: "石の大玉が通路を転がって往復している。タイミングを見て通り抜けよう",
     terrain: [
-      [{ k: "mover", path: [-11, -2.5, -2.5, -2.5], c: [-11, -2.5, 1], period: 6 }, { k: "rock", c: [-7, 4.5, .9] }],
+      [{ k: "mover", path: [-11, -2.5, -2.5, -2.5], c: [-11, -2.5, 1], period: 6 }, { k: "rock", c: [-7, 4.5, .9] }, { k: "high", r: [-14, -6, -9.5, -4.5], h: 1.5 }, { k: "ramp", r: [-6, -3, -9.2, -6], dir: [1, 0], h: 1.5 }],
       [{ k: "mover", path: [-10.8, -21, 5, -21], c: [-10.8, -21, 1.1], period: 7 }, { k: "mover", path: [5, -29, -10.8, -29], c: [5, -29, 1.1], period: 5 }, { k: "rock", c: [-8, -25, 1] }],
       [{ k: "mover", path: [-11, -43.5, -11, -53.5], c: [-11, -43.5, 1], period: 6 }, { k: "mover", path: [4, -53.5, 4, -43.5], c: [4, -53.5, 1], period: 4.5 }, { k: "rock", c: [-4, -47, .9] }, { k: "rock", c: [-4, -51.5, .9] }],
       [{ k: "mover", path: [-7, -62.5, 7, -62.5], c: [-7, -62.5, .9], period: 6 }],
@@ -708,6 +717,7 @@ function distToRects(x, z, rects) {
   return best;
 }
 
+let groundTex = null;
 function buildGround() {
   const cv = document.createElement("canvas"); cv.width = cv.height = 256;
   const g = cv.getContext("2d");
@@ -721,6 +731,7 @@ function buildGround() {
     for (let i = 0; i < 40; i++) { g.beginPath(); const x = rand(0, 256), y = rand(0, 256); g.moveTo(x, y); g.lineTo(x + rand(-40, 40), y + rand(-20, 20)); g.stroke(); }
   }
   const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(14, 22); t.encoding = THREE.sRGBEncoding;
+  groundTex = t;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(90, 140), new THREE.MeshStandardMaterial({ map: t, roughness: M.slip ? .35 : .95, metalness: 0, color: M.groundTint, envMapIntensity: M.slip ? .6 : .25 }));
   m.rotation.x = -Math.PI / 2; m.position.set(0, 0, -30); m.receiveShadow = true;
   add(m);
@@ -943,6 +954,52 @@ function updateMovers() {
     o.c[0] = p[0] + (p[2] - p[0]) * ph; o.c[1] = p[1] + (p[3] - p[1]) * ph;
   }
 }
+// raised ground: "high" = flat plateau with cliff edges, "ramp" = slope (dir points downhill).
+// Things can always drop off a cliff, but can only climb a little per step, so cliffs act as walls from below.
+let ELEV = [], RAMPS = [];
+const CLIMB = 0.35, ELEV_K = { high: 1, ramp: 1 };
+function heightAt(x, z) {
+  let h = 0;
+  for (const o of ELEV) {
+    const r = o.r;
+    if (x <= r[0] || x >= r[1] || z <= r[2] || z >= r[3]) continue;
+    let u = 1;
+    if (o.k === "ramp") u = o.dir[0] > 0 ? (r[1] - x) / (r[1] - r[0]) : o.dir[0] < 0 ? (x - r[0]) / (r[1] - r[0]) : o.dir[1] > 0 ? (r[3] - z) / (r[3] - r[2]) : (z - r[2]) / (r[3] - r[2]);
+    if (o.h * u > h) h = o.h * u;
+  }
+  return h;
+}
+// ore after a move: refuse climbs (sliding along the cliff when possible) and remember the ground height
+function elevOre(i) {
+  const lim = heightAt(PX[i], PZ[i]) + CLIMB;
+  let h = heightAt(X[i], Z[i]);
+  if (h > lim) {
+    if ((h = heightAt(X[i], PZ[i])) <= lim) Z[i] = PZ[i];
+    else if ((h = heightAt(PX[i], Z[i])) <= lim) X[i] = PX[i];
+    else { X[i] = PX[i]; Z[i] = PZ[i]; h = lim - CLIMB; }
+  }
+  GT[i] = h;
+}
+// a dozer stands on the highest of a few points under it (body and blade)
+const FOOT = [[0, 0], [1.5, 0], [-0.9, 0], [0.3, 0.75], [0.3, -0.75]];
+function dozerFoot(x, z, hd) {
+  const s = Math.sin(hd), c = Math.cos(hd); let m = 0;
+  for (const [f, l] of FOOT) { const v = heightAt(x + s * f + c * l, z + c * f - s * l); if (v > m) m = v; }
+  return m;
+}
+function dozerElev(d, ox, oz, oh) {
+  const lim = (d.gh || 0) + CLIMB;
+  let h = dozerFoot(d.x, d.z, d.h);
+  if (h > lim) {
+    if ((h = dozerFoot(d.x, oz, d.h)) <= lim) { d.z = oz; d.vz = 0; }
+    else if ((h = dozerFoot(ox, d.z, d.h)) <= lim) { d.x = ox; d.vx = 0; }
+    else if ((h = dozerFoot(ox, oz, d.h)) <= lim) { d.x = ox; d.z = oz; d.vx = d.vz = 0; }
+    else if ((h = dozerFoot(ox, oz, oh)) <= lim) { d.x = ox; d.z = oz; d.h = oh; d.vx = d.vz = 0; }
+    else h = d.gh || 0;          // already wedged in (pushed by another dozer): let it drive out
+  }
+  d.gh = h;
+}
+function rampAt(x, z) { for (const o of RAMPS) if (x > o.r[0] && x < o.r[1] && z > o.r[2] && z < o.r[3]) return o; return null; }
 const LOST_SINK = 255;
 function inShape(o, x, z, m) {
   if (o.c) { const dx = x - o.c[0], dz = z - o.c[1], rr = o.c[2] + m; return dx * dx + dz * dz < rr * rr; }
@@ -976,6 +1033,7 @@ function buildTerrain() {
       }
     } else OBS.push(Object.assign({ area, alive: true, id: OBS.length }, t));
   }));
+  ELEV = OBS.filter(o => ELEV_K[o.k]); RAMPS = ELEV.filter(o => o.k === "ramp");
   const rockGeo = new THREE.BoxGeometry(1, 1, 1, 4, 4, 4);
   { const p = rockGeo.attributes.position, v = new THREE.Vector3(), n = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); n.copy(v).normalize().multiplyScalar(0.62); v.lerp(n, 0.45); p.setXYZ(i, v.x, v.y, v.z); }
@@ -987,7 +1045,43 @@ function buildTerrain() {
   const crystalMat = new THREE.MeshStandardMaterial({ color: 0xb98aff, metalness: .3, roughness: .05, emissive: 0x3a1080, flatShading: true });
   const mk = (geo, mat, x, y, z, sx, sy, sz, ry) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.y = ry || 0; m.castShadow = m.receiveShadow = true; add(m); return m; };
   const bushes = [];
+  const cliffMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(M.rock[0], M.rock[1], M.rock[2] * .78), roughness: .85, flatShading: true });
+  const lipMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(M.rock[0], M.rock[1] * .8, Math.min(.85, M.rock[2] + .16)), roughness: .7 });
+  const topMat = (w, d) => { const t = groundTex.clone(); t.needsUpdate = true; t.repeat.set(w * 14 / 90, d * 22 / 140); return new THREE.MeshStandardMaterial({ map: t, color: new THREE.Color(M.groundTint).offsetHSL(0, 0, .05), roughness: M.slip ? .35 : .9 }); };
   for (const o of OBS) {
+    if (o.k === "high" || o.k === "ramp") {
+      const w = o.r[1] - o.r[0], dp = o.r[3] - o.r[2], mx = (o.r[0] + o.r[1]) / 2, mz = (o.r[2] + o.r[3]) / 2;
+      const hi = o.k === "high", g = new THREE.BoxGeometry(w, 1, dp, hi ? Math.ceil(w * 1.6) : 1, hi ? 3 : 1, hi ? Math.ceil(dp * 1.6) : 1); g.translate(0, .5, 0);
+      const p = g.attributes.position;
+      for (let k = 0; k < p.count; k++) {
+        const x = p.getX(k), y = p.getY(k), z = p.getZ(k);
+        p.setY(k, y * (hi ? o.h : heightAt(mx + clamp(x, -w / 2 + 1e-3, w / 2 - 1e-3), mz + clamp(z, -dp / 2 + 1e-3, dp / 2 - 1e-3))));
+        if (!hi || y < .01 || y > .99) continue;
+        // bulge the cliff faces so plateaus look carved out of rock, not boxed
+        const n = .08 + .16 * (Math.abs(Math.sin((mx + x) * 3.1 + (mz + z) * 1.7 + y * 5.3) * 43758.5) % 1);
+        if (Math.abs(Math.abs(x) - w / 2) < 1e-3) p.setX(k, x + Math.sign(x) * n);
+        if (Math.abs(Math.abs(z) - dp / 2) < 1e-3) p.setZ(k, z + Math.sign(z) * n);
+      }
+      g.computeVertexNormals();
+      const top = topMat(w, dp), m = new THREE.Mesh(g, [cliffMat, cliffMat, top, cliffMat, cliffMat, cliffMat]);
+      m.position.set(mx, 0, mz); m.castShadow = m.receiveShadow = true; add(m);
+      if (o.k === "high") {      // a lighter lip marks the cliff edge
+        for (const [lx, lz, lw, ld] of [[mx, o.r[2], w, .22], [mx, o.r[3], w, .22], [o.r[0], mz, .22, dp], [o.r[1], mz, .22, dp]]) {
+          const lip = new THREE.Mesh(new THREE.BoxGeometry(lw + .1, .14, ld + .1), lipMat); lip.position.set(lx, o.h + .02, lz); lip.receiveShadow = true; add(lip);
+        }
+      } else {                    // chevrons pointing uphill
+        const L = labelTex(64, 64), cg = L.g; cg.clearRect(0, 0, 64, 64); cg.strokeStyle = "rgba(255,230,140,.75)"; cg.lineWidth = 7; cg.lineCap = "round";
+        cg.beginPath(); cg.moveTo(12, 44); cg.lineTo(32, 22); cg.lineTo(52, 44); cg.stroke();
+        const along = o.dir[0] ? w : dp, n = Math.max(1, Math.round(along / 1.2));
+        for (let k = 0; k < n; k++) {
+          const u = (k + .5) / n, px = o.dir[0] ? (o.dir[0] > 0 ? o.r[1] - u * w : o.r[0] + u * w) : mx, pz = o.dir[1] ? (o.dir[1] > 0 ? o.r[3] - u * dp : o.r[2] + u * dp) : mz;
+          const ch = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: L.t, transparent: true, depthWrite: false }));
+          ch.position.set(px, heightAt(px, pz) + .04, pz);
+          ch.rotation.order = "YXZ"; ch.rotation.y = Math.atan2(-o.dir[0], -o.dir[1]); ch.rotation.x = -Math.PI / 2 + Math.atan2(o.h, along); add(ch);
+        }
+      }
+      continue;
+    }
     if (o.k === "rock") {
       if (o.c) {
         mk(rockGeo, rockMat, o.c[0], 1.2, o.c[1], o.c[2] * 2.1, 2.4 + o.c[2] * .6, o.c[2] * 2.1, o.c[0]);
@@ -1091,7 +1185,7 @@ function dozerTerrain(d, dt) {
   const s = Math.sin(d.h), c = Math.cos(d.h), sc = d.inner ? d.inner.zb + 0.4 : 1.4;
   const circles = [[0, 0.95], [sc, d.inner ? Math.min(1.2, d.inner.a * 0.6) : .8]];
   for (const o of OBS) {
-    if (!o.alive || o.k === "sand" || FLOWING[o.k]) continue;
+    if (!o.alive || o.k === "sand" || FLOWING[o.k] || ELEV_K[o.k]) continue;
     for (const [off, pr] of circles) {
       const px = d.x + s * off, pz = d.z + c * off;
       if (!pushOut(o, px, pz, pr)) continue;
@@ -1110,6 +1204,8 @@ function dozerTerrain(d, dt) {
 }
 function terrainSpeed(d) {
   for (const o of OBS) if (o.k === "sand" && inShape(o, d.x, d.z, 0)) return 0.45;
+  const r = RAMPS.length && rampAt(d.x, d.z);
+  if (r && Math.sin(d.h) * r.dir[0] + Math.cos(d.h) * r.dir[1] < -.3) return 0.72;      // driving uphill
   return 1;
 }
 function terrainFlow(d, dt) {
@@ -1131,7 +1227,7 @@ function oreTerrain(i, dt) {
 }
 function terrainBlocksSpawn(x, z) {
   for (const o of OBS) {
-    if (!o.alive) continue;
+    if (!o.alive || o.k === "high") continue;
     if (o.k === "vortex") { if (Math.hypot(x - o.c[0], z - o.c[1]) < o.c[2] * 2.4 + .5) return true; continue; }
     if (o.k === "mover") { const p = o.path, vx = p[2] - p[0], vz = p[3] - p[1], L2 = vx * vx + vz * vz || 1, t = clamp(((x - p[0]) * vx + (z - p[1]) * vz) / L2, 0, 1); if (Math.hypot(x - p[0] - vx * t, z - p[1] - vz * t) < o.c[2] + .7) return true; continue; }
     if (inShape(o, x, z, 0.7)) return true;
@@ -1210,6 +1306,153 @@ function openChest(s) {
   toast("宝箱！ " + big, small); sfx.buy(); shake(.3); buzz(40);
   for (let k = 0; k < 40; k++) emit(s.x, .5, s.z, rand(-3, 3), rand(5, 10), rand(-3, 3), 1, .9, .3, rand(.6, 1.2));
   writeSave();
+}
+
+// ---------- ore sculptures: ore stacked into big shapes that come crashing down when a dozer drives in ----------
+const SHAPES = {
+  // [tier, builder(addPoint)] — points are (x, y, z) offsets, y up from the ground
+  cube: [0, add => { const n = 7, s = .36; for (let y = 0; y < n; y++) for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) add((a - (n - 1) / 2) * s, y * s, (b - (n - 1) / 2) * s); }],
+  dome: [1, add => { const R = 2.5, s = .58; for (let y = 0; y < R; y += s * .82) { const rr = Math.sqrt(R * R - y * y), off = (y / (s * .82)) % 2 ? s / 2 : 0; for (let a = -rr; a <= rr; a += s) for (let b = -rr; b <= rr; b += s * .87) { const x = a + off, z = b; if (x * x + z * z <= rr * rr) add(x, y, z); } } }],
+  pyramid: [2, add => { const s = .54; for (let L = 0; L < 8; L++) { const n = 8 - L; for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) add((a - (n - 1) / 2) * s, L * s * .8, (b - (n - 1) / 2) * s); } }],
+  tower: [1, add => { const R = 2.2, n = 24; for (const y of [0, .55, 1.65, 2.2, 3.3, 3.85]) for (let k = 0; k < n; k++) { const a = k / n * TAU + (y > 1 ? .13 : 0); add(Math.cos(a) * R, y, Math.sin(a) * R); }
+    for (const y of [1.1, 2.75]) for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; add(Math.cos(a) * R, y, Math.sin(a) * R); } }],
+};
+const SHAPE_R = { cube: 1.4, dome: 2.6, pyramid: 2.2, tower: 2.5 };
+const AREA_SHAPES = [["cube", "dome"], ["dome", "tower", "cube"], ["pyramid", "tower", "dome"]];
+let SCULPTS = [];
+function sculptSpot(area, R) {
+  const A = AREAS[area].rect;
+  for (let tries = 0; tries < 80; tries++) {
+    const x = rand(A[0] + R + .6, A[1] - R - .6), z = rand(A[2] + R + .6, A[3] - R - .6);
+    let bad = Math.abs(x - 9.3) < R + 2.4;                                                   // furnace + belt lane
+    for (const p of PADS) if (!bad && Math.abs(x - p.x) < p.half + R + .6 && Math.abs(z - p.z) < p.half + R + .6) bad = true;
+    for (const g of GATE_Z) if (!bad && Math.abs(x) < R + 3 && Math.abs(z - g) < R + 4.5) bad = true;
+    for (const d of DOZERS) if (!bad && Math.hypot(d.x - x, d.z - z) < R + 3) bad = true;
+    for (const o of SCULPTS) if (!bad && o.ids.length && Math.hypot(o.x - x, o.z - z) < R + o.R + 2) bad = true;
+    if (bad) continue;
+    const h0 = ELEV.length ? heightAt(x, z) : 0;
+    for (let k = 0; k <= 12 && !bad; k++) {
+      const a = k / 12 * TAU, rr = k === 12 ? 0 : R + .4, px = x + Math.cos(a) * rr, pz = z + Math.sin(a) * rr;
+      if (terrainBlocksSpawn(px, pz) || (ELEV.length && Math.abs(heightAt(px, pz) - h0) > .01)) bad = true;
+    }
+    if (!bad) return [x, z, h0];
+  }
+  return null;
+}
+function buildSculpt(sc) {
+  const list = AREA_SHAPES[sc.area], shape = list[(Math.random() * list.length) | 0], [t, gen] = SHAPES[shape], R = SHAPE_R[shape];
+  const spot = sculptSpot(sc.area, R);
+  if (!spot) return false;
+  const [x, z, h0] = spot, ids = [], rot = rand(0, TAU), c = Math.cos(rot), s = Math.sin(rot);
+  gen((lx, ly, lz) => {
+    const i = spawnOreAt(t, x + lx * c - lz * s + rand(-.03, .03), z + lx * s + lz * c + rand(-.03, .03), sc.area, true, 0, 0);
+    if (i < 0) return;
+    ST[i] = 3; ACT[i] = 0; HY[i] = h0 + ly; SC[i] = -ly * .45 - Math.random() * .3;      // builds up from the bottom
+    ids.push(i);
+  });
+  Object.assign(sc, { x, z, R, shape, ids, hit: false });
+  return ids.length > 0;
+}
+function releaseOre(i, fx, fz) {
+  const g = ELEV.length ? heightAt(X[i], Z[i]) : 0;
+  ST[i] = 1; ACT[i] = 1; DIRTY[i] = 1; SC[i] = 1; KT[i] = .3;
+  GY[i] = GT[i] = g; YH[i] = Math.max(0, HY[i] - g);
+  const dx = X[i] - fx, dz = Z[i] - fz, l = Math.hypot(dx, dz) || 1, sp = rand(.5, 2.5);
+  VX[i] = dx / l * sp + rand(-.6, .6); VZ[i] = dz / l * sp + rand(-.6, .6);
+}
+let sculptClink = 0;
+function updateSculpts(dt) {
+  if (ARENA) return;
+  sculptClink -= dt;
+  for (const sc of SCULPTS) {
+    if (!sc.ids.length) {
+      sc.cd -= dt;
+      if (sc.cd <= 0 && !S.cleared) {
+        if (buildSculpt(sc)) { if (dt > 0 && sc.area <= S.gates) { toast("鉱石オブジェ出現！", "突っ込んで崩そう"); sfx.gate(); } }
+        else sc.cd = 5;
+      }
+      continue;
+    }
+    let n = 0;
+    for (const d of DOZERS) {
+      if (!d.inner) continue;
+      const s = Math.sin(d.h), c = Math.cos(d.h), f = d.inner.zb + .45, fx = d.x + s * f, fz = d.z + c * f;
+      if (Math.hypot(fx - sc.x, fz - sc.z) > sc.R + d.inner.a + 1.5) continue;
+      const r1 = (d.inner.a * .85 + .35) ** 2, r2 = 1.25 * 1.25;
+      for (const i of sc.ids) {
+        if (ST[i] !== 3) continue;
+        const ax = X[i] - fx, az = Z[i] - fz, bx = X[i] - d.x, bz = Z[i] - d.z;
+        if (ax * ax + az * az < r1 || bx * bx + bz * bz < r2) { releaseOre(i, d.x, d.z); n++; }
+      }
+      if (n && d.isPlayer && !sc.hit) { sc.hit = true; popAt(sc.x, 4.5, sc.z, "ドーン！", "big", 30); shake(.4); buzz(40); }
+    }
+    if (n) {
+      sc.ids = sc.ids.filter(i => ST[i] === 3);
+      if (sculptClink <= 0) { sculptClink = .07; tone(rand(700, 1300), .08, "triangle", .05 + Math.min(.08, n * .004), 0, .3); hiss(.12, .05, 3000, 0, .8); }
+      if (!sc.ids.length) { sc.cd = rand(50, 80); sfx.buy(); }
+    }
+  }
+}
+
+// ---------- magnet pickup: for a while, ore around the blade is pulled into it ----------
+const MAG = { t: 0, cd: 25, item: null, grp: null, ring: null, life: 0 };
+const MAG_TIME = 10;
+function makeMagnet() {
+  const grp = new THREE.Group(), body = new THREE.Group();
+  const red = new THREE.MeshStandardMaterial({ color: 0xe8283c, roughness: .35, metalness: .3, emissive: 0x3a0008 });
+  const blue = new THREE.MeshStandardMaterial({ color: 0x2a6bff, roughness: .35, metalness: .3, emissive: 0x000a3a });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xe8ecf4, roughness: .2, metalness: .9 });
+  for (const [m, a0] of [[red, 0], [blue, Math.PI / 2]]) { const t = new THREE.Mesh(new THREE.TorusGeometry(.55, .2, 10, 16, Math.PI / 2), m); t.rotation.z = Math.PI + a0; body.add(t); }
+  for (const sx of [-1, 1]) { const tip = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .34, 12), steel); tip.position.set(sx * .55, .17, 0); body.add(tip); }
+  body.position.y = .2; grp.add(body);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1, 1.25, 40), new THREE.MeshBasicMaterial({ color: 0x7ad8ff, transparent: true, opacity: .7, depthWrite: false, blending: THREE.AdditiveBlending }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = .06;
+  const pull = new THREE.Mesh(new THREE.RingGeometry(.92, 1, 64), new THREE.MeshBasicMaterial({ color: 0x9ad8ff, transparent: true, opacity: .5, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pull.rotation.x = -Math.PI / 2; pull.visible = false; add(pull);
+  grp.add(ring); grp.visible = false; add(grp);
+  Object.assign(MAG, { t: 0, cd: ARENA || S.boss != null ? 12 : 25, item: null, grp, body, pull, life: 0 });
+}
+const magBadge = document.getElementById("magBadge");
+function updateMagnet(dt) {
+  if (!MAG.grp || !player) return;
+  if (MAG.t > 0) {
+    MAG.t -= dt;
+    const r = 4.6 + S.scoop * .5, k = MAG.t < 2 ? (Math.sin(time * 18) > 0 ? 1 : .3) : 1;
+    MAG.pull.visible = true; MAG.pull.scale.setScalar(r * (1 - (time * .8 % 1) * .7)); MAG.pull.material.opacity = .5 * k;
+    MAG.pull.position.set(MG.x || player.x, (player.gy || 0) + .08, MG.z || player.z);
+    if (Math.random() < dt * 30) { const a = rand(0, TAU), rr = rand(2, r); emit(MG.x + Math.cos(a) * rr, (player.gy || 0) + .5, MG.z + Math.sin(a) * rr, -Math.cos(a) * rr * 1.6, .5, -Math.sin(a) * rr * 1.6, .55, .85, 1, .5, 0); }
+    if (MAG.t <= 0) { MAG.t = 0; MAG.pull.visible = false; }
+  }
+  magBadge.hidden = !(MAG.t > 0);
+  if (MAG.t > 0) { const v = String(Math.ceil(MAG.t)); if (magBadge.lastChild.textContent !== v) magBadge.lastChild.textContent = v; }
+  if (S.cleared || (ARENA && ARENA.result)) { if (MAG.item) { MAG.item = null; MAG.grp.visible = false; } return; }
+  const it = MAG.item;
+  if (it) {
+    it.life -= dt;
+    MAG.grp.visible = it.life > 3 || Math.sin(time * 14) > 0;
+    MAG.body.rotation.y += dt * 2.4; MAG.body.position.y = 1 + Math.sin(time * 3) * .2;
+    MAG.grp.position.set(it.x, it.y, it.z);
+    if (Math.random() < dt * 8) emit(it.x + rand(-.5, .5), it.y + 1, it.z + rand(-.5, .5), 0, rand(1, 2), 0, .6, .85, 1, .6, -.5);
+    if (Math.hypot(player.x - it.x, player.z - it.z) < 1.9) {
+      MAG.item = null; MAG.grp.visible = false; MAG.t = MAG_TIME;
+      toast("磁石！", `${MAG_TIME}秒間、まわりの鉱石を吸い寄せる`); sfx.buy(); buzz([20, 20, 40]); shake(.2);
+    } else if (it.life <= 0) { MAG.item = null; MAG.grp.visible = false; }
+    return;
+  }
+  if (MAG.t > 0) return;
+  MAG.cd -= dt;
+  if (MAG.cd > 0) return;
+  MAG.cd = rand(40, 65);
+  let spot = null;
+  for (let k = 0; k < 20 && !spot; k++) {
+    let p;
+    if (ARENA) { const x = rand(ARENA_RECT[0] + 2, ARENA_RECT[1] - 2), z = rand(ARENA_RECT[2] + 2, ARENA_RECT[3] - 2); p = Math.hypot(x - ARENA.dragon.x, z - ARENA.dragon.z) > 6 * ARENA.lair.scale ? [x, z] : null; }
+    else { const a = areaOf(player.z); p = a <= S.gates ? spawnSpot(a, true) : null; }
+    if (p && Math.hypot(p[0] - player.x, p[1] - player.z) > 4) spot = p;
+  }
+  if (!spot) { MAG.cd = 5; return; }
+  MAG.item = { x: spot[0], z: spot[1], y: ELEV.length ? heightAt(spot[0], spot[1]) : 0, life: 25 };
+  MAG.grp.visible = true;
 }
 
 // ---------- missions ----------
@@ -1342,6 +1585,7 @@ const X = new Float32Array(N), Z = new Float32Array(N), PX = new Float32Array(N)
 const VX = new Float32Array(N), VZ = new Float32Array(N), RR = new Float32Array(N);
 const RA = new Float32Array(N), RB = new Float32Array(N), RY = new Float32Array(N), SC = new Float32Array(N), TT = new Float32Array(N);
 const KT = new Float32Array(N), YH = new Float32Array(N), INS = new Uint8Array(N);
+const GY = new Float32Array(N), GT = new Float32Array(N), HY = new Float32Array(N);   // ground height shown / target, height of a pinned (sculpture) ore
 const QS = new Float32Array(N), CVX = new Float32Array(N), CVZ = new Float32Array(N);   // CV: carry by belts/rivers this step              // seconds an ore has spent in quicksand              // seconds of "just pushed by a dozer" (ice glide)
 const ST = new Uint8Array(N), ACT = new Uint8Array(N), DIRTY = new Uint8Array(N), AR = new Uint8Array(N), FI = new Uint8Array(N);
 let free = [[], [], [], [], []], areaCount = [0, 0, 0, 0], oreMeshes = [];
@@ -1438,6 +1682,7 @@ function spawnOreAt(t, x, z, area, pop, vx, vz) {
   RR[i] = RAD[t] * rand(0.85, 1.15);
   RA[i] = rand(0, TAU); RB[i] = rand(0, TAU); RY[i] = rand(0, TAU);
   if (t === CHEST) { RA[i] = RB[i] = 0; }
+  GY[i] = GT[i] = ELEV.length ? heightAt(x, z) : 0;
   SC[i] = pop ? 0.02 : 1; KT[i] = 0; YH[i] = 0; INS[i] = 0; QS[i] = 0; ST[i] = 1; ACT[i] = 1; DIRTY[i] = 1; AR[i] = area; areaCount[area]++;
   return i;
 }
@@ -1482,7 +1727,8 @@ function makeDozer(isPlayer) {
   for (const sx of [-1, 1]) box(0.14, 0.14, 0.6, paint, sx * 0.4, 0.55, 0.75);
   const scoopGrp = new THREE.Group(); grp.add(scoopGrp);
   add(grp);
-  const d = { stun: 0, isPlayer, x: 0, z: 0, h: Math.PI, speed: 0, vx: 0, vz: 0, grp, scoopGrp, paint, stripe, segs: [], reach: 3, inner: null, load: 0, lv: -1, ai: { state: "seek", t: 0, target: -1, tx: 0, tz: 0, sink: null }, bob: Math.random() * 10 };
+  grp.rotation.order = "YXZ";
+  const d = { gh: 0, gy: 0, pitch: 0, stun: 0, isPlayer, x: 0, z: 0, h: Math.PI, speed: 0, vx: 0, vz: 0, grp, scoopGrp, paint, stripe, segs: [], reach: 3, inner: null, load: 0, lv: -1, ai: { state: "seek", t: 0, target: -1, tx: 0, tz: 0, sink: null }, bob: Math.random() * 10 };
   DOZERS.push(d); return d;
 }
 function buildScoop(d, lv) {
@@ -1672,7 +1918,7 @@ function updateFx(dt) {
   // treasure chests sparkle so they stand out in a pile
   for (let i = OFF[CHEST]; i < N; i++) if (ST[i] === 1 && Math.random() < dt * 7) {
     const a = rand(0, TAU), r = RR[i] * rand(.6, 1.4);
-    emit(X[i] + Math.cos(a) * r, RR[i] * 1.6 + YH[i], Z[i] + Math.sin(a) * r, 0, rand(.6, 1.4), 0, 1, .85, .35, rand(.5, .9), -.5);
+    emit(X[i] + Math.cos(a) * r, RR[i] * 1.6 + YH[i] + GY[i], Z[i] + Math.sin(a) * r, 0, rand(.6, 1.4), 0, 1, .85, .35, rand(.5, .9), -.5);
   }
   // glitter in front of a loaded scoop
   for (const d of DOZERS) {
@@ -1719,6 +1965,7 @@ function keyInput() {
 
 // ---------- driving ----------
 function drive(d, ix, iz, mag, reverse, dt) {
+  const ox = d.x, oz = d.z, oh = d.h;
   const boost = (d.isPlayer && FX.dash > 0 ? 2.4 : 1) * (FX.fever > 0 ? 1.25 : 1);
   const maxSpd = (d.isPlayer ? 5.4 + S.speed * 1.2 : 3.4 + S.speed * 0.5) * boost * terrainSpeed(d);
   const load = FX.dash > 0 && d.isPlayer ? 1 : 1 / (1 + d.load * 0.0028);
@@ -1749,6 +1996,7 @@ function drive(d, ix, iz, mag, reverse, dt) {
   terrainFlow(d, dt);
   dozerTerrain(d, dt);
   if (clampPt(d.x, d.z, 0.9)) { d.x = cx; d.z = cz; d.vx *= 0.5; d.vz *= 0.5; }
+  if (ELEV.length) dozerElev(d, ox, oz, oh);
 }
 // head for (tx, tz), routing through the gate when it is in another area
 function navTo(d, tx, tz) {
@@ -1914,8 +2162,11 @@ function solvePairs() {
     }
   }
 }
+const MG = { on: false, x: 0, z: 0, r: 0, r2: 0, sp: 9 };
 function step(dt) {
   simT += dt; updateMovers();
+  MG.on = MAG.t > 0 && !!player && !S.cleared;
+  if (MG.on) { const f = player.inner.zb + .75; MG.x = player.x + Math.sin(player.h) * f; MG.z = player.z + Math.cos(player.h) * f; MG.r = 4.6 + S.scoop * .5; MG.r2 = MG.r * MG.r; }
   for (const d of DOZERS) {
     if (d.isPlayer) {
       if (S.cleared) { drive(d, 0, 0, 0, false, dt); continue; }
@@ -1941,6 +2192,14 @@ function step(dt) {
         CVZ[i] += BELT_SPEED * dt; CVX[i] += (b.x - X[i]) * dt * 1.5; Z[i] += BELT_SPEED * dt; X[i] += (b.x - X[i]) * dt * 1.5; ACT[i] = 1; break;
       }
     }
+    if (RAMPS.length) { const r = rampAt(X[i], Z[i]); if (r) { const v = 2.2 * dt; CVX[i] += r.dir[0] * v; CVZ[i] += r.dir[1] * v; X[i] += r.dir[0] * v; Z[i] += r.dir[1] * v; ACT[i] = 1; } }
+    if (MG.on && (i < BIG || i >= OFF[CHEST])) {
+      const dx = MG.x - X[i], dz = MG.z - Z[i], d2 = dx * dx + dz * dz;
+      if (d2 < MG.r2 && d2 > .3) {
+        const dd = Math.sqrt(d2), v = Math.min(dd - .45, MG.sp * (1.25 - dd / MG.r) * dt) / dd;
+        X[i] += dx * v; Z[i] += dz * v; CVX[i] += dx * v; CVZ[i] += dz * v; ACT[i] = 1;
+      }
+    }
   }
   buildGrid();
   for (const d of DOZERS) collideDozer(d);
@@ -1951,6 +2210,7 @@ function step(dt) {
     if (ST[i] !== 1) continue;
     if (ACT[i] || X[i] !== PX[i] || Z[i] !== PZ[i]) {
       if (clampPt(X[i], Z[i], RR[i])) { X[i] = cx; Z[i] = cz; }
+      if (ELEV.length) elevOre(i);
       if (OBS.length && oreTerrain(i, dt)) continue;
       const s = sinkFor(Z[i], X[i]);
       if (s.area <= S.gates && Math.abs(X[i] - s.x) < s.hx - 0.12 && Math.abs(Z[i] - s.z) < s.hz - 0.12) {
@@ -1980,7 +2240,8 @@ function step(dt) {
     // stack height from how crowded this ore's cell is (only while held in a scoop)
     const c = CELL[i], crowd = c >= 0 ? cellStart[c + 1] - cellStart[c] : 0;
     const ty = INS[i] ? Math.min(1.1, Math.max(0, crowd - 3) * 0.1) * (0.6 + 0.4 * ((i * 7919) % 10) / 10) : 0;
-    if (Math.abs(ty - YH[i]) > 0.003) { YH[i] += (ty - YH[i]) * 0.2; DIRTY[i] = 1; }
+    if (Math.abs(ty - YH[i]) > 0.003) { YH[i] = YH[i] - ty > .3 ? YH[i] - .09 : YH[i] + (ty - YH[i]) * 0.2; DIRTY[i] = 1; }     // falls from a sculpture, settles in a scoop
+    if (GY[i] !== GT[i]) { const g = GT[i] - GY[i]; GY[i] = g > 0 || g > -.02 ? GT[i] : GY[i] + Math.max(g, -.12); DIRTY[i] = 1; }   // drops off cliffs
   }
 }
 
@@ -1989,10 +2250,14 @@ const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Eule
 function renderOre(dt) {
   for (let i = 0; i < N; i++) {
     const st = ST[i]; if (st === 0) continue;
-    let y = RR[i] + YH[i], sc = SC[i];
+    let y = RR[i] + YH[i] + GY[i], sc = SC[i];
     if (st === 1) {
       if (sc < 1) { SC[i] = sc = Math.min(1, sc + dt * 3.5); DIRTY[i] = 1; }
       if (!DIRTY[i]) continue;
+    } else if (st === 3) {               // pinned in a sculpture
+      if (sc < 1) { SC[i] = sc = Math.min(1, sc + dt * 3.5); DIRTY[i] = 1; }
+      if (!DIRTY[i]) continue;
+      y = RR[i] + HY[i]; sc = Math.max(.01, sc);
     } else {
       TT[i] += dt; const t = TT[i];
       if (FI[i] === LOST_SINK) {          // fell into lava / a pit / quicksand
@@ -3385,6 +3650,7 @@ function buildMine() {
   scene.background = new THREE.Color(M.bg);
   hemi.color.set(M.hemi[0]); hemi.groundColor.set(M.hemi[1]);
   FX.ts = 1;
+  ELEV = []; RAMPS = []; SCULPTS = []; makeMagnet();
   if (S.boss != null) { buildArenaRun(); return; }
   ARENA = null;
   makeEnv(); buildGround(); buildRocks(); makeLava(); buildTerrain();
@@ -3410,6 +3676,8 @@ function buildMine() {
   AREAS.forEach((a, k) => { for (let n = 0; n < a.cap; n++) spawnOre(k, false); });
   for (let k = 0; k < 6; k++) { buildGrid(); solvePairs(); }
   for (let i = 0; i < N; i++) if (ST[i] === 1) { PX[i] = X[i]; PZ[i] = Z[i]; DIRTY[i] = 1; }
+  for (let k = 0; k < 3; k++) SCULPTS.push({ area: k, cd: 0, ids: [] });
+  updateSculpts(0);
   PADS.forEach(drawPad);
   ship.shown = -1; drawShip();
   if (S.cleared) { ship.clearT = 99; ship.cart.position.x = 60; showClear(); }
@@ -3488,8 +3756,15 @@ function frameBody(now) {
   for (const d of DOZERS) {
     d.bob += dt * (6 + Math.abs(d.speed) * 3);
     const strain = Math.min(0.05, d.load * 0.0004) * (Math.abs(d.speed) > 0.3 ? 1 : 0);
-    d.grp.position.set(d.x + rand(-strain, strain), (Math.abs(d.speed) > 0.3 ? Math.sin(d.bob) * 0.025 : 0) + rand(0, strain), d.z + rand(-strain, strain));
-    d.grp.rotation.y = d.h;
+    d.gy = d.gh > d.gy ? d.gh : Math.max(d.gh, d.gy - dt * 7);
+    let pt = 0;
+    if (ELEV.length) {               // tilt on ramps (not when hanging over a cliff edge)
+      const s = Math.sin(d.h), c = Math.cos(d.h), hf = heightAt(d.x + s, d.z + c), hb = heightAt(d.x - s, d.z - c);
+      if (Math.abs(hf - hb) < .7) pt = Math.atan2(hf - hb, 2);
+    }
+    d.pitch += (pt - d.pitch) * Math.min(1, dt * 8);
+    d.grp.position.set(d.x + rand(-strain, strain), d.gy + (Math.abs(d.speed) > 0.3 ? Math.sin(d.bob) * 0.025 : 0) + rand(0, strain), d.z + rand(-strain, strain));
+    d.grp.rotation.y = d.h; d.grp.rotation.x = -d.pitch;
   }
   lavaL.t.offset.set(Math.sin(time * 0.3) * 0.1, time * 0.05);
   for (const f of SINKS) if (f.chim && Math.random() < dt * (2 + f.flash * 3)) puff(f.chim[0], 3.1, f.chim[1], 1, .42);
@@ -3501,6 +3776,8 @@ function frameBody(now) {
   }
   updateFx(dt);
   updateEvents(dt);
+  updateSculpts(dt);
+  updateMagnet(dt);
   for (const b of BELTS) if (b.len > 0) b.tex.offset.y += dt * BELT_SPEED / 2.2;
   for (const z of zoneMeshes) {
     if (z.o.k === "sand") z.m.rotation.z += dt * .5;
