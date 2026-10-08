@@ -1,6 +1,6 @@
 name: GitHub Pages に公開
 
-# docs/ のページ（トップ・キャノンボール）と、ビルドした天下一閃を
+# docs/ のページ（トップ・キャノンボール）と、ビルドした天下一閃、群勢キャノンを
 # 1つのサイトにまとめて公開する。Settings → Pages の Source は「GitHub Actions」にする。
 on:
   push:
@@ -8,6 +8,7 @@ on:
     paths:
       - 'docs/**'
       - 'tenka-issen/**'
+      - 'crowd_cannon/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -35,6 +36,8 @@ jobs:
           mkdir -p _site/tenka-issen
           cp -r docs/. _site/
           cp tenka-issen/dist/index.html _site/tenka-issen/index.html
+          mkdir -p _site/crowd-cannon
+          cp -r crowd_cannon/index.html crowd_cannon/style.css crowd_cannon/src _site/crowd-cannon/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

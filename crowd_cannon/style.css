@@ -1,0 +1,175 @@
+:root {
+  --bg: #1b2230;
+  --panel: rgba(18, 24, 38, 0.6);
+  --text: #f4f6fb;
+  --muted: #b8c0d4;
+  --blue: #3b6cf6;
+  --red: #e8483f;
+  --green: #3cbf6a;
+  --gold: #f5c518;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+canvas {
+  display: block;
+  touch-action: none;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- HUD ---- */
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.hud-top, .bars { width: min(100vw, calc(100dvh * 9 / 16)); padding: 0 12px; }
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: max(10px, env(safe-area-inset-top));
+}
+#stageName {
+  font-weight: 800;
+  font-size: 13px;
+  background: var(--panel);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+#pauseBtn {
+  pointer-events: auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+.bars {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.bars > * { background: var(--panel); }
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px 8px 0 0;
+}
+.bar-row b { font-size: 15px; min-width: 44px; }
+.bar-row b:last-child { min-width: 0; }
+.tag { padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 800; }
+.tag.blue { background: var(--blue); }
+.tag.red { background: var(--red); }
+.tag.green { background: var(--green); }
+.bar { height: 4px; overflow: hidden; }
+.bar:last-child { border-radius: 0 0 8px 8px; }
+.fill { height: 100%; width: 0; transition: width 0.15s; }
+.fill.red { background: var(--red); }
+.fill.green { background: var(--green); }
+#hint {
+  margin-top: auto;
+  margin-bottom: max(24px, env(safe-area-inset-bottom));
+  max-width: 320px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1b2230;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  transition: opacity 0.8s;
+}
+#hint.fade { opacity: 0; }
+
+/* ---- オーバーレイ ---- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(16, 22, 34, 0.62);
+  backdrop-filter: blur(2px);
+  text-align: center;
+}
+.overlay[hidden], #hud[hidden] { display: none; }
+h1 {
+  margin: 0 0 4px;
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-shadow: 0 4px 0 #1d3fa8, 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+h1 span { color: var(--gold); text-shadow: 0 4px 0 #9a6b00, 0 8px 24px rgba(0, 0, 0, 0.5); }
+h2 { margin: 0 0 8px; font-size: 30px; font-weight: 900; }
+h2.win { color: var(--gold); }
+h2.lose { color: #ff8a7a; }
+.lead { margin: 0 0 8px; line-height: 1.7; font-weight: 700; }
+.howto { color: var(--muted); font-size: 12px; line-height: 1.7; margin-top: 10px; }
+#resultStats { line-height: 1.9; font-size: 15px; margin: 0 0 8px; }
+#resultStats b { font-size: 18px; color: var(--gold); }
+#allClear { color: var(--gold); font-weight: 800; }
+.overlay button {
+  min-width: 220px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  border: 0;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  background: #3a4560;
+  box-shadow: 0 4px 0 #222a3c;
+  cursor: pointer;
+}
+.overlay button:active { transform: translateY(2px); box-shadow: 0 2px 0 #222a3c; }
+.overlay button.primary { background: var(--blue); box-shadow: 0 4px 0 #1d3fa8; font-size: 20px; }
+#levels { display: flex; flex-direction: column; gap: 10px; }
+#levels .level {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  min-width: 260px;
+}
+#levels .level:disabled { opacity: 0.4; cursor: default; }
+.level .num {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1b2230;
+  font-weight: 900;
+}
