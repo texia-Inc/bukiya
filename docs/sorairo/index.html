@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="空から集めた素材で武器を鍛えて売り、常連の冒険者をダンジョンへ送り出す放置型の武器屋ゲーム。">
+<title>空色の武器屋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: the shopfront scene fills the top of the screen; the shop ledger (purse, rank, tabs) sits in a dark-glass panel below */
+:root{
+  --night:#070a24;
+  --panel:#0d1238;
+  --panel-2:#151b4c;
+  --ink:#f4f0e8;
+  --ink-dim:rgba(244,240,232,.66);
+  --line:rgba(160,200,255,.18);
+  --sky:#8fd3ff;
+  --gold:#ffc46b;
+  --bad:#ff8f9e;
+  --good:#9ff0c0;
+  --display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body);display:flex;flex-direction:column;overflow:hidden;-webkit-tap-highlight-color:transparent}
+#stage{position:relative;height:40%;min-height:230px;flex:none}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer;touch-action:manipulation}
+.stage-top{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 0;pointer-events:none}
+.shopname{font-family:var(--display);font-weight:700;font-size:1.3rem;letter-spacing:.2em;text-shadow:0 1px 10px rgba(0,0,30,.7)}
+.shopname span{display:block;font-family:var(--body);font-weight:400;font-size:.68rem;letter-spacing:.25em;color:var(--ink-dim);margin-top:2px}
+.phase{font-size:.72rem;letter-spacing:.15em;padding:5px 12px;border-radius:999px;background:rgba(8,10,40,.6);border:1px solid var(--line);text-align:right}
+.tip{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-size:.7rem;letter-spacing:.08em;color:var(--ink-dim);
+  background:rgba(8,10,40,.6);padding:4px 12px;border-radius:999px;pointer-events:none;white-space:nowrap}
+
+.panel{flex:1;min-height:0;overflow-y:auto;background:linear-gradient(180deg,var(--panel),var(--night));border-top:1px solid var(--line);
+  padding:10px 16px calc(env(safe-area-inset-bottom,0px) + 18px)}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.gold{display:flex;align-items:baseline;gap:5px;font-weight:700;font-size:1.2rem;font-variant-numeric:tabular-nums}
+.gold::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px 2px rgba(255,196,107,.6);align-self:center}
+.gold small{font-weight:500;font-size:.7rem;color:var(--ink-dim)}
+.rank{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--ink-dim);flex:1;min-width:180px}
+.rank b{font-family:var(--display);color:var(--ink);font-size:.95rem;letter-spacing:.08em;white-space:nowrap}
+.bar{height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;flex:1;min-width:50px}
+.bar i{display:block;height:100%;background:var(--sky);transition:width .3s}
+.bar.gold-bar i{background:var(--gold)}
+.mats{display:flex;flex-wrap:wrap;gap:5px}
+.mat{display:flex;align-items:center;gap:5px;font-size:.72rem;padding:3px 9px;border-radius:999px;background:var(--panel-2);font-variant-numeric:tabular-nums}
+.mat i,.need i{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 6px var(--c);flex:none}
+.mat b{font-weight:700}
+.mat.rare{box-shadow:inset 0 0 0 1px var(--gold);color:var(--gold)}
+.boss{display:inline-block;color:var(--bad);font-size:.7rem;font-weight:700;margin-left:6px;padding:1px 7px;border:1px solid var(--bad);border-radius:999px}
+
+button{font:inherit;color:inherit}
+.btn{cursor:pointer;border:1px solid var(--line);background:rgba(143,211,255,.12);border-radius:9px;padding:6px 11px;font-weight:700;font-size:.78rem;
+  letter-spacing:.04em;transition:background .15s,opacity .15s;white-space:nowrap}
+.btn:hover:not(:disabled){background:rgba(143,211,255,.24)}
+.btn:disabled{opacity:.36;cursor:default}
+.btn:focus-visible,.tab:focus-visible,.seg button:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+.btn.g{background:var(--gold);color:#2a1a10;border-color:transparent}
+.btn.g:hover:not(:disabled){background:#ffd58f}
+.btn.sm{padding:4px 8px;font-size:.72rem}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tab{cursor:pointer;background:none;border:0;padding:9px 13px;font-size:.84rem;letter-spacing:.12em;color:var(--ink-dim);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;position:relative}
+.tab[aria-selected="true"]{color:var(--ink);border-color:var(--sky)}
+.tab .dot{position:absolute;top:6px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--gold)}
+.sec{font-size:.7rem;letter-spacing:.22em;color:var(--ink-dim);margin:6px 0 0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.list{display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:var(--panel-2)}
+.row.locked{opacity:.45}
+.row .main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.nm{font-weight:700;font-size:.88rem}
+.nm em{font-style:normal;color:var(--sky);margin-left:4px}
+.nm .st{color:var(--gold);font-size:.72rem;margin-left:4px;letter-spacing:.04em}
+.sub{display:flex;flex-wrap:wrap;gap:3px 10px;font-size:.71rem;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.need{display:inline-flex;align-items:center;gap:4px}
+.need.short{color:var(--bad)}
+.acts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.ico{width:26px;height:26px;flex:none;color:var(--c);filter:drop-shadow(0 0 5px var(--c))}
+.note{font-size:.78rem;color:var(--ink-dim);line-height:1.7;margin:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{cursor:pointer;background:none;border:0;padding:6px 12px;font-size:.78rem;color:var(--ink-dim)}
+.seg button[aria-pressed="true"]{background:var(--sky);color:#0b1240;font-weight:700}
+.slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.slot{min-width:0;border-radius:10px;background:var(--panel-2);padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;font-size:.7rem}
+.slot.empty{background:transparent;border:1px dashed var(--line);color:var(--ink-dim);justify-content:center;min-height:78px}
+.slot .nm{font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.slot .pr{color:var(--gold);font-variant-numeric:tabular-nums}
+.req{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.card{min-width:0;padding:9px;border-radius:10px;background:var(--panel-2);display:flex;flex-direction:column;gap:5px;border:1px solid var(--line)}
+.card .who{font-size:.68rem;color:var(--ink-dim)}
+.card .say{font-family:var(--display);font-size:.84rem;line-height:1.45}
+.card.empty{border-style:dashed;background:transparent;color:var(--ink-dim);font-size:.72rem;align-items:center;justify-content:center;min-height:90px}
+.log{display:flex;flex-direction:column;gap:3px;font-size:.74rem;color:var(--ink-dim);font-variant-numeric:tabular-nums}
+.log b{color:var(--gold);font-weight:500}
+.forge{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;color:var(--ink-dim);cursor:pointer}
+.toggle input{accent-color:var(--sky)}
+select{font:inherit;font-size:.78rem;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.cnt{font-variant-numeric:tabular-nums;font-weight:700;min-width:1.6em;text-align:center}
+
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 54px);transform:translate(-50%,-8px);opacity:0;z-index:9;
+  background:rgba(10,14,50,.94);border:1px solid var(--line);padding:9px 16px;border-radius:999px;font-size:.84rem;letter-spacing:.04em;
+  transition:opacity .25s,transform .25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.good{color:var(--gold)}#toast.bad{color:var(--bad)}
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:rgba(4,6,26,.62);z-index:10}
+.wcard{max-width:23rem;width:100%;text-align:center;padding:22px 20px;border-radius:18px;background:var(--panel-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:10px;align-items:center}
+.wcard h2{font-family:var(--display);margin:0;font-size:1.35rem;letter-spacing:.15em}
+.wcard .big{font-size:1.8rem;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.wcard ul{list-style:none;margin:0;padding:0;font-size:.82rem;color:var(--ink-dim);line-height:1.9}
+@media (max-width:460px){.slot{padding:7px 4px}.req,.forge{grid-template-columns:1fr}.card.empty{min-height:0;padding:12px}.tab{padding:9px 10px;letter-spacing:.06em}}
+@media (min-width:900px){#stage{height:46%}}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="scene" aria-label="夕暮れの通りに建つ武器屋と、空から降る光"></canvas>
+  <div class="stage-top">
+    <div class="shopname">空色堂<span>空の素材で、旅の武器を</span></div>
+    <div class="phase" id="phase">夕暮れ</div>
+  </div>
+  <div class="tip" id="tip">降ってくる光をタップすると素材が手に入る</div>
+</div>
+
+<div class="panel">
+  <div class="wrap">
+    <div class="head">
+      <span class="gold" id="gold">0<small>G</small></span>
+      <div class="rank"><b id="rankName">ランク1</b><div class="bar"><i id="repBar"></i></div><span id="repTxt"></span></div>
+    </div>
+    <div class="mats" id="mats"></div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="welcome" class="overlay" hidden>
+  <div class="wcard">
+    <h2>おかえりなさい</h2>
+    <p class="note" id="wTime"></p>
+    <div class="big" id="wGold"></div>
+    <ul id="wList"></ul>
+    <button class="btn g" id="claim">店を開ける</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const cv=$('scene'),ctx=cv.getContext('2d');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+const mix=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
+const rgb=(c,a=1)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const smooth=t=>t*t*(3-2*t);
+const mod=(a,n)=>((a%n)+n)%n;
+const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[(Math.random()*a.length)|0];
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const fmt=n=>Math.floor(n).toLocaleString();
+const mmss=s=>{s=Math.max(0,Math.ceil(s));const m=Math.floor(s/60);return m?`${m}分${String(s%60).padStart(2,'0')}秒`:`${s}秒`};
+
+/* ================= data ================= */
+const MATS={
+  ore:{name:'空鉄鉱',c:'#a9b8d6'},sky:{name:'空の欠片',c:'#8fd3ff'},cloud:{name:'雲の結晶',c:'#eae8ff'},
+  dusk:{name:'夕焼けの糸',c:'#ffad66'},star:{name:'星の砂',c:'#c9b6ff'},comet:{name:'彗星の尾',c:'#9ff3ff'},
+  scale:{name:'雲竜の鱗',c:'#d6f0ff',rare:1},orb:{name:'茜の宝珠',c:'#ff9a7a',rare:1},core:{name:'星核',c:'#e2d4ff',rare:1},heart:{name:'彗星の心臓',c:'#7ff7ff',rare:1},
+};
+const MK=Object.keys(MATS).filter(k=>!MATS[k].rare);
+const RARE=Object.keys(MATS).filter(k=>MATS[k].rare);
+const TYPES={
+  sword:{name:'剣',d:'M6 18L18 6M15 5l4 0 0 4M8 13l3 3M4 20l2-2'},
+  dagger:{name:'短剣',d:'M9 15L16 8M14 7l3 0 0 3M9 11l4 4M6 18l3-3'},
+  spear:{name:'槍',d:'M3 21L17 7M17 7l4-4M14 6l4 4M17 4l3 3'},
+  bow:{name:'弓',d:'M8 3c9 3 9 15 0 18M8 3v18M5 12h14M16 9l3 3-3 3'},
+  staff:{name:'杖',d:'M6 21L14 10M19 7a3 3 0 1 1-6 0a3 3 0 1 1 6 0'},
+  axe:{name:'斧',d:'M5 21L16 6M13 4c4-1 8 2 7 7l-5-2z'},
+};
+const RECIPES=[
+  {id:'dagger',name:'雲の短剣',type:'dagger',need:{cloud:2,ore:1},atk:12,price:30,rate:.95,rank:1,c:'#e8ecff'},
+  {id:'ironsword',name:'空鉄の剣',type:'sword',need:{ore:3,sky:1},atk:20,price:45,rate:.92,rank:1,c:'#b9c8e6'},
+  {id:'bow',name:'夕焼けの弓',type:'bow',need:{dusk:2,cloud:1},atk:18,price:42,rate:.9,rank:1,c:'#ffad66'},
+  {id:'staff',name:'星読みの杖',type:'staff',need:{star:2,cloud:1,ore:1},atk:26,price:60,rate:.86,rank:2,c:'#c9b6ff'},
+  {id:'spear',name:'蒼天の槍',type:'spear',need:{ore:3,sky:2},atk:30,price:75,rate:.85,rank:2,c:'#8fd3ff'},
+  {id:'twilight',name:'黄昏の剣',type:'sword',need:{ore:3,dusk:2,star:1},atk:42,price:110,rate:.78,rank:3,c:'#ff8a7a'},
+  {id:'axe',name:'雷雲の斧',type:'axe',need:{ore:4,cloud:3},atk:46,price:120,rate:.78,rank:3,c:'#d8d2ff'},
+  {id:'moonbow',name:'月影の弓',type:'bow',need:{star:3,dusk:2,ore:1},atk:50,price:150,rate:.72,rank:4,c:'#b5c6ff'},
+  {id:'comet',name:'彗星の槍',type:'spear',need:{comet:1,star:2,ore:3},atk:70,price:260,rate:.65,rank:5,c:'#9ff3ff'},
+  {id:'dragonfang',name:'雲竜の刃',type:'dagger',need:{scale:2,cloud:6,ore:4},atk:62,price:340,rate:.7,rank:2,c:'#d6f0ff',legend:1},
+  {id:'akane',name:'茜の大弓',type:'bow',need:{orb:2,dusk:6,ore:3},atk:78,price:420,rate:.66,rank:3,c:'#ff9a7a',legend:1},
+  {id:'corestaff',name:'星核の杖',type:'staff',need:{core:2,star:6,sky:3},atk:92,price:540,rate:.62,rank:4,c:'#e2d4ff',legend:1},
+  {id:'cometaxe',name:'彗星王の斧',type:'axe',need:{heart:2,comet:2,ore:8},atk:125,price:820,rate:.55,rank:5,c:'#7ff7ff',legend:1},
+  {id:'dawn',name:'夜明けの聖剣',type:'sword',need:{comet:2,sky:3,dusk:3,ore:4},atk:95,price:420,rate:.55,rank:5,c:'#fff0c8'},
+];
+const RID=Object.fromEntries(RECIPES.map(r=>[r.id,r]));
+const CLASSES=[
+  {who:'旅の剣士',likes:['sword','dagger'],h:1.05,hat:0,cape:1},
+  {who:'槍使いの傭兵',likes:['spear'],h:1.1,hat:1,cape:0},
+  {who:'星を追う狩人',likes:['bow','dagger'],h:1,hat:1,cape:0},
+  {who:'見習いの魔法使い',likes:['staff'],h:.9,hat:2,cape:1},
+  {who:'山の戦士',likes:['axe','sword'],h:1.15,hat:0,cape:0},
+  {who:'自転車の配達人',likes:['dagger','bow'],h:.92,hat:0,cape:0},
+  {who:'水たまりから来た少年',likes:['staff','sword'],h:.95,hat:0,cape:1},
+];
+const RANKS=[0,30,100,250,600];
+const RANK_NAMES=['路地裏の店','通りの武器屋','評判の工房','冒険者御用達','空色の名店'];
+const DUNGEONS=[
+  {id:'cave',name:'雲海の洞窟',base:22,dur:90,loot:{cloud:[3,6],sky:[2,4],ore:[2,4]},gold:[10,25],rank:1,rare:'scale',bosses:{5:'霧の大蛇',10:'雲海の主'}},
+  {id:'tower',name:'夕焼けの塔',base:45,dur:240,loot:{dusk:[4,7],ore:[3,6]},gold:[30,60],rank:1,rare:'orb',bosses:{5:'茜の番人',10:'黄昏竜'}},
+  {id:'ruins',name:'星降る遺跡',base:80,dur:480,loot:{star:[4,8],sky:[2,4]},gold:[60,120],rank:2,rare:'core',bosses:{5:'星喰いの石像',10:'星座の王'}},
+  {id:'tomb',name:'彗星の墓所',base:130,dur:1200,loot:{comet:[1,2],star:[3,5]},gold:[150,300],rank:4,rare:'heart',bosses:{5:'彗星の亡霊',10:'尾を引く者'}},
+];
+const DID=Object.fromEntries(DUNGEONS.map(d=>[d.id,d]));
+const MAXF=10;
+const ADVS=[
+  {id:'alto',name:'アルト',job:'剣士',likes:['sword','dagger'],rank:1,look:{h:1.05,hat:0,cape:1}},
+  {id:'mina',name:'ミナ',job:'狩人',likes:['bow','dagger'],rank:1,look:{h:.96,hat:1,cape:0}},
+  {id:'sora',name:'ソラ',job:'魔法使い',likes:['staff'],rank:2,look:{h:.9,hat:2,cape:1}},
+  {id:'gald',name:'ガルド',job:'戦士',likes:['axe','sword'],rank:3,look:{h:1.15,hat:0,cape:0}},
+  {id:'rei',name:'レイ',job:'槍使い',likes:['spear'],rank:4,look:{h:1.08,hat:1,cape:1}},
+];
+const AID=Object.fromEntries(ADVS.map(a=>[a.id,a]));
+const POLICY={cheap:{name:'安め',m:.85,p:.95},fair:{name:'適正',m:1,p:.8},bold:{name:'強気',m:1.3,p:.5}};
+const ENCH=[.9,.75,.6,.45,.3];
+const UPS=[
+  {id:'forge',name:'炉を増やす',max:3,ef:l=>`炉 ${l}基`,base:120,k:3},
+  {id:'smith',name:'見習い鍛冶師',max:6,ef:l=>l?`自動で鍛える ・ 鍛冶速度 ×${(1+.2*(l-1)).toFixed(1)}`:'雇うと選んだ武器を自動で鍛える',base:150,k:1.9},
+  {id:'sign',name:'空色の看板',max:10,ef:l=>`客足 ×${(1+.25*l).toFixed(2)}`,base:80,k:1.7},
+  {id:'net',name:'空すくいの網',max:10,ef:l=>`精霊の採取速度 ×${(1+.3*l).toFixed(1)}`,base:60,k:1.65},
+  {id:'lamp',name:'窓辺の灯り',max:10,ef:l=>`売り値 +${l*10}%`,base:150,k:1.9},
+  {id:'store',name:'倉庫の棚',max:5,ef:l=>`倉庫 ${stockCap(l)}本`,base:100,k:2},
+];
+const UID=Object.fromEntries(UPS.map(u=>[u.id,u]));
+
+/* ================= state ================= */
+const KEY='sorairo-bukiya-v2';
+const fresh=()=>({gold:80,rep:0,clock:0,p:.3,last:Date.now(),
+  mats:{ore:6,sky:4,cloud:5,dusk:3,star:2,comet:0,scale:0,orb:0,core:0,heart:0},kills:{},
+  items:[{id:1,r:'dagger',st:1,atk:12,plus:0,shown:true},{id:2,r:'ironsword',st:2,atk:22,plus:0,shown:true},{id:3,r:'bow',st:1,atk:17,plus:0,shown:false}],
+  uid:4,policy:'fair',autoShow:true,
+  forge:[],smithRecipe:'dagger',smithOn:true,
+  workers:{ore:1,sky:1,cloud:1,dusk:0,star:0,comet:0},idle:0,hires:0,
+  up:{forge:1,smith:0,sign:0,net:0,lamp:0,store:0},
+  advs:[{id:'alto',lv:1,xp:0,w:null,rest:0},{id:'mina',lv:1,xp:0,w:null,rest:0}],runs:[],floors:{},dlog:[],requests:[],reqT:20,guestT:3,acc:{},sold:0,crafted:0});
+let S=fresh();
+try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&d.mats){S={...fresh(),...d,mats:{...fresh().mats,...d.mats},workers:{...fresh().workers,...d.workers},up:{...fresh().up,...d.up}}}}catch(e){}
+function save(){S.last=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+/* ================= rules ================= */
+const rank=()=>{let r=1;RANKS.forEach((t,i)=>{if(S.rep>=t)r=i+1});return r};
+const showSlots=()=>3+rank();
+const stockCap=(l=S.up.store)=>12+l*4;
+const partySlots=()=>rank()>=3?2:1;
+const adv=id=>S.advs.find(a=>a.id===id);
+const busy=a=>S.runs.some(r=>r.party.includes(a.id));
+const resting=a=>a.rest>S.clock;
+const ready=a=>!busy(a)&&!resting(a);
+const advPower=a=>{const d=AID[a.id],w=a.w;return Math.round(8+a.lv*4+(w?totalAtk(w)*(d.likes.includes(RID[w.r].type)?1.3:1):0))};
+const floorOf=id=>S.floors[id]||1;
+const isBoss=f=>f%5===0;
+const dPower=(id,f=floorOf(id))=>Math.round(DID[id].base*(1+.12*(f-1))*(isBoss(f)?1.5:1));
+const partyPower=ids=>ids.reduce((s,id)=>s+advPower(adv(id)),0);
+const winRate=(ids,id)=>clamp(.5+(partyPower(ids)-dPower(id))/dPower(id)*.8,.08,.97);
+const totalWorkers=()=>S.idle+MK.reduce((a,k)=>a+S.workers[k],0);
+const hireCost=()=>Math.round(40*Math.pow(1.75,S.hires));
+const gatherEvery=()=>40/(1+.3*S.up.net);
+const guestEvery=()=>14/(1+.25*S.up.sign);
+const smithSpeed=()=>S.up.smith?1+.2*(S.up.smith-1):1;
+const craftTime=r=>(6+r.atk*.28)/smithSpeed();
+const upCost=u=>Math.round(u.base*Math.pow(u.k,u.id==='forge'?S.up.forge-1:S.up[u.id]));
+const upMaxed=u=>u.id==='forge'?S.up.forge>=u.max:S.up[u.id]>=u.max;
+const value=it=>Math.round(RID[it.r].price*(1+.4*(it.st-1))*(it.atk/RID[it.r].atk)*(1+.25*it.plus)*(1+.1*S.up.lamp));
+const shelfPrice=it=>Math.round(value(it)*POLICY[S.policy].m);
+const totalAtk=it=>Math.round(it.atk*(1+.15*it.plus));
+const night=()=>S.p>=.53&&S.p<.86;
+const phaseName=p=>p<.2?'昼下がり':p<.36?'夕暮れ':p<.53?'マジックアワー':p<.86?'夜':'夜明け';
+const canPay=need=>Object.entries(need).every(([k,n])=>S.mats[k]>=n);
+const pay=need=>{for(const[k,n]of Object.entries(need))S.mats[k]-=n};
+const shown=()=>S.items.filter(i=>i.shown);
+const forgeBusy=()=>S.forge.length;
+const stockFull=()=>S.items.length+S.forge.length>=stockCap();
+function moteMat(){const n=phaseName(S.p);if(n==='夜')return Math.random()<.06?'comet':'star';if(n==='夕暮れ'||n==='マジックアワー')return Math.random()<.65?'dusk':'ore';return pick(['sky','cloud','ore'])}
+
+/* ================= simulation (shared by live play and time away) ================= */
+let LOG=[],away=null;
+function note(kind,text){if(away){away[kind]=(away[kind]||0)+1;return}toast(text,kind==='bad'?'bad':'good')}
+function newItem(r){const x=Math.random(),st=x<.6?1:x<.9?2:3;return{id:S.uid++,r:r.id,st,atk:Math.round(r.atk*rand(.88,1.15)*(1+.08*(st-1))),plus:0,shown:false}}
+function startCraft(r){if(!canPay(r.need)||forgeBusy()>=S.up.forge||stockFull()||rank()<r.rank)return false;pay(r.need);S.forge.push({r:r.id,t:0,total:craftTime(r)});return true}
+function tryBuy(cls,budget){
+  const pool=shown().filter(it=>cls.likes.includes(RID[it.r].type)&&shelfPrice(it)<=budget);
+  if(!pool.length)return null;
+  const it=pool.reduce((a,b)=>totalAtk(b)>totalAtk(a)?b:a);
+  if(Math.random()>POLICY[S.policy].p)return{item:it,ok:false};
+  const price=shelfPrice(it);S.items=S.items.filter(x=>x!==it);S.gold+=price;S.sold++;S.rep+=it.st>=3?3:1;
+  if(away){away.gold+=price;away.sold++}else{LOG.unshift({t:`${cls.who}が${RID[it.r].name}${it.plus?'+'+it.plus:''}を購入`,g:price});LOG=LOG.slice(0,5)}
+  return{item:it,ok:true,price};
+}
+function launch(dg,party,repeat){S.runs.push({dg,party:[...party],end:S.clock+DID[dg].dur,repeat:!!repeat});if(!away)party.forEach((id,i)=>walkOut(id,i))}
+function resolveRun(run){
+  const d=DID[run.dg],f=floorOf(d.id),win=Math.random()<winRate(run.party,d.id),mult=(1+.15*(f-1))*(win?1:.3),got={};
+  for(const[k,[lo,hi]]of Object.entries(d.loot)){const n=Math.round(rand(lo,hi)*mult);if(n>0){S.mats[k]+=n;got[k]=n;if(away)away.mats[k]=(away.mats[k]||0)+n}}
+  const boss=isBoss(f);if(win){const rn=boss?(f===MAXF?2:1)+(Math.random()<.3?1:0):(Math.random()<.04+.006*f?1:0);if(rn){S.mats[d.rare]+=rn;got[d.rare]=rn;if(away)away.mats[d.rare]=(away.mats[d.rare]||0)+rn}}
+  const gold=win?Math.round(rand(...d.gold)*(1+.15*(f-1))*(boss?3:1)):0;S.gold+=gold;
+  const names=run.party.map(id=>AID[id].name).join('と');let text,broke=[];
+  if(win){S.rep+=boss?10:2;if(boss){S.kills[d.id+f]=(S.kills[d.id+f]||0)+1;if(away)away.boss=(away.boss||0)+1}for(const id of run.party){const a=adv(id);a.xp++;if(a.xp>=a.lv*2){a.xp=0;a.lv++}}
+    if(f<MAXF)S.floors[d.id]=f+1;text=boss?`${names}が${d.bosses[f]}を討伐`:`${names}が${d.name} ${f}階を突破`}
+  else{for(const id of run.party){const a=adv(id);a.rest=S.clock+(boss?180:90);if(a.w&&Math.random()<(boss?.35:.2)){broke.push(RID[a.w.r].name);a.w=null}}
+    text=boss?`${names}は${d.bosses[f]}に敗れた`:`${names}は${d.name} ${f}階で撤退`;run.repeat=false}
+  const loot=Object.entries(got).map(([k,n])=>`${MATS[k].name}+${n}`).join(' ');
+  S.dlog.unshift({win,t:text,loot:(gold?`${gold}G `:'')+loot+(broke.length?` ・ ${broke.join('、')}が折れた`:'')});S.dlog=S.dlog.slice(0,5);
+  if(away){away.dg=(away.dg||0)+1;if(win)away.dgWin=(away.dgWin||0)+1;away.gold+=gold;return}
+  toast(win?`${text}！ ${gold}G${got[d.rare]?` ・ ${MATS[d.rare].name}+${got[d.rare]}`:''}`:`${text}…`,win?'good':'bad');if(win&&boss){burst(shopX()+100*s,gy-120*s,[255,220,150],60);burst(shopX()+100*s,gy-120*s,hex(MATS[d.rare].c),40)}run.party.forEach((id,i)=>walkIn(id,i,win));
+}
+const budgetFor=()=>Math.round(60*Math.pow(1.7,rank()-1)*rand(.7,2));
+function tick(dt,live){
+  S.clock+=dt;S.p=mod(S.p+dt/180,1);
+  // spirits gather
+  for(const k of MK){const n=S.workers[k];if(!n)continue;const speed=k==='comet'?(night()?.2:0):1;
+    S.acc[k]=(S.acc[k]||0)+dt*n*speed*(away?.5:1)/gatherEvery();while(S.acc[k]>=1){S.acc[k]--;S.mats[k]++;if(away)away.mats[k]=(away.mats[k]||0)+1}}
+  // forge
+  for(let i=S.forge.length-1;i>=0;i--){const j=S.forge[i];j.t+=dt;if(j.t>=j.total){S.forge.splice(i,1);const r=RID[j.r];S.crafted++;
+    if(Math.random()<r.rate){const it=newItem(r);S.items.push(it);if(away)away.crafted++;else{toast(`${r.name} ${'★'.repeat(it.st)} ATK${it.atk} が鍛え上がった`,'good');forgeFx(true)}}
+    else{if(away)away.failed++;else{toast(`${r.name}の鍛造に失敗… 素材は風に溶けた`,'bad');forgeFx(false)}}}}
+  // apprentice smith
+  if(S.up.smith&&S.smithOn){const r=RID[S.smithRecipe];if(r)while(startCraft(r)){}}
+  // auto display
+  if(S.autoShow){const free=showSlots()-shown().length;if(free>0){const cand=S.items.filter(i=>!i.shown).sort((a,b)=>value(b)-value(a)).slice(0,free);cand.forEach(i=>i.shown=true)}}
+  while(shown().length>showSlots()){shown().sort((a,b)=>value(a)-value(b))[0].shown=false}
+  // adventurers join as the shop grows
+  for(const d of ADVS)if(d.rank<=rank()&&!adv(d.id)){S.advs.push({id:d.id,lv:1,xp:0,w:null,rest:0});if(!away)toast(`${d.job}の${d.name}が常連になった`,'good')}
+  // dungeon runs
+  for(const run of [...S.runs]){if(S.clock<run.end)continue;S.runs=S.runs.filter(r=>r!==run);resolveRun(run);
+    if(run.repeat&&run.party.every(id=>{const a=adv(id);return a&&ready(a)}))launch(run.dg,run.party,true)}
+  // requests
+  S.reqT-=dt;if(S.reqT<=0){S.reqT=rand(60,90);if(S.requests.length<3){const avail=RECIPES.filter(r=>r.rank<=rank()&&!r.legend);const r=pick(avail);
+    S.requests.push({id:S.uid++,who:pick(CLASSES.filter(c=>c.likes.includes(r.type))).who,r:r.id,min:Math.round(r.atk*rand(.9,1.08)),reward:Math.round(r.price*rand(2,2.6)),rep:5,end:S.clock+300})}}
+  const before=S.requests.length;S.requests=S.requests.filter(q=>q.end>S.clock);if(!away&&S.requests.length<before)toast('依頼の期限が切れてしまった','bad');
+  // customers
+  S.guestT-=dt;if(S.guestT<=0){S.guestT=guestEvery()*rand(.7,1.3);const cls=pick(CLASSES),budget=budgetFor();
+    if(live)spawnGuest(cls,budget);else tryBuy(cls,budget)}
+}
+
+/* ================= UI ================= */
+let toastT;function toast(t,kind=''){const el=$('toast');el.textContent=t;el.className='on '+kind;clearTimeout(toastT);toastT=setTimeout(()=>el.className=kind,2400)}
+const icon=(type,c)=>`<svg class="ico" style="--c:${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="${TYPES[type].name}"><path d="${TYPES[type].d}"/></svg>`;
+const stars=n=>'★'.repeat(n);
+const itemLabel=it=>`${RID[it.r].name}${it.plus?`<em>+${it.plus}</em>`:''}<span class="st">${stars(it.st)}</span>`;
+const needHtml=need=>Object.entries(need).map(([k,n])=>`<span class="need ${S.mats[k]<n?'short':''}" style="--c:${MATS[k].c}"><i></i>${MATS[k].name} ${S.mats[k]}/${n}</span>`).join('');
+
+let tab='front';const pickParty={};
+const TABS=[['front','店頭'],['forge','鍛冶'],['stock','倉庫'],['dungeon','冒険'],['gather','採取'],['shop','改装']];
+$('tabs').innerHTML=TABS.map(([id,n])=>`<button class="tab" role="tab" data-tab="${id}" aria-selected="${id===tab}">${n}<span class="dot" hidden></span></button>`).join('');
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.tab===tab));render()});
+
+function renderHead(){
+  $('gold').innerHTML=`${fmt(S.gold)}<small>G</small>`;const r=rank(),lo=RANKS[r-1],hi=RANKS[r];
+  $('rankName').textContent=`ランク${r} ${RANK_NAMES[r-1]}`;
+  $('repBar').style.width=(hi?clamp((S.rep-lo)/(hi-lo),0,1)*100:100)+'%';$('repTxt').textContent=hi?`評判 ${S.rep}/${hi}`:`評判 ${S.rep}`;
+  $('mats').innerHTML=[...MK,...RARE.filter(k=>S.mats[k]>0)].map(k=>`<span class="mat ${MATS[k].rare?'rare':''}" style="--c:${MATS[k].c}"><i></i>${MATS[k].name}<b>${S.mats[k]}</b></span>`).join('');
+  const dot=document.querySelector('[data-tab="front"] .dot');if(dot)dot.hidden=!S.requests.some(q=>reqItem(q));
+  $('phase').textContent=phaseName(S.p)+(night()?' ・ 星が降る':'');
+}
+const reqItem=q=>S.items.filter(i=>i.r===q.r&&totalAtk(i)>=q.min).sort((a,b)=>value(a)-value(b))[0];
+
+function render(){renderHead();const p=$('pane');
+  if(tab==='front'){
+    const sh=shown(),n=showSlots();
+    p.innerHTML=`
+    <p class="sec">値付け<span class="seg" role="group">${Object.entries(POLICY).map(([k,v])=>`<button data-policy="${k}" aria-pressed="${S.policy===k}">${v.name}</button>`).join('')}</span></p>
+    <p class="note">${S.policy==='cheap'?'売り値 ×0.85。ほとんどのお客さんが買っていく。':S.policy==='fair'?'売り値 ×1.0。8割のお客さんが買っていく。':'売り値 ×1.3。買うのは半分くらいのお客さん。'}</p>
+    <p class="sec">店頭の棚 ${sh.length}/${n}<label class="toggle"><input type="checkbox" id="autoShow" ${S.autoShow?'checked':''}>倉庫から自動で並べる</label></p>
+    <div class="slots">${Array.from({length:n},(_,i)=>{const it=sh[i];return it?`<div class="slot">${icon(RID[it.r].type,RID[it.r].c)}<span class="nm">${RID[it.r].name}${it.plus?'+'+it.plus:''}</span><span>ATK ${totalAtk(it)} ${stars(it.st)}</span><span class="pr">${fmt(shelfPrice(it))}G</span><button class="btn sm" data-unshow="${it.id}">下げる</button></div>`:'<div class="slot empty">空き</div>'}).join('')}</div>
+    <p class="note">通りかかった冒険者は、好みの種類で予算内の武器があれば、いちばん強いものを買っていきます。</p>
+    <p class="sec">冒険者の依頼</p>
+    <div class="req">${[0,1,2].map(i=>{const q=S.requests[i];if(!q)return`<div class="card empty">${i===0?'次の依頼を待っています':'空き'}</div>`;const r=RID[q.r],it=reqItem(q);
+      return`<div class="card"><span class="who">${q.who} ・ 残り <span data-left="${q.end}">${mmss(q.end-S.clock)}</span></span><span class="say">「${r.name}を、ATK${q.min}以上で頼む」</span>
+      <span class="sub"><span>報酬 ${fmt(q.reward)}G</span><span>評判 +${q.rep}</span></span><button class="btn ${it?'g':''}" data-deliver="${q.id}" ${it?'':'disabled'}>${it?'納品する':'条件に合う在庫なし'}</button></div>`}).join('')}</div>
+    <p class="sec">最近の売上</p>
+    <div class="log">${LOG.length?LOG.map(l=>`<span>${l.t} <b>+${fmt(l.g)}G</b></span>`).join(''):'<span>まだ売れていません</span>'}</div>`;
+  }else if(tab==='forge'){
+    p.innerHTML=`
+    <p class="sec">炉 ${S.forge.length}/${S.up.forge}<span>倉庫 ${S.items.length+S.forge.length}/${stockCap()}</span></p>
+    <div class="forge">${Array.from({length:S.up.forge},(_,i)=>{const j=S.forge[i];return j?`<div class="card"><span class="nm">${RID[j.r].name}</span><div class="bar gold-bar"><i data-prog="${i}" style="width:${j.t/j.total*100}%"></i></div><span class="sub" data-forgeleft="${i}">あと ${mmss(j.total-j.t)}</span></div>`:'<div class="card empty">空いている炉</div>'}).join('')}</div>
+    <p class="sec">見習い鍛冶師</p>
+    ${S.up.smith?`<div class="row"><div class="main"><span class="nm">炉が空くと自動で鍛える</span><span class="sub">素材が足りないときと倉庫がいっぱいのときは待つ</span></div>
+      <select id="smithRecipe" aria-label="自動で鍛える武器">${RECIPES.filter(r=>r.rank<=rank()).map(r=>`<option value="${r.id}" ${S.smithRecipe===r.id?'selected':''}>${r.name}</option>`).join('')}</select>
+      <label class="toggle"><input type="checkbox" id="smithOn" ${S.smithOn?'checked':''}>稼働</label></div>`
+      :`<p class="note">改装タブで見習い鍛冶師を雇うと、選んだ武器を自動で鍛え続けます。</p>`}
+    <p class="sec">レシピ</p>
+    <div class="list">${RECIPES.map(r=>{const lock=r.rank>rank();return`<div class="row ${lock?'locked':''}">${icon(r.type,r.c)}<div class="main">
+      <span class="nm" ${r.legend?'style="color:var(--gold)"':''}>${r.legend?'伝説 ':''}${r.name}<span class="st" style="color:var(--ink-dim)">${TYPES[r.type].name} ・ ATK ${r.atk}前後</span></span>
+      <span class="sub">${lock?`ランク${r.rank}で解放`:`${needHtml(r.need)}<span>${Math.round(craftTime(r))}秒</span><span>成功 ${Math.round(r.rate*100)}%</span><span>相場 ${r.price}G</span>`}</span></div>
+      ${lock?'':`<button class="btn" data-craft="${r.id}" ${canPay(r.need)&&forgeBusy()<S.up.forge&&!stockFull()?'':'disabled'}>鍛える</button>`}</div>`}).join('')}</div>`;
+  }else if(tab==='stock'){
+    const items=[...S.items].sort((a,b)=>value(b)-value(a));
+    p.innerHTML=`<p class="sec">倉庫 ${S.items.length}/${stockCap()}<span>店頭 ${shown().length}/${showSlots()}</span></p>`+(items.length?`<div class="list">${items.map(it=>{const r=RID[it.r],max=it.plus>=5,sc=it.plus+1,gc=20*(it.plus+1),ok=!max&&S.mats.star>=sc&&S.gold>=gc;
+      return`<div class="row">${icon(r.type,r.c)}<div class="main"><span class="nm">${itemLabel(it)}</span><span class="sub"><span>ATK ${totalAtk(it)}</span><span>店頭 ${fmt(shelfPrice(it))}G</span><span>卸値 ${fmt(value(it)*.6)}G</span>${it.shown?'<span style="color:var(--sky)">店頭に並んでいる</span>':''}</span>
+      ${max?'':`<span class="sub">強化 +${it.plus+1}：成功${Math.round(ENCH[it.plus]*100)}% ・ 星の砂${sc} ・ ${gc}G${it.plus>=3?' ・ 失敗で15%霧散':''}</span>`}</div>
+      <div class="acts">${it.shown?`<button class="btn sm" data-unshow="${it.id}">下げる</button>`:`<button class="btn sm" data-show="${it.id}" ${shown().length<showSlots()?'':'disabled'}>並べる</button>`}
+      ${max?'':`<button class="btn sm" data-ench="${it.id}" ${ok?'':'disabled'}>強化</button>`}<button class="btn sm" data-sell="${it.id}">卸す</button></div></div>`}).join('')}</div>`
+      :'<p class="note">倉庫は空っぽです。鍛冶タブで武器を鍛えましょう。</p>');
+  }else if(tab==='dungeon'){
+    const inStock=[...S.items].sort((a,b)=>totalAtk(b)-totalAtk(a));
+    p.innerHTML=`
+    <p class="sec">常連の冒険者<span>パーティ ${S.runs.length}/${partySlots()}</span></p>
+    <div class="list">${S.advs.map(a=>{const d=AID[a.id],run=S.runs.find(r=>r.party.includes(a.id));
+      const st=run?`${DID[run.dg].name}に挑戦中 ・ 残り <span data-left="${run.end}">${mmss(run.end-S.clock)}</span>`:resting(a)?`休養中 ・ 残り <span data-left="${a.rest}">${mmss(a.rest-S.clock)}</span>`:'店で待機中';
+      return`<div class="row">${a.w?icon(RID[a.w.r].type,RID[a.w.r].c):'<span class="ico"></span>'}<div class="main"><span class="nm">${d.name}<span class="st" style="color:var(--ink-dim)">${d.job} ・ Lv ${a.lv}</span><em>戦力 ${advPower(a)}</em></span>
+        <span class="sub"><span>得意：${d.likes.map(x=>TYPES[x].name).join('・')}</span><span>${a.w?`装備：${RID[a.w.r].name}${a.w.plus?'+'+a.w.plus:''} ATK${totalAtk(a.w)}`:'武器なし'}</span></span><span class="sub">${st}</span></div>
+        ${run?'':`<select data-equip="${a.id}" aria-label="${d.name}に持たせる武器"><option value="">${a.w?'装備を外す':'武器を持たせる'}</option>${inStock.map(i=>`<option value="${i.id}">${RID[i.r].name}${i.plus?'+'+i.plus:''} ATK${totalAtk(i)}${d.likes.includes(RID[i.r].type)?' ◎':''}${i.shown?'（店頭）':''}</option>`).join('')}</select>`}</div>`}).join('')}
+      ${ADVS.filter(d=>!adv(d.id)).map(d=>`<div class="row locked"><span class="ico"></span><div class="main"><span class="nm">${d.job}</span><span class="sub">ランク${d.rank}で常連になる</span></div></div>`).join('')}</div>
+    <p class="note">得意な種類の武器を持たせると戦力が1.3倍になります（◎）。持たせた武器は倉庫や店頭から出て、冒険者のものになります。</p>
+    <p class="sec">ダンジョン</p>
+    <div class="list">${DUNGEONS.map(dg=>{const lock=dg.rank>rank(),run=S.runs.find(r=>r.dg===dg.id),f=floorOf(dg.id);
+      if(lock)return`<div class="row locked"><div class="main"><span class="nm">${dg.name}</span><span class="sub">ランク${dg.rank}で解放</span></div></div>`;
+      const sel=(pickParty[dg.id]||[]).filter(id=>{const a=adv(id);return a&&ready(a)});pickParty[dg.id]=sel;
+      return`<div class="card"><span class="nm">${dg.name}<em>${f}階</em>${isBoss(f)?`<span class="boss">ボス：${dg.bosses[f]}</span>`:''}<span class="st" style="color:var(--ink-dim)">必要戦力 ${dPower(dg.id)}</span></span>
+        <span class="sub"><span>${mmss(dg.dur)}</span><span>${Math.round(dg.gold[0]*(1+.15*(f-1)))}〜${Math.round(dg.gold[1]*(1+.15*(f-1)))}G</span>${Object.entries(dg.loot).map(([k,[lo,hi]])=>`<span class="need" style="--c:${MATS[k].c}"><i></i>${MATS[k].name}</span>`).join('')}<span class="need" style="--c:${MATS[dg.rare].c};color:var(--gold)"><i></i>${MATS[dg.rare].name}（${isBoss(f)?'ボスが確定で落とす':'まれに'}）</span></span>
+        <span class="sub">${[5,10].map(b=>`<span style="color:${S.kills[dg.id+b]?'var(--gold)':'inherit'}">${b}階 ${dg.bosses[b]}${S.kills[dg.id+b]?` 討伐${S.kills[dg.id+b]}回`:''}</span>`).join('')}</span>
+        ${run?`<span class="sub">${run.party.map(id=>AID[id].name).join('・')}が挑戦中 ・ 成功率 ${Math.round(winRate(run.party,dg.id)*100)}%</span>
+          <div class="bar gold-bar"><i data-run="${dg.id}" style="width:${(1-(run.end-S.clock)/dg.dur)*100}%"></i></div>
+          <span class="sub">帰還まで <span data-left="${run.end}">${mmss(run.end-S.clock)}</span><label class="toggle"><input type="checkbox" data-repeat="${dg.id}" ${run.repeat?'checked':''}>成功したら次の階へ続ける</label></span>`
+        :`<div class="acts" style="justify-content:flex-start">${S.advs.map(a=>`<button class="btn sm" data-pick="${dg.id}:${a.id}" aria-pressed="${sel.includes(a.id)}" ${ready(a)?'':'disabled'} style="${sel.includes(a.id)?'background:var(--sky);color:#0b1240':''}">${AID[a.id].name} ${advPower(a)}</button>`).join('')}</div>
+          <span class="sub" style="justify-content:space-between;align-items:center"><span>${sel.length?`戦力 ${partyPower(sel)} ・ 成功率 ${Math.round(winRate(sel,dg.id)*100)}%`:'冒険者を選んでください'}</span>
+          <button class="btn g" data-go="${dg.id}" ${sel.length&&S.runs.length<partySlots()?'':'disabled'}>出発</button></span>`}</div>`}).join('')}</div>
+    <p class="note">5階と10階はボス階です。敵は1.5倍強いかわりに、勝つとレア素材が必ず手に入り、金貨は3倍、評判+10。負けると休養180秒、武器が折れる確率は35%。最深部のボスはくり返し挑めます。成功すると次の階へ進み、敵も報酬も強くなります。失敗すると持ち帰りが3割に減り、冒険者は90秒休み、武器が2割の確率で折れます。冒険は店を閉じているあいだも続きます。</p>
+    <p class="sec">冒険の記録</p>
+    <div class="log">${S.dlog.length?S.dlog.map(l=>`<span style="color:${l.win?'var(--ink)':'var(--bad)'}">${l.t} <b>${l.loot}</b></span>`).join(''):'<span>まだ誰も潜っていません</span>'}</div>`;
+  }else if(tab==='gather'){
+    const rate=60/gatherEvery();
+    p.innerHTML=`
+    <p class="sec">空すくいの精霊 ${totalWorkers()}人<span>待機 ${S.idle}人</span></p>
+    <div class="list">${MK.map(k=>`<div class="row"><span class="mat" style="--c:${MATS[k].c};background:none;padding:0"><i></i></span><div class="main"><span class="nm">${MATS[k].name}</span>
+      <span class="sub"><span>${S.workers[k]?`毎分 ${(S.workers[k]*rate*(k==='comet'?.2:1)).toFixed(1)}個${k==='comet'?'（夜だけ）':''}`:'だれも採っていない'}</span></span></div>
+      <div class="acts"><button class="btn sm" data-wk="${k}" data-d="-1" ${S.workers[k]?'':'disabled'} aria-label="${MATS[k].name}の精霊を減らす">−</button><span class="cnt">${S.workers[k]}</span><button class="btn sm" data-wk="${k}" data-d="1" ${S.idle?'':'disabled'} aria-label="${MATS[k].name}に精霊を割り当てる">＋</button></div></div>`).join('')}</div>
+    <div class="row"><div class="main"><span class="nm">精霊を呼ぶ</span><span class="sub">呼んだ精霊は待機になる。＋で素材に割り当てる</span></div><button class="btn g" data-hire="1" ${S.gold>=hireCost()?'':'disabled'}>${fmt(hireCost())}G</button></div>
+    <p class="note">精霊は、店を閉じているあいだも素材を集め続けます（最大8時間。留守中は半分の速さ）。</p>`;
+  }else{
+    p.innerHTML=`<div class="list">${UPS.map(u=>{const lv=u.id==='forge'?S.up.forge:S.up[u.id],mx=upMaxed(u),c=upCost(u);return`<div class="row"><div class="main"><span class="nm">${u.name}<em>${u.id==='forge'?'':'Lv '+lv}</em></span>
+      <span class="sub"><span>${u.ef(lv)}</span>${mx?'':`<span>次：${u.ef(lv+1)}</span>`}</span></div>
+      <button class="btn g" data-up="${u.id}" ${!mx&&S.gold>=c?'':'disabled'}>${mx?'最大':fmt(c)+'G'}</button></div>`}).join('')}</div>
+    <p class="sec">店ランク</p>
+    <div class="list">${RANKS.map((t,i)=>`<div class="row ${rank()>i?'':'locked'}"><div class="main"><span class="nm">ランク${i+1} ${RANK_NAMES[i]}</span>
+      <span class="sub"><span>評判 ${t}</span><span>店頭 ${4+i}枠</span>${i===2?'<span>パーティ 2組</span>':''}${ADVS.filter(a=>a.rank===i+1).map(a=>`<span>${a.job}${a.name}</span>`).join('')}${RECIPES.filter(r=>r.rank===i+1).map(r=>`<span>${r.name}</span>`).join('')}${DUNGEONS.filter(a=>a.rank===i+1&&i>0).map(a=>`<span>${a.name}</span>`).join('')}</span></div></div>`).join('')}</div>
+    <p class="note">これまでに売った武器 ${S.sold}本 ・ 鍛えた回数 ${S.crafted}回</p>`;
+  }
+}
+function refresh(){ // light update without rebuilding buttons under the pointer
+  renderHead();
+  document.querySelectorAll('[data-left]').forEach(el=>el.textContent=mmss(+el.dataset.left-S.clock));
+  document.querySelectorAll('[data-prog]').forEach(el=>{const j=S.forge[+el.dataset.prog];if(j)el.style.width=j.t/j.total*100+'%'});
+  document.querySelectorAll('[data-forgeleft]').forEach(el=>{const j=S.forge[+el.dataset.forgeleft];if(j)el.textContent='あと '+mmss(j.total-j.t)});
+  document.querySelectorAll('[data-run]').forEach(el=>{const r=S.runs.find(x=>x.dg===el.dataset.run);if(r)el.style.width=(1-(r.end-S.clock)/DID[r.dg].dur)*100+'%'});
+  document.querySelectorAll('[data-craft]').forEach(b=>{const r=RID[b.dataset.craft];b.disabled=!(canPay(r.need)&&forgeBusy()<S.up.forge&&!stockFull())});
+  document.querySelectorAll('[data-hire]').forEach(b=>b.disabled=S.gold<hireCost());
+  document.querySelectorAll('[data-up]').forEach(b=>{const u=UID[b.dataset.up];b.disabled=upMaxed(u)||S.gold<upCost(u)});
+}
+let sig='';function structSig(){return[tab,S.items.length,S.forge.length,S.requests.length,S.runs.length,S.advs.map(a=>ready(a)?1:0).join(''),S.dlog.length&&S.dlog[0].t,shown().length,rank(),S.items.map(i=>i.shown?1:0).join('')].join('|')}
+
+$('pane').addEventListener('change',e=>{const t=e.target;
+  if(t.id==='autoShow')S.autoShow=t.checked;if(t.id==='smithOn')S.smithOn=t.checked;if(t.id==='smithRecipe')S.smithRecipe=t.value;
+  if(t.dataset.repeat){const r=S.runs.find(x=>x.dg===t.dataset.repeat);if(r)r.repeat=t.checked}
+  if(t.dataset.equip){const a=adv(t.dataset.equip);if(a&&!busy(a)){const v=t.value;
+    if(a.w){if(S.items.length>=stockCap()){toast('倉庫がいっぱいで外せない','bad');render();return}a.w.shown=false;S.items.push(a.w);a.w=null}
+    if(v){const it=S.items.find(i=>i.id==v);if(it){S.items=S.items.filter(i=>i!==it);it.shown=false;a.w=it;toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
+    render()}}save()});
+$('pane').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;
+  if(d.policy)S.policy=d.policy;
+  if(d.show){const it=S.items.find(i=>i.id==d.show);if(it&&shown().length<showSlots())it.shown=true}
+  if(d.unshow){const it=S.items.find(i=>i.id==d.unshow);if(it){it.shown=false;S.autoShow=false}}
+  if(d.deliver){const q=S.requests.find(x=>x.id==d.deliver),it=q&&reqItem(q);if(it){S.items=S.items.filter(i=>i!==it);S.gold+=q.reward;S.rep+=q.rep;S.requests=S.requests.filter(x=>x!==q);
+    toast(`${q.who}に納品した  +${fmt(q.reward)}G ・ 評判+${q.rep}`,'good');LOG.unshift({t:`依頼：${RID[q.r].name}を納品`,g:q.reward});LOG=LOG.slice(0,5);forgeFx(true)}}
+  if(d.craft){if(startCraft(RID[d.craft]))toast(`${RID[d.craft].name}を炉に入れた`)}
+  if(d.sell){const it=S.items.find(i=>i.id==d.sell);if(it){const v=Math.round(value(it)*.6);S.gold+=v;S.items=S.items.filter(i=>i!==it);toast(`問屋に卸した  +${fmt(v)}G`,'good')}}
+  if(d.ench){const it=S.items.find(i=>i.id==d.ench);if(it&&it.plus<5){const sc=it.plus+1,gc=20*(it.plus+1);if(S.mats.star>=sc&&S.gold>=gc){S.mats.star-=sc;S.gold-=gc;
+    if(Math.random()<ENCH[it.plus]){it.plus++;toast(`強化成功  ${RID[it.r].name} +${it.plus}`,'good');forgeFx(true)}
+    else if(it.plus>=3&&Math.random()<.15){S.items=S.items.filter(i=>i!==it);toast('失敗。武器は霧になって空へ還った','bad');forgeFx(false)}
+    else toast('強化失敗。星の砂だけが消えた','bad')}}}
+  if(d.wk){const k=d.wk,dd=+d.d;if(dd>0&&S.idle>0){S.idle--;S.workers[k]++}else if(dd<0&&S.workers[k]>0){S.workers[k]--;S.idle++}}
+  if(d.hire){const c=hireCost();if(S.gold>=c){S.gold-=c;S.hires++;S.idle++;toast('空すくいの精霊がやってきた','good')}}
+  if(d.pick){const[dg,id]=d.pick.split(':');for(const k in pickParty)if(k!==dg)pickParty[k]=(pickParty[k]||[]).filter(x=>x!==id);const l=pickParty[dg]||(pickParty[dg]=[]);l.includes(id)?l.splice(l.indexOf(id),1):l.push(id)}
+  if(d.go){const sel=(pickParty[d.go]||[]).filter(id=>ready(adv(id)));if(sel.length&&S.runs.length<partySlots()){launch(d.go,sel,false);pickParty[d.go]=[];toast(`${sel.map(id=>AID[id].name).join('と')}が${DID[d.go].name}へ出発した`)}}
+  if(d.up){const u=UID[d.up],c=upCost(u);if(!upMaxed(u)&&S.gold>=c){S.gold-=c;S.up[u.id]++;toast(`${u.name}${u.id==='smith'&&S.up.smith===1?'を雇った':` Lv ${S.up[u.id]}`}`,'good')}}
+  render();save();
+});
+
+/* ================= scene ================= */
+const K=[
+ {p:0,  top:'#1f4fc9',mid:'#4f86dd',hor:'#a9d0f2',lit:'#fff7ea',shd:'#9db3e0',sun:'#fff6dc',dark:0,  sunY:.25,stars:0},
+ {p:.22,top:'#1a38a6',mid:'#3f5fc4',hor:'#f4c07a',lit:'#ffe0a0',shd:'#5d63b0',sun:'#ffe2a8',dark:.1, sunY:.45,stars:0},
+ {p:.40,top:'#0b1668',mid:'#2a3fb0',hor:'#ffb070',lit:'#ffb54d',shd:'#26307e',sun:'#fff2d6',dark:.25,sunY:.6, stars:.15},
+ {p:.52,top:'#070d48',mid:'#1a2a8a',hor:'#ff7f6a',lit:'#ff9a5a',shd:'#1c1f60',sun:'#ffd0a0',dark:.4, sunY:.7, stars:.5},
+ {p:.62,top:'#040822',mid:'#0b1550',hor:'#24306e',lit:'#5a62a8',shd:'#0f1238',sun:'#ffb090',dark:.65,sunY:.9, stars:1},
+ {p:.84,top:'#050a2a',mid:'#142070',hor:'#3a3f8a',lit:'#6f74b8',shd:'#141846',sun:'#ffc0a0',dark:.58,sunY:.85,stars:.9},
+ {p:.93,top:'#16257a',mid:'#4a5cb8',hor:'#f7b4a2',lit:'#ffd6c4',shd:'#6a6aa8',sun:'#fff0e0',dark:.2, sunY:.6, stars:.2},
+].map(k=>{const o={...k};for(const c of['top','mid','hor','lit','shd','sun'])o[c]=hex(k[c]);return o});K.push({...K[0],p:1});
+function sky(p){let i=0;while(i<K.length-2&&p>=K[i+1].p)i++;const a=K[i],b=K[i+1],t=smooth(clamp((p-a.p)/(b.p-a.p),0,1)),o={};
+  for(const k in a)o[k]=Array.isArray(a[k])?mix(a[k],b[k],t):a[k]+(b[k]-a[k])*t;return o}
+const PATHS=Object.fromEntries(Object.entries(TYPES).map(([k,v])=>[k,new Path2D(v.d)]));
+function drawWeapon(type,x,y,size,col){ctx.save();ctx.translate(x-size/2,y-size/2);ctx.scale(size/24,size/24);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(PATHS[type]);ctx.restore()}
+
+let W,H,DPR,s,gy,starsArr=[];
+const CL=[];(()=>{const r=rng(8);for(let i=0;i<8;i++){const puffs=[],n=8+(r()*6|0),w=60+r()*120;for(let k=0;k<n;k++){const a=r()*6.283;puffs.push({x:Math.cos(a)*w*.5*r(),y:Math.sin(a)*w*.16*r()-r()*w*.1,r:w*(.14+r()*.15)})}CL.push({x:r()*1600,yf:.1+r()*.35,w,puffs,sp:4+r()*6})}})();
+function resize(){const b=cv.getBoundingClientRect();DPR=Math.min(2,devicePixelRatio||1);W=b.width;H=b.height;cv.width=W*DPR;cv.height=H*DPR;
+  s=clamp(Math.min(H/340,W/540),.55,1.5);gy=H*.82;const r=rng(4);starsArr=[];for(let i=0;i<140;i++)starsArr.push({x:r()*W,y:Math.pow(r(),1.3)*gy*.8,r:(.4+r()*1.1)*s,tw:r()*6.28})}
+const shopX=()=>Math.max(14*s,Math.min(W*.24,W-360*s));
+const guests=[],motes=[],fx=[],walkers=[];let moteT=1,time=0;
+function spawnGuest(cls,budget){if(guests.filter(g=>g.state!=='out').length>=4){tryBuy(cls,budget);return}guests.push({cls,budget,x:W+30*s,state:'in',walk:0,wait:0,res:null})}
+function walkOut(id,i){walkers.push({look:AID[id].look,carry:!!adv(id).w,x:shopX()+170*s-i*26*s,dir:1,walk:0,delay:i*.4})}
+function walkIn(id,i,win){walkers.push({look:AID[id].look,carry:!!adv(id).w,x:W+30*s+i*26*s,dir:-1,walk:0,delay:i*.4,stop:shopX()+170*s,win})}
+function burst(x,y,c,n=24){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=(25+Math.random()*90)*s;fx.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-30*s,t:0,c})}}
+function forgeFx(ok){burst(shopX()+150*s,gy-150*s,ok?[255,210,140]:[150,160,200],ok?30:12)}
+function floatText(x,y,text,c){fx.push({x,y,t:0,text,c})}
+
+cv.addEventListener('pointerdown',e=>{const b=cv.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;
+  let best=null,bd=42*s;for(const m of motes){const d=Math.hypot((m.dx??m.x)-x,m.y-y);if(d<bd){bd=d;best=m}}
+  if(best){motes.splice(motes.indexOf(best),1);const n=best.m==='comet'?1:2;S.mats[best.m]+=n;const c=hex(MATS[best.m].c);
+    floatText(best.dx,best.y,`+${n} ${MATS[best.m].name}`,c);burst(best.dx,best.y,c,12);$('tip').hidden=true;refresh()}});
+
+function drawPerson(x,y,g,col,ox,oy,walk){
+  const k=s*g.h,X=x+ox,Y=y+oy,sw=Math.sin(walk)*.8;ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineCap='round';
+  ctx.lineWidth=5*k;ctx.beginPath();ctx.moveTo(X,Y-34*k);ctx.lineTo(X-6*k*sw,Y);ctx.moveTo(X,Y-34*k);ctx.lineTo(X+6*k*sw,Y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(X-7*k,Y-34*k);ctx.lineTo(X-8*k,Y-62*k);ctx.lineTo(X+8*k,Y-62*k);ctx.lineTo(X+7*k,Y-34*k);ctx.fill();
+  if(g.cape){ctx.beginPath();ctx.moveTo(X-8*k,Y-62*k);ctx.quadraticCurveTo(X-14*k,Y-40*k,X-16*k-Math.sin(time*3)*2*k,Y-24*k);ctx.lineTo(X+2*k,Y-30*k);ctx.closePath();ctx.fill()}
+  ctx.beginPath();ctx.arc(X,Y-71*k,8*k,0,6.283);ctx.fill();
+  if(g.hat===1){ctx.fillRect(X-12*k,Y-77*k,24*k,3*k);ctx.fillRect(X-7*k,Y-85*k,14*k,9*k)}
+  if(g.hat===2){ctx.beginPath();ctx.moveTo(X-12*k,Y-76*k);ctx.lineTo(X+3*k,Y-102*k);ctx.lineTo(X+12*k,Y-76*k);ctx.fill()}
+  // weapon on the back for those who bought one
+  if(g.carry){ctx.save();ctx.translate(X-4*k,Y-50*k);ctx.rotate(-.6);ctx.fillRect(-1.2*k,-26*k,2.4*k,40*k);ctx.restore()}
+}
+function drawShop(k){
+  const x=shopX(),w=200*s,h=128*s,b=gy;const body=rgb(mix(mix(k.shd,[20,18,60],.6),[8,8,28],k.dark*.6));
+  const lit=.55+.45*clamp(k.dark*1.5+.2,0,1);
+  // chimney + forge glow
+  const cx=x+w*.78,cy=b-h-34*s;ctx.fillStyle=body;ctx.fillRect(cx,cy-10*s,16*s,40*s);
+  if(S.forge.length){ctx.save();ctx.globalCompositeOperation='lighter';const fg=ctx.createRadialGradient(cx+8*s,cy-12*s,0,cx+8*s,cy-12*s,40*s);
+    fg.addColorStop(0,`rgba(255,150,70,${.5+.2*Math.sin(time*7)})`);fg.addColorStop(1,'rgba(255,120,50,0)');ctx.fillStyle=fg;ctx.fillRect(cx-40*s,cy-60*s,96*s,90*s);ctx.restore();
+    if(Math.random()<.3)fx.push({x:cx+8*s+rand(-3,3)*s,y:cy-12*s,vx:rand(-8,8)*s,vy:-rand(20,50)*s,t:0,c:[255,180,100],ember:1})}
+  ctx.fillStyle=body;ctx.fillRect(x,b-h,w,h);
+  ctx.beginPath();ctx.moveTo(x-10*s,b-h);ctx.lineTo(x+w/2,b-h-44*s);ctx.lineTo(x+w+10*s,b-h);ctx.fill();
+  // display window
+  const wx=x+12*s,wy=b-h+36*s,ww=128*s,wh=62*s;
+  ctx.save();ctx.globalCompositeOperation='lighter';const gl=ctx.createRadialGradient(wx+ww/2,wy+wh/2,0,wx+ww/2,wy+wh/2,140*s);
+  gl.addColorStop(0,`rgba(255,200,120,${.32*lit})`);gl.addColorStop(1,'rgba(255,160,80,0)');ctx.fillStyle=gl;ctx.fillRect(wx-110*s,wy-110*s,ww+220*s,wh+240*s);ctx.restore();
+  ctx.fillStyle=`rgba(255,214,150,${.72*lit+.15})`;ctx.fillRect(wx,wy,ww,wh);
+  ctx.fillStyle=body;ctx.fillRect(wx,wy+wh*.5-1*s,ww,2*s);
+  const sh=shown(),cols=4;sh.slice(0,8).forEach((it,i)=>{const r=RID[it.r],c=hex(r.c);drawWeapon(r.type,wx+16*s+(i%cols)*32*s,wy+(i<cols?16:46)*s,22*s,rgb(mix(c,[40,30,80],.45)))});
+  // door + lantern
+  ctx.fillStyle=`rgba(255,190,110,${.35*lit})`;ctx.fillRect(x+w-50*s,b-66*s,32*s,66*s);
+  const lx=x+w-60*s,ly=b-80*s;ctx.save();ctx.globalCompositeOperation='lighter';const lg=ctx.createRadialGradient(lx,ly,0,lx,ly,40*s);
+  lg.addColorStop(0,`rgba(255,180,90,${.7*lit})`);lg.addColorStop(1,'rgba(255,150,60,0)');ctx.fillStyle=lg;ctx.fillRect(lx-40*s,ly-40*s,80*s,80*s);ctx.restore();
+  ctx.fillStyle=`rgba(255,200,120,${lit})`;ctx.fillRect(lx-4*s,ly-6*s,8*s,12*s);
+  // awning
+  for(let i=0;i<10;i++){ctx.fillStyle=i%2?rgb(mix([143,211,255],[30,40,90],k.dark*.6)):rgb(mix([235,245,255],[60,70,120],k.dark*.6));
+    ctx.beginPath();const ax=x-6*s+i*(w+12*s)/10,aw=(w+12*s)/10;ctx.moveTo(ax,b-h+6*s);ctx.lineTo(ax+aw,b-h+6*s);ctx.lineTo(ax+aw,b-h+24*s);ctx.quadraticCurveTo(ax+aw/2,b-h+30*s,ax,b-h+24*s);ctx.fill()}
+  // crossed-swords sign
+  const sx=x+w+20*s,sy=b-h+8*s;ctx.fillStyle=body;ctx.fillRect(x+w,sy,24*s,2*s);
+  ctx.fillStyle=rgb(mix([143,211,255],[40,60,110],k.dark*.5));ctx.beginPath();ctx.roundRect(sx-14*s,sy+6*s,28*s,56*s,3*s);ctx.fill();
+  ctx.fillStyle=rgb([20,24,60]);ctx.font=`700 ${11*s}px "Shippori Mincho",serif`;ctx.textAlign='center';['空','色','堂'].forEach((c,i)=>ctx.fillText(c,sx,sy+30*s+i*12*s));
+  drawWeapon('sword',sx-4*s,sy+16*s,14*s,'rgba(20,24,60,.9)');drawWeapon('sword',sx+4*s,sy+16*s,14*s,'rgba(20,24,60,.6)');
+  // spirits circling the roof
+  ctx.save();ctx.globalCompositeOperation='lighter';let n=0;
+  for(const m of MK)for(let i=0;i<Math.min(S.workers[m],4);i++,n++){const a=time*.6+n*1.3,ox=x+w/2+Math.cos(a)*(w*.62),oy=b-h-30*s+Math.sin(a*1.7)*16*s,c=hex(MATS[m].c);
+    const sg=ctx.createRadialGradient(ox,oy,0,ox,oy,9*s);sg.addColorStop(0,rgb(c,.95));sg.addColorStop(1,rgb(c,0));ctx.fillStyle=sg;ctx.fillRect(ox-9*s,oy-9*s,18*s,18*s)}
+  ctx.restore();
+}
+function frame(now){
+  const dt=Math.min(.05,(now-(frame.l||now))/1000);frame.l=now;time+=dt;
+  tick(dt,true);
+  const k=sky(S.p),x0=shopX();
+  // guests walk to the window, look, then buy or leave
+  for(const g of guests){const act=guests.filter(q=>q.state==='in'||q.state==='look');
+    if(g.state==='in'){const tx=x0+228*s+act.indexOf(g)*44*s;g.walk+=dt*8;g.x-=Math.min(70*s*dt,g.x-tx);if(g.x-tx<1){g.state='look';g.wait=1.4}}
+    else if(g.state==='look'){g.wait-=dt;if(g.wait<=0){const r=tryBuy(g.cls,g.budget);g.res=r&&r.ok?'buy':'pass';g.state='out';g.resT=1.6;
+      if(r&&r.ok){g.carry=1;floatText(g.x,gy-100*s,`+${fmt(r.price)}G`,[255,196,107]);burst(g.x,gy-60*s,[255,196,107],18);render()}
+      else if(r)floatText(g.x,gy-100*s,'ちょっと高いな',[200,210,255]);else floatText(g.x,gy-100*s,'いいのがないな',[200,210,255])}}
+    else{g.resT-=dt;if(g.resT<0){g.walk+=dt*8;g.x-=70*s*dt}}}
+  for(let i=guests.length-1;i>=0;i--)if(guests[i].x<-50*s)guests.splice(i,1);
+  for(let i=walkers.length-1;i>=0;i--){const w=walkers[i];if(w.delay>0){w.delay-=dt;continue}w.walk+=dt*8;w.x+=w.dir*80*s*dt;
+    if(w.dir>0&&w.x>W+40*s)walkers.splice(i,1);else if(w.dir<0&&w.x<=w.stop){if(w.win)burst(w.x,gy-60*s,[255,196,107],16);walkers.splice(i,1)}}
+  // falling sky motes
+  moteT-=dt;if(moteT<=0&&motes.length<6){moteT=rand(2,3.5);motes.push({x:W*rand(.08,.95),y:-10,m:moteMat(),ph:Math.random()*6,v:rand(14,26)*s})}
+  for(let i=motes.length-1;i>=0;i--){const m=motes[i];m.y+=m.v*dt;m.ph+=dt;if(m.y>gy-6*s)motes.splice(i,1)}
+
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const g=ctx.createLinearGradient(0,0,0,gy);g.addColorStop(0,rgb(k.top));g.addColorStop(.6,rgb(k.mid));g.addColorStop(1,rgb(k.hor));ctx.fillStyle=g;ctx.fillRect(0,0,W,gy);
+  if(k.stars>0)for(const st of starsArr){const a=k.stars*(.5+.5*Math.sin(time*1.5+st.tw));ctx.fillStyle=`rgba(255,250,240,${a})`;ctx.fillRect(st.x,st.y,st.r*1.5,st.r*1.5)}
+  if(k.stars>.4){const a=(k.stars-.4)/.6,hx=W*.16,hy=gy*.3;ctx.save();ctx.globalCompositeOperation='lighter';
+    for(let i=0;i<3;i++){const lg=ctx.createLinearGradient(hx,hy,W*.9,-20);lg.addColorStop(0,`rgba(200,240,255,${a*(.7-i*.2)})`);lg.addColorStop(1,'rgba(150,180,255,0)');
+      ctx.strokeStyle=lg;ctx.lineWidth=(1.5+i*5)*s;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(hx,hy);ctx.quadraticCurveTo(W*.5,gy*.15,W*.95,-20-i*8*s);ctx.stroke()}ctx.restore()}
+  const sx=W*.82,sy=gy*k.sunY+gy*.05,vis=clamp((gy-sy)/(40*s),0,1);
+  if(vis>0){ctx.save();ctx.globalCompositeOperation='lighter';const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,260*s);sg.addColorStop(0,rgb(k.sun,.9*vis));sg.addColorStop(.12,rgb(k.sun,.35*vis));sg.addColorStop(1,rgb(k.sun,0));
+    ctx.fillStyle=sg;ctx.fillRect(0,0,W,gy);for(let i=0;i<12;i++){const a=i*Math.PI/6+(reduce?0:time*.04),len=(i%2?90:180)*s,lg=ctx.createLinearGradient(sx,sy,sx+Math.cos(a)*len,sy+Math.sin(a)*len);
+      lg.addColorStop(0,rgb(k.sun,.5*vis));lg.addColorStop(1,rgb(k.sun,0));ctx.strokeStyle=lg;ctx.lineWidth=(i%2?1:1.8)*s;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+Math.cos(a)*len,sy+Math.sin(a)*len);ctx.stroke()}ctx.restore()}
+  for(const c of CL){const span=W/s+600,x=(mod(c.x-time*c.sp,span)-300)*s,y=gy*c.yf,sc=s;let dx=sx-x,dy=sy-y;const d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;const w=c.w*s,near=clamp(1-d/(W*.9),0,1)*vis;
+    const cg=ctx.createLinearGradient(x+dx*w*.5,y+dy*w*.35,x-dx*w*.5,y-dy*w*.35);cg.addColorStop(0,rgb(mix(k.lit,[255,255,255],near*.4)));cg.addColorStop(.45,rgb(mix(k.lit,k.shd,.55)));cg.addColorStop(1,rgb(k.shd));
+    ctx.fillStyle=cg;ctx.beginPath();for(const p of c.puffs){ctx.moveTo(x+p.x*sc+p.r*sc,y+p.y*sc);ctx.arc(x+p.x*sc,y+p.y*sc,p.r*sc,0,6.283)}ctx.fill()}
+  ctx.fillStyle=rgb(mix(k.mid,[8,10,40],.6));for(let i=0;i<W/(22*s)+1;i++){const r=rng(i*31)();if(r<.35)continue;const h=(10+r*r*70)*s;ctx.fillRect(i*22*s,gy-h,18*s,h)}
+  ctx.fillStyle=ctx.strokeStyle=rgb(mix([14,12,40],[4,4,16],k.dark));const poles=[W*.04,W*.6,W*1.05];
+  for(const px of poles){ctx.fillRect(px-2*s,gy-180*s,4*s,180*s);ctx.fillRect(px-18*s,gy-168*s,36*s,3*s)}
+  ctx.lineWidth=1*s;ctx.beginPath();for(let j=0;j<poles.length-1;j++)for(const o of[-16,-4,8,16]){const y=gy-167*s;ctx.moveTo(poles[j]+o*s,y);ctx.quadraticCurveTo((poles[j]+poles[j+1])/2,y+16*s,poles[j+1]+o*s,y)}ctx.stroke();
+  const gg=ctx.createLinearGradient(0,gy,0,H);gg.addColorStop(0,rgb(mix(k.shd,[16,14,40],.55)));gg.addColorStop(1,rgb(mix(k.shd,[4,4,16],.85)));ctx.fillStyle=gg;ctx.fillRect(0,gy,W,H-gy);
+  ctx.save();ctx.globalCompositeOperation='lighter';const rg=ctx.createRadialGradient(sx,gy+10*s,0,sx,gy+10*s,W*.3);rg.addColorStop(0,rgb(k.sun,.4*vis));rg.addColorStop(1,rgb(k.sun,0));ctx.fillStyle=rg;ctx.fillRect(0,gy,W,H-gy);ctx.restore();
+  ctx.fillStyle=`rgba(6,8,40,${k.dark*.4})`;ctx.fillRect(0,gy-220*s,W,H);
+  drawShop(k);
+  const sil=rgb(mix([26,22,66],[6,6,22],k.dark)),rim=rgb(mix(k.sun,[180,190,255],k.dark),.85*(1-k.dark*.5));
+  for(const gu of guests){drawPerson(gu.x,gy+2*s,{...gu.cls,carry:gu.carry},rim,1.4*s,-.7*s,gu.walk);drawPerson(gu.x,gy+2*s,{...gu.cls,carry:gu.carry},sil,0,0,gu.walk);
+    if(gu.state==='look'){const bx=gu.x,by=gy-(104*gu.cls.h+16)*s;ctx.fillStyle='rgba(10,14,50,.78)';ctx.beginPath();ctx.roundRect(bx-14*s,by-14*s,28*s,24*s,7*s);ctx.fill();
+      drawWeapon(gu.cls.likes[0],bx,by-2*s,18*s,'#cfe9ff')}}
+  for(const w of walkers){if(w.delay>0)continue;const lk={...w.look,carry:w.carry};drawPerson(w.x,gy+2*s,lk,rim,1.4*s,-.7*s,w.walk);drawPerson(w.x,gy+2*s,lk,sil,0,0,w.walk);
+    if(w.dir<0&&w.win){ctx.fillStyle='rgba(255,196,107,.9)';ctx.beginPath();ctx.arc(w.x+10*s,gy-40*s*w.look.h,5*s,0,6.283);ctx.fill()}}
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  for(const m of motes){const x=m.x+Math.sin(m.ph*1.5)*8*s,c=hex(MATS[m.m].c),r=(m.m==='comet'?9:6)*s,pul=.75+.25*Math.sin(m.ph*5);m.dx=x;
+    const mg=ctx.createRadialGradient(x,m.y,0,x,m.y,r*3);mg.addColorStop(0,rgb(c,pul));mg.addColorStop(.3,rgb(c,.5*pul));mg.addColorStop(1,rgb(c,0));ctx.fillStyle=mg;ctx.fillRect(x-r*3,m.y-r*3,r*6,r*6);
+    ctx.fillStyle='rgba(255,255,255,.95)';ctx.beginPath();ctx.arc(x,m.y,r*.35,0,6.283);ctx.fill()}
+  for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.t+=dt;
+    if(f.text){const a=1-f.t/1.6;if(a<=0){fx.splice(i,1);continue}ctx.globalCompositeOperation='source-over';ctx.fillStyle=rgb(f.c,a);ctx.font=`700 ${12*s}px "Zen Kaku Gothic New",sans-serif`;ctx.textAlign='center';ctx.fillText(f.text,f.x,f.y-f.t*24*s);ctx.globalCompositeOperation='lighter';continue}
+    f.x+=f.vx*dt;f.y+=f.vy*dt;if(!f.ember)f.vy+=50*s*dt;const a=1-f.t/(f.ember?1.4:1.1);if(a<=0){fx.splice(i,1);continue}ctx.fillStyle=rgb(f.c,a);ctx.fillRect(f.x,f.y,2*s,2*s)}
+  ctx.restore();
+  // ui
+  frame.q=(frame.q||0)+dt;if(frame.q>.4){frame.q=0;const sg=structSig();if(sg!==sig){sig=sg;render()}else refresh()}
+  frame.sv=(frame.sv||0)+dt;if(frame.sv>5){frame.sv=0;save()}
+  requestAnimationFrame(frame);
+}
+
+/* ================= time away ================= */
+function offline(){
+  const sec=clamp((Date.now()-S.last)/1000,0,8*3600);if(sec<60)return;
+  away={gold:0,sold:0,crafted:0,failed:0,mats:{}};const step=5;
+  for(let t=0;t<sec;t+=step)tick(Math.min(step,sec-t),false);
+  const a=away;away=null;const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);
+  $('wTime').textContent=`${h?h+'時間':''}${m}分のあいだ、店は回り続けていました。`;
+  $('wGold').textContent=`+${fmt(a.gold)}G`;
+  const lines=[];if(a.sold)lines.push(`売れた武器 ${a.sold}本`);if(a.crafted)lines.push(`鍛え上がった武器 ${a.crafted}本${a.failed?`（失敗 ${a.failed}回）`:''}`);
+  if(a.dg)lines.push(`ダンジョン挑戦 ${a.dg}回（成功 ${a.dgWin||0}回${a.boss?`・ボス討伐 ${a.boss}回`:''}）`);const mats=Object.entries(a.mats).filter(([,n])=>n>0).map(([k,n])=>`${MATS[k].name}+${n}`);if(mats.length)lines.push(mats.join('　'));
+  if(!lines.length)lines.push('静かな時間でした。精霊を素材に割り当てると、留守中も素材が集まります。');
+  $('wList').innerHTML=lines.map(l=>`<li>${l}</li>`).join('');$('welcome').hidden=false;
+}
+$('claim').addEventListener('click',()=>{$('welcome').hidden=true;render();save()});
+
+addEventListener('resize',resize);resize();offline();render();sig=structSig();
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
