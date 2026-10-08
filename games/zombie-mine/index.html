@@ -1,10 +1,7 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="竜に奪われた10の山を、ドワーフのギルドが蒸気重機で取り戻す放置系採掘ゲーム">
-<style>[hidden] { display: none !important; }</style>
+<style>[hidden]{display:none!important}</style>
 <script>
   // ランキングとワールドドラゴンのサーバー（bukiya バックエンドの /api/v1/dwarf-dozer）。
   // 空のままならオフライン（自分の記録だけ）で動く。?api=URL でも一時的に指定できる。
@@ -305,8 +302,8 @@ body { margin: 0; background: var(--night); color: var(--chalk); overflow: hidde
 .sheet .perk button:disabled { background: rgba(255,255,255,.12); color: rgba(255,248,236,.5); box-shadow: none; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .coins.bump, .toast.show, .pop, .sheet, .fever.on .lbl, .fever.on .track i { animation-duration: .01s; } .flycoin { transition-duration: .01s; } }
 </style>
-</head>
-<body>
+
+</head><body>
 <canvas id="c" aria-label="ゲーム画面"></canvas>
 <div class="hud">
   <div class="title">
@@ -2749,8 +2746,8 @@ function updateArena(dt) {
     if (h.t <= 0) { A.hazards.splice(k, 1); impact(h); }
   }
   // ice patches and pillars melt away
-  for (let k = A.patches.length - 1; k >= 0; k--) { const p = A.patches[k]; p.t -= dt; p.m.material.opacity = Math.min(.7, p.t * .35); if (p.t <= 0) { world.remove(p.g); A.patches.splice(k, 1); } }
-  for (let k = A.pillars.length - 1; k >= 0; k--) { const p = A.pillars[k]; p.t -= dt; if (p.t < .6) p.o.mesh.scale.setScalar(Math.max(.01, p.t / .6)); if (p.t <= 0) { p.o.alive = false; world.remove(p.o.mesh); A.pillars.splice(k, 1); OBS.splice(OBS.indexOf(p.o), 1); } }
+  for (let k = A.patches.length - 1; k >= 0; k--) { const p = A.patches[k]; p.t -= dt; p.m.material.opacity = Math.min(.7, p.t * .35); if (p.t <= 0) { world.remove(p.g); p.m.geometry.dispose(); p.m.material.dispose(); A.patches.splice(k, 1); } }
+  for (let k = A.pillars.length - 1; k >= 0; k--) { const p = A.pillars[k]; p.t -= dt; if (p.t < .6) p.o.mesh.scale.setScalar(Math.max(.01, p.t / .6)); if (p.t <= 0) { p.o.alive = false; world.remove(p.o.mesh); p.o.mesh.geometry.dispose(); p.o.mesh.material.dispose(); A.pillars.splice(k, 1); const i = OBS.indexOf(p.o); if (i >= 0) OBS.splice(i, 1); } }
   const L = A.lair, cdMul = (D.phase2 ? .75 : 1) * (D.rage ? .6 : 1);
   // flight (phase 2)
   if (D.flying && !isAuth()) return;         // teammates only play out the host's fireballs
@@ -2776,7 +2773,7 @@ function updateArena(dt) {
       for (const [k, w] of Object.entries(L.attacks)) { if (r < w) { atk = k; break; } r -= w; }
       if (atk === "breath") startBreath(D, 1.4);
       else if (atk === "stomp") {
-        const live = A.cannons.filter(c => c.alive), c = live[(Math.random() * live.length) | 0];
+        const live = A.cannons.filter(c => c.alive), c = live[(Math.random() * live.length) | 0] || player;
         addHazard("stomp", c.x, c.z, 2.6, 1.5, 40); D.state = "tele"; D.atk = "stomp"; D.t = 1.5;
       } else if (atk === "icicle") {
         for (let v = 0; v < 3; v++) {
@@ -3455,9 +3452,15 @@ const camLook = new THREE.Vector3();
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener("resize", resize);
 
+let frameErr = 0;
 function frame(now) {
+  try { frameBody(now); }
+  catch (e) { if (frameErr++ < 3) console.error("frame error", e); }   // one bad frame must never stop the loop
+  requestAnimationFrame(frame);
+}
+function frameBody(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (!mapEl.hidden) { renderer.render(scene, camera); requestAnimationFrame(frame); return; }   // paused behind the map
+  if (!mapEl.hidden) { renderer.render(scene, camera); return; }   // paused behind the map
   time += dt;
   if (!S.cleared) S.time += dt * (FX.ts || 1);
   if (ARENA && ARENA.slowT > 0) { ARENA.slowT -= dt; if (ARENA.slowT <= 0) FX.ts = 1; }
@@ -3506,7 +3509,7 @@ function frame(now) {
     else if (z.o.k === "wind") { const sg = windSign(z.o), t = z.m.material.map; if (z.o.flow[0]) t.offset.x -= dt * z.o.flow[0] * sg / 2; else t.offset.y += dt * z.o.flow[1] * sg / 2;
       if (Math.random() < dt * 20) { const o = z.o; emit(rand(o.r[0], o.r[1]), rand(.3, 1.5), rand(o.r[2], o.r[3]), o.flow[0] * sg * 2.5, 1.5, o.flow[1] * sg * 2.5, .9, .95, 1, .6); } }
   }
-  for (const o of OBS) if (o.mesh) {
+  for (const o of OBS) if (o.k === "mover" && o.mesh) {
     const mv = Math.hypot(o.c[0] - o.px, o.c[1] - o.pz);
     o.roll += mv / o.c[2]; o.px = o.c[0]; o.pz = o.c[1];
     o.mesh.position.set(o.c[0], o.c[2], o.c[1]);
@@ -3533,7 +3536,6 @@ function frame(now) {
   raidTick(dt);
   saveTimer += dt; if (saveTimer > 4) { saveTimer = 0; writeSave(); }
   renderer.render(scene, camera);
-  requestAnimationFrame(frame);
 }
 
 dashEl.addEventListener("click", () => tryDash());
@@ -3570,5 +3572,3 @@ function start(data) {
 window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
-</body>
-</html>
