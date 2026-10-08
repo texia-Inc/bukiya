@@ -73,7 +73,7 @@ body{font-family:var(--f-body);-webkit-user-select:none;user-select:none;-webkit
 #banner em{display:inline-block;margin-top:6px;font-style:normal;font-family:var(--f-display);font-size:18px;color:#fff;background:var(--alert);padding:3px 12px;border:2px solid #000;text-shadow:none;transform:skewX(-8deg)}
 @keyframes bannerIn{0%{opacity:0;transform:scale(1.6)}12%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-20px)}}
 
-#warn{position:absolute;left:50%;top:24%;transform:translateX(-50%) skewX(-8deg);background:linear-gradient(180deg,#ff4a2a,#b4120a);border:2px solid #000;
+#warn{position:absolute;left:50%;top:64%;transform:translateX(-50%) skewX(-8deg);background:linear-gradient(180deg,#ff4a2a,#b4120a);border:2px solid #000;
   padding:6px 16px;font-family:var(--f-display);font-size:16px;white-space:nowrap;animation:blink .3s infinite alternate;box-shadow:0 0 18px rgba(255,60,20,.7)}
 @keyframes blink{to{opacity:.6}}
 
@@ -697,9 +697,11 @@ for (const s of [-1, 1]) {
 
 // ---------- kaiju ----------
 const KAIJU = [
-  { name: 'ヴォルカドン', skin: 0x4a5aa8, belly: 0x868c9c, glow: 0xff5a1a, beam: 0xff8a2a, hp: 2200, speed: 8, scale: 2.4, rocks: true, plates: false, beamGap: [9, 12] },
-  { name: 'ガルヴァリオン', skin: 0x4a4646, belly: 0x6a5e59, glow: 0xff46d6, beam: 0xff7cf0, hp: 3200, speed: 8.5, scale: 2.6, rocks: false, plates: true, beamGap: [8, 11] },
-  { name: 'ヒョウガ・ザウラ', skin: 0x2f6070, belly: 0x8fa6aa, glow: 0x3fe0ff, beam: 0x8ff3ff, hp: 4400, speed: 9.2, scale: 2.8, rocks: true, plates: true, beamGap: [7, 10] },
+  { type: 'saurian', name: 'ヴォルカドン', skin: 0x4a5aa8, belly: 0x868c9c, glow: 0xff5a1a, beam: 0xff8a2a, rocks: true, plates: false, orbs: false, beamGap: [9, 12] },
+  { type: 'spider', name: 'アラクネクス', skin: 0x6c7682, belly: 0x6c7682, glow: 0x46d8ff, beam: 0x9ff0ff, rocks: false, plates: false, orbs: true, beamGap: [7, 10] },
+  { type: 'saurian', name: 'ガルヴァリオン', skin: 0x4a4646, belly: 0x6a5e59, glow: 0xff46d6, beam: 0xff7cf0, rocks: false, plates: true, orbs: true, beamGap: [8, 11] },
+  { type: 'skull', name: 'ボーンレイス', skin: 0xd6c8ad, belly: 0x7d4a42, glow: 0x9cff4a, beam: 0xc8ff7a, rocks: false, plates: false, orbs: false, beamGap: [6, 9] },
+  { type: 'saurian', name: 'ヒョウガ・ザウラ', skin: 0x2f6070, belly: 0x8fa6aa, glow: 0x3fe0ff, beam: 0x8ff3ff, rocks: true, plates: true, orbs: true, beamGap: [7, 10] },
 ];
 function kaijuDef(w) {
   const base = KAIJU[(w - 1) % KAIJU.length], loop = Math.floor((w - 1) / KAIJU.length);
@@ -910,6 +912,8 @@ function kaijuShapes(def) {
   return S;
 }
 function buildKaiju(def) {
+  if (def.type === 'spider') return buildSpider(def);
+  if (def.type === 'skull') return buildSkull(def);
   const S = kaijuShapes(def);
   const g = new THREE.Group();
   const { m: skin, U } = kaijuMaterial(def);
@@ -1016,7 +1020,201 @@ function buildKaiju(def) {
   legs.forEach(l => hb.push({ o: l.thigh, r: 8, kind: 'leg', w: new V3() }));
   tail.slice(0, 4).forEach(t => hb.push({ o: t.children[0], r: 7, kind: 'leg', w: new V3() }));
   if (!emitters.length) emitters.push(neck);
-  return { g, hips, headPivot, jaw, mouth, mouthGlow, arms, legs, tail, emitters, cores, hb, skin, glow, U, torso, head };
+  return { g, hips, hipTilt: .12, headPivot, jaw, mouth, mouthGlow, arms, legs, tail, emitters, cores, hb, skin, glow, U, torso, head };
+}
+
+// ---------- other kaiju types ----------
+// a glowing weak point with a halo, shared by every type
+function makeCore(def, parent, x, y, z, r) {
+  const mat = new THREE.MeshStandardMaterial({ color: def.glow, emissive: def.glow, emissiveIntensity: 3, roughness: .4, flatShading: true });
+  const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), mat); m.position.set(x, y, z); parent.add(m);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: SPARK.mat.uniforms.map.value, color: new THREE.Color(def.glow).multiplyScalar(1.6), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: .6 }));
+  halo.scale.set(r * 2.4, r * 2.4, 1); halo.material.opacity = r < 1.6 ? .35 : .6; m.add(halo);
+  return { m, mat, halo, hp: 0, broken: false };
+}
+// a cylinder strung between two points
+function seg(a, b, r0, r1, mat, parent, radial = 10) {
+  const A = new V3(a[0], a[1], a[2]), d = new V3(b[0], b[1], b[2]).sub(A), len = d.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, len, radial), mat);
+  m.position.copy(A).addScaledVector(d, .5); m.quaternion.setFromUnitVectors(UP, d.normalize()); parent.add(m);
+  return m;
+}
+function ringAt(parent, mat, p, axis, r, tube = .35) {
+  const m = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 6, 16), mat);
+  m.position.copy(p); m.quaternion.setFromUnitVectors(new V3(0, 0, 1), axis.clone().normalize()); parent.add(m); return m;
+}
+const ZAXIS = new V3(0, 0, 1);
+
+// Spider walker: a steel hull on six stilt legs, with a great segmented arm arcing over its back
+function buildSpider(def) {
+  const g = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({ color: 0x9aa6b3, metalness: .3, roughness: .38 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x3c434c, metalness: .3, roughness: .5 });
+  const glow = new THREE.MeshStandardMaterial({ color: def.glow, emissive: def.glow, emissiveIntensity: 1.6, roughness: .4 });
+  const add = (geo, mat, p, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); p.add(m); return m; };
+  const marker = (p, x, y, z) => { const o = new THREE.Object3D(); o.position.set(x, y, z); p.add(o); return o; };
+  const hipY = 46;
+  const hips = new THREE.Group(); hips.position.y = hipY; g.add(hips);
+  const prof = [[0, -17], [4, -16], [7.5, -12], [9.2, -6], [9.6, 1], [8.6, 8], [6.2, 13], [3, 16.5], [0, 17.5]].map(([r, y]) => new THREE.Vector2(r, y));
+  const hullGeo = new THREE.LatheGeometry(prof, 28); hullGeo.rotateX(Math.PI / 2);
+  const torso = add(hullGeo, steel, hips); torso.scale.set(1, .62, 1);
+  for (let i = 0; i < 4; i++) { const pl = add(new THREE.BoxGeometry(11 - i * 1.3, 1.4, 6), dark, hips, 0, 5.4 - Math.abs(i - 1.5) * .3, 9 - i * 6.3); pl.rotation.x = .06; }
+  for (const s of [-1, 1]) {
+    seg([s * 8.4, -1.2, 12], [s * 8.4, -1.2, -12], 1.3, 1.3, dark, hips);
+    for (let k = 0; k < 7; k++) ringAt(hips, steel, new V3(s * 8.4, -1.2, 10.5 - k * 3.5), ZAXIS, 1.6);
+  }
+  // the great segmented arm over the back
+  const curve = new THREE.CatmullRomCurve3([new V3(0, 4, -12), new V3(0, 26, -23), new V3(0, 47, -8), new V3(0, 49, 10), new V3(0, 37, 25)]);
+  add(new THREE.TubeGeometry(curve, 64, 1.5, 10), dark, hips);
+  for (let i = 1; i < 16; i++) ringAt(hips, steel, curve.getPoint(i / 16), curve.getTangent(i / 16), 1.9);
+  const tipDir = curve.getTangent(1);
+  const tipCone = add(new THREE.ConeGeometry(1.7, 7, 8), glow, hips); tipCone.position.copy(curve.getPoint(1)).addScaledVector(tipDir, 3); tipCone.quaternion.setFromUnitVectors(UP, tipDir);
+  const tip = marker(hips, tipCone.position.x, tipCone.position.y, tipCone.position.z);
+  // sensor head with mandibles
+  const headPivot = new THREE.Group(); headPivot.position.set(0, -1, 16); hips.add(headPivot);
+  add(new THREE.BoxGeometry(10, 6.5, 7), dark, headPivot, 0, 0, 2);
+  add(new THREE.BoxGeometry(12, 1.2, 5), steel, headPivot, 0, 3.6, 1.5);
+  for (const [x, y, z, r] of [[-2.6, 1.4, 5.7, .9], [2.6, 1.4, 5.7, .9], [-1.2, -.6, 5.8, .7], [1.2, -.6, 5.8, .7], [-3.6, -1, 5.3, .6], [3.6, -1, 5.3, .6]]) add(new THREE.SphereGeometry(r, 10, 8), glow, headPivot, x, y, z);
+  const jaw = new THREE.Group(); jaw.position.set(0, -3, 4.5); headPivot.add(jaw);
+  for (const s of [-1, 1]) { const mnd = add(new THREE.ConeGeometry(.9, 7, 6), dark, jaw, s * 2.6, -1, 2.5); mnd.rotation.x = Math.PI / 2 + .5; mnd.rotation.z = -s * .25; }
+  const mouth = marker(headPivot, 0, -1.5, 7);
+  const mouthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: FIRE.mat.uniforms.map.value, color: new THREE.Color(def.beam).multiplyScalar(2.5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+  mouthGlow.scale.set(.1, .1, 1); mouth.add(mouthGlow);
+  // six stilt legs, walked as two alternating tripods
+  const legs = [];
+  for (const [s, k, ph] of [[1, 0, 0], [1, 1, 1], [1, 2, 0], [-1, 0, 1], [-1, 1, 0], [-1, 2, 1]]) {
+    const pivot = new THREE.Group(); pivot.position.set(s * 7.5, -1, 9 - k * 9); hips.add(pivot);
+    const base = s > 0 ? (k - 1) * .55 : Math.PI - (k - 1) * .55; pivot.rotation.y = base;
+    const lift = new THREE.Group(); pivot.add(lift);
+    add(new THREE.SphereGeometry(3, 12, 10), dark, lift);
+    seg([0, 0, 0], [18, 24, 0], 2.4, 1.8, steel, lift, 12);
+    add(new THREE.SphereGeometry(2.6, 12, 10), dark, lift, 18, 24, 0);
+    seg([18, 24, 0], [34, -hipY + 4, 0], 1.8, 1, steel, lift, 10);
+    const lower = new V3(16, -hipY - 20, 0);
+    for (let r = 1; r < 6; r++) ringAt(lift, dark, new V3(18, 24, 0).addScaledVector(lower, r / 7), lower, 1.9 - r * .12, .3);
+    const foot = add(new THREE.ConeGeometry(1, 4, 8), dark, lift, 34, -hipY + 3, 0); foot.rotation.z = Math.PI;
+    legs.push({ p: pivot, lift, s, base, off: ph ? Math.PI : 0, fm: marker(lift, 34, -hipY + 1, 0), thigh: marker(lift, 18, 24, 0) });
+  }
+  const walk = phase => legs.forEach(l => {
+    const v = phase + l.off;
+    l.p.rotation.y = l.base + Math.sin(v) * .2 * l.s;
+    l.lift.rotation.z = Math.max(0, Math.cos(v)) * .14;
+  });
+  const cores = [makeCore(def, headPivot, 0, .5, 6.3, 1.9)];
+  const cells = [];
+  for (const s of [-1, 1]) {
+    add(new THREE.CylinderGeometry(1.8, 1.8, 6, 12), glow, hips, s * 4.5, 6.4, -5).rotation.x = Math.PI / 2;
+    cores.push(makeCore(def, hips, s * 4.5, 8.2, -5, 2.2));
+    cells.push(marker(hips, s * 4.5, 8, -5));
+  }
+  g.scale.setScalar(def.scale);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const hb = [];
+  cores.forEach(c => hb.push({ o: c.m, r: 3.2, kind: 'weak', core: c, w: new V3() }));
+  hb.push({ o: marker(headPivot, 0, 0, 3), r: 7, kind: 'head', w: new V3() });
+  hb.push({ o: marker(hips, 0, 0, 2), r: 12, kind: 'body', w: new V3() });
+  hb.push({ o: marker(hips, 0, 0, -10), r: 9, kind: 'body', w: new V3() });
+  legs.slice(0, 4).forEach(l => hb.push({ o: l.thigh, r: 4, kind: 'leg', w: new V3() }));
+  return { g, hips, hipY, headPivot, jaw, mouth, mouthGlow, arms: [], legs, tail: [], emitters: [tip, ...cells], cores, hb, skin: steel, glow, U: { uGlow: { value: 0 } }, torso, head: headPivot, walk };
+}
+
+// Bone crawler: a gaunt, skull-headed quadruped with ribs and a ridge of vertebrae
+const SKULL_SHAPES = {};
+function skullShapes(def) {
+  if (SKULL_SHAPES[def.key]) return SKULL_SHAPES[def.key];
+  const major = blend([
+    ell([0, 1, -10], [9.5, 7.5, 9.5]),       // pelvis
+    ell([0, 3, 1], [10.5, 8.5, 11.5]),       // ribcage
+    ell([0, 7, 11], [9.5, 7.5, 7.5]),        // hunched shoulders
+    cap([0, 8, 13], [0, 10, 21], 5.2, 4.2),  // neck
+    cap([0, 2, -15], [0, 0, -21], 5.5, 4),   // tail root
+  ], 4);
+  const detail = [];
+  for (const s of [-1, 1]) for (const z of [-3, 0, 3, 6, 9]) detail.push(ell([s * 9.3, 2.5, z], [1.7, 6, 1.1]));         // ribs
+  for (let z = -14; z <= 17; z += 2.6) detail.push(ell([0, 8.4 + (z + 10) / 21 * 6, z], [1.5, 1.9, 1.2]));               // vertebrae
+  const torsoF = blend([major, ...detail], 1.1);
+  const skullBase = blend([ell([0, 3, 3.5], [5.8, 5.6, 6.2]), ell([0, -.3, 8.8], [4.3, 3, 4.6]), ell([-4, .6, 7], [1.8, 1.5, 3]), ell([4, .6, 7], [1.8, 1.5, 3]), cap([0, -1, -3], [0, 1, 2], 4.4, 4.6)], 2);
+  const holes = [ell([-2.3, 2.4, 9.8], [1.9, 1.7, 1.7]), ell([2.3, 2.4, 9.8], [1.9, 1.7, 1.7]), ell([0, .2, 12.8], [.9, 1.3, 1.3])];
+  const headF = (x, y, z) => { let d = skullBase(x, y, z); for (const h of holes) d = Math.max(d, -h(x, y, z)); return d; };
+  const jawF = blend([ell([0, -.6, 3.5], [4, 1.4, 5.2]), ell([-3.6, .6, -.5], [1, 2.2, 1.6]), ell([3.6, .6, -.5], [1, 2.2, 1.6])], 1.5);
+  const fingers = (s, x, y, z, len) => [-1, 0, 1].map(k => cap([s * x + k * 1.4, y, z], [s * x + k * 2.1, y - .8, z + len], .75, .35));
+  const frontF = s => blend([ell([0, 0, 0], [3.6, 3.6, 3.6]), cap([0, 0, 0], [s * 3, -11, 3], 3, 2.2), ell([s * 3, -11, 3], [2.4, 2.4, 2.4]),
+    cap([s * 3, -11, 3], [s * 4, -26.5, 5], 2.2, 1.6), ell([s * 4, -28, 7], [2.8, 1.1, 3.2]), ...fingers(s, 4, -28.3, 8, 6.5)], 1.5);
+  const backF = s => blend([ell([0, 0, 0], [3.8, 3.8, 3.8]), cap([0, 0, 0], [s * 2, -9, -4], 3.4, 2.5), ell([s * 2, -9, -4], [2.5, 2.5, 2.5]),
+    cap([s * 2, -9, -4], [s * 3, -21.5, 1], 2.4, 1.7), ell([s * 3, -22.8, 3], [2.6, 1.1, 3.6]), ...fingers(s, 3, -23, 4, 5.5)], 1.5);
+  const tailR = i => 4.6 * Math.pow(1 - i / 7, 1.1);
+  const tailF = i => cap([0, 0, 1], [0, -.4, -6.6], tailR(i), tailR(i + 1) + .1);
+  const under = (x, y, z, nx, ny) => sstep(.1, .75, -ny);
+  const S = {
+    torsoF, tailR,
+    torso: paint(surfaceNet(torsoF, [-14, -9, -26], [14, 19, 25], .6), torsoF, def, under, null),
+    head: paint(surfaceNet(headF, [-8, -7, -8], [8, 11, 16], .38), headF, def, null, null),
+    jaw: paint(surfaceNet(jawF, [-6, -4, -4], [6, 4, 11], .38), jawF, def, null, null),
+    front: [-1, 1].map(s => { const f = frontF(s); return paint(surfaceNet(f, [-11, -31, -6], [11, 5, 18], .5), f, def, under, null); }),
+    back: [-1, 1].map(s => { const f = backF(s); return paint(surfaceNet(f, [-10, -26, -10], [10, 5, 14], .5), f, def, under, null); }),
+    tail: Array.from({ length: 6 }, (_, i) => { const f = tailF(i), r = tailR(i) + 1; return paint(surfaceNet(f, [-r, -r - 1, -8 - tailR(i + 1)], [r, r, 1 + r], .45), f, def, under, null); }),
+  };
+  SKULL_SHAPES[def.key] = S;
+  return S;
+}
+function buildSkull(def) {
+  const S = skullShapes(def);
+  const g = new THREE.Group();
+  const { m: skin, U } = kaijuMaterial(def);
+  const glow = new THREE.MeshStandardMaterial({ color: def.glow, emissive: def.glow, emissiveIntensity: 1, roughness: .5 });
+  const bone = new THREE.MeshStandardMaterial({ color: 0xece2cc, roughness: .55 });
+  const add = (geo, mat, p, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); p.add(m); return m; };
+  const marker = (p, x, y, z) => { const o = new THREE.Object3D(); o.position.set(x, y, z); p.add(o); return o; };
+  const hipY = 24;
+  const hips = new THREE.Group(); hips.position.y = hipY; g.add(hips);
+  const torso = add(S.torso, skin, hips);
+  const headPivot = new THREE.Group(); headPivot.position.set(0, 10, 21); hips.add(headPivot);
+  add(S.head, skin, headPivot);
+  const jaw = new THREE.Group(); jaw.position.set(0, -2.5, 6); headPivot.add(jaw);
+  add(S.jaw, skin, jaw);
+  for (let k = -3; k <= 3; k++) {
+    add(new THREE.ConeGeometry(.35, 1.8, 5), bone, headPivot, k * .95, -3.1, 12.4 - Math.abs(k) * .7).rotation.x = Math.PI;
+    add(new THREE.ConeGeometry(.32, 1.5, 5), bone, jaw, k * .9, .5, 7.8 - Math.abs(k) * .7);
+  }
+  const mouth = marker(headPivot, 0, -2, 13);
+  const mouthGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: FIRE.mat.uniforms.map.value, color: new THREE.Color(def.beam).multiplyScalar(2.5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+  mouthGlow.scale.set(.1, .1, 1); mouth.add(mouthGlow);
+  const legs = [];
+  const limb = (geo, s, x, y, z, off, front) => {
+    const p = new THREE.Group(); p.position.set(s * x, y, z); hips.add(p);
+    add(geo, skin, p);
+    const tipY = front ? -29 : -24, tipZ = front ? 11 : 6;
+    legs.push({ p, s, off, fm: marker(p, s * 4, tipY, tipZ), thigh: marker(p, s * 2.5, front ? -11 : -9, front ? 3 : -4) });
+  };
+  limb(S.front[0], -1, 8.5, 5, 11, 0, true);
+  limb(S.front[1], 1, 8.5, 5, 11, Math.PI, true);
+  limb(S.back[0], -1, 8, -1, -10, Math.PI, false);
+  limb(S.back[1], 1, 8, -1, -10, 0, false);
+  const walk = phase => legs.forEach(l => { l.p.rotation.x = Math.sin(phase + l.off) * .34; });
+  const tail = []; let parent = hips;
+  for (let i = 0; i < 6; i++) {
+    const seg2 = new THREE.Group(); seg2.position.set(0, i === 0 ? 0 : -.4, i === 0 ? -20 : -6.2); parent.add(seg2);
+    add(S.tail[i], skin, seg2);
+    const sp = add(new THREE.ConeGeometry(.7 * (1 - i / 7), 3.5 * (1 - i / 8), 6), bone, seg2, 0, S.tailR(i) * .9, -2.5); sp.rotation.x = -.5;
+    tail.push(seg2); parent = seg2;
+  }
+  // spines of bone along the vertebrae
+  const emitters = [];
+  for (let z = -12; z <= 15; z += 5.2) {
+    const y = 8.4 + (z + 10) / 21 * 6 + 1.6;
+    const sp = add(new THREE.ConeGeometry(.9, 5, 6), bone, hips, 0, y + 1.6, z); sp.rotation.x = -.45;
+    emitters.push(sp);
+  }
+  const cores = [makeCore(def, headPivot, -2.3, 2.3, 9.2, 1.25), makeCore(def, headPivot, 2.3, 2.3, 9.2, 1.25), makeCore(def, hips, 0, 13.6, 4, 2.1)];
+  g.scale.setScalar(def.scale);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const hb = [];
+  cores.forEach((c, i) => hb.push({ o: c.m, r: i < 2 ? 2.6 : 3.5, kind: 'weak', core: c, w: new V3() }));
+  hb.push({ o: marker(headPivot, 0, 2, 6), r: 7.5, kind: 'head', w: new V3() });
+  hb.push({ o: marker(hips, 0, 4, 0), r: 13, kind: 'body', w: new V3() });
+  hb.push({ o: marker(hips, 0, 9, 17), r: 6, kind: 'body', w: new V3() });
+  legs.forEach(l => hb.push({ o: l.thigh, r: 4.5, kind: 'leg', w: new V3() }));
+  return { g, hips, hipY, headPivot, jaw, mouth, mouthGlow, arms: [], legs, tail, emitters, cores, hb, skin, glow, U, torso, head: headPivot, walk };
 }
 
 // ---------- ally mech ----------
@@ -1432,7 +1630,7 @@ function updateKaiju(dt) {
   K.mt += dt;
   const t = G.t;
   P.tail.forEach((s, i) => { s.rotation.y = Math.sin(t * 1.3 - i * .55) * .13; s.rotation.x = .05 + Math.sin(t * .9 - i * .4) * .03; });
-  P.hips.position.y = 27 + Math.sin(t * 1.6) * .4;
+  P.hips.position.y = (P.hipY || 27) + Math.sin(t * 1.6) * .4;
   P.arms.forEach((a, i) => a.rotation.x = Math.sin(t * 1.4 + i) * .12);
   let glowI = 2.2 + Math.sin(t * 3) * .5;
   P.cores.forEach(c => { if (!c.broken) { c.mat.emissiveIntensity = 2.6 + Math.sin(t * 5) * .8; c.halo.material.opacity = .4 + Math.sin(t * 5) * .15; } });
@@ -1454,7 +1652,7 @@ function updateKaiju(dt) {
     K.z += d.speed * dt;
     K.phase += dt * d.speed * .26 / d.scale;
     const sn = Math.sin(K.phase);
-    P.legs.forEach(l => { l.p.rotation.x = sn * .42 * l.s; });
+    if (P.walk) P.walk(K.phase); else P.legs.forEach(l => { l.p.rotation.x = sn * .42 * l.s; });
     P.hips.rotation.z = sn * .05; P.hips.rotation.y = sn * .06;
     P.g.position.y = K.y + Math.abs(Math.cos(K.phase)) * 1.4;
     if (Math.sign(sn) !== Math.sign(K.lastSin) && K.lastSin !== 0) footstep(sn > 0 ? 0 : 1, inSea);
@@ -1462,7 +1660,7 @@ function updateKaiju(dt) {
     P.headPivot.rotation.x += (-.05 - P.headPivot.rotation.x) * dt * 2;
     K.beamT -= dt; K.orbT -= dt;
     if (K.beamT <= 0 && K.z > -540) { K.mode = 'charge'; K.mt = 0; K.chargeDmg = 0; K.beamHit = false; K.beamTgt = null; $('warn').hidden = false; sfx.charge(); }
-    if (d.plates && K.orbT <= 0) { launchOrbs(); K.orbT = rand(6, 9); }
+    if (d.orbs && K.orbT <= 0) { launchOrbs(); K.orbT = rand(6, 9); }
     if (K.z > -50 - 28 * d.scale) { crush(P.g.position.x, -60, 60); gameOver('防衛線突破', 'DEFENSE LINE BROKEN'); }
   } else if (K.mode !== 'dead' && K.mode !== 'emerge') {
     P.g.position.y += (K.y - P.g.position.y) * dt * 3;
@@ -1504,7 +1702,7 @@ function updateKaiju(dt) {
   } else if (K.mode === 'stagger') {
     P.headPivot.rotation.x += (-.7 - P.headPivot.rotation.x) * dt * 4; P.jaw.rotation.x = .6;
     P.hips.rotation.x = Math.sin(K.mt * 9) * .06 - .05;
-    if (K.mt > 1.8) { K.mode = 'walk'; K.mt = 0; P.jaw.rotation.x = 0; P.hips.rotation.x = .12; K.beamT = rand(d.beamGap[0], d.beamGap[1]); }
+    if (K.mt > 1.8) { K.mode = 'walk'; K.mt = 0; P.jaw.rotation.x = 0; P.hips.rotation.x = P.hipTilt || 0; K.beamT = rand(d.beamGap[0], d.beamGap[1]); }
   } else if (K.mode === 'dead') {
     const k = Math.min(1, K.mt / 3);
     P.g.rotation.x = -k * k * 1.3; P.g.position.y = K.y - k * 18 * d.scale;
@@ -1680,9 +1878,9 @@ function updateNext(dt) {
   const walking = NX.z < -720 && G.state === 'play';
   if (walking) { NX.z += d.speed * 1.5 * dt; NX.phase += dt * d.speed * 1.5 * .26 / d.scale; }
   const sn = Math.sin(NX.phase);
-  P.legs.forEach(l => { l.p.rotation.x = walking ? sn * .42 * l.s : l.p.rotation.x * .95; });
+  if (P.walk) { if (walking) P.walk(NX.phase); } else P.legs.forEach(l => { l.p.rotation.x = walking ? sn * .42 * l.s : l.p.rotation.x * .95; });
   P.tail.forEach((s, i) => { s.rotation.y = Math.sin(G.t * 1.1 - i * .55) * .13; });
-  P.hips.position.y = 27 + Math.sin(G.t * 1.4) * .5;
+  P.hips.position.y = (P.hipY || 27) + Math.sin(G.t * 1.4) * .5;
   P.headPivot.rotation.x = Math.sin(G.t * .6) * .12 - .15;
   P.g.position.set(NX.x, NX.y + (walking ? Math.abs(Math.cos(NX.phase)) * 1.4 : 0), NX.z);
   P.g.rotation.y = Math.atan2(G.pos.x - NX.x, G.pos.z - NX.z) * .6;
