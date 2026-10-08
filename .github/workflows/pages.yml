@@ -1,11 +1,14 @@
-name: 天下一閃を GitHub Pages に公開
+name: GitHub Pages に公開
 
+# docs/ のページ（トップ・キャノンボール）と、ビルドした天下一閃を
+# 1つのサイトにまとめて公開する。Settings → Pages の Source は「GitHub Actions」にする。
 on:
   push:
     branches: [main]
     paths:
+      - 'docs/**'
       - 'tenka-issen/**'
-      - '.github/workflows/tenka-issen-pages.yml'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -25,12 +28,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: ゲームを1つの HTML にまとめる
+      - name: 天下一閃を1つの HTML にまとめる
         run: python3 tenka-issen/build.py
+      - name: サイトを組み立てる
+        run: |
+          mkdir -p _site/tenka-issen
+          cp -r docs/. _site/
+          cp tenka-issen/dist/index.html _site/tenka-issen/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: tenka-issen/dist
+          path: _site
 
   deploy:
     needs: build
