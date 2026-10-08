@@ -34,6 +34,11 @@ body{margin:0;background:var(--night);color:var(--ink);font-family:var(--body);d
   padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 0;pointer-events:none}
 .shopname{font-family:var(--display);font-weight:700;font-size:1.3rem;letter-spacing:.2em;text-shadow:0 1px 10px rgba(0,0,30,.7)}
 .shopname span{display:block;font-family:var(--body);font-weight:400;font-size:.68rem;letter-spacing:.25em;color:var(--ink-dim);margin-top:2px}
+.rt{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.snd{display:flex;gap:5px;pointer-events:auto}
+.snd button{cursor:pointer;font-size:.68rem;letter-spacing:.06em;padding:4px 10px;border-radius:999px;background:rgba(8,10,40,.6);border:1px solid var(--line);color:var(--ink-dim)}
+.snd button[aria-pressed="true"]{color:var(--sky);border-color:rgba(143,211,255,.5)}
+.snd button:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
 .phase{font-size:.72rem;letter-spacing:.15em;padding:5px 12px;border-radius:999px;background:rgba(8,10,40,.6);border:1px solid var(--line);text-align:right}
 .tip{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-size:.7rem;letter-spacing:.08em;color:var(--ink-dim);
   background:rgba(8,10,40,.6);padding:4px 12px;border-radius:999px;pointer-events:none;white-space:nowrap}
@@ -106,7 +111,7 @@ button{font:inherit;color:inherit}
 select{font:inherit;font-size:.78rem;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
 .cnt{font-variant-numeric:tabular-nums;font-weight:700;min-width:1.6em;text-align:center}
 
-#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 54px);transform:translate(-50%,-8px);opacity:0;z-index:9;
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 92px);transform:translate(-50%,-8px);opacity:0;z-index:9;
   background:rgba(10,14,50,.94);border:1px solid var(--line);padding:9px 16px;border-radius:999px;font-size:.84rem;letter-spacing:.04em;
   transition:opacity .25s,transform .25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
@@ -126,7 +131,7 @@ select{font:inherit;font-size:.78rem;color:var(--ink);background:var(--panel-2);
   <canvas id="scene" aria-label="夕暮れの通りに建つ武器屋と、空から降る光"></canvas>
   <div class="stage-top">
     <div class="shopname">空色堂<span>空の素材で、旅の武器を</span></div>
-    <div class="phase" id="phase">夕暮れ</div>
+    <div class="rt"><div class="phase" id="phase">夕暮れ</div><div class="snd"><button id="snd-bgm" aria-pressed="true">BGM オン</button><button id="snd-sfx" aria-pressed="true">効果音 オン</button></div></div>
   </div>
   <div class="tip" id="tip">降ってくる光をタップすると素材が手に入る</div>
 </div>
@@ -303,10 +308,10 @@ function tryBuy(cls,budget){
   const it=pool.reduce((a,b)=>totalAtk(b)>totalAtk(a)?b:a);
   if(Math.random()>POLICY[S.policy].p)return{item:it,ok:false};
   const price=shelfPrice(it);S.items=S.items.filter(x=>x!==it);S.gold+=price;S.sold++;S.rep+=it.st>=3?3:1;
-  if(away){away.gold+=price;away.sold++}else{LOG.unshift({t:`${cls.who}が${RID[it.r].name}${it.plus?'+'+it.plus:''}を購入`,g:price});LOG=LOG.slice(0,5)}
+  if(away){away.gold+=price;away.sold++}else{AU.coin(it.st>=3);LOG.unshift({t:`${cls.who}が${RID[it.r].name}${it.plus?'+'+it.plus:''}を購入`,g:price});LOG=LOG.slice(0,5)}
   return{item:it,ok:true,price};
 }
-function launch(dg,party,repeat){S.runs.push({dg,party:[...party],end:S.clock+DID[dg].dur,repeat:!!repeat});if(!away)party.forEach((id,i)=>walkOut(id,i))}
+function launch(dg,party,repeat){S.runs.push({dg,party:[...party],end:S.clock+DID[dg].dur,repeat:!!repeat});if(!away){AU.depart();}if(!away)party.forEach((id,i)=>walkOut(id,i))}
 function resolveRun(run){
   const d=DID[run.dg],f=floorOf(d.id),win=Math.random()<winRate(run.party,d.id),mult=(1+.15*(f-1))*(win?1:.3),got={};
   for(const[k,[lo,hi]]of Object.entries(d.loot)){const n=Math.round(rand(lo,hi)*mult);if(n>0){S.mats[k]+=n;got[k]=n;if(away)away.mats[k]=(away.mats[k]||0)+n}}
@@ -320,7 +325,7 @@ function resolveRun(run){
   const loot=Object.entries(got).map(([k,n])=>`${MATS[k].name}+${n}`).join(' ');
   S.dlog.unshift({win,t:text,loot:(gold?`${gold}G `:'')+loot+(broke.length?` ・ ${broke.join('、')}が折れた`:'')});S.dlog=S.dlog.slice(0,5);
   if(away){away.dg=(away.dg||0)+1;if(win)away.dgWin=(away.dgWin||0)+1;away.gold+=gold;return}
-  toast(win?`${text}！ ${gold}G${got[d.rare]?` ・ ${MATS[d.rare].name}+${got[d.rare]}`:''}`:`${text}…`,win?'good':'bad');if(win&&boss){burst(shopX()+100*s,gy-120*s,[255,220,150],60);burst(shopX()+100*s,gy-120*s,hex(MATS[d.rare].c),40)}run.party.forEach((id,i)=>walkIn(id,i,win));
+  (win?(boss?AU.fanfare:AU.win):AU.lose)();toast(win?`${text}！ ${gold}G${got[d.rare]?` ・ ${MATS[d.rare].name}+${got[d.rare]}`:''}`:`${text}…`,win?'good':'bad');if(win&&boss){burst(shopX()+100*s,gy-120*s,[255,220,150],60);burst(shopX()+100*s,gy-120*s,hex(MATS[d.rare].c),40)}run.party.forEach((id,i)=>walkIn(id,i,win));
 }
 const budgetFor=()=>Math.round(60*Math.pow(1.7,rank()-1)*rand(.7,2));
 function tick(dt,live){
@@ -330,15 +335,15 @@ function tick(dt,live){
     S.acc[k]=(S.acc[k]||0)+dt*n*speed*(away?.5:1)/gatherEvery();while(S.acc[k]>=1){S.acc[k]--;S.mats[k]++;if(away)away.mats[k]=(away.mats[k]||0)+1}}
   // forge
   for(let i=S.forge.length-1;i>=0;i--){const j=S.forge[i];j.t+=dt;if(j.t>=j.total){S.forge.splice(i,1);const r=RID[j.r];S.crafted++;
-    if(Math.random()<r.rate){const it=newItem(r);S.items.push(it);if(away)away.crafted++;else{toast(`${r.name} ${'★'.repeat(it.st)} ATK${it.atk} が鍛え上がった`,'good');forgeFx(true)}}
-    else{if(away)away.failed++;else{toast(`${r.name}の鍛造に失敗… 素材は風に溶けた`,'bad');forgeFx(false)}}}}
+    if(Math.random()<r.rate){const it=newItem(r);S.items.push(it);if(away)away.crafted++;else{AU.forged();toast(`${r.name} ${'★'.repeat(it.st)} ATK${it.atk} が鍛え上がった`,'good');forgeFx(true)}}
+    else{if(away)away.failed++;else{AU.fail();toast(`${r.name}の鍛造に失敗… 素材は風に溶けた`,'bad');forgeFx(false)}}}}
   // apprentice smith
   if(S.up.smith&&S.smithOn){const r=RID[S.smithRecipe];if(r)while(startCraft(r)){}}
   // auto display
   if(S.autoShow){const free=showSlots()-shown().length;if(free>0){const cand=S.items.filter(i=>!i.shown).sort((a,b)=>value(b)-value(a)).slice(0,free);cand.forEach(i=>i.shown=true)}}
   while(shown().length>showSlots()){shown().sort((a,b)=>value(a)-value(b))[0].shown=false}
   // adventurers join as the shop grows
-  for(const d of ADVS)if(d.rank<=rank()&&!adv(d.id)){S.advs.push({id:d.id,lv:1,xp:0,w:null,rest:0});if(!away)toast(`${d.job}の${d.name}が常連になった`,'good')}
+  for(const d of ADVS)if(d.rank<=rank()&&!adv(d.id)){S.advs.push({id:d.id,lv:1,xp:0,w:null,rest:0});if(!away){AU.win();}if(!away)toast(`${d.job}の${d.name}が常連になった`,'good')}
   // dungeon runs
   for(const run of [...S.runs]){if(S.clock<run.end)continue;S.runs=S.runs.filter(r=>r!==run);resolveRun(run);
     if(run.repeat&&run.party.every(id=>{const a=adv(id);return a&&ready(a)}))launch(run.dg,run.party,true)}
@@ -476,23 +481,23 @@ $('pane').addEventListener('change',e=>{const t=e.target;
     if(a.w){if(S.items.length>=stockCap()){toast('倉庫がいっぱいで外せない','bad');render();return}a.w.shown=false;S.items.push(a.w);a.w=null}
     if(v){const it=S.items.find(i=>i.id==v);if(it){S.items=S.items.filter(i=>i!==it);it.shown=false;a.w=it;toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
     render()}}save()});
-$('pane').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;
+$('pane').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;if(!(d.craft||d.deliver||d.ench||d.up||d.hire||d.sell||d.go))AU.tick();
   if(d.policy)S.policy=d.policy;
   if(d.show){const it=S.items.find(i=>i.id==d.show);if(it&&shown().length<showSlots())it.shown=true}
   if(d.unshow){const it=S.items.find(i=>i.id==d.unshow);if(it){it.shown=false;S.autoShow=false}}
   if(d.deliver){const q=S.requests.find(x=>x.id==d.deliver),it=q&&reqItem(q);if(it){S.items=S.items.filter(i=>i!==it);S.gold+=q.reward;S.rep+=q.rep;S.requests=S.requests.filter(x=>x!==q);
-    toast(`${q.who}に納品した  +${fmt(q.reward)}G ・ 評判+${q.rep}`,'good');LOG.unshift({t:`依頼：${RID[q.r].name}を納品`,g:q.reward});LOG=LOG.slice(0,5);forgeFx(true)}}
-  if(d.craft){if(startCraft(RID[d.craft]))toast(`${RID[d.craft].name}を炉に入れた`)}
-  if(d.sell){const it=S.items.find(i=>i.id==d.sell);if(it){const v=Math.round(value(it)*.6);S.gold+=v;S.items=S.items.filter(i=>i!==it);toast(`問屋に卸した  +${fmt(v)}G`,'good')}}
+    AU.coin(true);toast(`${q.who}に納品した  +${fmt(q.reward)}G ・ 評判+${q.rep}`,'good');LOG.unshift({t:`依頼：${RID[q.r].name}を納品`,g:q.reward});LOG=LOG.slice(0,5);forgeFx(true)}}
+  if(d.craft){if(startCraft(RID[d.craft])){AU.anvil();toast(`${RID[d.craft].name}を炉に入れた`)}}
+  if(d.sell){const it=S.items.find(i=>i.id==d.sell);if(it){AU.coin(false);const v=Math.round(value(it)*.6);S.gold+=v;S.items=S.items.filter(i=>i!==it);toast(`問屋に卸した  +${fmt(v)}G`,'good')}}
   if(d.ench){const it=S.items.find(i=>i.id==d.ench);if(it&&it.plus<5){const sc=it.plus+1,gc=20*(it.plus+1);if(S.mats.star>=sc&&S.gold>=gc){S.mats.star-=sc;S.gold-=gc;
-    if(Math.random()<ENCH[it.plus]){it.plus++;toast(`強化成功  ${RID[it.r].name} +${it.plus}`,'good');forgeFx(true)}
-    else if(it.plus>=3&&Math.random()<.15){S.items=S.items.filter(i=>i!==it);toast('失敗。武器は霧になって空へ還った','bad');forgeFx(false)}
-    else toast('強化失敗。星の砂だけが消えた','bad')}}}
+    if(Math.random()<ENCH[it.plus]){it.plus++;AU.up();toast(`強化成功  ${RID[it.r].name} +${it.plus}`,'good');forgeFx(true)}
+    else if(it.plus>=3&&Math.random()<.15){S.items=S.items.filter(i=>i!==it);AU.vanish();toast('失敗。武器は霧になって空へ還った','bad');forgeFx(false)}
+    else{AU.fail();toast('強化失敗。星の砂だけが消えた','bad')}}}}
   if(d.wk){const k=d.wk,dd=+d.d;if(dd>0&&S.idle>0){S.idle--;S.workers[k]++}else if(dd<0&&S.workers[k]>0){S.workers[k]--;S.idle++}}
-  if(d.hire){const c=hireCost();if(S.gold>=c){S.gold-=c;S.hires++;S.idle++;toast('空すくいの精霊がやってきた','good')}}
+  if(d.hire){const c=hireCost();if(S.gold>=c){AU.pick(true);S.gold-=c;S.hires++;S.idle++;toast('空すくいの精霊がやってきた','good')}}
   if(d.pick){const[dg,id]=d.pick.split(':');for(const k in pickParty)if(k!==dg)pickParty[k]=(pickParty[k]||[]).filter(x=>x!==id);const l=pickParty[dg]||(pickParty[dg]=[]);l.includes(id)?l.splice(l.indexOf(id),1):l.push(id)}
   if(d.go){const sel=(pickParty[d.go]||[]).filter(id=>ready(adv(id)));if(sel.length&&S.runs.length<partySlots()){launch(d.go,sel,false);pickParty[d.go]=[];toast(`${sel.map(id=>AID[id].name).join('と')}が${DID[d.go].name}へ出発した`)}}
-  if(d.up){const u=UID[d.up],c=upCost(u);if(!upMaxed(u)&&S.gold>=c){S.gold-=c;S.up[u.id]++;toast(`${u.name}${u.id==='smith'&&S.up.smith===1?'を雇った':` Lv ${S.up[u.id]}`}`,'good')}}
+  if(d.up){const u=UID[d.up],c=upCost(u);if(!upMaxed(u)&&S.gold>=c){AU.up();S.gold-=c;S.up[u.id]++;toast(`${u.name}${u.id==='smith'&&S.up.smith===1?'を雇った':` Lv ${S.up[u.id]}`}`,'good')}}
   render();save();
 });
 
@@ -527,7 +532,7 @@ function floatText(x,y,text,c){fx.push({x,y,t:0,text,c})}
 cv.addEventListener('pointerdown',e=>{const b=cv.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;
   let best=null,bd=42*s;for(const m of motes){const d=Math.hypot((m.dx??m.x)-x,m.y-y);if(d<bd){bd=d;best=m}}
   if(best){motes.splice(motes.indexOf(best),1);const n=best.m==='comet'?1:2;S.mats[best.m]+=n;const c=hex(MATS[best.m].c);
-    floatText(best.dx,best.y,`+${n} ${MATS[best.m].name}`,c);burst(best.dx,best.y,c,12);$('tip').hidden=true;refresh()}});
+    AU.pick(best.m==='comet');floatText(best.dx,best.y,`+${n} ${MATS[best.m].name}`,c);burst(best.dx,best.y,c,12);$('tip').hidden=true;refresh()}});
 
 function drawPerson(x,y,g,col,ox,oy,walk){
   const k=s*g.h,X=x+ox,Y=y+oy,sw=Math.sin(walk)*.8;ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineCap='round';
@@ -635,6 +640,62 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
+/* ================= sound (synthesised, no files) ================= */
+const AU=(()=>{
+  const pref={bgm:true,sfx:true};try{Object.assign(pref,JSON.parse(localStorage.getItem('sorairo-sound')||'{}'))}catch(e){}
+  let ac=null,master,bgmBus,sfxBus,timer=null,nextT=0,step=0,mi=6,on=false;
+  const mtof=m=>440*Math.pow(2,(m-69)/12);
+  function init(){if(ac)return true;const C=window.AudioContext||window.webkitAudioContext;if(!C)return false;
+    try{ac=new C()}catch(e){return false}
+    master=ac.createGain();master.gain.value=.85;const comp=ac.createDynamicsCompressor();master.connect(comp);comp.connect(ac.destination);
+    const rev=ac.createConvolver(),n=ac.sampleRate*2.6,b=ac.createBuffer(2,n,ac.sampleRate);
+    for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.6)}
+    rev.buffer=b;const rg=ac.createGain();rg.gain.value=.4;rev.connect(rg);rg.connect(master);
+    bgmBus=ac.createGain();bgmBus.gain.value=0;bgmBus.connect(master);bgmBus.connect(rev);
+    sfxBus=ac.createGain();sfxBus.gain.value=pref.sfx?.55:0;sfxBus.connect(master);sfxBus.connect(rev);return true}
+  function osc(type,f,t,dur,g,bus,a=.006,det=0){const o=ac.createOscillator(),e=ac.createGain();o.type=type;o.frequency.value=f;o.detune.value=det;
+    e.gain.setValueAtTime(0,t);e.gain.linearRampToValueAtTime(g,t+a);e.gain.exponentialRampToValueAtTime(.0001,t+Math.max(dur,a+.02));o.connect(e);e.connect(bus);o.start(t);o.stop(t+dur+.1)}
+  function bell(m,t,g=.2,dur=1.4,bus=sfxBus){const f=mtof(m);osc('sine',f,t,dur,g,bus);osc('sine',f*2.76,t,dur*.35,g*.22,bus);osc('triangle',f*2,t,dur*.2,g*.1,bus)}
+  function noise(t,dur,g,freq,q){const len=Math.ceil(ac.sampleRate*dur),b=ac.createBuffer(1,len,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    const n=ac.createBufferSource();n.buffer=b;const f=ac.createBiquadFilter();f.type='bandpass';f.frequency.value=freq;f.Q.value=q;const e=ac.createGain();
+    e.gain.setValueAtTime(g,t);e.gain.exponentialRampToValueAtTime(.0001,t+dur);n.connect(f);f.connect(e);e.connect(sfxBus);n.start(t)}
+  // background music: soft pads + a wandering music box, brighter by day and slower at night
+  const DAY=[[60,64,67,71],[57,60,64,67],[53,57,60,64],[55,59,62,65]],NIGHT=[[57,60,64,67],[53,57,60,64],[48,55,60,64],[52,55,59,64]];
+  const scale=r=>{const o=[];for(let k=0;k<3;k++)for(const p of[0,2,4,7,9])o.push(r+12+k*12+p);return o};
+  function schedule(){if(!ac)return;const nt=night(),spb=60/(nt?56:68)/2,prog=nt?NIGHT:DAY,sc=scale(nt?57:60);
+    if(nextT<ac.currentTime)nextT=ac.currentTime+.05;
+    while(nextT<ac.currentTime+.7){const t=nextT,ch=prog[Math.floor(step/16)%4];
+      if(step%16===0){for(const m of ch){osc('triangle',mtof(m-12),t,spb*17,.045,bgmBus,1.4);osc('sine',mtof(m),t,spb*16,.03,bgmBus,1.8,7)}osc('sine',mtof(ch[0]-24),t,spb*16,.08,bgmBus,.9)}
+      const dens=nt?.32:.5;if(Math.random()<(step%2?dens*.45:dens)){mi=clamp(mi+pick([-2,-1,-1,0,1,1,2]),0,sc.length-1);bell(sc[mi],t,nt?.05:.06,nt?2.4:1.6,bgmBus)}
+      if(nt&&step%32===24&&Math.random()<.6)bell(pick([96,98,100]),t,.03,3,bgmBus);
+      nextT+=spb;step++}}
+  function startBgm(){if(!ac||timer)return;bgmBus.gain.cancelScheduledValues(ac.currentTime);bgmBus.gain.setTargetAtTime(.34,ac.currentTime,.8);nextT=ac.currentTime+.1;timer=setInterval(schedule,180);schedule()}
+  function stopBgm(){if(!ac)return;bgmBus.gain.setTargetAtTime(0,ac.currentTime,.3);clearInterval(timer);timer=null}
+  function unlock(){if(on)return;if(!init())return;ac.resume();on=true;if(pref.bgm)startBgm()}
+  addEventListener('pointerdown',unlock,{capture:true});addEventListener('keydown',unlock,{capture:true});
+  document.addEventListener('visibilitychange',()=>{if(!ac)return;if(document.hidden)ac.suspend();else if(on)ac.resume()});
+  const play=fn=>{if(!ac||!on||!pref.sfx||away)return;fn(ac.currentTime+.01)};
+  const savePref=()=>{try{localStorage.setItem('sorairo-sound',JSON.stringify(pref))}catch(e){}};
+  return{pref,
+    toggle(k){pref[k]=!pref[k];savePref();unlock();if(!ac)return;
+      if(k==='bgm')pref.bgm?startBgm():stopBgm();else sfxBus.gain.setTargetAtTime(pref.sfx?.55:0,ac.currentTime,.05)},
+    tick:()=>play(t=>osc('sine',1500,t,.05,.04,sfxBus)),
+    pick:rare=>play(t=>{bell(rare?91:84,t,.16,.8);bell(rare?98:91,t+.07,.13,.9)}),
+    coin:big=>play(t=>{bell(88,t,.15,.45);bell(95,t+.07,.18,.8);if(big){bell(100,t+.15,.17,1.1);bell(103,t+.24,.14,1.3)}}),
+    anvil:()=>play(t=>{noise(t,.16,.45,2600,7);osc('square',mtof(86),t,.09,.03,sfxBus);noise(t+.22,.12,.25,3200,8)}),
+    forged:()=>play(t=>[76,79,84,88].forEach((m,i)=>bell(m,t+i*.08,.13,1.1))),
+    fail:()=>play(t=>{osc('triangle',mtof(50),t,.45,.13,sfxBus);osc('triangle',mtof(45),t+.14,.6,.11,sfxBus);noise(t,.3,.12,500,1)}),
+    up:()=>play(t=>[72,76,79,84,91].forEach((m,i)=>bell(m,t+i*.055,.11,.8))),
+    vanish:()=>play(t=>{[86,82,77,72,67].forEach((m,i)=>bell(m,t+i*.09,.09,.9));noise(t,.9,.1,1800,.7)}),
+    depart:()=>play(t=>{osc('triangle',mtof(67),t,.3,.1,sfxBus,.03);osc('triangle',mtof(74),t+.22,.55,.11,sfxBus,.03)}),
+    win:()=>play(t=>{[72,76,79].forEach((m,i)=>osc('triangle',mtof(m),t+i*.1,.5,.09,sfxBus,.01));[72,79,84].forEach(m=>bell(m,t+.32,.08,1.4))}),
+    fanfare:()=>play(t=>{[67,67,72,76].forEach((m,i)=>osc('sawtooth',mtof(m),t+i*.13,.22,.035,sfxBus,.01));[72,76,79,84].forEach(m=>{osc('triangle',mtof(m),t+.55,1.6,.07,sfxBus,.02);bell(m+12,t+.55,.06,2)});noise(t+.55,1.2,.08,6000,.6)}),
+    lose:()=>play(t=>[64,60,55].forEach((m,i)=>osc('triangle',mtof(m),t+i*.22,.6,.09,sfxBus,.02))),
+  };
+})();
+const sndBtns=()=>{for(const k of['bgm','sfx']){const b=$('snd-'+k);b.setAttribute('aria-pressed',AU.pref[k]);b.textContent=(k==='bgm'?'BGM ':'効果音 ')+(AU.pref[k]?'オン':'オフ')}};
+['bgm','sfx'].forEach(k=>$('snd-'+k).addEventListener('click',()=>{AU.toggle(k);sndBtns()}));sndBtns();
+
 /* ================= time away ================= */
 function offline(){
   const sec=clamp((Date.now()-S.last)/1000,0,8*3600);if(sec<60)return;
@@ -648,7 +709,7 @@ function offline(){
   if(!lines.length)lines.push('静かな時間でした。精霊を素材に割り当てると、留守中も素材が集まります。');
   $('wList').innerHTML=lines.map(l=>`<li>${l}</li>`).join('');$('welcome').hidden=false;
 }
-$('claim').addEventListener('click',()=>{$('welcome').hidden=true;render();save()});
+$('claim').addEventListener('click',()=>{AU.coin(true);$('welcome').hidden=true;render();save()});
 
 addEventListener('resize',resize);resize();offline();render();sig=structSig();
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
