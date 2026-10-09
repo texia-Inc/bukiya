@@ -94,9 +94,10 @@ button{font:inherit;color:inherit}
 .flash{animation:flash 2.6s ease}
 @keyframes flash{0%,65%{box-shadow:0 0 0 2px var(--sky),0 0 18px rgba(143,211,255,.55)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.flash{animation:none;outline:2px solid var(--sky)}}
-.row.adv{flex-wrap:wrap}
-.row.adv .main{flex:1 1 200px}
-.row.adv>.acts{flex:1 1 auto}
+.row.adv{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:start;gap:6px 10px}
+.row.adv>.acts{grid-column:1/-1;justify-content:flex-start}
+.row.adv>.acts:empty{display:none}
+.row.adv select{max-width:100%}
 .acts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 .ico{width:26px;height:26px;flex:none;color:var(--c);filter:drop-shadow(0 0 5px var(--c))}
 .note{font-size:.78rem;color:var(--ink-dim);line-height:1.7;margin:0}
@@ -444,7 +445,7 @@ function render(){renderHead();const p=$('pane');
   }else if(tab==='stock'){
     const items=[...S.items].sort((a,b)=>value(b)-value(a));
     p.innerHTML=`<p class="sec">倉庫 ${S.items.length}/${stockCap()}<span>店頭 ${shown().length}/${showSlots()}</span></p>`+(items.length?`<div class="list">${items.map(it=>{const r=RID[it.r],max=it.plus>=5,sc=it.plus+1,gc=20*(it.plus+1),ok=!max&&S.mats.star>=sc&&S.gold>=gc;
-      return`<div class="row">${icon(r.type,r.c)}<div class="main"><span class="nm">${itemLabel(it)}</span><span class="sub"><span>ATK ${totalAtk(it)}</span><span>店頭 ${fmt(shelfPrice(it))}G</span><span>卸値 ${fmt(value(it)*.6)}G</span>${it.shown?'<span style="color:var(--sky)">店頭に並んでいる</span>':''}</span>
+      return`<div class="row adv">${icon(r.type,r.c)}<div class="main"><span class="nm">${itemLabel(it)}</span><span class="sub"><span>ATK ${totalAtk(it)}</span><span>店頭 ${fmt(shelfPrice(it))}G</span><span>卸値 ${fmt(value(it)*.6)}G</span>${it.shown?'<span style="color:var(--sky)">店頭に並んでいる</span>':''}</span>
       ${max?'':`<span class="sub">強化 +${it.plus+1}：成功${Math.round(ENCH[it.plus]*100)}% ・ 星の砂${sc} ・ ${gc}G${it.plus>=3?' ・ 失敗で15%霧散':''}</span>`}</div>
       <div class="acts">${it.shown?`<button class="btn sm" data-unshow="${it.id}">下げる</button>`:`<button class="btn sm" data-show="${it.id}" ${shown().length<showSlots()?'':'disabled'}>並べる</button>`}
       ${max?'':`<button class="btn sm" data-ench="${it.id}" ${ok?'':'disabled'}>強化</button>`}<button class="btn sm" data-sell="${it.id}">卸す</button></div></div>`}).join('')}</div>`
@@ -455,7 +456,7 @@ function render(){renderHead();const p=$('pane');
     <p class="sec">常連の冒険者<span>パーティ ${S.runs.length}/${partySlots()}</span></p>
     <div class="list">${S.advs.map(a=>{const d=AID[a.id],run=S.runs.find(r=>r.party.includes(a.id));
       const st=run?`${DID[run.dg].name}に挑戦中 ・ 残り <span data-left="${run.end}">${mmss(run.end-S.clock)}</span>`:resting(a)?`休養中 ・ 残り <span data-left="${a.rest}">${mmss(a.rest-S.clock)}</span>`:'店で待機中';
-      const fav=[...RECIPES].reverse().find(r=>r.rank<=rank()&&d.likes.includes(r.type)),needFav=!a.w||!d.likes.includes(RID[a.w.r].type);
+      const favs=[...RECIPES].reverse().filter(r=>r.rank<=rank()&&d.likes.includes(r.type)),fav=favs.find(r=>canPay(r.need))||favs.find(r=>!r.legend),needFav=!a.w||!d.likes.includes(RID[a.w.r].type);
       let fix='';if(a.broke&&!a.w){const br=RID[a.broke],sp=spareFor(a),why=craftBlock(br);
         fix=`<span class="sub" style="color:var(--bad)">${br.name}が折れてしまった</span><span class="acts" style="justify-content:flex-start">`+
           (sp?`<button class="btn g sm" data-equipbest="${a.id}">倉庫の${RID[sp.r].name}（ATK${totalAtk(sp)}）を持たせる</button>`:'')+
