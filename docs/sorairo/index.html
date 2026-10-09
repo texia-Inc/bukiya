@@ -93,6 +93,9 @@ button{font:inherit;color:inherit}
 .flash{animation:flash 2.6s ease}
 @keyframes flash{0%,65%{box-shadow:0 0 0 2px var(--sky),0 0 18px rgba(143,211,255,.55)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.flash{animation:none;outline:2px solid var(--sky)}}
+.row.adv{flex-wrap:wrap}
+.row.adv .main{flex:1 1 200px}
+.row.adv>.acts{flex:1 1 auto}
 .acts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 .ico{width:26px;height:26px;flex:none;color:var(--c);filter:drop-shadow(0 0 5px var(--c))}
 .note{font-size:.78rem;color:var(--ink-dim);line-height:1.7;margin:0}
@@ -318,6 +321,8 @@ function tryBuy(cls,budget){
   if(away){away.gold+=price;away.sold++}else{AU.coin(it.st>=3);LOG.unshift({t:`${cls.who}が${RID[it.r].name}${it.plus?'+'+it.plus:''}を購入`,g:price});LOG=LOG.slice(0,5)}
   return{item:it,ok:true,price};
 }
+function equipItem(a,it){if(a.w){a.w.shown=false;S.items.push(a.w)}S.items=S.items.filter(i=>i!==it);it.shown=false;delete it.keep;a.w=it;a.broke=null}
+const spareFor=a=>S.items.filter(i=>AID[a.id].likes.includes(RID[i.r].type)&&(!i.keep||i.keep===a.id)&&!S.requests.some(q=>q.r===i.r&&totalAtk(i)>=q.min)).sort((x,y)=>totalAtk(y)-totalAtk(x))[0];
 function launch(dg,party,repeat){S.runs.push({dg,party:[...party],end:S.clock+DID[dg].dur,repeat:!!repeat});if(!away){AU.depart();}if(!away)party.forEach((id,i)=>walkOut(id,i))}
 function resolveRun(run){
   const d=DID[run.dg],f=floorOf(d.id),win=Math.random()<winRate(run.party,d.id),mult=(1+.15*(f-1))*(win?1:.3),got={};
@@ -327,12 +332,12 @@ function resolveRun(run){
   const names=run.party.map(id=>AID[id].name).join('と');let text,broke=[];
   if(win){S.rep+=boss?10:2;if(boss){S.kills[d.id+f]=(S.kills[d.id+f]||0)+1;if(away)away.boss=(away.boss||0)+1}for(const id of run.party){const a=adv(id);a.xp++;if(a.xp>=a.lv*2){a.xp=0;a.lv++}}
     if(f<MAXF)S.floors[d.id]=f+1;text=boss?`${names}が${d.bosses[f]}を討伐`:`${names}が${d.name} ${f}階を突破`}
-  else{for(const id of run.party){const a=adv(id);a.rest=S.clock+(boss?180:90);if(a.w&&Math.random()<(boss?.35:.2)){broke.push(RID[a.w.r].name);a.w=null}}
+  else{for(const id of run.party){const a=adv(id);a.rest=S.clock+(boss?180:90);if(a.w&&Math.random()<(boss?.35:.2)){broke.push(`${AID[id].name}の${RID[a.w.r].name}`);a.broke=a.w.r;a.w=null}}
     text=boss?`${names}は${d.bosses[f]}に敗れた`:`${names}は${d.name} ${f}階で撤退`;run.repeat=false}
   const loot=Object.entries(got).map(([k,n])=>`${MATS[k].name}+${n}`).join(' ');
   S.dlog.unshift({win,t:text,loot:(gold?`${gold}G `:'')+loot+(broke.length?` ・ ${broke.join('、')}が折れた`:'')});S.dlog=S.dlog.slice(0,5);
-  if(away){away.dg=(away.dg||0)+1;if(win)away.dgWin=(away.dgWin||0)+1;away.gold+=gold;return}
-  (win?(boss?AU.fanfare:AU.win):AU.lose)();toast(win?`${text}！ ${gold}G${got[d.rare]?` ・ ${MATS[d.rare].name}+${got[d.rare]}`:''}`:`${text}…`,win?'good':'bad');if(win&&boss){burst(shopX()+100*s,gy-120*s,[255,220,150],60);burst(shopX()+100*s,gy-120*s,hex(MATS[d.rare].c),40)}run.party.forEach((id,i)=>walkIn(id,i,win));
+  if(away){if(broke.length)away.broke=(away.broke||[]).concat(broke);away.dg=(away.dg||0)+1;if(win)away.dgWin=(away.dgWin||0)+1;away.gold+=gold;return}
+  (win?(boss?AU.fanfare:AU.win):AU.lose)();toast(win?`${text}！ ${gold}G${got[d.rare]?` ・ ${MATS[d.rare].name}+${got[d.rare]}`:''}`:`${text}…${broke.length?` ${broke.join('、')}が折れた。冒険タブから代わりを鍛えられます`:''}`,win?'good':'bad');if(win&&boss){burst(shopX()+100*s,gy-120*s,[255,220,150],60);burst(shopX()+100*s,gy-120*s,hex(MATS[d.rare].c),40)}run.party.forEach((id,i)=>walkIn(id,i,win));
 }
 const budgetFor=()=>Math.round(60*Math.pow(1.7,rank()-1)*rand(.7,2));
 function tick(dt,live){
@@ -343,14 +348,16 @@ function tick(dt,live){
   // forge
   for(let i=S.forge.length-1;i>=0;i--){const j=S.forge[i];j.t+=dt;if(j.t>=j.total){S.forge.splice(i,1);const r=RID[j.r];S.crafted++;
     if(Math.random()<r.rate){const it=newItem(r);S.items.push(it);const q=j.req&&S.requests.find(x=>x.id===j.req);if(q)it.shown=false;
+      const ow=j.adv&&adv(j.adv);let handed=false;if(ow&&!ow.w){if(busy(ow)){it.keep=ow.id}else{equipItem(ow,it);handed=true}}
       if(away)away.crafted++;else{AU.forged();forgeFx(true);
-        if(q)toast(totalAtk(it)>=q.min?`依頼の${r.name}が鍛え上がった（ATK${totalAtk(it)}）。店頭で納品できます`:`${r.name}はATK${totalAtk(it)}。依頼のATK${q.min}に届かなかった`,totalAtk(it)>=q.min?'good':'bad');
+        if(ow)toast(handed?`${AID[ow.id].name}に新しい${r.name}（ATK${totalAtk(it)}）を持たせた`:`${AID[ow.id].name}の代わりの${r.name}ができた。帰ってきたら持たせよう`,'good');
+        else if(q)toast(totalAtk(it)>=q.min?`依頼の${r.name}が鍛え上がった（ATK${totalAtk(it)}）。店頭で納品できます`:`${r.name}はATK${totalAtk(it)}。依頼のATK${q.min}に届かなかった`,totalAtk(it)>=q.min?'good':'bad');
         else toast(`${r.name} ${'★'.repeat(it.st)} ATK${it.atk} が鍛え上がった`,'good')}}
     else{if(away)away.failed++;else{AU.fail();toast(`${r.name}の鍛造に失敗… 素材は風に溶けた`,'bad');forgeFx(false)}}}}
   // apprentice smith
   if(S.up.smith&&S.smithOn){const r=RID[S.smithRecipe];if(r)while(startCraft(r)){}}
   // auto display
-  if(S.autoShow){const free=showSlots()-shown().length;if(free>0){const cand=S.items.filter(i=>!i.shown&&!S.requests.some(q=>q.r===i.r&&totalAtk(i)>=q.min)).sort((a,b)=>value(b)-value(a)).slice(0,free);cand.forEach(i=>i.shown=true)}}
+  if(S.autoShow){const free=showSlots()-shown().length;if(free>0){const cand=S.items.filter(i=>!i.shown&&!i.keep&&!S.requests.some(q=>q.r===i.r&&totalAtk(i)>=q.min)).sort((a,b)=>value(b)-value(a)).slice(0,free);cand.forEach(i=>i.shown=true)}}
   while(shown().length>showSlots()){shown().sort((a,b)=>value(a)-value(b))[0].shown=false}
   // adventurers join as the shop grows
   for(const d of ADVS)if(d.rank<=rank()&&!adv(d.id)){S.advs.push({id:d.id,lv:1,xp:0,w:null,rest:0});if(!away){AU.win();}if(!away)toast(`${d.job}の${d.name}が常連になった`,'good')}
@@ -388,6 +395,7 @@ function renderHead(){
   $('repBar').style.width=(hi?clamp((S.rep-lo)/(hi-lo),0,1)*100:100)+'%';$('repTxt').textContent=hi?`評判 ${S.rep}/${hi}`:`評判 ${S.rep}`;
   $('mats').innerHTML=[...MK,...RARE.filter(k=>S.mats[k]>0)].map(k=>`<span class="mat ${MATS[k].rare?'rare':''}" style="--c:${MATS[k].c}"><i></i>${MATS[k].name}<b>${S.mats[k]}</b></span>`).join('');
   const dot=document.querySelector('[data-tab="front"] .dot');if(dot)dot.hidden=!S.requests.some(q=>reqItem(q));
+  const dd=document.querySelector('[data-tab="dungeon"] .dot');if(dd)dd.hidden=!S.advs.some(a=>a.broke&&!a.w);
   $('phase').textContent=phaseName(S.p)+(night()?' ・ 星が降る':'');
 }
 const reqItem=q=>S.items.filter(i=>i.r===q.r&&totalAtk(i)>=q.min).sort((a,b)=>value(a)-value(b))[0];
@@ -421,7 +429,7 @@ function render(){renderHead();const p=$('pane');
   }else if(tab==='forge'){
     p.innerHTML=`
     <p class="sec">炉 ${S.forge.length}/${S.up.forge}<span>倉庫 ${S.items.length+S.forge.length}/${stockCap()}</span></p>
-    <div class="forge">${Array.from({length:S.up.forge},(_,i)=>{const j=S.forge[i];return j?`<div class="card"><span class="nm">${RID[j.r].name}</span><div class="bar gold-bar"><i data-prog="${i}" style="width:${j.t/j.total*100}%"></i></div><span class="sub" data-forgeleft="${i}">あと ${mmss(j.total-j.t)}</span></div>`:'<div class="card empty">空いている炉</div>'}).join('')}</div>
+    <div class="forge">${Array.from({length:S.up.forge},(_,i)=>{const j=S.forge[i];return j?`<div class="card"><span class="nm">${RID[j.r].name}${j.adv?`<span class="st" style="color:var(--sky)">${AID[j.adv].name}の代わり</span>`:j.req?'<span class="st" style="color:var(--sky)">依頼の品</span>':''}</span><div class="bar gold-bar"><i data-prog="${i}" style="width:${j.t/j.total*100}%"></i></div><span class="sub" data-forgeleft="${i}">あと ${mmss(j.total-j.t)}</span></div>`:'<div class="card empty">空いている炉</div>'}).join('')}</div>
     <p class="sec">見習い鍛冶師</p>
     ${S.up.smith?`<div class="row"><div class="main"><span class="nm">炉が空くと自動で鍛える</span><span class="sub">素材が足りないときと倉庫がいっぱいのときは待つ</span></div>
       <select id="smithRecipe" aria-label="自動で鍛える武器">${RECIPES.filter(r=>r.rank<=rank()).map(r=>`<option value="${r.id}" ${S.smithRecipe===r.id?'selected':''}>${r.name}</option>`).join('')}</select>
@@ -447,9 +455,15 @@ function render(){renderHead();const p=$('pane');
     <div class="list">${S.advs.map(a=>{const d=AID[a.id],run=S.runs.find(r=>r.party.includes(a.id));
       const st=run?`${DID[run.dg].name}に挑戦中 ・ 残り <span data-left="${run.end}">${mmss(run.end-S.clock)}</span>`:resting(a)?`休養中 ・ 残り <span data-left="${a.rest}">${mmss(a.rest-S.clock)}</span>`:'店で待機中';
       const fav=[...RECIPES].reverse().find(r=>r.rank<=rank()&&d.likes.includes(r.type)),needFav=!a.w||!d.likes.includes(RID[a.w.r].type);
-      return`<div class="row" id="adv-${a.id}">${a.w?icon(RID[a.w.r].type,RID[a.w.r].c):'<span class="ico"></span>'}<div class="main"><span class="nm">${d.name}<span class="st" style="color:var(--ink-dim)">${d.job} ・ Lv ${a.lv}</span><em>戦力 ${advPower(a)}</em></span>
-        <span class="sub"><span>得意：${d.likes.map(x=>TYPES[x].name).join('・')}</span><span>${a.w?`装備：${RID[a.w.r].name}${a.w.plus?'+'+a.w.plus:''} ATK${totalAtk(a.w)}`:'武器なし'}</span></span><span class="sub">${st}</span></div>
-        ${!run&&needFav&&fav&&!S.items.some(i=>d.likes.includes(RID[i.r].type))?`<button class="btn sm" data-goto="forge|#rc-${fav.id}">${fav.name}を鍛えに行く</button>`:''}${run?'':`<select data-equip="${a.id}" aria-label="${d.name}に持たせる武器"><option value="">${a.w?'装備を外す':'武器を持たせる'}</option>${inStock.map(i=>`<option value="${i.id}">${RID[i.r].name}${i.plus?'+'+i.plus:''} ATK${totalAtk(i)}${d.likes.includes(RID[i.r].type)?' ◎':''}${i.shown?'（店頭）':''}</option>`).join('')}</select>`}</div>`}).join('')}
+      let fix='';if(a.broke&&!a.w){const br=RID[a.broke],sp=spareFor(a),why=craftBlock(br);
+        fix=`<span class="sub" style="color:var(--bad)">${br.name}が折れてしまった</span><span class="acts" style="justify-content:flex-start">`+
+          (sp?`<button class="btn g sm" data-equipbest="${a.id}">倉庫の${RID[sp.r].name}（ATK${totalAtk(sp)}）を持たせる</button>`:'')+
+          (S.forge.some(j=>j.adv===a.id)?'<button class="btn sm" disabled>代わりを鍛造中</button>'
+            :!why?`<button class="btn sm ${sp?'':'g'}" data-reforge="${a.id}">${br.name}を鍛え直す</button>`
+            :`<button class="btn sm" data-goto="forge|#rc-${br.id}">鍛冶で確認する</button><span class="sub" style="color:var(--bad)">${why}</span>`)+'</span>'}
+      return`<div class="row adv" id="adv-${a.id}">${a.w?icon(RID[a.w.r].type,RID[a.w.r].c):'<span class="ico"></span>'}<div class="main"><span class="nm">${d.name}<span class="st" style="color:var(--ink-dim)">${d.job} ・ Lv ${a.lv}</span><em>戦力 ${advPower(a)}</em></span>
+        <span class="sub"><span>得意：${d.likes.map(x=>TYPES[x].name).join('・')}</span><span>${a.w?`装備：${RID[a.w.r].name}${a.w.plus?'+'+a.w.plus:''} ATK${totalAtk(a.w)}`:'武器なし'}</span></span><span class="sub">${st}</span>${fix}</div>
+        <div class="acts">${!run&&!a.broke&&needFav&&fav&&!S.items.some(i=>d.likes.includes(RID[i.r].type))?`<button class="btn sm" data-goto="forge|#rc-${fav.id}">${fav.name}を鍛えに行く</button>`:''}${run?'':`<select data-equip="${a.id}" aria-label="${d.name}に持たせる武器"><option value="">${a.w?'装備を外す':'武器を持たせる'}</option>${inStock.map(i=>`<option value="${i.id}">${RID[i.r].name}${i.plus?'+'+i.plus:''} ATK${totalAtk(i)}${d.likes.includes(RID[i.r].type)?' ◎':''}${i.shown?'（店頭）':''}</option>`).join('')}</select>`}</div></div>`}).join('')}
       ${ADVS.filter(d=>!adv(d.id)).map(d=>`<div class="row locked"><span class="ico"></span><div class="main"><span class="nm">${d.job}</span><span class="sub">ランク${d.rank}で常連になる</span></div></div>`).join('')}</div>
     <p class="note">得意な種類の武器を持たせると戦力が1.3倍になります（◎）。持たせた武器は倉庫や店頭から出て、冒険者のものになります。</p>
     <p class="sec">ダンジョン</p>
@@ -497,22 +511,24 @@ function refresh(){ // light update without rebuilding buttons under the pointer
   document.querySelectorAll('[data-hire]').forEach(b=>b.disabled=S.gold<hireCost());
   document.querySelectorAll('[data-up]').forEach(b=>{const u=UID[b.dataset.up];b.disabled=upMaxed(u)||S.gold<upCost(u)});
 }
-let sig='';function structSig(){return[tab,S.requests.map(q=>reqItem(q)?2:S.forge.some(j=>j.req===q.id)?1:craftBlock(RID[q.r])).join(','),S.items.length,S.forge.length,S.requests.length,S.runs.length,S.advs.map(a=>ready(a)?1:0).join(''),S.dlog.length&&S.dlog[0].t,shown().length,rank(),S.items.map(i=>i.shown?1:0).join('')].join('|')}
+let sig='';function structSig(){return[tab,S.requests.map(q=>reqItem(q)?2:S.forge.some(j=>j.req===q.id)?1:craftBlock(RID[q.r])).join(','),S.items.length,S.forge.length,S.requests.length,S.runs.length,S.advs.map(a=>(ready(a)?1:0)+(a.broke&&!a.w?2:0)+(a.w?4:0)).join(''),S.dlog.length&&S.dlog[0].t,shown().length,rank(),S.items.map(i=>i.shown?1:0).join('')].join('|')}
 
 $('pane').addEventListener('change',e=>{const t=e.target;
   if(t.id==='autoShow')S.autoShow=t.checked;if(t.id==='smithOn')S.smithOn=t.checked;if(t.id==='smithRecipe')S.smithRecipe=t.value;
   if(t.dataset.repeat){const r=S.runs.find(x=>x.dg===t.dataset.repeat);if(r)r.repeat=t.checked}
   if(t.dataset.equip){const a=adv(t.dataset.equip);if(a&&!busy(a)){const v=t.value;
     if(a.w){if(S.items.length>=stockCap()){toast('倉庫がいっぱいで外せない','bad');render();return}a.w.shown=false;S.items.push(a.w);a.w=null}
-    if(v){const it=S.items.find(i=>i.id==v);if(it){S.items=S.items.filter(i=>i!==it);it.shown=false;a.w=it;toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
+    if(v){const it=S.items.find(i=>i.id==v);if(it){equipItem(a,it);toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
     render()}}save()});
-$('pane').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;if(!(d.reqcraft||d.craft||d.deliver||d.ench||d.up||d.hire||d.sell||d.go))AU.tick();
+$('pane').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;if(!(d.reforge||d.equipbest||d.reqcraft||d.craft||d.deliver||d.ench||d.up||d.hire||d.sell||d.go))AU.tick();
   if(d.policy)S.policy=d.policy;
   if(d.show){const it=S.items.find(i=>i.id==d.show);if(it&&shown().length<showSlots())it.shown=true}
   if(d.unshow){const it=S.items.find(i=>i.id==d.unshow);if(it){it.shown=false;S.autoShow=false}}
   if(d.deliver){const q=S.requests.find(x=>x.id==d.deliver),it=q&&reqItem(q);if(it){S.items=S.items.filter(i=>i!==it);S.gold+=q.reward;S.rep+=q.rep;S.requests=S.requests.filter(x=>x!==q);
     AU.coin(true);toast(`${q.who}に納品した  +${fmt(q.reward)}G ・ 評判+${q.rep}`,'good');LOG.unshift({t:`依頼：${RID[q.r].name}を納品`,g:q.reward});LOG=LOG.slice(0,5);forgeFx(true)}}
   if(d.goto){const[tb,sel]=d.goto.split('|');goTo(tb,sel);if(tb==='gather')toast('精霊を割り当てるか、空から降る光を拾って集めよう');return}
+  if(d.equipbest){const a=adv(d.equipbest),it=a&&spareFor(a);if(it&&!busy(a)){equipItem(a,it);toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
+  if(d.reforge){const a=adv(d.reforge),r=a&&RID[a.broke];if(r){const j=startCraft(r);if(j){j.adv=a.id;AU.anvil();toast(`${AID[a.id].name}の代わりの${r.name}を炉に入れた。できたら自動で持たせます`)}}}
   if(d.reqcraft){const q=S.requests.find(x=>x.id==d.reqcraft),r=q&&RID[q.r];if(r){const j=startCraft(r);if(j){j.req=q.id;AU.anvil();toast(`${q.who}の依頼の${r.name}を炉に入れた`)}}}
   if(d.craft){if(startCraft(RID[d.craft])){AU.anvil();toast(`${RID[d.craft].name}を炉に入れた`)}}
   if(d.sell){const it=S.items.find(i=>i.id==d.sell);if(it){AU.coin(false);const v=Math.round(value(it)*.6);S.gold+=v;S.items=S.items.filter(i=>i!==it);toast(`問屋に卸した  +${fmt(v)}G`,'good')}}
@@ -732,6 +748,7 @@ function offline(){
   $('wTime').textContent=`${h?h+'時間':''}${m}分のあいだ、店は回り続けていました。`;
   $('wGold').textContent=`+${fmt(a.gold)}G`;
   const lines=[];if(a.sold)lines.push(`売れた武器 ${a.sold}本`);if(a.crafted)lines.push(`鍛え上がった武器 ${a.crafted}本${a.failed?`（失敗 ${a.failed}回）`:''}`);
+  if(a.broke)lines.push(`折れた武器：${a.broke.join('、')}（冒険タブから代わりを鍛えられます）`);
   if(a.dg)lines.push(`ダンジョン挑戦 ${a.dg}回（成功 ${a.dgWin||0}回${a.boss?`・ボス討伐 ${a.boss}回`:''}）`);const mats=Object.entries(a.mats).filter(([,n])=>n>0).map(([k,n])=>`${MATS[k].name}+${n}`);if(mats.length)lines.push(mats.join('　'));
   if(!lines.length)lines.push('静かな時間でした。精霊を素材に割り当てると、留守中も素材が集まります。');
   $('wList').innerHTML=lines.map(l=>`<li>${l}</li>`).join('');$('welcome').hidden=false;
