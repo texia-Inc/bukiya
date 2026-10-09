@@ -90,9 +90,13 @@ button{font:inherit;color:inherit}
 .need.link{font:inherit;font-size:inherit;background:none;border:0;padding:0;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
 .need.link:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
 .slot.empty .btn{margin-top:4px}
+.mini{display:block;width:100%;height:68px;border-radius:8px;background:#0b0f2c}
 .flash{animation:flash 2.6s ease}
 @keyframes flash{0%,65%{box-shadow:0 0 0 2px var(--sky),0 0 18px rgba(143,211,255,.55)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.flash{animation:none;outline:2px solid var(--sky)}}
+.row.adv{flex-wrap:wrap}
+.row.adv .main{flex:1 1 200px}
+.row.adv>.acts{flex:1 1 auto}
 .acts{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 .ico{width:26px;height:26px;flex:none;color:var(--c);filter:drop-shadow(0 0 5px var(--c))}
 .note{font-size:.78rem;color:var(--ink-dim);line-height:1.7;margin:0}
@@ -318,6 +322,8 @@ function tryBuy(cls,budget){
   if(away){away.gold+=price;away.sold++}else{AU.coin(it.st>=3);LOG.unshift({t:`${cls.who}が${RID[it.r].name}${it.plus?'+'+it.plus:''}を購入`,g:price});LOG=LOG.slice(0,5)}
   return{item:it,ok:true,price};
 }
+function equipItem(a,it){if(a.w){a.w.shown=false;S.items.push(a.w)}S.items=S.items.filter(i=>i!==it);it.shown=false;delete it.keep;a.w=it;a.broke=null}
+const spareFor=a=>S.items.filter(i=>AID[a.id].likes.includes(RID[i.r].type)&&(!i.keep||i.keep===a.id)&&!S.requests.some(q=>q.r===i.r&&totalAtk(i)>=q.min)).sort((x,y)=>totalAtk(y)-totalAtk(x))[0];
 function launch(dg,party,repeat){S.runs.push({dg,party:[...party],end:S.clock+DID[dg].dur,repeat:!!repeat});if(!away){AU.depart();}if(!away)party.forEach((id,i)=>walkOut(id,i))}
 function resolveRun(run){
   const d=DID[run.dg],f=floorOf(d.id),win=Math.random()<winRate(run.party,d.id),mult=(1+.15*(f-1))*(win?1:.3),got={};
@@ -327,12 +333,12 @@ function resolveRun(run){
   const names=run.party.map(id=>AID[id].name).join('と');let text,broke=[];
   if(win){S.rep+=boss?10:2;if(boss){S.kills[d.id+f]=(S.kills[d.id+f]||0)+1;if(away)away.boss=(away.boss||0)+1}for(const id of run.party){const a=adv(id);a.xp++;if(a.xp>=a.lv*2){a.xp=0;a.lv++}}
     if(f<MAXF)S.floors[d.id]=f+1;text=boss?`${names}が${d.bosses[f]}を討伐`:`${names}が${d.name} ${f}階を突破`}
-  else{for(const id of run.party){const a=adv(id);a.rest=S.clock+(boss?180:90);if(a.w&&Math.random()<(boss?.35:.2)){broke.push(RID[a.w.r].name);a.w=null}}
+  else{for(const id of run.party){const a=adv(id);a.rest=S.clock+(boss?180:90);if(a.w&&Math.random()<(boss?.35:.2)){broke.push(`${AID[id].name}の${RID[a.w.r].name}`);a.broke=a.w.r;a.w=null}}
     text=boss?`${names}は${d.bosses[f]}に敗れた`:`${names}は${d.name} ${f}階で撤退`;run.repeat=false}
   const loot=Object.entries(got).map(([k,n])=>`${MATS[k].name}+${n}`).join(' ');
   S.dlog.unshift({win,t:text,loot:(gold?`${gold}G `:'')+loot+(broke.length?` ・ ${broke.join('、')}が折れた`:'')});S.dlog=S.dlog.slice(0,5);
-  if(away){away.dg=(away.dg||0)+1;if(win)away.dgWin=(away.dgWin||0)+1;away.gold+=gold;return}
-  (win?(boss?AU.fanfare:AU.win):AU.lose)();toast(win?`${text}！ ${gold}G${got[d.rare]?` ・ ${MATS[d.rare].name}+${got[d.rare]}`:''}`:`${text}…`,win?'good':'bad');if(win&&boss){burst(shopX()+100*s,gy-120*s,[255,220,150],60);burst(shopX()+100*s,gy-120*s,hex(MATS[d.rare].c),40)}run.party.forEach((id,i)=>walkIn(id,i,win));
+  if(away){if(broke.length)away.broke=(away.broke||[]).concat(broke);away.dg=(away.dg||0)+1;if(win)away.dgWin=(away.dgWin||0)+1;away.gold+=gold;return}
+  (win?(boss?AU.fanfare:AU.win):AU.lose)();toast(win?`${text}！ ${gold}G${got[d.rare]?` ・ ${MATS[d.rare].name}+${got[d.rare]}`:''}`:`${text}…${broke.length?` ${broke.join('、')}が折れた。冒険タブから代わりを鍛えられます`:''}`,win?'good':'bad');if(win&&boss){burst(shopX()+100*s,gy-120*s,[255,220,150],60);burst(shopX()+100*s,gy-120*s,hex(MATS[d.rare].c),40)}run.party.forEach((id,i)=>walkIn(id,i,win));
 }
 const budgetFor=()=>Math.round(60*Math.pow(1.7,rank()-1)*rand(.7,2));
 function tick(dt,live){
@@ -343,14 +349,16 @@ function tick(dt,live){
   // forge
   for(let i=S.forge.length-1;i>=0;i--){const j=S.forge[i];j.t+=dt;if(j.t>=j.total){S.forge.splice(i,1);const r=RID[j.r];S.crafted++;
     if(Math.random()<r.rate){const it=newItem(r);S.items.push(it);const q=j.req&&S.requests.find(x=>x.id===j.req);if(q)it.shown=false;
+      const ow=j.adv&&adv(j.adv);let handed=false;if(ow&&!ow.w){if(busy(ow)){it.keep=ow.id}else{equipItem(ow,it);handed=true}}
       if(away)away.crafted++;else{AU.forged();forgeFx(true);
-        if(q)toast(totalAtk(it)>=q.min?`依頼の${r.name}が鍛え上がった（ATK${totalAtk(it)}）。店頭で納品できます`:`${r.name}はATK${totalAtk(it)}。依頼のATK${q.min}に届かなかった`,totalAtk(it)>=q.min?'good':'bad');
+        if(ow)toast(handed?`${AID[ow.id].name}に新しい${r.name}（ATK${totalAtk(it)}）を持たせた`:`${AID[ow.id].name}の代わりの${r.name}ができた。帰ってきたら持たせよう`,'good');
+        else if(q)toast(totalAtk(it)>=q.min?`依頼の${r.name}が鍛え上がった（ATK${totalAtk(it)}）。店頭で納品できます`:`${r.name}はATK${totalAtk(it)}。依頼のATK${q.min}に届かなかった`,totalAtk(it)>=q.min?'good':'bad');
         else toast(`${r.name} ${'★'.repeat(it.st)} ATK${it.atk} が鍛え上がった`,'good')}}
     else{if(away)away.failed++;else{AU.fail();toast(`${r.name}の鍛造に失敗… 素材は風に溶けた`,'bad');forgeFx(false)}}}}
   // apprentice smith
   if(S.up.smith&&S.smithOn){const r=RID[S.smithRecipe];if(r)while(startCraft(r)){}}
   // auto display
-  if(S.autoShow){const free=showSlots()-shown().length;if(free>0){const cand=S.items.filter(i=>!i.shown&&!S.requests.some(q=>q.r===i.r&&totalAtk(i)>=q.min)).sort((a,b)=>value(b)-value(a)).slice(0,free);cand.forEach(i=>i.shown=true)}}
+  if(S.autoShow){const free=showSlots()-shown().length;if(free>0){const cand=S.items.filter(i=>!i.shown&&!i.keep&&!S.requests.some(q=>q.r===i.r&&totalAtk(i)>=q.min)).sort((a,b)=>value(b)-value(a)).slice(0,free);cand.forEach(i=>i.shown=true)}}
   while(shown().length>showSlots()){shown().sort((a,b)=>value(a)-value(b))[0].shown=false}
   // adventurers join as the shop grows
   for(const d of ADVS)if(d.rank<=rank()&&!adv(d.id)){S.advs.push({id:d.id,lv:1,xp:0,w:null,rest:0});if(!away){AU.win();}if(!away)toast(`${d.job}の${d.name}が常連になった`,'good')}
@@ -388,6 +396,7 @@ function renderHead(){
   $('repBar').style.width=(hi?clamp((S.rep-lo)/(hi-lo),0,1)*100:100)+'%';$('repTxt').textContent=hi?`評判 ${S.rep}/${hi}`:`評判 ${S.rep}`;
   $('mats').innerHTML=[...MK,...RARE.filter(k=>S.mats[k]>0)].map(k=>`<span class="mat ${MATS[k].rare?'rare':''}" style="--c:${MATS[k].c}"><i></i>${MATS[k].name}<b>${S.mats[k]}</b></span>`).join('');
   const dot=document.querySelector('[data-tab="front"] .dot');if(dot)dot.hidden=!S.requests.some(q=>reqItem(q));
+  const dd=document.querySelector('[data-tab="dungeon"] .dot');if(dd)dd.hidden=!S.advs.some(a=>a.broke&&!a.w);
   $('phase').textContent=phaseName(S.p)+(night()?' ・ 星が降る':'');
 }
 const reqItem=q=>S.items.filter(i=>i.r===q.r&&totalAtk(i)>=q.min).sort((a,b)=>value(a)-value(b))[0];
@@ -421,7 +430,7 @@ function render(){renderHead();const p=$('pane');
   }else if(tab==='forge'){
     p.innerHTML=`
     <p class="sec">炉 ${S.forge.length}/${S.up.forge}<span>倉庫 ${S.items.length+S.forge.length}/${stockCap()}</span></p>
-    <div class="forge">${Array.from({length:S.up.forge},(_,i)=>{const j=S.forge[i];return j?`<div class="card"><span class="nm">${RID[j.r].name}</span><div class="bar gold-bar"><i data-prog="${i}" style="width:${j.t/j.total*100}%"></i></div><span class="sub" data-forgeleft="${i}">あと ${mmss(j.total-j.t)}</span></div>`:'<div class="card empty">空いている炉</div>'}).join('')}</div>
+    <div class="forge">${Array.from({length:S.up.forge},(_,i)=>{const j=S.forge[i];return j?`<div class="card"><span class="nm">${RID[j.r].name}${j.adv?`<span class="st" style="color:var(--sky)">${AID[j.adv].name}の代わり</span>`:j.req?'<span class="st" style="color:var(--sky)">依頼の品</span>':''}</span><canvas class="mini" data-mini="forge" data-slot="${i}" role="img" aria-label="${RID[j.r].name}を鍛えている様子"></canvas><div class="bar gold-bar"><i data-prog="${i}" style="width:${j.t/j.total*100}%"></i></div><span class="sub" data-forgeleft="${i}">あと ${mmss(j.total-j.t)}</span></div>`:'<div class="card empty">空いている炉</div>'}).join('')}</div>
     <p class="sec">見習い鍛冶師</p>
     ${S.up.smith?`<div class="row"><div class="main"><span class="nm">炉が空くと自動で鍛える</span><span class="sub">素材が足りないときと倉庫がいっぱいのときは待つ</span></div>
       <select id="smithRecipe" aria-label="自動で鍛える武器">${RECIPES.filter(r=>r.rank<=rank()).map(r=>`<option value="${r.id}" ${S.smithRecipe===r.id?'selected':''}>${r.name}</option>`).join('')}</select>
@@ -447,9 +456,15 @@ function render(){renderHead();const p=$('pane');
     <div class="list">${S.advs.map(a=>{const d=AID[a.id],run=S.runs.find(r=>r.party.includes(a.id));
       const st=run?`${DID[run.dg].name}に挑戦中 ・ 残り <span data-left="${run.end}">${mmss(run.end-S.clock)}</span>`:resting(a)?`休養中 ・ 残り <span data-left="${a.rest}">${mmss(a.rest-S.clock)}</span>`:'店で待機中';
       const fav=[...RECIPES].reverse().find(r=>r.rank<=rank()&&d.likes.includes(r.type)),needFav=!a.w||!d.likes.includes(RID[a.w.r].type);
-      return`<div class="row" id="adv-${a.id}">${a.w?icon(RID[a.w.r].type,RID[a.w.r].c):'<span class="ico"></span>'}<div class="main"><span class="nm">${d.name}<span class="st" style="color:var(--ink-dim)">${d.job} ・ Lv ${a.lv}</span><em>戦力 ${advPower(a)}</em></span>
-        <span class="sub"><span>得意：${d.likes.map(x=>TYPES[x].name).join('・')}</span><span>${a.w?`装備：${RID[a.w.r].name}${a.w.plus?'+'+a.w.plus:''} ATK${totalAtk(a.w)}`:'武器なし'}</span></span><span class="sub">${st}</span></div>
-        ${!run&&needFav&&fav&&!S.items.some(i=>d.likes.includes(RID[i.r].type))?`<button class="btn sm" data-goto="forge|#rc-${fav.id}">${fav.name}を鍛えに行く</button>`:''}${run?'':`<select data-equip="${a.id}" aria-label="${d.name}に持たせる武器"><option value="">${a.w?'装備を外す':'武器を持たせる'}</option>${inStock.map(i=>`<option value="${i.id}">${RID[i.r].name}${i.plus?'+'+i.plus:''} ATK${totalAtk(i)}${d.likes.includes(RID[i.r].type)?' ◎':''}${i.shown?'（店頭）':''}</option>`).join('')}</select>`}</div>`}).join('')}
+      let fix='';if(a.broke&&!a.w){const br=RID[a.broke],sp=spareFor(a),why=craftBlock(br);
+        fix=`<span class="sub" style="color:var(--bad)">${br.name}が折れてしまった</span><span class="acts" style="justify-content:flex-start">`+
+          (sp?`<button class="btn g sm" data-equipbest="${a.id}">倉庫の${RID[sp.r].name}（ATK${totalAtk(sp)}）を持たせる</button>`:'')+
+          (S.forge.some(j=>j.adv===a.id)?'<button class="btn sm" disabled>代わりを鍛造中</button>'
+            :!why?`<button class="btn sm ${sp?'':'g'}" data-reforge="${a.id}">${br.name}を鍛え直す</button>`
+            :`<button class="btn sm" data-goto="forge|#rc-${br.id}">鍛冶で確認する</button><span class="sub" style="color:var(--bad)">${why}</span>`)+'</span>'}
+      return`<div class="row adv" id="adv-${a.id}">${a.w?icon(RID[a.w.r].type,RID[a.w.r].c):'<span class="ico"></span>'}<div class="main"><span class="nm">${d.name}<span class="st" style="color:var(--ink-dim)">${d.job} ・ Lv ${a.lv}</span><em>戦力 ${advPower(a)}</em></span>
+        <span class="sub"><span>得意：${d.likes.map(x=>TYPES[x].name).join('・')}</span><span>${a.w?`装備：${RID[a.w.r].name}${a.w.plus?'+'+a.w.plus:''} ATK${totalAtk(a.w)}`:'武器なし'}</span></span><span class="sub">${st}</span>${fix}</div>
+        <div class="acts">${!run&&!a.broke&&needFav&&fav&&!S.items.some(i=>d.likes.includes(RID[i.r].type))?`<button class="btn sm" data-goto="forge|#rc-${fav.id}">${fav.name}を鍛えに行く</button>`:''}${run?'':`<select data-equip="${a.id}" aria-label="${d.name}に持たせる武器"><option value="">${a.w?'装備を外す':'武器を持たせる'}</option>${inStock.map(i=>`<option value="${i.id}">${RID[i.r].name}${i.plus?'+'+i.plus:''} ATK${totalAtk(i)}${d.likes.includes(RID[i.r].type)?' ◎':''}${i.shown?'（店頭）':''}</option>`).join('')}</select>`}</div></div>`}).join('')}
       ${ADVS.filter(d=>!adv(d.id)).map(d=>`<div class="row locked"><span class="ico"></span><div class="main"><span class="nm">${d.job}</span><span class="sub">ランク${d.rank}で常連になる</span></div></div>`).join('')}</div>
     <p class="note">得意な種類の武器を持たせると戦力が1.3倍になります（◎）。持たせた武器は倉庫や店頭から出て、冒険者のものになります。</p>
     <p class="sec">ダンジョン</p>
@@ -460,6 +475,7 @@ function render(){renderHead();const p=$('pane');
         <span class="sub"><span>${mmss(dg.dur)}</span><span>${Math.round(dg.gold[0]*(1+.15*(f-1)))}〜${Math.round(dg.gold[1]*(1+.15*(f-1)))}G</span>${Object.entries(dg.loot).map(([k,[lo,hi]])=>`<span class="need" style="--c:${MATS[k].c}"><i></i>${MATS[k].name}</span>`).join('')}<span class="need" style="--c:${MATS[dg.rare].c};color:var(--gold)"><i></i>${MATS[dg.rare].name}（${isBoss(f)?'ボスが確定で落とす':'まれに'}）</span></span>
         <span class="sub">${[5,10].map(b=>`<span style="color:${S.kills[dg.id+b]?'var(--gold)':'inherit'}">${b}階 ${dg.bosses[b]}${S.kills[dg.id+b]?` 討伐${S.kills[dg.id+b]}回`:''}</span>`).join('')}</span>
         ${run?`<span class="sub">${run.party.map(id=>AID[id].name).join('・')}が挑戦中 ・ 成功率 ${Math.round(winRate(run.party,dg.id)*100)}%</span>
+          <canvas class="mini" data-mini="run" data-dg="${dg.id}" role="img" aria-label="${run.party.map(id=>AID[id].name).join('と')}が${dg.name}を探索している様子"></canvas>
           <div class="bar gold-bar"><i data-run="${dg.id}" style="width:${(1-(run.end-S.clock)/dg.dur)*100}%"></i></div>
           <span class="sub">帰還まで <span data-left="${run.end}">${mmss(run.end-S.clock)}</span><label class="toggle"><input type="checkbox" data-repeat="${dg.id}" ${run.repeat?'checked':''}>成功したら次の階へ続ける</label></span>`
         :`<div class="acts" style="justify-content:flex-start">${S.advs.map(a=>`<button class="btn sm" data-pick="${dg.id}:${a.id}" aria-pressed="${sel.includes(a.id)}" ${ready(a)?'':'disabled'} style="${sel.includes(a.id)?'background:var(--sky);color:#0b1240':''}">${AID[a.id].name} ${advPower(a)}</button>`).join('')}</div>
@@ -497,22 +513,24 @@ function refresh(){ // light update without rebuilding buttons under the pointer
   document.querySelectorAll('[data-hire]').forEach(b=>b.disabled=S.gold<hireCost());
   document.querySelectorAll('[data-up]').forEach(b=>{const u=UID[b.dataset.up];b.disabled=upMaxed(u)||S.gold<upCost(u)});
 }
-let sig='';function structSig(){return[tab,S.requests.map(q=>reqItem(q)?2:S.forge.some(j=>j.req===q.id)?1:craftBlock(RID[q.r])).join(','),S.items.length,S.forge.length,S.requests.length,S.runs.length,S.advs.map(a=>ready(a)?1:0).join(''),S.dlog.length&&S.dlog[0].t,shown().length,rank(),S.items.map(i=>i.shown?1:0).join('')].join('|')}
+let sig='';function structSig(){return[tab,S.requests.map(q=>reqItem(q)?2:S.forge.some(j=>j.req===q.id)?1:craftBlock(RID[q.r])).join(','),S.items.length,S.forge.length,S.requests.length,S.runs.length,S.advs.map(a=>(ready(a)?1:0)+(a.broke&&!a.w?2:0)+(a.w?4:0)).join(''),S.dlog.length&&S.dlog[0].t,shown().length,rank(),S.items.map(i=>i.shown?1:0).join('')].join('|')}
 
 $('pane').addEventListener('change',e=>{const t=e.target;
   if(t.id==='autoShow')S.autoShow=t.checked;if(t.id==='smithOn')S.smithOn=t.checked;if(t.id==='smithRecipe')S.smithRecipe=t.value;
   if(t.dataset.repeat){const r=S.runs.find(x=>x.dg===t.dataset.repeat);if(r)r.repeat=t.checked}
   if(t.dataset.equip){const a=adv(t.dataset.equip);if(a&&!busy(a)){const v=t.value;
     if(a.w){if(S.items.length>=stockCap()){toast('倉庫がいっぱいで外せない','bad');render();return}a.w.shown=false;S.items.push(a.w);a.w=null}
-    if(v){const it=S.items.find(i=>i.id==v);if(it){S.items=S.items.filter(i=>i!==it);it.shown=false;a.w=it;toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
+    if(v){const it=S.items.find(i=>i.id==v);if(it){equipItem(a,it);toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
     render()}}save()});
-$('pane').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;if(!(d.reqcraft||d.craft||d.deliver||d.ench||d.up||d.hire||d.sell||d.go))AU.tick();
+$('pane').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;if(!(d.reforge||d.equipbest||d.reqcraft||d.craft||d.deliver||d.ench||d.up||d.hire||d.sell||d.go))AU.tick();
   if(d.policy)S.policy=d.policy;
   if(d.show){const it=S.items.find(i=>i.id==d.show);if(it&&shown().length<showSlots())it.shown=true}
   if(d.unshow){const it=S.items.find(i=>i.id==d.unshow);if(it){it.shown=false;S.autoShow=false}}
   if(d.deliver){const q=S.requests.find(x=>x.id==d.deliver),it=q&&reqItem(q);if(it){S.items=S.items.filter(i=>i!==it);S.gold+=q.reward;S.rep+=q.rep;S.requests=S.requests.filter(x=>x!==q);
     AU.coin(true);toast(`${q.who}に納品した  +${fmt(q.reward)}G ・ 評判+${q.rep}`,'good');LOG.unshift({t:`依頼：${RID[q.r].name}を納品`,g:q.reward});LOG=LOG.slice(0,5);forgeFx(true)}}
   if(d.goto){const[tb,sel]=d.goto.split('|');goTo(tb,sel);if(tb==='gather')toast('精霊を割り当てるか、空から降る光を拾って集めよう');return}
+  if(d.equipbest){const a=adv(d.equipbest),it=a&&spareFor(a);if(it&&!busy(a)){equipItem(a,it);toast(`${AID[a.id].name}に${RID[it.r].name}を持たせた`,'good')}}
+  if(d.reforge){const a=adv(d.reforge),r=a&&RID[a.broke];if(r){const j=startCraft(r);if(j){j.adv=a.id;AU.anvil();toast(`${AID[a.id].name}の代わりの${r.name}を炉に入れた。できたら自動で持たせます`)}}}
   if(d.reqcraft){const q=S.requests.find(x=>x.id==d.reqcraft),r=q&&RID[q.r];if(r){const j=startCraft(r);if(j){j.req=q.id;AU.anvil();toast(`${q.who}の依頼の${r.name}を炉に入れた`)}}}
   if(d.craft){if(startCraft(RID[d.craft])){AU.anvil();toast(`${RID[d.craft].name}を炉に入れた`)}}
   if(d.sell){const it=S.items.find(i=>i.id==d.sell);if(it){AU.coin(false);const v=Math.round(value(it)*.6);S.gold+=v;S.items=S.items.filter(i=>i!==it);toast(`問屋に卸した  +${fmt(v)}G`,'good')}}
@@ -541,6 +559,109 @@ const K=[
 function sky(p){let i=0;while(i<K.length-2&&p>=K[i+1].p)i++;const a=K[i],b=K[i+1],t=smooth(clamp((p-a.p)/(b.p-a.p),0,1)),o={};
   for(const k in a)o[k]=Array.isArray(a[k])?mix(a[k],b[k],t):a[k]+(b[k]-a[k])*t;return o}
 const PATHS=Object.fromEntries(Object.entries(TYPES).map(([k,v])=>[k,new Path2D(v.d)]));
+/* ================= mini scenes: adventuring party and the forge ================= */
+const CHIBI={alto:'#6fa8ff',mina:'#7fd38a',sora:'#b892ff',gald:'#ff8a6a',rei:'#6fe0d8'};
+const THEME={
+  cave:{a:'#1d2a55',b:'#4d6fb0',fl:'#27346c',deco:'cloud',foe:'slime',fc:'#e8f2ff',foes:['雲スライム']},
+  tower:{a:'#3a1d3a',b:'#e07a4a',fl:'#4e2433',deco:'brick',foe:'bat',fc:'#ff9a5a',foes:['火の粉コウモリ']},
+  ruins:{a:'#120f3a',b:'#3f348a',fl:'#221b52',deco:'pillar',foe:'golem',fc:'#c9b6ff',foes:['星の石兵']},
+  tomb:{a:'#06142a',b:'#145063',fl:'#0a2433',deco:'grave',foe:'wisp',fc:'#9ff3ff',foes:['彗星のさまよい火']},
+};
+const darker=(c,f=.55)=>rgb(mix(hex(c),[10,8,30],f));
+function chibi(g,x,y,k,col,look,walk,swing,type,hammer){
+  y-=Math.abs(Math.sin(walk))*1.6*k;
+  g.fillStyle='#2a2340';g.fillRect(x-3*k,y-5*k,2.4*k,5*k+Math.sin(walk)*k);g.fillRect(x+.8*k,y-5*k,2.4*k,5*k-Math.sin(walk)*k);
+  if(look.cape){g.fillStyle=darker(col,.35);g.beginPath();g.moveTo(x-4*k,y-12*k);g.lineTo(x-10*k-Math.sin(walk*2)*1.5*k,y-3*k);g.lineTo(x-3*k,y-5*k);g.fill()}
+  g.fillStyle=col;g.beginPath();g.roundRect(x-5*k,y-13*k,10*k,9*k,3*k);g.fill();
+  g.fillStyle='#ffe2cc';g.beginPath();g.arc(x,y-18.5*k,6*k,0,6.283);g.fill();
+  g.fillStyle='#2a2340';g.beginPath();g.arc(x-.6*k,y-19.5*k,6.2*k,Math.PI*1.02,Math.PI*1.98);g.fill();g.fillRect(x+2*k,y-19*k,1.4*k,1.8*k);
+  if(look.hat===1){g.fillStyle=darker(col,.3);g.fillRect(x-7.5*k,y-24*k,15*k,2*k);g.fillRect(x-4.5*k,y-28.5*k,9*k,4.6*k)}
+  if(look.hat===2){g.fillStyle=darker(col,.3);g.beginPath();g.moveTo(x-8.5*k,y-23*k);g.lineTo(x+3*k,y-35*k);g.lineTo(x+8.5*k,y-23*k);g.fill()}
+  g.save();g.translate(x+4.5*k,y-9*k);g.rotate(-.9+swing*2.4);
+  if(hammer){g.fillStyle='#8a6a4a';g.fillRect(-1*k,-13*k,2*k,13*k);g.fillStyle='#c9d2e8';g.fillRect(-4*k,-16*k,8*k,4.5*k)}
+  else if(type){g.scale(k*.6,k*.6);g.translate(-5,-19);g.strokeStyle='#f4f8ff';g.lineWidth=2.2;g.lineCap='round';g.lineJoin='round';g.stroke(PATHS[type])}
+  else{g.fillStyle='#ffe2cc';g.beginPath();g.arc(0,-2*k,1.8*k,0,6.283);g.fill()}
+  g.restore();
+}
+function foe(g,type,x,y,k,col,flash,tt,big){
+  const c=flash?'#ffffff':col;g.fillStyle=c;
+  if(type==='slime'){g.beginPath();g.ellipse(x,y,10*k,(8+Math.sin(tt*6)*1)*k,0,Math.PI,0);g.fill()}
+  else if(type==='bat'){const fl=Math.sin(tt*14)*5*k;y-=10*k+Math.sin(tt*3)*3*k;g.beginPath();g.arc(x,y,5*k,0,6.283);g.fill();
+    g.beginPath();g.moveTo(x-3*k,y);g.lineTo(x-13*k,y-6*k+fl);g.lineTo(x-9*k,y+3*k);g.moveTo(x+3*k,y);g.lineTo(x+13*k,y-6*k+fl);g.lineTo(x+9*k,y+3*k);g.fill();y+=6*k}
+  else if(type==='golem'){g.beginPath();g.roundRect(x-8*k,y-17*k,16*k,17*k,3*k);g.fill();g.fillRect(x-11*k,y-14*k,3*k,9*k);g.fillRect(x+8*k,y-14*k,3*k,9*k)}
+  else{y-=4*k+Math.sin(tt*2.5)*2*k;g.beginPath();g.arc(x,y-8*k,7*k,Math.PI,0);for(let i=0;i<=4;i++)g.lineTo(x+7*k-i*3.5*k,y+(i%2?2:5)*k+Math.sin(tt*8+i)*k);g.fill();y+=2*k}
+  g.fillStyle='#1a1530';const ey=type==='golem'?y-11*k:type==='bat'?y-7*k:y-5*k;g.fillRect(x-4*k,ey,2*k,2.4*k);g.fillRect(x+1.5*k,ey,2*k,2.4*k);
+  if(big){g.fillStyle='#ffd36b';const cy=type==='golem'?y-20*k:type==='bat'?y-13*k:type==='slime'?y-10*k:y-17*k;g.beginPath();g.moveTo(x-6*k,cy);g.lineTo(x-6*k,cy-5*k);g.lineTo(x-3*k,cy-2*k);g.lineTo(x,cy-6*k);g.lineTo(x+3*k,cy-2*k);g.lineTo(x+6*k,cy-5*k);g.lineTo(x+6*k,cy);g.fill()}
+}
+function miniBg(g,w,h,th,scroll){
+  const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,th.a);gr.addColorStop(1,th.b);g.fillStyle=gr;g.fillRect(0,0,w,h);
+  const fy=h-12,sp=56,off=-mod(scroll,sp);
+  for(let x=off-sp;x<w+sp;x+=sp){const n=Math.round((x-off)/sp+Math.floor(scroll/sp)),r=rng(n*13+7)();
+    if(th.deco==='cloud'){g.fillStyle='rgba(235,242,255,.18)';g.beginPath();g.arc(x+10,fy-26-r*14,9,0,6.283);g.arc(x+20,fy-28-r*14,12,0,6.283);g.arc(x+31,fy-25-r*14,8,0,6.283);g.fill()}
+    else if(th.deco==='brick'){g.fillStyle='rgba(0,0,0,.18)';for(let yy=6;yy<fy;yy+=9)g.fillRect(x+((yy/9|0)%2)*14,yy,26,1);g.fillStyle='rgba(255,190,120,.5)';g.fillRect(x+20,fy-34,8,12)}
+    else if(th.deco==='pillar'){g.fillStyle='rgba(200,190,255,.16)';g.fillRect(x+16,6,9,fy-6);g.fillRect(x+12,6,17,4);if(r>.5){g.fillStyle='rgba(255,255,255,.7)';g.fillRect(x+40,8+r*20,1.5,1.5)}}
+    else{g.fillStyle='rgba(160,240,255,.18)';g.beginPath();g.roundRect(x+14,fy-14-r*4,12,14+r*4,[5,5,0,0]);g.fill();g.fillStyle='rgba(255,255,255,.6)';g.fillRect(x+36,6+r*18,1.5,1.5)}}
+  g.fillStyle=th.fl;g.fillRect(0,fy,w,h-fy);g.fillStyle='rgba(255,255,255,.08)';g.fillRect(0,fy,w,1);return fy;
+}
+function drawRunMini(g,w,h,run){
+  const d=DID[run.dg],th=THEME[d.id],f=floorOf(d.id),boss=isBoss(f),prog=clamp(1-(run.end-S.clock)/d.dur,0,1),k=h/50;
+  const T=4.2,tt=time+d.base,cyc=Math.floor(tt/T),ct=tt%T,n=run.party.length;
+  const walkT=boss?0:Math.min(ct,1.7)+Math.max(0,ct-3.5),scroll=reduce?0:(cyc*2.4+walkT)*34;
+  const fy=miniBg(g,w,h,th,scroll),walking=!boss&&(ct<1.7||ct>3.5);
+  const front=26*k+(n-1)*15*k,tx=Math.min(w-16*k,front+30*k);
+  // enemy
+  let fx=tx,flash=false,hp=1,show=true;
+  if(boss){fx=w-22*k;hp=1-prog}
+  else if(ct<1.7)fx=w+16*k-(w+16*k-tx)*(ct/1.7);
+  else if(ct<3.1){const hit=((ct-1.7)/.35)|0;hp=1-hit/4;flash=((ct-1.7)%.35)<.08}
+  else show=false;
+  const fighting=boss||(ct>=1.7&&ct<3.1),sub=boss?(tt%1.4)/1.4:((ct-1.7)%.35)/.35,who=boss?((tt/1.4)|0)%n:(((ct-1.7)/.35)|0)%n;
+  if(boss)flash=sub>.35&&sub<.45;
+  if(show){foe(g,th.foe,fx,fy,boss?k*1.9:k,th.fc,flash,tt,boss);
+    const bw=boss?Math.min(110,w*.4):18*k,bx=boss?w*.48-bw/2:fx-bw/2,by=boss?23:fy-26*k;g.fillStyle='rgba(0,0,0,.45)';g.fillRect(bx,by,bw,4);g.fillStyle=boss?'#ff8f9e':'#9ff0c0';g.fillRect(bx,by,bw*Math.max(0,hp),4)}
+  else{const pt=(ct-3.1)/.4;if(pt<1){g.fillStyle=`rgba(255,255,255,${.7*(1-pt)})`;for(let i=0;i<6;i++){const a=i*1.047;g.beginPath();g.arc(tx+Math.cos(a)*pt*14*k,fy-8*k+Math.sin(a)*pt*10*k,3*k*(1-pt)+.5,0,6.283);g.fill()}
+      g.fillStyle=`rgba(255,196,107,${1-pt})`;g.font=`700 ${9*k}px "Zen Kaku Gothic New",sans-serif`;g.textAlign='center';g.fillText('+G',tx,fy-18*k-pt*10*k)}}
+  // party (leader in front)
+  run.party.forEach((id,i)=>{const a=adv(id),x=front-i*15*k+(fighting&&who===i&&sub<.4?sub*8*k:0);
+    chibi(g,x,fy,k,CHIBI[id],AID[id].look,walking?tt*9+i:0,fighting&&who===i?Math.sin(Math.min(1,sub*2.5)*Math.PI):0,a&&a.w?RID[a.w.r].type:null)});
+  // slash
+  if(fighting&&sub>.3&&sub<.55){const a=(sub-.3)/.25;g.strokeStyle=`rgba(255,255,255,${1-a})`;g.lineWidth=2*k;g.beginPath();g.arc(fx-4*k,fy-12*k*(boss?1.6:1),10*k*(boss?1.6:1),-1.2+a,.4+a);g.stroke()}
+  if(boss&&sub>.75){g.fillStyle=`rgba(255,120,140,${(1-sub)*2})`;g.fillRect(0,0,w,h)}
+  g.font=`700 10px "Zen Kaku Gothic New",sans-serif`;const lb=boss?`${f}階 ボス：${d.bosses[f]}`:`${f}階 探索中`,lw=g.measureText(lb).width+10;const lx=boss?w*.48+lw/2:w-4;g.fillStyle='rgba(8,8,30,.55)';g.fillRect(lx-lw,4,lw,15);g.fillStyle=boss?'#ff8f9e':'#f4f0e8';g.textAlign='right';g.fillText(lb,lx-5,15);
+}
+function drawForgeMini(g,w,h,j){
+  const r=RID[j.r],prog=clamp(j.t/j.total,0,1),k=h/50,fy=h-10;
+  const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#2a1426');gr.addColorStop(1,'#140a1e');g.fillStyle=gr;g.fillRect(0,0,w,h);
+  // furnace
+  const fxp=16*k;g.fillStyle='#3a2230';g.beginPath();g.roundRect(fxp-12*k,fy-30*k,26*k,30*k,[10*k,10*k,0,0]);g.fill();
+  const fl=.75+.25*Math.sin(time*13)+.1*Math.sin(time*31);const fg=g.createRadialGradient(fxp+1*k,fy-9*k,0,fxp+1*k,fy-9*k,30*k);
+  fg.addColorStop(0,`rgba(255,200,110,${fl})`);fg.addColorStop(.3,`rgba(255,120,60,${.55*fl})`);fg.addColorStop(1,'rgba(255,90,40,0)');g.fillStyle=fg;g.fillRect(0,0,w*.6,h);
+  g.fillStyle=`rgba(255,220,150,${fl})`;g.beginPath();g.roundRect(fxp-6*k,fy-15*k,14*k,13*k,[6*k,6*k,0,0]);g.fill();
+  g.fillStyle='#24141e';g.fillRect(0,fy,w,h-fy);
+  // anvil
+  const ax=Math.min(w-30*k,w*.58);g.fillStyle='#4a4f66';g.beginPath();g.moveTo(ax-14*k,fy-13*k);g.lineTo(ax+12*k,fy-13*k);g.lineTo(ax+17*k,fy-16*k);g.lineTo(ax+12*k,fy-9*k);g.lineTo(ax+5*k,fy-9*k);g.lineTo(ax+7*k,fy);g.lineTo(ax-7*k,fy);g.lineTo(ax-5*k,fy-9*k);g.lineTo(ax-14*k,fy-9*k);g.fill();
+  // hammer rhythm
+  const hc=(time*1.5)%1,strike=hc>.68&&hc<.8,swing=hc<.6?hc/.6:hc<.7?1-(hc-.6)/.1:0;
+  // glowing work piece becoming the weapon
+  const heat=strike?1:.6+.4*Math.max(0,1-hc*1.5);g.fillStyle=rgb(mix([255,150,70],hex(r.c),prog),.95);g.fillRect(ax-8*k,fy-16*k,16*k,3*k);
+  g.save();g.globalAlpha=.25+.75*prog;g.translate(ax,fy-28*k);g.scale(k*.75,k*.75);g.translate(-12,-12);g.strokeStyle=r.c;g.lineWidth=2;g.lineCap='round';g.lineJoin='round';
+  g.shadowColor=r.c;g.shadowBlur=8*prog;g.stroke(PATHS[r.type]);g.restore();
+  const sm=S.up.smith?{col:'#c98a5a',look:{hat:1,cape:0}}:{col:'#8fd3ff',look:{hat:0,cape:1}};
+  chibi(g,ax-22*k,fy,k,sm.col,sm.look,0,1-swing,null,true);
+  // sparks on impact
+  if(hc>.68&&hc<.95){const sr=rng(Math.floor(time*1.5)*97),pt=(hc-.68)/.27;g.globalCompositeOperation='lighter';
+    for(let i=0;i<12;i++){const a=-Math.PI*(.1+.8*sr()),v=(10+sr()*18)*k;g.fillStyle=`rgba(255,${180+sr()*60|0},90,${1-pt})`;g.fillRect(ax-4*k+Math.cos(a)*v*pt,fy-16*k+Math.sin(a)*v*pt+pt*pt*10*k,1.6*k,1.6*k)}
+    g.globalCompositeOperation='source-over';if(pt<.4){g.fillStyle=`rgba(255,240,200,${1-pt*2.5})`;g.font=`700 ${8*k}px "Zen Kaku Gothic New",sans-serif`;g.textAlign='center';g.fillText('カン',ax+14*k,fy-28*k)}}
+  g.fillStyle='rgba(8,8,30,.55)';g.fillRect(w-44,4,40,15);g.fillStyle='#ffc46b';g.font='700 10px "Zen Kaku Gothic New",sans-serif';g.textAlign='right';g.fillText(Math.round(prog*100)+'%',w-8,15);
+}
+function drawMinis(){
+  for(const el of document.querySelectorAll('canvas.mini')){const w=el.clientWidth,h=el.clientHeight;if(!w||!h)continue;
+    const W2=Math.round(w*DPR),H2=Math.round(h*DPR);if(el.width!==W2||el.height!==H2){el.width=W2;el.height=H2}
+    const g=el.getContext('2d');g.setTransform(DPR,0,0,DPR,0,0);g.clearRect(0,0,w,h);
+    if(el.dataset.mini==='run'){const run=S.runs.find(r=>r.dg===el.dataset.dg);if(run)drawRunMini(g,w,h,run)}
+    else{const j=S.forge[+el.dataset.slot];if(j)drawForgeMini(g,w,h,j)}}
+}
+
 function drawWeapon(type,x,y,size,col){ctx.save();ctx.translate(x-size/2,y-size/2);ctx.scale(size/24,size/24);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(PATHS[type]);ctx.restore()}
 
 let W,H,DPR,s,gy,starsArr=[];
@@ -662,6 +783,7 @@ function frame(now){
     f.x+=f.vx*dt;f.y+=f.vy*dt;if(!f.ember)f.vy+=50*s*dt;const a=1-f.t/(f.ember?1.4:1.1);if(a<=0){fx.splice(i,1);continue}ctx.fillStyle=rgb(f.c,a);ctx.fillRect(f.x,f.y,2*s,2*s)}
   ctx.restore();
   // ui
+  drawMinis();
   frame.q=(frame.q||0)+dt;if(frame.q>.4){frame.q=0;const sg=structSig();if(sg!==sig){sig=sg;render()}else refresh()}
   frame.sv=(frame.sv||0)+dt;if(frame.sv>5){frame.sv=0;save()}
   requestAnimationFrame(frame);
@@ -732,6 +854,7 @@ function offline(){
   $('wTime').textContent=`${h?h+'時間':''}${m}分のあいだ、店は回り続けていました。`;
   $('wGold').textContent=`+${fmt(a.gold)}G`;
   const lines=[];if(a.sold)lines.push(`売れた武器 ${a.sold}本`);if(a.crafted)lines.push(`鍛え上がった武器 ${a.crafted}本${a.failed?`（失敗 ${a.failed}回）`:''}`);
+  if(a.broke)lines.push(`折れた武器：${a.broke.join('、')}（冒険タブから代わりを鍛えられます）`);
   if(a.dg)lines.push(`ダンジョン挑戦 ${a.dg}回（成功 ${a.dgWin||0}回${a.boss?`・ボス討伐 ${a.boss}回`:''}）`);const mats=Object.entries(a.mats).filter(([,n])=>n>0).map(([k,n])=>`${MATS[k].name}+${n}`);if(mats.length)lines.push(mats.join('　'));
   if(!lines.length)lines.push('静かな時間でした。精霊を素材に割り当てると、留守中も素材が集まります。');
   $('wList').innerHTML=lines.map(l=>`<li>${l}</li>`).join('');$('welcome').hidden=false;
