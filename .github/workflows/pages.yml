@@ -1,7 +1,7 @@
 name: GitHub Pages に公開
 
-# docs/ のページ（トップ・キャノンボール）と、ビルドした天下一閃、群勢キャノンを
-# 1つのサイトにまとめて公開する。Settings → Pages の Source は「GitHub Actions」にする。
+# docs/ のページ（トップ・キャノンボール）と、ビルドした天下一閃、群勢キャノン、
+# ブキヤ・サバイバー（Flutter Web）を1つのサイトにまとめて公開する。Settings → Pages の Source は「GitHub Actions」にする。
 on:
   push:
     branches: [main]
@@ -9,6 +9,12 @@ on:
       - 'docs/**'
       - 'tenka-issen/**'
       - 'crowd_cannon/**'
+      - 'bukiya_game/lib/features/survivor/**'
+      - 'bukiya_game/lib/survivor_main.dart'
+      - 'bukiya_game/assets/audio/survivor/**'
+      - 'bukiya_game/web/**'
+      - 'bukiya_game/pubspec.yaml'
+      - 'bukiya_game/pubspec.lock'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -29,6 +35,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - id: pages
+        uses: actions/configure-pages@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: ブキヤ・サバイバーを Web 向けにビルドする
+        working-directory: bukiya_game
+        run: |
+          flutter pub get
+          # サイトのサブパスで動くよう base href を合わせ、CanvasKit も同梱して外部 CDN に頼らない
+          flutter build web -t lib/survivor_main.dart \
+            --base-href "${{ steps.pages.outputs.base_path }}/survivor/" \
+            --no-web-resources-cdn --no-wasm-dry-run
+          sed -i 's#<title>bukiya_game</title>#<title>ブキヤ・サバイバー</title>#; s#content="bukiya_game"#content="ブキヤ・サバイバー"#' build/web/index.html
       - name: 天下一閃を1つの HTML にまとめる
         run: python3 tenka-issen/build.py
       - name: サイトを組み立てる
@@ -38,7 +60,8 @@ jobs:
           cp tenka-issen/dist/index.html _site/tenka-issen/index.html
           mkdir -p _site/crowd-cannon
           cp -r crowd_cannon/index.html crowd_cannon/style.css crowd_cannon/src _site/crowd-cannon/
-      - uses: actions/configure-pages@v5
+          mkdir -p _site/survivor
+          cp -r bukiya_game/build/web/. _site/survivor/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
