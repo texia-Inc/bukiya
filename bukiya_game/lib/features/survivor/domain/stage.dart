@@ -27,6 +27,9 @@ class StageDef {
   final List<SpawnRule> spawns;
   final List<BossSpawn> bosses;
 
+  /// ホーム画面のステージの絵に立たせるボス
+  final EnemyKind mascot;
+
   /// 雑魚の体力倍率
   final double hpScale;
   final double bossHpScale;
@@ -43,6 +46,7 @@ class StageDef {
     required this.description,
     required this.spawns,
     required this.bosses,
+    required this.mascot,
     required this.hpScale,
     required this.bossHpScale,
     required this.groundColor,
@@ -67,6 +71,7 @@ const forestStage = StageDef(
     BossSpawn(120, EnemyKind.ogre),
     BossSpawn(240, EnemyKind.kingSlime),
   ],
+  mascot: EnemyKind.kingSlime,
   hpScale: 1,
   bossHpScale: 1,
   groundColor: 0xFF243B2A,
@@ -91,6 +96,7 @@ const graveyardStage = StageDef(
     BossSpawn(120, EnemyKind.ogre),
     BossSpawn(240, EnemyKind.kingSlime),
   ],
+  mascot: EnemyKind.ogre,
   hpScale: 1.2,
   bossHpScale: 1.3,
   groundColor: 0xFF2A2D3A,

@@ -417,6 +417,7 @@ class RunSimulation {
       materialsFound: materials,
       loadout: loadout,
       killsByWeapon: killsByWeapon,
+      bossesDefeated: bossesDefeated,
     );
     onEnd?.call(result!);
   }

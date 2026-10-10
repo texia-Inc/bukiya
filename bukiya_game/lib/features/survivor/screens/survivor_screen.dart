@@ -4,15 +4,16 @@ import 'dart:math';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-import '../domain/loadout.dart';
 import '../domain/run_result.dart';
 import '../domain/run_simulation.dart';
 import '../domain/skills.dart';
-import '../domain/stage.dart';
+import '../data/profile_store.dart';
+import '../domain/profile.dart';
 import '../game/run_fx.dart';
 import '../game/sfx_backend.dart';
 import '../game/survivor_audio.dart';
 import '../game/survivor_game.dart';
+import 'home_view.dart';
 
 const _bg = Color(0xFF14181D);
 const _panel = Color(0xFF1F262E);
@@ -21,9 +22,9 @@ const _muted = Color(0xFF9AA39D);
 const _accent = Color(0xFFF2C230);
 const _gateBlue = Color(0xFF8BE9FF);
 
-enum _Stage { loadout, running, result }
+enum _Stage { loading, home, running, result }
 
-/// ブキヤ・サバイバーのプロトタイプ画面。持ち出す武器を選ぶ → ラン → 結果
+/// ブキヤ・サバイバーの画面。ホーム（店・装備・戦闘）→ ラン → 結果
 class SurvivorScreen extends StatefulWidget {
   const SurvivorScreen({super.key});
 
@@ -32,29 +33,40 @@ class SurvivorScreen extends StatefulWidget {
 }
 
 class _SurvivorScreenState extends State<SurvivorScreen> {
-  _Stage _stage = _Stage.loadout;
-
-  /// 選んだ順を覚える（上限を超えたら古い方を外す）
-  final Set<String> _selected = {
-    for (final w in mockShopStock.take(maxCarriedWeapons)) w.id
-  };
-  StageDef _stageDef = forestStage;
+  _Stage _stage = _Stage.loading;
+  final ProfileStore _store = ProfileStore();
+  late SurvivorProfile _profile;
   RunSimulation? _sim;
   SurvivorGame? _game;
   RunResult? _result;
 
+  @override
+  void initState() {
+    super.initState();
+    _store.load().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _profile = p;
+        _stage = _Stage.home;
+      });
+    });
+  }
+
   void _start() {
     // 出発ボタンのタップをきっかけに音を出せるようにする（iPhone の制限）
     SfxBackend.unlock();
-    final loadout =
-        mockShopStock.where((w) => _selected.contains(w.id)).toList();
-    final sim =
-        RunSimulation(loadout: loadout, config: RunConfig(stage: _stageDef));
+    final stage = _profile.stage;
+    final sim = RunSimulation(
+        loadout: _profile.loadout, config: RunConfig(stage: stage));
     sim.onLevelUp = (_) => setState(() {});
-    sim.onEnd = (result) => setState(() {
-          _result = result;
-          _stage = _Stage.result;
-        });
+    sim.onEnd = (result) {
+      _profile.applyResult(result, stage);
+      _store.save(_profile);
+      setState(() {
+        _result = result;
+        _stage = _Stage.result;
+      });
+    };
     setState(() {
       _sim = sim;
       _game = SurvivorGame(sim);
@@ -69,21 +81,11 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
       body: DefaultTextStyle(
         style: const TextStyle(color: _ink, fontSize: 14),
         child: switch (_stage) {
-          _Stage.loadout => _LoadoutView(
-              selected: _selected,
-              stage: _stageDef,
-              onStage: (s) => setState(() => _stageDef = s),
-              onToggle: (id) => setState(() {
-                if (_selected.contains(id)) {
-                  if (_selected.length > 1) _selected.remove(id);
-                } else {
-                  if (_selected.length >= maxCarriedWeapons) {
-                    _selected.remove(_selected.first);
-                  }
-                  _selected.add(id);
-                }
-              }),
+          _Stage.loading => const Center(child: CircularProgressIndicator()),
+          _Stage.home => HomeView(
+              profile: _profile,
               onStart: _start,
+              onChanged: () => _store.save(_profile),
             ),
           _Stage.running => _RunView(
               sim: _sim!,
@@ -92,249 +94,9 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
             ),
           _Stage.result => _ResultView(
               result: _result!,
-              onAgain: () => setState(() => _stage = _Stage.loadout),
+              onAgain: () => setState(() => _stage = _Stage.home),
             ),
         },
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 持ち出す武器の選択
-
-class _LoadoutView extends StatelessWidget {
-  final Set<String> selected;
-  final StageDef stage;
-  final ValueChanged<StageDef> onStage;
-  final ValueChanged<String> onToggle;
-  final VoidCallback onStart;
-
-  const _LoadoutView({
-    required this.selected,
-    required this.stage,
-    required this.onStage,
-    required this.onToggle,
-    required this.onStart,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              const SizedBox(height: 12),
-              const Text('ブキヤ・サバイバー',
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: _accent)),
-              const SizedBox(height: 8),
-              const Text(
-                '店の武器を担いで魔物の森へ。生きて帰れば、使い込んだ武器ほど高く売れる。',
-                style: TextStyle(color: _muted, height: 1.6),
-              ),
-              const SizedBox(height: 20),
-              const Text('行き先',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  for (final s in allStages)
-                    Expanded(
-                      child: Padding(
-                        padding:
-                            EdgeInsets.only(right: s == allStages.last ? 0 : 8),
-                        child: _StageChip(
-                          stage: s,
-                          selected: s == stage,
-                          onTap: () => onStage(s),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Text('持ち出す武器（2本まで）',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              for (final w in mockShopStock)
-                _WeaponCard(
-                  weapon: w,
-                  selected: selected.contains(w.id),
-                  onTap: () => onToggle(w.id),
-                ),
-              const SizedBox(height: 16),
-              const _RuleBox(),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _accent,
-                    foregroundColor: Colors.black,
-                    textStyle: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: onStart,
-                  child: Text('${stage.name}へ出発'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StageChip extends StatelessWidget {
-  final StageDef stage;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _StageChip({
-    required this.stage,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? Color(stage.tileColor) : _panel,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-                color: selected ? _accent : const Color(0x33EDE6D6), width: 2),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${stage.number}. ${stage.name}',
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 2),
-              Text(stage.description,
-                  style: const TextStyle(color: _muted, fontSize: 11)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WeaponCard extends StatelessWidget {
-  final CarriedWeapon weapon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _WeaponCard({
-    required this.weapon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final style = weapon.type.attackStyle;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: selected ? const Color(0xFF2B3A2F) : _panel,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: selected ? _accent : const Color(0x33EDE6D6),
-                  width: 2),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  selected ? Icons.check_box : Icons.check_box_outline_blank,
-                  color: selected ? _accent : _muted,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(weapon.displayName,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 2),
-                      Text(
-                          '$style・攻撃力 ×${weapon.damageMultiplier.toStringAsFixed(1)}',
-                          style: const TextStyle(color: _muted, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                Text('${weapon.basePrice}G',
-                    style: const TextStyle(
-                        color: _accent, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RuleBox extends StatelessWidget {
-  const _RuleBox();
-
-  @override
-  Widget build(BuildContext context) {
-    const rules = [
-      '画面をドラッグ（PC は WASD / 矢印キー）で移動。攻撃は自動',
-      '1:30・3:00・4:30 に帰還ゲートが25秒だけ開く。入れば生還',
-      '2:00 と 4:00 にボスが出る。倒すと宝箱（魔核とレベルアップ2回分）',
-      '5:00 を過ぎると魔物の大群。ゲートは開きっぱなしになる',
-      '倒れると素材は半分しか持ち帰れず、武器の耐久も大きく減る',
-      '武器で倒した数が熟練度になり、売値が最大 +50% 上がる',
-    ];
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _panel,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final r in rules)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('・', style: TextStyle(color: _accent)),
-                  Expanded(
-                      child: Text(r,
-                          style: const TextStyle(
-                              fontSize: 13, color: _muted, height: 1.5))),
-                ],
-              ),
-            ),
-        ],
       ),
     );
   }
