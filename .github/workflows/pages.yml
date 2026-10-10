@@ -51,6 +51,9 @@ jobs:
             --base-href "${{ steps.pages.outputs.base_path }}/survivor/" \
             --no-web-resources-cdn --no-wasm-dry-run
           sed -i 's#<title>bukiya_game</title>#<title>ブキヤ・サバイバー</title>#; s#content="bukiya_game"#content="ブキヤ・サバイバー"#' build/web/index.html
+          # 描画解像度を2倍密度までに抑えるスクリプトを、Flutter の起動より前に読み込ませる
+          sed -i 's#<script src="flutter_bootstrap.js"#<script src="dpr_cap.js"></script>\n  <script src="flutter_bootstrap.js"#' build/web/index.html
+          grep -q 'dpr_cap.js' build/web/index.html
       - name: 天下一閃を1つの HTML にまとめる
         run: python3 tenka-issen/build.py
       - name: サイトを組み立てる
