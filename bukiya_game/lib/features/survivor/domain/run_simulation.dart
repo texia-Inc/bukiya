@@ -72,7 +72,7 @@ class Pickup {
 
   /// null なら経験値の宝石
   final MaterialKind? material;
-  final int xp;
+  int xp;
   bool magnetized = false;
   bool collected = false;
 
@@ -164,6 +164,9 @@ class RunConfig {
 class RunSimulation {
   static const double playerRadius = 12;
   static const double gateRadius = 24;
+
+  /// 拾われていない宝石がこれ以上あると、新しい宝石の経験値を一番古い宝石にまとめる
+  static const int maxGems = 150;
 
   /// 敵の出現距離。画面の外になるよう、描画側が画面サイズから設定する
   double spawnDistance = 360;
@@ -581,11 +584,27 @@ class RunSimulation {
     e.dead = true;
     _emit(RunEvent(RunEventType.kill, e.x, e.y, weapon: weapon.type));
     killsByWeapon[weapon.id] = (killsByWeapon[weapon.id] ?? 0) + 1;
-    pickups.add(Pickup.gem(e.x, e.y, e.stats.xp));
+    _dropGem(e.x, e.y, e.stats.xp);
     if (rng.nextDouble() < e.stats.materialChance) {
       pickups.add(Pickup.material(e.x + 6, e.y - 6, _materialFor(e.kind)));
     }
     _burst(e);
+  }
+
+  /// 宝石が増えすぎると描画が重くなるので、上限を超えた分は古い宝石に経験値をまとめる
+  void _dropGem(double x, double y, int value) {
+    Pickup? oldest;
+    var gems = 0;
+    for (final p in pickups) {
+      if (p.material != null || p.magnetized) continue;
+      oldest ??= p;
+      gems++;
+    }
+    if (gems >= maxGems && oldest != null) {
+      oldest.xp += value;
+    } else {
+      pickups.add(Pickup.gem(x, y, value));
+    }
   }
 
   MaterialKind _materialFor(EnemyKind kind) => switch (kind) {
@@ -655,6 +674,10 @@ class RunSimulation {
     }
     particles.removeWhere((p) => p.life <= 0);
   }
+
+  /// テスト用：敵をその武器で倒す
+  void debugKill(Enemy e, CarriedWeapon weapon) =>
+      _damage(e, e.hp + 1, weapon, knockFromX: e.x, knockFromY: e.y);
 
   /// テスト用：敵を直接置く
   Enemy debugSpawn(EnemyKind kind, double x, double y, {double? hp}) {
