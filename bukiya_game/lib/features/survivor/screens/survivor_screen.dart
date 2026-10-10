@@ -8,6 +8,8 @@ import '../domain/loadout.dart';
 import '../domain/run_result.dart';
 import '../domain/run_simulation.dart';
 import '../domain/skills.dart';
+import '../domain/stage.dart';
+import '../game/run_fx.dart';
 import '../game/sfx_backend.dart';
 import '../game/survivor_audio.dart';
 import '../game/survivor_game.dart';
@@ -31,7 +33,12 @@ class SurvivorScreen extends StatefulWidget {
 
 class _SurvivorScreenState extends State<SurvivorScreen> {
   _Stage _stage = _Stage.loadout;
-  final Set<String> _selected = {for (final w in mockShopStock) w.id};
+
+  /// 選んだ順を覚える（上限を超えたら古い方を外す）
+  final Set<String> _selected = {
+    for (final w in mockShopStock.take(maxCarriedWeapons)) w.id
+  };
+  StageDef _stageDef = forestStage;
   RunSimulation? _sim;
   SurvivorGame? _game;
   RunResult? _result;
@@ -41,7 +48,8 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
     SfxBackend.unlock();
     final loadout =
         mockShopStock.where((w) => _selected.contains(w.id)).toList();
-    final sim = RunSimulation(loadout: loadout);
+    final sim =
+        RunSimulation(loadout: loadout, config: RunConfig(stage: _stageDef));
     sim.onLevelUp = (_) => setState(() {});
     sim.onEnd = (result) => setState(() {
           _result = result;
@@ -63,10 +71,15 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
         child: switch (_stage) {
           _Stage.loadout => _LoadoutView(
               selected: _selected,
+              stage: _stageDef,
+              onStage: (s) => setState(() => _stageDef = s),
               onToggle: (id) => setState(() {
                 if (_selected.contains(id)) {
                   if (_selected.length > 1) _selected.remove(id);
                 } else {
+                  if (_selected.length >= maxCarriedWeapons) {
+                    _selected.remove(_selected.first);
+                  }
                   _selected.add(id);
                 }
               }),
@@ -92,11 +105,15 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
 
 class _LoadoutView extends StatelessWidget {
   final Set<String> selected;
+  final StageDef stage;
+  final ValueChanged<StageDef> onStage;
   final ValueChanged<String> onToggle;
   final VoidCallback onStart;
 
   const _LoadoutView({
     required this.selected,
+    required this.stage,
+    required this.onStage,
     required this.onToggle,
     required this.onStart,
   });
@@ -122,7 +139,27 @@ class _LoadoutView extends StatelessWidget {
                 style: TextStyle(color: _muted, height: 1.6),
               ),
               const SizedBox(height: 20),
-              const Text('持ち出す武器',
+              const Text('行き先',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  for (final s in allStages)
+                    Expanded(
+                      child: Padding(
+                        padding:
+                            EdgeInsets.only(right: s == allStages.last ? 0 : 8),
+                        child: _StageChip(
+                          stage: s,
+                          selected: s == stage,
+                          onTap: () => onStage(s),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('持ち出す武器（2本まで）',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               for (final w in mockShopStock)
@@ -144,9 +181,52 @@ class _LoadoutView extends StatelessWidget {
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   onPressed: onStart,
-                  child: const Text('森へ出発'),
+                  child: Text('${stage.name}へ出発'),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StageChip extends StatelessWidget {
+  final StageDef stage;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _StageChip({
+    required this.stage,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? Color(stage.tileColor) : _panel,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: selected ? _accent : const Color(0x33EDE6D6), width: 2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${stage.number}. ${stage.name}',
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 2),
+              Text(stage.description,
+                  style: const TextStyle(color: _muted, fontSize: 11)),
             ],
           ),
         ),
@@ -168,10 +248,7 @@ class _WeaponCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = switch (weapon.type) {
-      CarriedWeaponType.sword => '周囲を回転斬り',
-      CarriedWeaponType.bow => '近くの敵を自動で射る',
-    };
+    final style = weapon.type.attackStyle;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -229,6 +306,7 @@ class _RuleBox extends StatelessWidget {
     const rules = [
       '画面をドラッグ（PC は WASD / 矢印キー）で移動。攻撃は自動',
       '1:30・3:00・4:30 に帰還ゲートが25秒だけ開く。入れば生還',
+      '2:00 と 4:00 にボスが出る。倒すと宝箱（魔核とレベルアップ2回分）',
       '5:00 を過ぎると魔物の大群。ゲートは開きっぱなしになる',
       '倒れると素材は半分しか持ち帰れず、武器の耐久も大きく減る',
       '武器で倒した数が熟練度になり、売値が最大 +50% 上がる',
@@ -347,8 +425,12 @@ class _RunViewState extends State<_RunView> {
             padding: const EdgeInsets.all(12),
             child: _HudTicker(
               sim: sim,
-              builder: () =>
-                  _Hud(sim: sim, paused: _paused, onPause: _togglePause),
+              fx: widget.game.fx,
+              builder: () => _Hud(
+                  sim: sim,
+                  fx: widget.game.fx,
+                  paused: _paused,
+                  onPause: _togglePause),
             ),
           ),
         ),
@@ -359,6 +441,7 @@ class _RunViewState extends State<_RunView> {
             child: IgnorePointer(
               child: _HudTicker(
                 sim: sim,
+                fx: widget.game.fx,
                 alwaysRebuild: true,
                 builder: () => Container(
                   padding: const EdgeInsets.all(6),
@@ -390,11 +473,13 @@ class _RunViewState extends State<_RunView> {
 /// HUD だけを 0.1 秒ごとに作り直す。表示する値が変わっていなければ作り直さない
 class _HudTicker extends StatefulWidget {
   final RunSimulation sim;
+  final RunFx fx;
   final Widget Function() builder;
   final bool alwaysRebuild;
 
   const _HudTicker({
     required this.sim,
+    required this.fx,
     required this.builder,
     this.alwaysRebuild = false,
   });
@@ -422,6 +507,8 @@ class _HudTickerState extends State<_HudTicker> {
       g == null
           ? null
           : (g.closesAt == null ? -1 : (g.closesAt! - s.time).ceil()),
+      s.boss == null ? null : (s.boss!.hp / s.boss!.maxHp * 100).ceil(),
+      widget.fx.bossWarning > 0,
     );
   }
 
@@ -483,14 +570,21 @@ String _clock(double seconds) {
 
 class _Hud extends StatelessWidget {
   final RunSimulation sim;
+  final RunFx fx;
   final bool paused;
   final VoidCallback onPause;
 
-  const _Hud({required this.sim, required this.paused, required this.onPause});
+  const _Hud({
+    required this.sim,
+    required this.fx,
+    required this.paused,
+    required this.onPause,
+  });
 
   @override
   Widget build(BuildContext context) {
     final gate = sim.gate;
+    final boss = sim.boss;
     final matCount = sim.materials.values.fold(0, (a, b) => a + b);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -554,6 +648,26 @@ class _Hud extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
+        if (boss != null) ...[
+          _BossBar(boss: boss),
+          const SizedBox(height: 6),
+        ],
+        if (fx.bossWarning > 0 && boss != null)
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xCC3D1214),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE5484D)),
+              ),
+              child: Text('ボス出現！ ${_bossName(boss.kind)}',
+                  style: const TextStyle(
+                      color: Color(0xFFFF8A8A),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
         if (gate != null)
           Center(
             child: Container(
@@ -572,6 +686,53 @@ class _Hud extends StatelessWidget {
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+String _bossName(EnemyKind kind) => switch (kind) {
+      EnemyKind.ogre => 'オーガ',
+      EnemyKind.kingSlime => 'キングスライム',
+      _ => '',
+    };
+
+class _BossBar extends StatelessWidget {
+  final Enemy boss;
+
+  const _BossBar({required this.boss});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(_bossName(boss.kind),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFF8A8A),
+                shadows: [Shadow(offset: Offset(1, 1))])),
+        const SizedBox(height: 2),
+        Container(
+          height: 10,
+          decoration: BoxDecoration(
+            color: const Color(0xAA000000),
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(color: const Color(0xFF1A1A1A)),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: (boss.hp / boss.maxHp).clamp(0.0, 1.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5484D),
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

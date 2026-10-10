@@ -15,6 +15,12 @@ enum Sfx {
   gate,
   returned,
   died,
+  thrust,
+  cast,
+  blast,
+  boss,
+  slam,
+  chest,
 }
 
 /// 効果音の再生。同じ音は間隔を空けて鳴りすぎを防ぐ。実際の再生は [SfxBackend] に任せる
@@ -36,6 +42,8 @@ class SurvivorAudio {
     Sfx.kill: 0.08,
     Sfx.gem: 0.07,
     Sfx.material: 0.1,
+    Sfx.blast: 0.08,
+    Sfx.thrust: 0.06,
   };
 
   static const Map<Sfx, double> _volume = {
@@ -44,6 +52,9 @@ class SurvivorAudio {
     Sfx.gem: 0.4,
     Sfx.swing: 0.5,
     Sfx.bow: 0.5,
+    Sfx.thrust: 0.5,
+    Sfx.cast: 0.45,
+    Sfx.blast: 0.5,
   };
 
   final SfxBackend _backend = SfxBackend.create();

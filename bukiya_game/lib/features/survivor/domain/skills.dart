@@ -3,16 +3,32 @@ import 'dart:math';
 import 'loadout.dart';
 
 enum SkillId {
+  // 剣
   bladeLength,
   swordPower,
   swordSpeed,
+  // 弓
   arrowCount,
   arrowPierce,
   bowSpeed,
+  // 槍
+  spearReach,
+  spearMulti,
+  spearSpeed,
+  // 杖
+  staffPower,
+  staffRadius,
+  staffSpeed,
+  // 共通
   moveSpeed,
   vitality,
   magnet,
+  wisdom,
+  // 進化
   giantSlayer,
+  stormBow,
+  dragoonSpear,
+  sageStaff,
   potion,
 }
 
@@ -33,6 +49,29 @@ class SkillDef {
     this.requires,
   });
 }
+
+/// 武器の進化：[maxed] を最大まで上げ、[passive] を1つ以上持つと候補に出る
+class EvolutionDef {
+  final SkillId evolution;
+  final CarriedWeaponType weapon;
+  final SkillId maxed;
+  final SkillId passive;
+
+  const EvolutionDef(this.evolution, this.weapon, this.maxed, this.passive);
+}
+
+const List<EvolutionDef> evolutions = [
+  EvolutionDef(SkillId.giantSlayer, CarriedWeaponType.sword,
+      SkillId.bladeLength, SkillId.vitality),
+  EvolutionDef(SkillId.stormBow, CarriedWeaponType.bow, SkillId.arrowCount,
+      SkillId.magnet),
+  EvolutionDef(SkillId.dragoonSpear, CarriedWeaponType.spear,
+      SkillId.spearReach, SkillId.moveSpeed),
+  EvolutionDef(SkillId.sageStaff, CarriedWeaponType.staff, SkillId.staffRadius,
+      SkillId.wisdom),
+];
+
+bool isEvolution(SkillId id) => evolutions.any((e) => e.evolution == id);
 
 const Map<SkillId, SkillDef> skillDefs = {
   SkillId.bladeLength: SkillDef(
@@ -77,6 +116,48 @@ const Map<SkillId, SkillDef> skillDefs = {
     maxLevel: 5,
     requires: CarriedWeaponType.bow,
   ),
+  SkillId.spearReach: SkillDef(
+    id: SkillId.spearReach,
+    name: '長柄',
+    description: '槍が長くなり、遠くまで届く',
+    maxLevel: 5,
+    requires: CarriedWeaponType.spear,
+  ),
+  SkillId.spearMulti: SkillDef(
+    id: SkillId.spearMulti,
+    name: '連突き',
+    description: '一度に突く本数 +1（扇状に広がる）',
+    maxLevel: 3,
+    requires: CarriedWeaponType.spear,
+  ),
+  SkillId.spearSpeed: SkillDef(
+    id: SkillId.spearSpeed,
+    name: '槍術',
+    description: '突く間隔 -12%、ダメージ +10%',
+    maxLevel: 5,
+    requires: CarriedWeaponType.spear,
+  ),
+  SkillId.staffPower: SkillDef(
+    id: SkillId.staffPower,
+    name: '火力',
+    description: '爆発のダメージ +25%',
+    maxLevel: 5,
+    requires: CarriedWeaponType.staff,
+  ),
+  SkillId.staffRadius: SkillDef(
+    id: SkillId.staffRadius,
+    name: '大爆発',
+    description: '爆発の範囲が広がる',
+    maxLevel: 5,
+    requires: CarriedWeaponType.staff,
+  ),
+  SkillId.staffSpeed: SkillDef(
+    id: SkillId.staffSpeed,
+    name: '詠唱',
+    description: '火の玉を放つ間隔 -12%',
+    maxLevel: 5,
+    requires: CarriedWeaponType.staff,
+  ),
   SkillId.moveSpeed: SkillDef(
     id: SkillId.moveSpeed,
     name: '俊足',
@@ -95,12 +176,39 @@ const Map<SkillId, SkillDef> skillDefs = {
     description: '経験値と素材を拾える距離が広がる',
     maxLevel: 3,
   ),
+  SkillId.wisdom: SkillDef(
+    id: SkillId.wisdom,
+    name: '知恵',
+    description: '手に入る経験値 +15%',
+    maxLevel: 3,
+  ),
   SkillId.giantSlayer: SkillDef(
     id: SkillId.giantSlayer,
     name: '進化：巨人殺しの大剣',
     description: '剣が巨大化し、振りも速くなる（刃渡りMAX＋頑丈で解放）',
     maxLevel: 1,
     requires: CarriedWeaponType.sword,
+  ),
+  SkillId.stormBow: SkillDef(
+    id: SkillId.stormBow,
+    name: '進化：嵐の弓',
+    description: '射るたびに全方向へ矢の嵐。矢がさらに2体貫く（多重射ちMAX＋磁石で解放）',
+    maxLevel: 1,
+    requires: CarriedWeaponType.bow,
+  ),
+  SkillId.dragoonSpear: SkillDef(
+    id: SkillId.dragoonSpear,
+    name: '進化：竜騎士の槍',
+    description: '三方向へ同時に突き、槍がさらに長く鋭くなる（長柄MAX＋俊足で解放）',
+    maxLevel: 1,
+    requires: CarriedWeaponType.spear,
+  ),
+  SkillId.sageStaff: SkillDef(
+    id: SkillId.sageStaff,
+    name: '進化：賢者の杖',
+    description: '火の玉を3つ同時に放ち、爆発も大きくなる（大爆発MAX＋知恵で解放）',
+    maxLevel: 1,
+    requires: CarriedWeaponType.staff,
   ),
   SkillId.potion: SkillDef(
     id: SkillId.potion,
@@ -123,10 +231,15 @@ class SkillSet {
     _levels[id] = level(id) + 1;
   }
 
-  bool get canEvolveSword =>
-      isMaxed(SkillId.bladeLength) &&
-      level(SkillId.vitality) >= 1 &&
-      level(SkillId.giantSlayer) == 0;
+  /// 今すぐ選べる進化
+  List<SkillId> availableEvolutions(Set<CarriedWeaponType> carried) => [
+        for (final e in evolutions)
+          if (carried.contains(e.weapon) &&
+              isMaxed(e.maxed) &&
+              level(e.passive) >= 1 &&
+              level(e.evolution) == 0)
+            e.evolution,
+      ];
 
   /// レベルアップ時の候補を最大 [count] 個選ぶ。
   /// 進化が可能なら必ず候補に入れる。候補が尽きたら回復薬を出す。
@@ -135,13 +248,10 @@ class SkillSet {
     Random rng, {
     int count = 3,
   }) {
-    final result = <SkillId>[];
-    if (carried.contains(CarriedWeaponType.sword) && canEvolveSword) {
-      result.add(SkillId.giantSlayer);
-    }
+    final result = availableEvolutions(carried).take(count).toList();
     final pool = skillDefs.values
         .where((d) =>
-            d.id != SkillId.giantSlayer &&
+            !isEvolution(d.id) &&
             d.id != SkillId.potion &&
             (d.requires == null || carried.contains(d.requires)) &&
             !isMaxed(d.id))

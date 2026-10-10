@@ -3,11 +3,15 @@ import 'dart:math';
 import 'loadout.dart';
 import 'run_result.dart';
 import 'skills.dart';
+import 'stage.dart';
+
+part 'sim_bosses.dart';
+part 'sim_weapons.dart';
 
 /// ラン1回分のゲームルール。描画や入力から切り離してテストできるようにしている。
 enum RunPhase { playing, levelUp, ended }
 
-enum EnemyKind { slime, bat, goblin }
+enum EnemyKind { slime, bat, goblin, skeleton, ghost, ogre, kingSlime }
 
 class EnemyStats {
   final double hp;
@@ -16,6 +20,7 @@ class EnemyStats {
   final double radius;
   final int xp;
   final double materialChance;
+  final bool boss;
 
   const EnemyStats({
     required this.hp,
@@ -24,6 +29,7 @@ class EnemyStats {
     required this.radius,
     required this.xp,
     required this.materialChance,
+    this.boss = false,
   });
 }
 
@@ -34,6 +40,26 @@ const Map<EnemyKind, EnemyStats> enemyStats = {
       hp: 7, speed: 78, damage: 4, radius: 8, xp: 1, materialChance: 0.04),
   EnemyKind.goblin: EnemyStats(
       hp: 45, speed: 52, damage: 10, radius: 15, xp: 4, materialChance: 0.15),
+  EnemyKind.skeleton: EnemyStats(
+      hp: 70, speed: 38, damage: 12, radius: 13, xp: 4, materialChance: 0.15),
+  EnemyKind.ghost: EnemyStats(
+      hp: 18, speed: 92, damage: 7, radius: 11, xp: 2, materialChance: 0.08),
+  EnemyKind.ogre: EnemyStats(
+      hp: 650,
+      speed: 75,
+      damage: 20,
+      radius: 26,
+      xp: 0,
+      materialChance: 0,
+      boss: true),
+  EnemyKind.kingSlime: EnemyStats(
+      hp: 1300,
+      speed: 55,
+      damage: 16,
+      radius: 32,
+      xp: 0,
+      materialChance: 0,
+      boss: true),
 };
 
 class Enemy {
@@ -47,9 +73,32 @@ class Enemy {
   double kby = 0;
   bool dead = false;
 
+  // ---- ボスの行動 ----
+  BossState bossState = BossState.walk;
+  double stateTime = 0;
+
+  /// オーガの突進方向
+  double dirX = 0;
+  double dirY = 0;
+
+  /// キングスライムの跳躍：始点・着地点と進み具合（0〜1）
+  double fromX = 0;
+  double fromY = 0;
+  double toX = 0;
+  double toY = 0;
+  bool split = false;
+
   Enemy(this.kind, this.x, this.y, this.hp) : maxHp = hp;
 
   EnemyStats get stats => enemyStats[kind]!;
+  bool get isBoss => stats.boss;
+
+  /// 跳んでいる間は攻撃が当たらず、こちらにも当たらない
+  bool get airborne => bossState == BossState.airborne;
+
+  /// 跳躍の進み具合（0〜1）
+  double get airProgress =>
+      airborne ? (stateTime / kingSlimeAirTime).clamp(0.0, 1.0) : 0;
 }
 
 class Arrow {
@@ -66,18 +115,29 @@ class Arrow {
       this.pierceLeft);
 }
 
+enum PickupKind { gem, material, chest }
+
 class Pickup {
   double x;
   double y;
+  final PickupKind kind;
 
-  /// null なら経験値の宝石
+  /// kind が material のときの素材
   final MaterialKind? material;
   int xp;
   bool magnetized = false;
   bool collected = false;
 
-  Pickup.gem(this.x, this.y, this.xp) : material = null;
-  Pickup.material(this.x, this.y, MaterialKind this.material) : xp = 0;
+  Pickup.gem(this.x, this.y, this.xp)
+      : kind = PickupKind.gem,
+        material = null;
+  Pickup.material(this.x, this.y, MaterialKind this.material)
+      : kind = PickupKind.material,
+        xp = 0;
+  Pickup.chest(this.x, this.y)
+      : kind = PickupKind.chest,
+        material = null,
+        xp = 0;
 }
 
 class Particle {
@@ -91,20 +151,6 @@ class Particle {
 
   Particle(this.x, this.y, this.vx, this.vy, this.life, this.color)
       : maxLife = life;
-}
-
-class SwordSwing {
-  final double startAngle;
-  final double duration;
-  final double radius;
-  final double damage;
-  double t = 0;
-  final Set<Enemy> hit = {};
-
-  SwordSwing(this.startAngle, this.duration, this.radius, this.damage);
-
-  double get progress => (t / duration).clamp(0.0, 1.0);
-  double get bladeAngle => startAngle + progress * 2 * pi;
 }
 
 class ReturnGate {
@@ -123,12 +169,19 @@ enum RunEventType {
   kill,
   swordSwing,
   bowShot,
+  spearThrust,
+  staffCast,
+  blast,
   playerHurt,
   gem,
   material,
+  chest,
   levelUp,
   evolve,
   gateOpen,
+  bossSpawn,
+  bossSlam,
+  bossDefeated,
   returned,
   died,
 }
@@ -152,12 +205,14 @@ class RunConfig {
   final List<double> gateTimes;
   final double gateDuration;
   final int maxEnemies;
+  final StageDef stage;
 
   const RunConfig({
     this.runLength = 300,
     this.gateTimes = const [90, 180, 270],
     this.gateDuration = 25,
     this.maxEnemies = 350,
+    this.stage = forestStage,
   });
 }
 
@@ -194,13 +249,20 @@ class RunSimulation {
 
   int level = 1;
   int xp = 0;
+  double _xpFraction = 0;
   int xpToNext = 4;
   final SkillSet skills = SkillSet();
   int _pendingLevelUps = 0;
   List<SkillId> currentOffer = const [];
 
   final List<Enemy> enemies = [];
+
+  /// 攻撃の処理中（enemies を回している最中）に生まれた敵。処理のあとで enemies に加える
+  final List<Enemy> _spawnQueue = [];
   final List<Arrow> arrows = [];
+  final List<SpearThrust> thrusts = [];
+  final List<Fireball> fireballs = [];
+  final List<Blast> blasts = [];
   final List<Pickup> pickups = [];
   final List<Particle> particles = [];
   SwordSwing? swing;
@@ -213,12 +275,16 @@ class RunSimulation {
 
   final Map<String, int> killsByWeapon = {};
   final Map<MaterialKind, int> materials = {};
+  int bossesDefeated = 0;
   RunResult? result;
 
   double _spawnAcc = 0;
   double _swordCd = 0.4;
   double _bowCd = 0.2;
+  double _spearCd = 0.3;
+  double _staffCd = 0.5;
   int _nextGate = 0;
+  int _nextBoss = 0;
 
   void Function(List<SkillId> offer)? onLevelUp;
   void Function(RunResult result)? onEnd;
@@ -229,6 +295,8 @@ class RunSimulation {
     int? seed,
   }) : rng = Random(seed);
 
+  StageDef get stage => config.stage;
+
   CarriedWeapon? _weapon(CarriedWeaponType type) {
     for (final w in loadout) {
       if (w.type == type) return w;
@@ -238,32 +306,26 @@ class RunSimulation {
 
   CarriedWeapon? get sword => _weapon(CarriedWeaponType.sword);
   CarriedWeapon? get bow => _weapon(CarriedWeaponType.bow);
+  CarriedWeapon? get spear => _weapon(CarriedWeaponType.spear);
+  CarriedWeapon? get staff => _weapon(CarriedWeaponType.staff);
   Set<CarriedWeaponType> get carriedTypes => {for (final w in loadout) w.type};
 
   int get totalKills => killsByWeapon.values.fold(0, (a, b) => a + b);
   double get timeLeft => max(0, config.runLength - time);
-  bool get swordEvolved => skills.level(SkillId.giantSlayer) > 0;
+
+  /// 今出ているボス（HP バーの表示用）
+  Enemy? get boss {
+    for (final e in enemies) {
+      if (e.isBoss && !e.dead) return e;
+    }
+    return null;
+  }
 
   // ---- 数値（スキル反映後） ----
 
   double get moveSpeed => 140 * (1 + 0.1 * skills.level(SkillId.moveSpeed));
   double get pickupRadius => 50.0 + 28 * skills.level(SkillId.magnet);
-
-  double get swordRadius =>
-      (46 + 14 * skills.level(SkillId.bladeLength)) * (swordEvolved ? 1.6 : 1);
-  double get swordInterval =>
-      1.2 *
-      pow(0.88, skills.level(SkillId.swordSpeed)) *
-      (swordEvolved ? 0.6 : 1);
-  double get swordDamage =>
-      14 *
-      (1 + 0.25 * skills.level(SkillId.swordPower)) *
-      (sword?.damageMultiplier ?? 1) *
-      (swordEvolved ? 1.5 : 1);
-
-  double get bowInterval => 0.9 * pow(0.88, skills.level(SkillId.bowSpeed));
-  int get arrowCount => 1 + skills.level(SkillId.arrowCount);
-  double get arrowDamage => 14 * (bow?.damageMultiplier ?? 1);
+  double get xpMultiplier => 1 + 0.15 * skills.level(SkillId.wisdom);
 
   // ---- 入力 ----
 
@@ -289,16 +351,23 @@ class RunSimulation {
     _updateGate();
     if (phase != RunPhase.playing) return;
     _spawnEnemies(dt);
+    _spawnBosses();
     _moveEnemies(dt);
+    _updateBosses(dt);
+    if (phase != RunPhase.playing) return;
     _separateEnemies();
     _contactDamage(dt);
     if (phase != RunPhase.playing) return;
     _updateSword(dt);
     _updateBow(dt);
     _updateArrows(dt);
+    _updateSpear(dt);
+    _updateStaff(dt);
     _updatePickups(dt);
     _updateParticles(dt);
     enemies.removeWhere((e) => e.dead);
+    enemies.addAll(_spawnQueue);
+    _spawnQueue.clear();
 
     if (_pendingLevelUps > 0) _openLevelUp();
   }
@@ -306,7 +375,7 @@ class RunSimulation {
   void chooseSkill(SkillId id) {
     if (phase != RunPhase.levelUp || !currentOffer.contains(id)) return;
     skills.add(id);
-    if (id == SkillId.giantSlayer) _emit(RunEvent(RunEventType.evolve, px, py));
+    if (isEvolution(id)) _emit(RunEvent(RunEventType.evolve, px, py));
     switch (id) {
       case SkillId.vitality:
         maxHp += 20;
@@ -350,6 +419,17 @@ class RunSimulation {
       killsByWeapon: killsByWeapon,
     );
     onEnd?.call(result!);
+  }
+
+  void _hurtPlayer(double amount) {
+    if (invulnerable > 0 || phase != RunPhase.playing) return;
+    hp -= amount;
+    invulnerable = 0.6;
+    _emit(RunEvent(RunEventType.playerHurt, px, py, amount: amount));
+    if (hp <= 0) {
+      hp = 0;
+      _end(returned: false);
+    }
   }
 
   void _movePlayer(double dt) {
@@ -396,14 +476,16 @@ class RunSimulation {
   }
 
   void _spawnEnemies(double dt) {
-    final rate = (1.4 + time / 40) * (horde ? 2.5 : 1);
+    // ボス戦の間は雑魚を減らして一騎打ちにする
+    final rate =
+        (1.4 + time / 40) * (horde ? 2.5 : 1) * (boss != null ? 0.35 : 1);
     _spawnAcc += rate * dt;
     while (_spawnAcc >= 1) {
       _spawnAcc -= 1;
       if (enemies.length >= config.maxEnemies) continue;
       final a = rng.nextDouble() * 2 * pi;
       final kind = _pickEnemyKind();
-      final hpScale = 1 + time / 150;
+      final hpScale = (1 + time / 150) * stage.hpScale;
       enemies.add(Enemy(
         kind,
         px + cos(a) * spawnDistance,
@@ -413,15 +495,26 @@ class RunSimulation {
     }
   }
 
+  /// ステージの出現表から、今の時刻に出られる敵を重みで選ぶ
   EnemyKind _pickEnemyKind() {
-    final r = rng.nextDouble();
-    if (time >= 100 && r < 0.2) return EnemyKind.goblin;
-    if (time >= 45 && r < 0.5) return EnemyKind.bat;
-    return EnemyKind.slime;
+    var total = 0.0;
+    for (final s in stage.spawns) {
+      if (time >= s.from) total += s.weight;
+    }
+    var r = rng.nextDouble() * total;
+    for (final s in stage.spawns) {
+      if (time < s.from) continue;
+      r -= s.weight;
+      if (r <= 0) return s.kind;
+    }
+    return stage.spawns.first.kind;
   }
 
   void _moveEnemies(double dt) {
     for (final e in enemies) {
+      if (e.hitFlash > 0) e.hitFlash -= dt;
+      // ボスは自分の行動で動く
+      if (e.isBoss) continue;
       final dx = px - e.x, dy = py - e.y;
       final d = sqrt(dx * dx + dy * dy);
       if (d > 0.001) {
@@ -433,7 +526,6 @@ class RunSimulation {
       final decay = pow(0.001, dt).toDouble();
       e.kbx *= decay;
       e.kby *= decay;
-      if (e.hitFlash > 0) e.hitFlash -= dt;
       // 遠く離れた敵はプレイヤーの近くに出し直す
       if (d > spawnDistance * 1.6) {
         final a = rng.nextDouble() * 2 * pi;
@@ -443,19 +535,22 @@ class RunSimulation {
     }
   }
 
-  /// 敵同士が1点に重ならないよう、格子で近傍だけを押し分ける
+  /// 敵同士が1点に重ならないよう、格子で近傍だけを押し分ける。ボスは押されない
   void _separateEnemies() {
     const cell = 32.0;
     final grid = <int, List<Enemy>>{};
     int key(int cx, int cy) => cx * 73856093 ^ cy * 19349663;
     for (final e in enemies) {
+      if (e.airborne) continue;
       final k = key((e.x / cell).floor(), (e.y / cell).floor());
       (grid[k] ??= []).add(e);
     }
     for (final e in enemies) {
+      if (e.isBoss) continue;
       final cx = (e.x / cell).floor(), cy = (e.y / cell).floor();
-      for (var ox = -1; ox <= 1; ox++) {
-        for (var oy = -1; oy <= 1; oy++) {
+      // ボスは大きいので、近くのマスより広く探す
+      for (var ox = -2; ox <= 2; ox++) {
+        for (var oy = -2; oy <= 2; oy++) {
           final list = grid[key(cx + ox, cy + oy)];
           if (list == null) continue;
           for (final o in list) {
@@ -465,7 +560,7 @@ class RunSimulation {
             final d2 = dx * dx + dy * dy;
             if (d2 >= minD * minD || d2 < 0.0001) continue;
             final d = sqrt(d2);
-            final push = (minD - d) * 0.25;
+            final push = (minD - d) * (o.isBoss ? 0.5 : 0.25);
             e.x += dx / d * push;
             e.y += dy / d * push;
           }
@@ -477,103 +572,18 @@ class RunSimulation {
   void _contactDamage(double dt) {
     if (invulnerable > 0) return;
     for (final e in enemies) {
+      if (e.airborne) continue;
       final r = e.stats.radius + playerRadius;
       final dx = e.x - px, dy = e.y - py;
       if (dx * dx + dy * dy < r * r) {
-        hp -= e.stats.damage;
-        invulnerable = 0.6;
-        _emit(
-            RunEvent(RunEventType.playerHurt, px, py, amount: e.stats.damage));
-        if (hp <= 0) {
-          hp = 0;
-          _end(returned: false);
-        }
+        _hurtPlayer(e.stats.damage);
         return;
       }
     }
   }
 
-  void _updateSword(double dt) {
-    final w = sword;
-    if (w == null) return;
-    final s = swing;
-    if (s != null) {
-      s.t += dt;
-      final swept = s.progress * 2 * pi;
-      for (final e in enemies) {
-        if (e.dead || s.hit.contains(e)) continue;
-        final dx = e.x - px, dy = e.y - py;
-        final reach = s.radius + e.stats.radius;
-        if (dx * dx + dy * dy > reach * reach) continue;
-        var rel = (atan2(dy, dx) - s.startAngle) % (2 * pi);
-        if (rel < 0) rel += 2 * pi;
-        if (rel <= swept) {
-          s.hit.add(e);
-          _damage(e, s.damage, w, knockFromX: px, knockFromY: py);
-        }
-      }
-      if (s.t >= s.duration) swing = null;
-    }
-    _swordCd -= dt;
-    if (_swordCd <= 0 && swing == null) {
-      _swordCd = swordInterval;
-      swing =
-          SwordSwing(atan2(facingY, facingX), 0.28, swordRadius, swordDamage);
-      _emit(RunEvent(RunEventType.swordSwing, px, py));
-    }
-  }
-
-  void _updateBow(double dt) {
-    final w = bow;
-    if (w == null) return;
-    _bowCd -= dt;
-    if (_bowCd > 0) return;
-    const range = 300.0;
-    final targets = enemies.where((e) {
-      final dx = e.x - px, dy = e.y - py;
-      return dx * dx + dy * dy < range * range;
-    }).toList()
-      ..sort((a, b) {
-        final da = (a.x - px) * (a.x - px) + (a.y - py) * (a.y - py);
-        final db = (b.x - px) * (b.x - px) + (b.y - py) * (b.y - py);
-        return da.compareTo(db);
-      });
-    if (targets.isEmpty) return;
-    _bowCd = bowInterval;
-    _emit(RunEvent(RunEventType.bowShot, px, py));
-    const speed = 380.0;
-    for (var i = 0; i < arrowCount; i++) {
-      final t = targets[i % targets.length];
-      var a = atan2(t.y - py, t.x - px);
-      if (i >= targets.length) a += (i.isOdd ? 1 : -1) * 0.15 * (i ~/ 2 + 1);
-      arrows.add(Arrow(px, py, cos(a) * speed, sin(a) * speed, 1.0, arrowDamage,
-          skills.level(SkillId.arrowPierce)));
-    }
-  }
-
-  void _updateArrows(double dt) {
-    final w = bow;
-    for (final a in arrows) {
-      a.x += a.vx * dt;
-      a.y += a.vy * dt;
-      a.life -= dt;
-      for (final e in enemies) {
-        if (e.dead || a.hit.contains(e)) continue;
-        final r = e.stats.radius + 4;
-        final dx = e.x - a.x, dy = e.y - a.y;
-        if (dx * dx + dy * dy > r * r) continue;
-        a.hit.add(e);
-        _damage(e, a.damage, w!,
-            knockFromX: a.x - a.vx, knockFromY: a.y - a.vy);
-        a.pierceLeft--;
-        if (a.pierceLeft < 0) {
-          a.life = 0;
-          break;
-        }
-      }
-    }
-    arrows.removeWhere((a) => a.life <= 0);
-  }
+  /// 攻撃が当たる状態か
+  bool _hittable(Enemy e) => !e.dead && !e.airborne;
 
   void _damage(Enemy e, double amount, CarriedWeapon weapon,
       {required double knockFromX, required double knockFromY}) {
@@ -581,21 +591,28 @@ class RunSimulation {
     _emit(RunEvent(RunEventType.hit, e.x, e.y,
         amount: amount, weapon: weapon.type));
     e.hitFlash = 0.12;
-    final dx = e.x - knockFromX, dy = e.y - knockFromY;
-    final d = sqrt(dx * dx + dy * dy);
-    if (d > 0.001) {
-      e.kbx = dx / d * 160;
-      e.kby = dy / d * 160;
+    if (!e.isBoss) {
+      final dx = e.x - knockFromX, dy = e.y - knockFromY;
+      final d = sqrt(dx * dx + dy * dy);
+      if (d > 0.001) {
+        e.kbx = dx / d * 160;
+        e.kby = dy / d * 160;
+      }
     }
+    if (e.isBoss) _onBossDamaged(e);
     if (e.hp > 0) return;
     e.dead = true;
     _emit(RunEvent(RunEventType.kill, e.x, e.y, weapon: weapon.type));
     killsByWeapon[weapon.id] = (killsByWeapon[weapon.id] ?? 0) + 1;
+    if (e.isBoss) {
+      _onBossDefeated(e);
+      return;
+    }
     _dropGem(e.x, e.y, e.stats.xp);
     if (rng.nextDouble() < e.stats.materialChance) {
       pickups.add(Pickup.material(e.x + 6, e.y - 6, _materialFor(e.kind)));
     }
-    _burst(e);
+    _burst(e.x, e.y, _burstColor(e.kind), 5);
   }
 
   /// 宝石が増えすぎると描画が重くなるので、上限を超えた分は古い宝石に経験値をまとめる
@@ -603,7 +620,7 @@ class RunSimulation {
     Pickup? oldest;
     var gems = 0;
     for (final p in pickups) {
-      if (p.material != null || p.magnetized) continue;
+      if (p.kind != PickupKind.gem || p.magnetized) continue;
       oldest ??= p;
       gems++;
     }
@@ -619,20 +636,27 @@ class RunSimulation {
         EnemyKind.bat => MaterialKind.fang,
         EnemyKind.goblin =>
           rng.nextDouble() < 0.3 ? MaterialKind.manaStone : MaterialKind.fang,
+        EnemyKind.skeleton => MaterialKind.bone,
+        EnemyKind.ghost => MaterialKind.manaStone,
+        EnemyKind.ogre || EnemyKind.kingSlime => MaterialKind.bossCore,
       };
 
-  void _burst(Enemy e) {
+  int _burstColor(EnemyKind kind) => switch (kind) {
+        EnemyKind.slime || EnemyKind.kingSlime => 0xFF7BD389,
+        EnemyKind.bat => 0xFFB38BE8,
+        EnemyKind.goblin => 0xFFE0A458,
+        EnemyKind.skeleton => 0xFFEDE6D6,
+        EnemyKind.ghost => 0xFFCFE8FF,
+        EnemyKind.ogre => 0xFFC98B6B,
+      };
+
+  void _burst(double x, double y, int color, int count) {
     if (particles.length > 300) return;
-    final color = switch (e.kind) {
-      EnemyKind.slime => 0xFF7BD389,
-      EnemyKind.bat => 0xFFB38BE8,
-      EnemyKind.goblin => 0xFFE0A458,
-    };
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < count; i++) {
       final a = rng.nextDouble() * 2 * pi;
       final s = 40 + rng.nextDouble() * 80;
-      particles.add(Particle(e.x, e.y, cos(a) * s, sin(a) * s,
-          0.3 + rng.nextDouble() * 0.2, color));
+      particles.add(Particle(
+          x, y, cos(a) * s, sin(a) * s, 0.3 + rng.nextDouble() * 0.2, color));
     }
   }
 
@@ -657,16 +681,33 @@ class RunSimulation {
   }
 
   void _collect(Pickup p) {
-    final m = p.material;
-    if (m != null) {
-      materials[m] = (materials[m] ?? 0) + 1;
-      _emit(RunEvent(RunEventType.material, p.x, p.y));
-      return;
+    switch (p.kind) {
+      case PickupKind.material:
+        final m = p.material!;
+        materials[m] = (materials[m] ?? 0) + 1;
+        _emit(RunEvent(RunEventType.material, p.x, p.y));
+      case PickupKind.chest:
+        // 宝箱：魔核と、2回分のレベルアップ、HP回復
+        materials[MaterialKind.bossCore] =
+            (materials[MaterialKind.bossCore] ?? 0) + 1;
+        hp = min(maxHp, hp + maxHp * 0.3);
+        _emit(RunEvent(RunEventType.chest, p.x, p.y));
+        _gainLevels(2);
+      case PickupKind.gem:
+        _emit(RunEvent(RunEventType.gem, p.x, p.y));
+        _xpFraction += p.xp * xpMultiplier;
+        final whole = _xpFraction.floor();
+        _xpFraction -= whole;
+        xp += whole;
+        while (xp >= xpToNext) {
+          xp -= xpToNext;
+          _gainLevels(1);
+        }
     }
-    _emit(RunEvent(RunEventType.gem, p.x, p.y));
-    xp += p.xp;
-    while (xp >= xpToNext) {
-      xp -= xpToNext;
+  }
+
+  void _gainLevels(int n) {
+    for (var i = 0; i < n; i++) {
       level++;
       xpToNext = 4 + (level - 1) * 2;
       _pendingLevelUps++;
@@ -685,6 +726,13 @@ class RunSimulation {
   /// テスト用：敵をその武器で倒す
   void debugKill(Enemy e, CarriedWeapon weapon) =>
       _damage(e, e.hp + 1, weapon, knockFromX: e.x, knockFromY: e.y);
+
+  /// テスト用：敵にダメージを与える（分裂などで生まれた敵もすぐ加える）
+  void debugHit(Enemy e, double amount, CarriedWeapon weapon) {
+    _damage(e, amount, weapon, knockFromX: e.x, knockFromY: e.y);
+    enemies.addAll(_spawnQueue);
+    _spawnQueue.clear();
+  }
 
   /// テスト用：敵を直接置く
   Enemy debugSpawn(EnemyKind kind, double x, double y, {double? hp}) {
