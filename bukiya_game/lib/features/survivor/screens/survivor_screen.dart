@@ -8,6 +8,7 @@ import '../domain/loadout.dart';
 import '../domain/run_result.dart';
 import '../domain/run_simulation.dart';
 import '../domain/skills.dart';
+import '../game/survivor_audio.dart';
 import '../game/survivor_game.dart';
 
 const _bg = Color(0xFF14181D);
@@ -451,6 +452,15 @@ class _Hud extends StatelessWidget {
               ],
             ),
             const SizedBox(width: 4),
+            ValueListenableBuilder<bool>(
+              valueListenable: SurvivorAudio.muted,
+              builder: (context, muted, _) => IconButton(
+                onPressed: () => SurvivorAudio.muted.value = !muted,
+                icon: Icon(muted ? Icons.volume_off : Icons.volume_up,
+                    color: _ink),
+                tooltip: muted ? '音を出す' : '消音',
+              ),
+            ),
             IconButton(
               onPressed: onPause,
               icon: Icon(paused ? Icons.play_arrow : Icons.pause, color: _ink),

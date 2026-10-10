@@ -160,6 +160,26 @@ void main() {
       expect(sim.gate?.closesAt, isNull);
     });
 
+    test('命中・撃破・被弾が演出用の出来事として出る', () {
+      final sim = _sim(loadout: [mockShopStock[0]]);
+      sim.debugSpawn(EnemyKind.slime, 30, 0, hp: 1);
+      _step(sim, 1.0);
+      final types = sim.events.map((e) => e.type).toSet();
+      expect(
+          types,
+          containsAll(
+              [RunEventType.swordSwing, RunEventType.hit, RunEventType.kill]));
+      final hit = sim.events.firstWhere((e) => e.type == RunEventType.hit);
+      expect(hit.weapon, CarriedWeaponType.sword);
+      expect(hit.amount, sim.swordDamage);
+
+      sim.events.clear();
+      sim.debugSpawn(EnemyKind.goblin, sim.px, sim.py, hp: 1e9);
+      sim.invulnerable = 0;
+      sim.update(1 / 60);
+      expect(sim.events.map((e) => e.type), contains(RunEventType.playerHurt));
+    });
+
     test('HPが0になると倒れて終わる', () {
       final sim = _sim(loadout: [mockShopStock[1]]);
       RunResult? ended;

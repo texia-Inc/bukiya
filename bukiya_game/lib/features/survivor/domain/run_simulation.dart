@@ -117,6 +117,36 @@ class ReturnGate {
   const ReturnGate(this.x, this.y, this.closesAt);
 }
 
+/// 演出（ダメージ数字・画面揺れ・効果音）のためにシミュレーションが出す出来事
+enum RunEventType {
+  hit,
+  kill,
+  swordSwing,
+  bowShot,
+  playerHurt,
+  gem,
+  material,
+  levelUp,
+  evolve,
+  gateOpen,
+  returned,
+  died,
+}
+
+class RunEvent {
+  final RunEventType type;
+  final double x;
+  final double y;
+
+  /// hit ならダメージ量、playerHurt なら受けたダメージ
+  final double amount;
+
+  /// hit / kill のとき、どの武器によるものか
+  final CarriedWeaponType? weapon;
+
+  const RunEvent(this.type, this.x, this.y, {this.amount = 0, this.weapon});
+}
+
 class RunConfig {
   final double runLength;
   final List<double> gateTimes;
@@ -169,6 +199,10 @@ class RunSimulation {
   SwordSwing? swing;
   ReturnGate? gate;
   bool horde = false;
+
+  /// 描画側が毎フレーム取り出して空にする。取り出されなくても溜まり続けないよう上限を設ける
+  final List<RunEvent> events = [];
+  static const int _maxEvents = 1000;
 
   final Map<String, int> killsByWeapon = {};
   final Map<MaterialKind, int> materials = {};
@@ -265,6 +299,7 @@ class RunSimulation {
   void chooseSkill(SkillId id) {
     if (phase != RunPhase.levelUp || !currentOffer.contains(id)) return;
     skills.add(id);
+    if (id == SkillId.giantSlayer) _emit(RunEvent(RunEventType.evolve, px, py));
     switch (id) {
       case SkillId.vitality:
         maxHp += 20;
@@ -283,7 +318,13 @@ class RunSimulation {
     }
   }
 
+  void _emit(RunEvent e) {
+    if (events.length >= _maxEvents) events.removeAt(0);
+    events.add(e);
+  }
+
   void _openLevelUp() {
+    _emit(RunEvent(RunEventType.levelUp, px, py));
     phase = RunPhase.levelUp;
     currentOffer = skills.offer(carriedTypes, rng);
     onLevelUp?.call(currentOffer);
@@ -291,6 +332,8 @@ class RunSimulation {
 
   void _end({required bool returned}) {
     phase = RunPhase.ended;
+    _emit(
+        RunEvent(returned ? RunEventType.returned : RunEventType.died, px, py));
     result = RunResult.build(
       returned: returned,
       survivedSeconds: time,
@@ -339,6 +382,7 @@ class RunSimulation {
   void _openGateNear({required double? closesAt}) {
     final a = rng.nextDouble() * 2 * pi;
     gate = ReturnGate(px + cos(a) * 170, py + sin(a) * 170, closesAt);
+    _emit(RunEvent(RunEventType.gateOpen, gate!.x, gate!.y));
   }
 
   void _spawnEnemies(double dt) {
@@ -428,6 +472,8 @@ class RunSimulation {
       if (dx * dx + dy * dy < r * r) {
         hp -= e.stats.damage;
         invulnerable = 0.6;
+        _emit(
+            RunEvent(RunEventType.playerHurt, px, py, amount: e.stats.damage));
         if (hp <= 0) {
           hp = 0;
           _end(returned: false);
@@ -453,7 +499,7 @@ class RunSimulation {
         if (rel < 0) rel += 2 * pi;
         if (rel <= swept) {
           s.hit.add(e);
-          _damage(e, s.damage, w.id, knockFromX: px, knockFromY: py);
+          _damage(e, s.damage, w, knockFromX: px, knockFromY: py);
         }
       }
       if (s.t >= s.duration) swing = null;
@@ -463,6 +509,7 @@ class RunSimulation {
       _swordCd = swordInterval;
       swing =
           SwordSwing(atan2(facingY, facingX), 0.28, swordRadius, swordDamage);
+      _emit(RunEvent(RunEventType.swordSwing, px, py));
     }
   }
 
@@ -483,6 +530,7 @@ class RunSimulation {
       });
     if (targets.isEmpty) return;
     _bowCd = bowInterval;
+    _emit(RunEvent(RunEventType.bowShot, px, py));
     const speed = 380.0;
     for (var i = 0; i < arrowCount; i++) {
       final t = targets[i % targets.length];
@@ -505,7 +553,7 @@ class RunSimulation {
         final dx = e.x - a.x, dy = e.y - a.y;
         if (dx * dx + dy * dy > r * r) continue;
         a.hit.add(e);
-        _damage(e, a.damage, w!.id,
+        _damage(e, a.damage, w!,
             knockFromX: a.x - a.vx, knockFromY: a.y - a.vy);
         a.pierceLeft--;
         if (a.pierceLeft < 0) {
@@ -517,9 +565,11 @@ class RunSimulation {
     arrows.removeWhere((a) => a.life <= 0);
   }
 
-  void _damage(Enemy e, double amount, String weaponId,
+  void _damage(Enemy e, double amount, CarriedWeapon weapon,
       {required double knockFromX, required double knockFromY}) {
     e.hp -= amount;
+    _emit(RunEvent(RunEventType.hit, e.x, e.y,
+        amount: amount, weapon: weapon.type));
     e.hitFlash = 0.12;
     final dx = e.x - knockFromX, dy = e.y - knockFromY;
     final d = sqrt(dx * dx + dy * dy);
@@ -529,7 +579,8 @@ class RunSimulation {
     }
     if (e.hp > 0) return;
     e.dead = true;
-    killsByWeapon[weaponId] = (killsByWeapon[weaponId] ?? 0) + 1;
+    _emit(RunEvent(RunEventType.kill, e.x, e.y, weapon: weapon.type));
+    killsByWeapon[weapon.id] = (killsByWeapon[weapon.id] ?? 0) + 1;
     pickups.add(Pickup.gem(e.x, e.y, e.stats.xp));
     if (rng.nextDouble() < e.stats.materialChance) {
       pickups.add(Pickup.material(e.x + 6, e.y - 6, _materialFor(e.kind)));
@@ -583,8 +634,10 @@ class RunSimulation {
     final m = p.material;
     if (m != null) {
       materials[m] = (materials[m] ?? 0) + 1;
+      _emit(RunEvent(RunEventType.material, p.x, p.y));
       return;
     }
+    _emit(RunEvent(RunEventType.gem, p.x, p.y));
     xp += p.xp;
     while (xp >= xpToNext) {
       xp -= xpToNext;

@@ -2,18 +2,21 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flutter/painting.dart' show TextStyle, FontWeight;
+import 'package:flutter/painting.dart' show FontWeight, Shadow, TextStyle;
 
 import '../domain/run_result.dart';
+import '../domain/loadout.dart';
 import '../domain/run_simulation.dart';
+import 'run_fx.dart';
 import 'survivor_game.dart';
 
 /// シミュレーションの状態をワールド座標でまとめて描く。
 /// 敵を1体ずつコンポーネントにすると数百体で重くなるため、1つの描画コンポーネントで処理する。
 class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   final RunSimulation sim;
+  final RunFx fx;
 
-  WorldRenderer(this.sim);
+  WorldRenderer(this.sim, this.fx);
 
   final Paint _fill = Paint();
   final Paint _stroke = Paint()
@@ -32,6 +35,26 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     ),
   );
 
+  static TextPaint _numberPaint(Color color, double size) => TextPaint(
+        style: TextStyle(
+          color: color,
+          fontSize: size,
+          fontWeight: FontWeight.w900,
+          shadows: const [
+            Shadow(
+                color: Color(0xFF000000),
+                blurRadius: 0,
+                offset: Offset(1.5, 1.5)),
+            Shadow(color: Color(0xFF000000), blurRadius: 2),
+          ],
+        ),
+      );
+
+  static final TextPaint _swordNumber =
+      _numberPaint(const Color(0xFFFFFFFF), 17);
+  static final TextPaint _bowNumber = _numberPaint(const Color(0xFFBFE8FF), 17);
+  static final TextPaint _bigNumber = _numberPaint(const Color(0xFFFFD45E), 23);
+
   @override
   void render(Canvas canvas) {
     final view = game.camera.visibleWorldRect;
@@ -42,7 +65,54 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     _drawArrows(canvas);
     _drawPlayer(canvas);
     _drawParticles(canvas);
+    _drawNumbers(canvas);
     _drawGateArrow(canvas, view);
+    _drawFlashes(canvas, view);
+  }
+
+  void _drawNumbers(Canvas canvas) {
+    for (final n in fx.numbers) {
+      final t = n.age / FloatingNumber.lifetime;
+      // 出た瞬間に大きく弾み、最後は縮んで消える
+      final scale = t < 0.15
+          ? 1.6 - t / 0.15 * 0.6
+          : t > 0.75
+              ? 1 - (t - 0.75) / 0.25
+              : 1.0;
+      if (scale <= 0) continue;
+      final y = n.y - 34 * (1 - pow(1 - t, 2));
+      final paint = n.big
+          ? _bigNumber
+          : n.weapon == CarriedWeaponType.bow
+              ? _bowNumber
+              : _swordNumber;
+      canvas.save();
+      canvas.translate(n.x, y);
+      canvas.scale(scale);
+      paint.render(canvas, n.text, Vector2.zero(), anchor: Anchor.center);
+      canvas.restore();
+    }
+  }
+
+  void _drawFlashes(Canvas canvas, Rect view) {
+    if (fx.hurtFlash > 0) {
+      // 画面のふちを赤くする
+      final rect = view.inflate(20);
+      final shader = Gradient.radial(
+        view.center,
+        view.longestSide * 0.6,
+        [
+          const Color(0x00E5484D),
+          Color.fromRGBO(229, 72, 77, 0.55 * fx.hurtFlash)
+        ],
+        [0.55, 1],
+      );
+      canvas.drawRect(rect, Paint()..shader = shader);
+    }
+    if (fx.whiteFlash > 0) {
+      canvas.drawRect(view.inflate(20),
+          Paint()..color = Color.fromRGBO(255, 244, 200, 0.7 * fx.whiteFlash));
+    }
   }
 
   void _drawGround(Canvas canvas, Rect view) {
