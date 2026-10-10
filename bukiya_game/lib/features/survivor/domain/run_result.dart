@@ -41,6 +41,7 @@ class RunResult {
   final int level;
   final Map<MaterialKind, int> materialsFound;
   final List<WeaponOutcome> weapons;
+  final int bossesDefeated;
 
   const RunResult({
     required this.returned,
@@ -48,6 +49,7 @@ class RunResult {
     required this.level,
     required this.materialsFound,
     required this.weapons,
+    this.bossesDefeated = 0,
   });
 
   int get totalKills => weapons.fold(0, (sum, w) => sum + w.kills);
@@ -65,6 +67,7 @@ class RunResult {
     required Map<MaterialKind, int> materialsFound,
     required List<CarriedWeapon> loadout,
     required Map<String, int> killsByWeapon,
+    int bossesDefeated = 0,
   }) {
     final durabilityLoss = returned ? 10 : 40;
     return RunResult(
@@ -72,6 +75,7 @@ class RunResult {
       survivedSeconds: survivedSeconds,
       level: level,
       materialsFound: Map.of(materialsFound),
+      bossesDefeated: bossesDefeated,
       weapons: [
         for (final w in loadout)
           WeaponOutcome(
