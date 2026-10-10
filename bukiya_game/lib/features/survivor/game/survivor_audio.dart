@@ -31,9 +31,9 @@ class SurvivorAudio {
 
   /// 同じ音を続けて鳴らすときの最短間隔（秒）
   static const Map<Sfx, double> _minInterval = {
-    Sfx.hit: 0.05,
-    Sfx.kill: 0.06,
-    Sfx.gem: 0.05,
+    Sfx.hit: 0.08,
+    Sfx.kill: 0.08,
+    Sfx.gem: 0.07,
     Sfx.material: 0.1,
   };
 

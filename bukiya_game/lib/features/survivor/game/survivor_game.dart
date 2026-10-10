@@ -116,8 +116,12 @@ class PerfStats {
   int _buildUs = 0;
   int _timings = 0;
   int _enemies = 0;
+  double _maxDt = 0;
 
   double fps = 0;
+
+  /// この1秒で一番長かったフレームの間隔。カクつきはここに出る
+  double worstFrameMs = 0;
   double updateMs = 0;
   double renderMs = 0;
   double buildMs = 0;
@@ -129,8 +133,11 @@ class PerfStats {
     _elapsed += dt;
     _updateUs += us;
     _enemies = enemyCount;
+    _maxDt = max(_maxDt, dt);
     if (_elapsed < 1) return;
     fps = _frames / _elapsed;
+    worstFrameMs = _maxDt * 1000;
+    _maxDt = 0;
     updateMs = _updateUs / _frames / 1000;
     renderMs = _renderUs / _frames / 1000;
     buildMs = _timings == 0 ? 0 : _buildUs / _timings / 1000;
@@ -152,7 +159,8 @@ class PerfStats {
   }
 
   @override
-  String toString() => '${fps.toStringAsFixed(0)} fps  敵 $enemies\n'
+  String toString() =>
+      '${fps.toStringAsFixed(0)} fps  最長 ${worstFrameMs.toStringAsFixed(0)}ms  敵 $enemies\n'
       '更新 ${updateMs.toStringAsFixed(1)}ms  描画 ${renderMs.toStringAsFixed(1)}ms\n'
       'build ${buildMs.toStringAsFixed(1)}ms  raster ${rasterMs.toStringAsFixed(1)}ms';
 }

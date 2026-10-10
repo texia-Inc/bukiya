@@ -275,41 +275,29 @@ class _RunView extends StatefulWidget {
 }
 
 class _RunViewState extends State<_RunView> {
-  Offset? _stickOrigin;
-  Offset? _stickNow;
+  /// スティックの (起点, 現在位置)。指の動きのたびに画面全体を作り直さないよう、
+  /// setState ではなくこの通知でスティックの絵だけを描き直す
+  final ValueNotifier<(Offset, Offset)?> _stick = ValueNotifier(null);
   bool _paused = false;
-  late final Timer _hudTimer;
 
   static const double _stickRadius = 50;
 
   @override
-  void initState() {
-    super.initState();
-    // HUD は 10fps で十分
-    _hudTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
   void dispose() {
-    _hudTimer.cancel();
+    _stick.dispose();
     super.dispose();
   }
 
-  void _updateStick(Offset now) {
-    final o = _stickOrigin;
-    if (o == null) return;
-    var d = now - o;
+  void _updateStick(Offset origin, Offset now) {
+    var d = now - origin;
     if (d.distance > _stickRadius) d = d / d.distance * _stickRadius;
-    _stickNow = o + d;
+    _stick.value = (origin, origin + d);
     widget.game.stickX = d.dx / _stickRadius;
     widget.game.stickY = d.dy / _stickRadius;
   }
 
   void _releaseStick() {
-    _stickOrigin = null;
-    _stickNow = null;
+    _stick.value = null;
     widget.game.stickX = 0;
     widget.game.stickY = 0;
   }
@@ -331,25 +319,31 @@ class _RunViewState extends State<_RunView> {
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onPanStart: (d) => setState(() {
-            _stickOrigin = d.localPosition;
-            _updateStick(d.localPosition);
-          }),
-          onPanUpdate: (d) => setState(() => _updateStick(d.localPosition)),
-          onPanEnd: (_) => setState(_releaseStick),
-          onPanCancel: () => setState(_releaseStick),
+          onPanStart: (d) => _updateStick(d.localPosition, d.localPosition),
+          onPanUpdate: (d) {
+            final s = _stick.value;
+            if (s != null) _updateStick(s.$1, d.localPosition);
+          },
+          onPanEnd: (_) => _releaseStick(),
+          onPanCancel: _releaseStick,
           child: GameWidget(game: widget.game),
         ),
-        if (_stickOrigin != null)
-          IgnorePointer(
+        IgnorePointer(
+          child: RepaintBoundary(
             child: CustomPaint(
-              painter: _StickPainter(_stickOrigin!, _stickNow!, _stickRadius),
+              painter: _StickPainter(_stick, _stickRadius),
+              size: Size.infinite,
             ),
           ),
+        ),
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: _Hud(sim: sim, paused: _paused, onPause: _togglePause),
+            child: _HudTicker(
+              sim: sim,
+              builder: () =>
+                  _Hud(sim: sim, paused: _paused, onPause: _togglePause),
+            ),
           ),
         ),
         if (SurvivorGame.showPerf)
@@ -357,12 +351,16 @@ class _RunViewState extends State<_RunView> {
             left: 12,
             bottom: 12,
             child: IgnorePointer(
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                color: const Color(0xAA000000),
-                child: Text(widget.game.perf.toString(),
-                    style: const TextStyle(
-                        fontSize: 11, fontFamily: 'monospace', color: _ink)),
+              child: _HudTicker(
+                sim: sim,
+                alwaysRebuild: true,
+                builder: () => Container(
+                  padding: const EdgeInsets.all(6),
+                  color: const Color(0xAA000000),
+                  child: Text(widget.game.perf.toString(),
+                      style: const TextStyle(
+                          fontSize: 11, fontFamily: 'monospace', color: _ink)),
+                ),
               ),
             ),
           ),
@@ -383,15 +381,80 @@ class _RunViewState extends State<_RunView> {
   }
 }
 
+/// HUD だけを 0.1 秒ごとに作り直す。表示する値が変わっていなければ作り直さない
+class _HudTicker extends StatefulWidget {
+  final RunSimulation sim;
+  final Widget Function() builder;
+  final bool alwaysRebuild;
+
+  const _HudTicker({
+    required this.sim,
+    required this.builder,
+    this.alwaysRebuild = false,
+  });
+
+  @override
+  State<_HudTicker> createState() => _HudTickerState();
+}
+
+class _HudTickerState extends State<_HudTicker> {
+  late final Timer _timer;
+  Object? _last;
+
+  /// 画面に出る値の組。これが同じなら作り直す必要がない
+  Object _snapshot() {
+    final s = widget.sim;
+    final g = s.gate;
+    return (
+      s.hp.ceil(),
+      s.maxHp.round(),
+      s.level,
+      (s.xp / s.xpToNext * 50).floor(),
+      s.horde ? -1 : s.timeLeft.floor(),
+      s.totalKills,
+      s.materials.values.fold(0, (a, b) => a + b),
+      g == null
+          ? null
+          : (g.closesAt == null ? -1 : (g.closesAt! - s.time).ceil()),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (!mounted) return;
+      if (widget.alwaysRebuild) {
+        setState(() {});
+        return;
+      }
+      final snap = _snapshot();
+      if (snap != _last) setState(() => _last = snap);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      RepaintBoundary(child: widget.builder());
+}
+
 class _StickPainter extends CustomPainter {
-  final Offset origin;
-  final Offset now;
+  final ValueNotifier<(Offset, Offset)?> stick;
   final double radius;
 
-  _StickPainter(this.origin, this.now, this.radius);
+  _StickPainter(this.stick, this.radius) : super(repaint: stick);
 
   @override
   void paint(Canvas canvas, Size size) {
+    final s = stick.value;
+    if (s == null) return;
+    final (origin, now) = s;
     canvas.drawCircle(origin, radius, Paint()..color = const Color(0x33FFFFFF));
     canvas.drawCircle(
         origin,
@@ -404,8 +467,7 @@ class _StickPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_StickPainter old) =>
-      old.now != now || old.origin != origin;
+  bool shouldRepaint(_StickPainter old) => old.stick != stick;
 }
 
 String _clock(double seconds) {
