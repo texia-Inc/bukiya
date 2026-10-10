@@ -182,6 +182,10 @@ class RunSimulation {
   double py = 0;
   double facingX = 1;
   double facingY = 0;
+
+  /// 歩きアニメーション用：歩いた距離と、今動いているか
+  double walkDistance = 0;
+  bool moving = false;
   double maxHp = 100;
   double hp = 100;
   double invulnerable = 0;
@@ -349,9 +353,12 @@ class RunSimulation {
   }
 
   void _movePlayer(double dt) {
-    if (_inputX != 0 || _inputY != 0) {
+    moving = _inputX != 0 || _inputY != 0;
+    if (moving) {
       px += _inputX * moveSpeed * dt;
       py += _inputY * moveSpeed * dt;
+      walkDistance +=
+          sqrt(_inputX * _inputX + _inputY * _inputY) * moveSpeed * dt;
       final len = sqrt(_inputX * _inputX + _inputY * _inputY);
       facingX = _inputX / len;
       facingY = _inputY / len;
