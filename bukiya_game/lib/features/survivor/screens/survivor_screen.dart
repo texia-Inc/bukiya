@@ -9,6 +9,7 @@ import '../domain/run_simulation.dart';
 import '../domain/skills.dart';
 import '../data/profile_store.dart';
 import '../domain/profile.dart';
+import '../domain/shop.dart';
 import '../game/run_fx.dart';
 import '../game/sfx_backend.dart';
 import '../game/survivor_audio.dart';
@@ -94,6 +95,7 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
             ),
           _Stage.result => _ResultView(
               result: _result!,
+              profile: _profile,
               onAgain: () => setState(() => _stage = _Stage.home),
             ),
         },
@@ -638,9 +640,11 @@ class _SkillCard extends StatelessWidget {
 
 class _ResultView extends StatelessWidget {
   final RunResult result;
+  final SurvivorProfile profile;
   final VoidCallback onAgain;
 
-  const _ResultView({required this.result, required this.onAgain});
+  const _ResultView(
+      {required this.result, required this.profile, required this.onAgain});
 
   @override
   Widget build(BuildContext context) {
@@ -670,7 +674,9 @@ class _ResultView extends StatelessWidget {
               const Text('武器の熟練度と売値',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              for (final w in result.weapons) _WeaponOutcomeRow(outcome: w),
+              for (final w in result.weapons)
+                _WeaponOutcomeRow(
+                    outcome: w, owned: profile.weapon(w.weapon.id)),
               const SizedBox(height: 16),
               Text(
                 result.returned ? '持ち帰った素材' : '持ち帰った素材（倒れたので半分）',
@@ -736,12 +742,16 @@ class _ResultView extends StatelessWidget {
 class _WeaponOutcomeRow extends StatelessWidget {
   final WeaponOutcome outcome;
 
-  const _WeaponOutcomeRow({required this.outcome});
+  /// 記録に反映したあとの武器（累計の熟練度と今の売値を出す）
+  final OwnedWeapon? owned;
+
+  const _WeaponOutcomeRow({required this.outcome, required this.owned});
 
   @override
   Widget build(BuildContext context) {
-    final bonus = ((outcome.priceMultiplier - 1) * 100).round();
-    final prof = min(outcome.kills, proficiencyCapKills) / proficiencyCapKills;
+    final total = owned?.kills ?? outcome.kills;
+    final prof = min(total, proficiencyCapKills) / proficiencyCapKills;
+    final bonus = ((proficiencyMultiplier(total) - 1) * 100).round();
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -759,13 +769,14 @@ class _WeaponOutcomeRow extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-              Text('${outcome.weapon.basePrice}G → ',
-                  style: const TextStyle(color: _muted)),
-              Text('${outcome.priceAfter}G',
-                  style: const TextStyle(
-                      color: _accent,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16)),
+              if (owned != null) ...[
+                const Text('売値 ', style: TextStyle(color: _muted)),
+                Text('${owned!.sellPrice}G',
+                    style: const TextStyle(
+                        color: _accent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
+              ],
             ],
           ),
           const SizedBox(height: 6),
@@ -780,9 +791,12 @@ class _WeaponOutcomeRow extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '撃破 ${outcome.kills}（売値 +$bonus%）・耐久 ${outcome.weapon.durability} → ${outcome.durabilityAfter}',
+            '撃破 +${outcome.kills}（熟練度 $total・売値 +$bonus%）・耐久 ${outcome.weapon.durability} → ${outcome.durabilityAfter}',
             style: const TextStyle(color: _muted, fontSize: 12),
           ),
+          if (outcome.durabilityAfter <= 0)
+            const Text('壊れた！店で修理するまで持ち出せない',
+                style: TextStyle(color: Color(0xFFFF8A8A), fontSize: 12)),
         ],
       ),
     );

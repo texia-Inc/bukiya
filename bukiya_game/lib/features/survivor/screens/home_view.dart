@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/loadout.dart';
 import '../domain/profile.dart';
+import '../domain/shop.dart';
 import '../domain/run_result.dart';
 import '../domain/stage.dart';
 import 'menu_painters.dart';
@@ -85,9 +86,32 @@ class _HomeViewState extends State<HomeView>
                       ),
                     HomeTab.gear => _GearTab(
                         profile: _p,
-                        onToggle: (id) => _change(() => _toggleWeapon(id)),
+                        onToggle: (w) => _change(() => _p.toggleWeapon(w.uid)),
+                        onEnchant: (w) {
+                          _change(() => _p.enchant(w));
+                          _toast('${w.name} を +${w.enchantLevel} に強化した');
+                        },
+                        onRepair: (w) {
+                          _change(() => _p.repair(w));
+                          _toast('${w.displayName} を修理した');
+                        },
                       ),
-                    HomeTab.shop => _ShopTab(profile: _p),
+                    HomeTab.shop => _ShopTab(
+                        profile: _p,
+                        onSell: (w) async {
+                          final ok = await _confirm(
+                              '${w.displayName} を ${w.sellPrice}G で売りますか？');
+                          if (!ok) return;
+                          final price = w.sellPrice;
+                          _change(() => _p.sell(w));
+                          _toast('${w.displayName} を ${price}G で売った');
+                        },
+                        onCraft: (r) {
+                          OwnedWeapon? made;
+                          _change(() => made = _p.craft(r));
+                          if (made != null) _toast('${made!.name} を鍛えた');
+                        },
+                      ),
                   },
                 ),
               ),
@@ -102,14 +126,61 @@ class _HomeViewState extends State<HomeView>
     );
   }
 
-  void _toggleWeapon(String id) {
-    final sel = _p.selectedWeapons;
-    if (sel.contains(id)) {
-      if (sel.length > 1) sel.remove(id);
-    } else {
-      if (sel.length >= maxCarriedWeapons) sel.removeAt(0);
-      sel.add(id);
-    }
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content:
+            Text(message, style: const TextStyle(fontWeight: FontWeight.w800)),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        // 下のタブに重ならないよう持ち上げる
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 84),
+      ));
+  }
+
+  Future<bool> _confirm(String message) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: _Chunky(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: _cream,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15)),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SmallButton(
+                      label: 'やめる',
+                      color: _panelLight,
+                      textColor: _cream,
+                      onTap: () => Navigator.of(context).pop(false),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _SmallButton(
+                      label: '売る',
+                      onTap: () => Navigator.of(context).pop(true),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return ok ?? false;
   }
 }
 
@@ -197,6 +268,8 @@ const _rules = [
   '5:00 を過ぎると魔物の大群。ゲートは開きっぱなしになる',
   '倒れると素材は半分しか持ち帰れない',
   '武器で倒した数が熟練度になり、売値が最大 +50% 上がる',
+  '武器は出撃で耐久が減る（生還 -10・倒れると -40）。0 になったら店で修理',
+  '店で武器を売ってお金を稼ぎ、素材とお金で新しい武器を鍛えたり強化したりできる',
 ];
 
 void showRulesDialog(BuildContext context) {
@@ -288,8 +361,8 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           _Pill(
-            icon: _Icon(MaterialIconPainter(MaterialKind.ironOre), size: 20),
-            value: '${profile.totalMaterials}',
+            icon: _Icon(CoinPainter(), size: 20),
+            value: '${profile.gold}',
           ),
           const SizedBox(width: 6),
           _Pill(
@@ -464,7 +537,15 @@ class _BattleTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            _StartButton(enabled: !locked, onTap: onStart),
+            _StartButton(
+              enabled: !locked && profile.loadout.isNotEmpty,
+              label: locked
+                  ? '未解放'
+                  : profile.loadout.isEmpty
+                      ? '使える武器がない'
+                      : 'スタート',
+              onTap: onStart,
+            ),
             const SizedBox(height: 14),
           ],
         ),
@@ -505,9 +586,11 @@ class _ArrowButton extends StatelessWidget {
 
 class _StartButton extends StatefulWidget {
   final bool enabled;
+  final String label;
   final VoidCallback onTap;
 
-  const _StartButton({required this.enabled, required this.onTap});
+  const _StartButton(
+      {required this.enabled, required this.label, required this.onTap});
 
   @override
   State<_StartButton> createState() => _StartButtonState();
@@ -539,22 +622,124 @@ class _StartButtonState extends State<_StartButton> {
           ],
         ),
         alignment: Alignment.center,
-        child: Text(widget.enabled ? 'スタート' : '未解放',
-            style: const TextStyle(
-                color: _ink, fontSize: 30, fontWeight: FontWeight.w900)),
+        child: Text(widget.label,
+            style: TextStyle(
+                color: _ink,
+                fontSize: widget.label.length > 5 ? 22 : 30,
+                fontWeight: FontWeight.w900)),
       ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// 装備タブ：持ち出す武器を選ぶ
+// 装備タブ：持ち出す武器を選び、強化・修理する
+
+class _SmallButton extends StatelessWidget {
+  final String label;
+  final String? sub;
+  final VoidCallback? onTap;
+  final Color color;
+  final Color textColor;
+
+  const _SmallButton({
+    required this.label,
+    this.sub,
+    this.onTap,
+    this.color = _yellow,
+    this.textColor = _ink,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: enabled ? color : const Color(0xFF5A5E68),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: _ink, width: 2.5),
+          boxShadow: enabled
+              ? const [
+                  BoxShadow(color: Color(0x66000000), offset: Offset(0, 3))
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label,
+                style: TextStyle(
+                    color: enabled ? textColor : const Color(0xFFB0B3BA),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14)),
+            if (sub != null)
+              Text(sub!,
+                  style: TextStyle(
+                      color: enabled
+                          ? textColor.withValues(alpha: 0.75)
+                          : const Color(0xFF9A9DA4),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 必要な素材とお金を「アイコン 持っている数/要る数」で並べる
+class _CostRow extends StatelessWidget {
+  final SurvivorProfile profile;
+  final int gold;
+  final Map<MaterialKind, int> materials;
+
+  const _CostRow(
+      {required this.profile, required this.gold, required this.materials});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget item(Widget icon, int have, int need) => Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              icon,
+              const SizedBox(width: 2),
+              Text('$have/$need',
+                  style: TextStyle(
+                      color: have >= need ? _cream : const Color(0xFFFF8A8A),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12)),
+            ],
+          ),
+        );
+    return Wrap(
+      runSpacing: 4,
+      children: [
+        for (final e in materials.entries)
+          item(_Icon(MaterialIconPainter(e.key), size: 18), profile.have(e.key),
+              e.value),
+        item(_Icon(CoinPainter(), size: 18), profile.gold, gold),
+      ],
+    );
+  }
+}
 
 class _GearTab extends StatelessWidget {
   final SurvivorProfile profile;
-  final ValueChanged<String> onToggle;
+  final ValueChanged<OwnedWeapon> onToggle;
+  final ValueChanged<OwnedWeapon> onEnchant;
+  final ValueChanged<OwnedWeapon> onRepair;
 
-  const _GearTab({required this.profile, required this.onToggle});
+  const _GearTab({
+    required this.profile,
+    required this.onToggle,
+    required this.onEnchant,
+    required this.onRepair,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -563,19 +748,20 @@ class _GearTab extends StatelessWidget {
       children: [
         const OutlinedText('装備', size: 26),
         const SizedBox(height: 4),
-        const Text('持ち出す武器を2本まで選ぶ。倒した数が熟練度になり、売値が上がる。',
+        const Text('タップで持ち出す武器を2本まで選ぶ。魔石とお金で強化、耐久が減ったら修理。',
             style: TextStyle(
                 color: _ink, fontWeight: FontWeight.w700, fontSize: 12)),
         const SizedBox(height: 12),
-        for (final w in mockShopStock)
+        for (final w in profile.weapons)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: _GearCard(
+              profile: profile,
               weapon: w,
-              selected: profile.selectedWeapons.contains(w.id),
-              kills: profile.weaponKills[w.id] ?? 0,
-              price: profile.priceOf(w),
-              onTap: () => onToggle(w.id),
+              selected: profile.selectedWeapons.contains(w.uid),
+              onTap: () => onToggle(w),
+              onEnchant: () => onEnchant(w),
+              onRepair: () => onRepair(w),
             ),
           ),
       ],
@@ -584,106 +770,278 @@ class _GearTab extends StatelessWidget {
 }
 
 class _GearCard extends StatelessWidget {
-  final CarriedWeapon weapon;
+  final SurvivorProfile profile;
+  final OwnedWeapon weapon;
   final bool selected;
-  final int kills;
-  final int price;
   final VoidCallback onTap;
+  final VoidCallback onEnchant;
+  final VoidCallback onRepair;
 
   const _GearCard({
+    required this.profile,
     required this.weapon,
     required this.selected,
-    required this.kills,
-    required this.price,
     required this.onTap,
+    required this.onEnchant,
+    required this.onRepair,
   });
 
   @override
   Widget build(BuildContext context) {
-    final prof = (kills / proficiencyCapKills).clamp(0.0, 1.0);
-    return GestureDetector(
-      onTap: onTap,
-      child: _Chunky(
-        color: selected ? const Color(0xFF3A4A3A) : _panel,
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: selected ? _yellow : _panelLight,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _ink, width: 3),
-              ),
-              padding: const EdgeInsets.all(6),
-              child: CustomPaint(painter: WeaponIconPainter(weapon.type)),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+    final w = weapon;
+    final prof = (w.kills / proficiencyCapKills).clamp(0.0, 1.0);
+    final maxed = w.enchantLevel >= maxEnchantLevel;
+    final cost = maxed ? null : enchantCost(w);
+    return _Chunky(
+      color: w.broken
+          ? const Color(0xFF4A2F33)
+          : selected
+              ? const Color(0xFF3A4A3A)
+              : _panel,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: selected ? _yellow : _panelLight,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _ink, width: 3),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: CustomPaint(painter: WeaponIconPainter(w.type)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(weapon.displayName,
-                            style: const TextStyle(
-                                color: _cream,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(w.displayName,
+                                style: const TextStyle(
+                                    color: _cream,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16)),
+                          ),
+                          Text('${w.sellPrice} G',
+                              style: const TextStyle(
+                                  color: _yellow, fontWeight: FontWeight.w900)),
+                        ],
                       ),
-                      Text('$price G',
-                          style: const TextStyle(
-                              color: _yellow, fontWeight: FontWeight.w900)),
+                      Text(
+                          w.broken ? '壊れている（修理するまで持ち出せない）' : w.type.attackStyle,
+                          style: TextStyle(
+                              color:
+                                  w.broken ? const Color(0xFFFF8A8A) : _muted,
+                              fontSize: 11)),
+                      const SizedBox(height: 6),
+                      _MiniBar(
+                          label: '熟練度 ${w.kills}/$proficiencyCapKills',
+                          value: prof,
+                          color: _yellow),
+                      const SizedBox(height: 3),
+                      _MiniBar(
+                          label: '耐久 ${w.durability}/100',
+                          value: w.durability / 100,
+                          color: w.durability > 30
+                              ? const Color(0xFF6BD17A)
+                              : const Color(0xFFE5484D)),
                     ],
                   ),
-                  Text(weapon.type.attackStyle,
-                      style: const TextStyle(color: _muted, fontSize: 11)),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: prof,
-                      minHeight: 6,
-                      backgroundColor: const Color(0xFF1B1E26),
-                      color: _yellow,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text('熟練度 $kills / $proficiencyCapKills',
-                      style: const TextStyle(color: _muted, fontSize: 10)),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                    selected
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    color: selected ? _yellow : _muted,
+                    size: 28),
+              ],
             ),
-            const SizedBox(width: 8),
-            Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: selected ? _yellow : _muted, size: 28),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: maxed
+                    ? const Text('強化は最大',
+                        style: TextStyle(color: _muted, fontSize: 12))
+                    : _CostRow(
+                        profile: profile,
+                        gold: cost!.gold,
+                        materials: cost.materials),
+              ),
+              _SmallButton(
+                label: '強化',
+                sub: maxed ? null : '+${w.enchantLevel + 1}',
+                onTap: profile.canEnchant(w) ? onEnchant : null,
+              ),
+              if (w.durability < 100) ...[
+                const SizedBox(width: 6),
+                _SmallButton(
+                  label: '修理',
+                  sub: '${repairCost(w)}G',
+                  color: const Color(0xFF8BE9FF),
+                  onTap: profile.canRepair(w) ? onRepair : null,
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// 店タブ：持ち帰った素材
+class _MiniBar extends StatelessWidget {
+  final String label;
+  final double value;
+  final Color color;
 
-class _ShopTab extends StatelessWidget {
-  final SurvivorProfile profile;
-
-  const _ShopTab({required this.profile});
+  const _MiniBar(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: value.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: const Color(0xFF1B1E26),
+              color: color,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        SizedBox(
+          width: 104,
+          child:
+              Text(label, style: const TextStyle(color: _muted, fontSize: 10)),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 店タブ：武器を売る・鍛冶・素材の倉庫
+
+class _ShopTab extends StatelessWidget {
+  final SurvivorProfile profile;
+  final ValueChanged<OwnedWeapon> onSell;
+  final ValueChanged<Recipe> onCraft;
+
+  const _ShopTab({
+    required this.profile,
+    required this.onSell,
+    required this.onCraft,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final full = profile.weapons.length >= maxOwnedWeapons;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const OutlinedText('店の倉庫', size: 26),
+        const OutlinedText('武器を売る', size: 24),
         const SizedBox(height: 4),
-        const Text('冒険で持ち帰った素材。武器の売却と鍛冶は次の更新で追加予定。',
+        const Text('使い込んだ武器ほど高く売れる。耐久が減ると値が下がる。',
             style: TextStyle(
                 color: _ink, fontWeight: FontWeight.w700, fontSize: 12)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
+        for (final w in profile.weapons)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _Chunky(
+              padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+              child: Row(
+                children: [
+                  _Icon(WeaponIconPainter(w.type), size: 34),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(w.displayName,
+                            style: const TextStyle(
+                                color: _cream,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15)),
+                        Text('熟練度 ${w.kills}・耐久 ${w.durability}',
+                            style:
+                                const TextStyle(color: _muted, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  _SmallButton(
+                    label: '売る',
+                    sub: '${w.sellPrice}G',
+                    onTap: profile.canSell(w) ? () => onSell(w) : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 14),
+        const OutlinedText('鍛冶', size: 24),
+        const SizedBox(height: 4),
+        Text(
+            full
+                ? '倉庫がいっぱい（$maxOwnedWeapons本まで）。武器を売ると鍛えられる。'
+                : '持ち帰った素材とお金で新しい武器を鍛える。',
+            style: const TextStyle(
+                color: _ink, fontWeight: FontWeight.w700, fontSize: 12)),
+        const SizedBox(height: 10),
+        for (final r in recipes)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _Chunky(
+              padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+              child: Row(
+                children: [
+                  _Icon(WeaponIconPainter(r.type), size: 34),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(weaponNames[r.type]!,
+                            style: const TextStyle(
+                                color: _cream,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15)),
+                        const SizedBox(height: 3),
+                        _CostRow(
+                            profile: profile,
+                            gold: r.gold,
+                            materials: r.materials),
+                      ],
+                    ),
+                  ),
+                  _SmallButton(
+                    label: '鍛える',
+                    onTap: profile.canCraft(r) ? () => onCraft(r) : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 14),
+        const OutlinedText('倉庫', size: 24),
+        const SizedBox(height: 10),
         GridView.count(
           crossAxisCount: 3,
           shrinkWrap: true,
@@ -701,7 +1059,7 @@ class _ShopTab extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(m.label,
                         style: const TextStyle(color: _muted, fontSize: 11)),
-                    Text('${profile.materials[m] ?? 0}',
+                    Text('${profile.have(m)}',
                         style: const TextStyle(
                             color: _cream,
                             fontWeight: FontWeight.w900,

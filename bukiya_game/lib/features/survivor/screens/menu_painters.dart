@@ -313,3 +313,25 @@ class MaterialIconPainter extends CustomPainter {
   @override
   bool shouldRepaint(MaterialIconPainter old) => old.kind != kind;
 }
+
+/// お金のアイコン（金貨）
+class CoinPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width;
+    final c = Offset(s / 2, s / 2);
+    canvas.drawCircle(c, s * 0.42, Paint()..color = const Color(0xFFFFC93C));
+    canvas.drawCircle(c, s * 0.42, _outline());
+    canvas.drawCircle(c, s * 0.26, Paint()..color = const Color(0xFFFFE08A));
+    canvas.drawCircle(
+        c,
+        s * 0.26,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = const Color(0xFFC98A1E));
+  }
+
+  @override
+  bool shouldRepaint(CoinPainter old) => false;
+}
