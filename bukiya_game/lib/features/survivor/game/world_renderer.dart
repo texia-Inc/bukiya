@@ -8,6 +8,7 @@ import '../domain/run_result.dart';
 import '../domain/loadout.dart';
 import '../domain/run_simulation.dart';
 import 'run_fx.dart';
+import 'sprites.dart';
 import 'survivor_game.dart';
 
 /// シミュレーションの状態をワールド座標でまとめて描く。
@@ -17,6 +18,8 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   final RunFx fx;
 
   WorldRenderer(this.sim, this.fx);
+
+  final Sprites _sprites = Sprites();
 
   final Paint _fill = Paint();
   final Paint _stroke = Paint()
@@ -70,19 +73,6 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     ..lineTo(5, -5)
     ..lineTo(0, 7)
     ..close();
-  static final Path _unitWings = Path()
-    ..moveTo(-2.2, -1)
-    ..lineTo(0, -0.3)
-    ..lineTo(2.2, -1)
-    ..lineTo(0, 0.6)
-    ..close();
-  static final Path _unitEars = Path()
-    ..moveTo(-0.6, -0.4)
-    ..lineTo(-1.4, -1.0)
-    ..lineTo(-0.2, -0.8)
-    ..moveTo(0.6, -0.4)
-    ..lineTo(1.4, -1.0)
-    ..lineTo(0.2, -0.8);
 
   /// 画面外のものは描かない
   late Rect _cull;
@@ -261,66 +251,19 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   }
 
   void _drawEnemies(Canvas canvas) {
-    for (final e in sim.enemies) {
-      if (!_cull.contains(Offset(e.x, e.y))) continue;
-      final r = e.stats.radius;
-      final flash = e.hitFlash > 0;
-      final c = Offset(e.x, e.y);
+    // 奥（画面の上）にいる敵から描いて、手前の敵が上に重なるようにする
+    final visible = [
+      for (final e in sim.enemies)
+        if (_cull.contains(Offset(e.x, e.y))) e
+    ]..sort((a, b) => a.y.compareTo(b.y));
+    for (final e in visible) {
       switch (e.kind) {
         case EnemyKind.slime:
-          final wobble = sin(sim.time * 8 + e.x * 0.05) * 1.5;
-          final body = Rect.fromCenter(
-              center: c.translate(0, 2),
-              width: r * 2 + wobble,
-              height: r * 1.7 - wobble);
-          _fill.color =
-              flash ? const Color(0xFFFFFFFF) : const Color(0xFF6CC47A);
-          canvas.drawOval(body, _fill);
-          canvas.drawOval(body, _outline);
+          _sprites.slime(canvas, e, sim.time, sim.px, sim.py);
         case EnemyKind.bat:
-          final flap = sin(sim.time * 20 + e.y) * 4;
-          _fill.color =
-              flash ? const Color(0xFFFFFFFF) : const Color(0xFF5E3D8F);
-          canvas.save();
-          canvas.translate(e.x, e.y);
-          canvas.scale(r, flap);
-          canvas.drawPath(_unitWings, _fill);
-          canvas.restore();
-          _fill.color =
-              flash ? const Color(0xFFFFFFFF) : const Color(0xFF8E6BC9);
-          canvas.drawCircle(c, r, _fill);
-          canvas.drawCircle(c, r, _outline);
+          _sprites.bat(canvas, e, sim.time, sim.px, sim.py);
         case EnemyKind.goblin:
-          _fill.color =
-              flash ? const Color(0xFFFFFFFF) : const Color(0xFF5C8A3A);
-          canvas.save();
-          canvas.translate(e.x, e.y);
-          canvas.scale(r);
-          canvas.drawPath(_unitEars, _fill);
-          canvas.restore();
-          _fill.color =
-              flash ? const Color(0xFFFFFFFF) : const Color(0xFF7FB24F);
-          canvas.drawCircle(c, r, _fill);
-          canvas.drawCircle(c, r, _outline);
-      }
-      // 目（プレイヤーの方を見る）
-      final a = atan2(sim.py - e.y, sim.px - e.x);
-      final ex = cos(a) * r * 0.3, ey = sin(a) * r * 0.3;
-      _fill.color = const Color(0xFF1A1A1A);
-      canvas.drawCircle(Offset(e.x + ex - r * 0.3, e.y + ey - r * 0.15),
-          r * 0.14 + 0.6, _fill);
-      canvas.drawCircle(Offset(e.x + ex + r * 0.3, e.y + ey - r * 0.15),
-          r * 0.14 + 0.6, _fill);
-
-      if (e.kind == EnemyKind.goblin && e.hp < e.maxHp) {
-        final w = r * 2;
-        _fill.color = const Color(0xAA000000);
-        canvas.drawRect(Rect.fromLTWH(e.x - r, e.y - r - 8, w, 3), _fill);
-        _fill.color = const Color(0xFFE5484D);
-        canvas.drawRect(
-            Rect.fromLTWH(
-                e.x - r, e.y - r - 8, w * (e.hp / e.maxHp).clamp(0, 1), 3),
-            _fill);
+          _sprites.goblin(canvas, e, sim.time, sim.px, sim.py);
       }
     }
   }
@@ -344,37 +287,39 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
 
     if (sim.sword != null) _drawSword(canvas, c, facing);
     if (sim.bow != null) {
-      // 背負った弓
+      // 背中に背負った弓（向きと反対側に見える）
+      final side = sim.facingX >= 0 ? -1.0 : 1.0;
+      final bow = Rect.fromCenter(
+          center: Offset(sim.px + side * 6, sim.py - 2), width: 10, height: 24);
+      _stroke
+        ..color = const Color(0xFF1A1A1A)
+        ..strokeWidth = 4.5;
+      canvas.drawArc(bow, side < 0 ? pi / 2 : -pi / 2, pi, false, _stroke);
       _stroke
         ..color = const Color(0xFF9C6B3F)
-        ..strokeWidth = 3;
-      canvas.drawArc(Rect.fromCircle(center: c, radius: 15), facing + pi - 0.9,
-          1.8, false, _stroke);
+        ..strokeWidth = 2.5;
+      canvas.drawArc(bow, side < 0 ? pi / 2 : -pi / 2, pi, false, _stroke);
+      _stroke
+        ..color = const Color(0xFFE8E0C8)
+        ..strokeWidth = 1;
+      canvas.drawLine(Offset(bow.center.dx, bow.top + 1),
+          Offset(bow.center.dx, bow.bottom - 1), _stroke);
       _stroke.strokeWidth = 2;
     }
 
     final blink =
         sim.invulnerable > 0 && (sim.invulnerable * 20).floor().isEven;
     if (blink) return;
-    // 店主：エプロン姿の丸い体
-    _fill.color = const Color(0xFFE8C9A0);
-    canvas.drawCircle(c, RunSimulation.playerRadius, _fill);
-    canvas.drawCircle(c, RunSimulation.playerRadius, _outline);
-    _fill.color = const Color(0xFF3F6E9E);
-    canvas.drawArc(
-        Rect.fromCircle(center: c, radius: RunSimulation.playerRadius - 1),
-        facing - 0.9,
-        1.8,
-        true,
-        _fill);
-    // バンダナ
-    _fill.color = const Color(0xFFD64545);
-    canvas.drawArc(
-        Rect.fromCircle(center: c, radius: RunSimulation.playerRadius - 1),
-        facing + pi - 0.8,
-        1.6,
-        true,
-        _fill);
+    _sprites.shopkeeper(
+      canvas,
+      x: sim.px,
+      y: sim.py,
+      facingX: sim.facingX,
+      facingY: sim.facingY,
+      moving: sim.moving,
+      walkDistance: sim.walkDistance,
+      time: sim.time,
+    );
   }
 
   void _drawSword(Canvas canvas, Offset c, double facing) {
