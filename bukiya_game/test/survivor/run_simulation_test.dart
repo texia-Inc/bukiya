@@ -180,6 +180,21 @@ void main() {
       expect(sim.events.map((e) => e.type), contains(RunEventType.playerHurt));
     });
 
+    test('宝石が上限を超えると古い宝石に経験値がまとまり、総量は減らない', () {
+      final sim = _sim(loadout: [mockShopStock[0]]);
+      const n = RunSimulation.maxGems + 20;
+      for (var i = 0; i < n; i++) {
+        // プレイヤーから離れた場所で倒す（拾われないように）
+        sim.debugSpawn(EnemyKind.slime, 1000.0 + i, 1000, hp: 1);
+      }
+      for (final e in sim.enemies.toList()) {
+        sim.debugKill(e, mockShopStock[0]);
+      }
+      final gems = sim.pickups.where((p) => p.material == null).toList();
+      expect(gems.length, RunSimulation.maxGems);
+      expect(gems.fold<int>(0, (a, p) => a + p.xp), n);
+    });
+
     test('HPが0になると倒れて終わる', () {
       final sim = _sim(loadout: [mockShopStock[1]]);
       RunResult? ended;

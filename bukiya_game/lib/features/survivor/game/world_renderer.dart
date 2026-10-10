@@ -45,7 +45,10 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
                 color: Color(0xFF000000),
                 blurRadius: 0,
                 offset: Offset(1.5, 1.5)),
-            Shadow(color: Color(0xFF000000), blurRadius: 2),
+            Shadow(
+                color: Color(0xFF000000),
+                blurRadius: 0,
+                offset: Offset(-1, -1)),
           ],
         ),
       );
@@ -55,9 +58,39 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   static final TextPaint _bowNumber = _numberPaint(const Color(0xFFBFE8FF), 17);
   static final TextPaint _bigNumber = _numberPaint(const Color(0xFFFFD45E), 23);
 
+  // 毎フレーム Path を作らないよう、原点基準の形を1回だけ作って移動・拡大して使う
+  static final Path _unitDiamond = Path()
+    ..moveTo(0, -1)
+    ..lineTo(0.7, 0)
+    ..lineTo(0, 1)
+    ..lineTo(-0.7, 0)
+    ..close();
+  static final Path _fangPath = Path()
+    ..moveTo(-5, -5)
+    ..lineTo(5, -5)
+    ..lineTo(0, 7)
+    ..close();
+  static final Path _unitWings = Path()
+    ..moveTo(-2.2, -1)
+    ..lineTo(0, -0.3)
+    ..lineTo(2.2, -1)
+    ..lineTo(0, 0.6)
+    ..close();
+  static final Path _unitEars = Path()
+    ..moveTo(-0.6, -0.4)
+    ..lineTo(-1.4, -1.0)
+    ..lineTo(-0.2, -0.8)
+    ..moveTo(0.6, -0.4)
+    ..lineTo(1.4, -1.0)
+    ..lineTo(0.2, -0.8);
+
+  /// 画面外のものは描かない
+  late Rect _cull;
+
   @override
   void render(Canvas canvas) {
     final view = game.camera.visibleWorldRect;
+    _cull = view.inflate(40);
     _drawGround(canvas, view);
     _drawGate(canvas);
     _drawPickups(canvas);
@@ -182,9 +215,13 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
 
   void _drawPickups(Canvas canvas) {
     for (final p in sim.pickups) {
+      if (!_cull.contains(Offset(p.x, p.y))) continue;
       final m = p.material;
       if (m == null) {
-        _diamond(canvas, p.x, p.y, 5, const Color(0xFF5EC8FF));
+        // まとめられて価値が高い宝石は大きく緑に
+        final big = p.xp >= 5;
+        _diamond(canvas, p.x, p.y, big ? 7 : 5,
+            big ? const Color(0xFF6BE08A) : const Color(0xFF5EC8FF));
         continue;
       }
       switch (m) {
@@ -195,14 +232,12 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           canvas.drawRect(r, _fill);
           canvas.drawRect(r, _outline);
         case MaterialKind.fang:
-          final path = Path()
-            ..moveTo(p.x - 5, p.y - 5)
-            ..lineTo(p.x + 5, p.y - 5)
-            ..lineTo(p.x, p.y + 7)
-            ..close();
           _fill.color = const Color(0xFFF4EBD0);
-          canvas.drawPath(path, _fill);
-          canvas.drawPath(path, _outline);
+          canvas.save();
+          canvas.translate(p.x, p.y);
+          canvas.drawPath(_fangPath, _fill);
+          canvas.drawPath(_fangPath, _outline);
+          canvas.restore();
         case MaterialKind.manaStone:
           _fill.color = const Color(0x55C77DFF);
           canvas.drawCircle(Offset(p.x, p.y), 11, _fill);
@@ -212,19 +247,22 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   }
 
   void _diamond(Canvas canvas, double x, double y, double s, Color color) {
-    final path = Path()
-      ..moveTo(x, y - s)
-      ..lineTo(x + s * 0.7, y)
-      ..lineTo(x, y + s)
-      ..lineTo(x - s * 0.7, y)
-      ..close();
     _fill.color = color;
-    canvas.drawPath(path, _fill);
-    canvas.drawPath(path, _outline);
+    canvas.save();
+    canvas.translate(x, y);
+    canvas.scale(s);
+    // 拡大しても線の太さが変わらないよう、太さを割り戻す
+    final width = _outline.strokeWidth;
+    _outline.strokeWidth = width / s;
+    canvas.drawPath(_unitDiamond, _fill);
+    canvas.drawPath(_unitDiamond, _outline);
+    _outline.strokeWidth = width;
+    canvas.restore();
   }
 
   void _drawEnemies(Canvas canvas) {
     for (final e in sim.enemies) {
+      if (!_cull.contains(Offset(e.x, e.y))) continue;
       final r = e.stats.radius;
       final flash = e.hitFlash > 0;
       final c = Offset(e.x, e.y);
@@ -241,15 +279,13 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           canvas.drawOval(body, _outline);
         case EnemyKind.bat:
           final flap = sin(sim.time * 20 + e.y) * 4;
-          final wings = Path()
-            ..moveTo(e.x - r * 2.2, e.y - flap)
-            ..lineTo(e.x, e.y - 2)
-            ..lineTo(e.x + r * 2.2, e.y - flap)
-            ..lineTo(e.x, e.y + 4)
-            ..close();
           _fill.color =
               flash ? const Color(0xFFFFFFFF) : const Color(0xFF5E3D8F);
-          canvas.drawPath(wings, _fill);
+          canvas.save();
+          canvas.translate(e.x, e.y);
+          canvas.scale(r, flap);
+          canvas.drawPath(_unitWings, _fill);
+          canvas.restore();
           _fill.color =
               flash ? const Color(0xFFFFFFFF) : const Color(0xFF8E6BC9);
           canvas.drawCircle(c, r, _fill);
@@ -257,14 +293,11 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
         case EnemyKind.goblin:
           _fill.color =
               flash ? const Color(0xFFFFFFFF) : const Color(0xFF5C8A3A);
-          final ears = Path()
-            ..moveTo(e.x - r * 0.6, e.y - r * 0.4)
-            ..lineTo(e.x - r * 1.4, e.y - r * 1.0)
-            ..lineTo(e.x - r * 0.2, e.y - r * 0.8)
-            ..moveTo(e.x + r * 0.6, e.y - r * 0.4)
-            ..lineTo(e.x + r * 1.4, e.y - r * 1.0)
-            ..lineTo(e.x + r * 0.2, e.y - r * 0.8);
-          canvas.drawPath(ears, _fill);
+          canvas.save();
+          canvas.translate(e.x, e.y);
+          canvas.scale(r);
+          canvas.drawPath(_unitEars, _fill);
+          canvas.restore();
           _fill.color =
               flash ? const Color(0xFFFFFFFF) : const Color(0xFF7FB24F);
           canvas.drawCircle(c, r, _fill);
@@ -385,6 +418,7 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
 
   void _drawParticles(Canvas canvas) {
     for (final p in sim.particles) {
+      if (!_cull.contains(Offset(p.x, p.y))) continue;
       final t = p.life / p.maxLife;
       _fill.color = Color(p.color).withValues(alpha: t);
       canvas.drawCircle(Offset(p.x, p.y), 2 + 2 * t, _fill);

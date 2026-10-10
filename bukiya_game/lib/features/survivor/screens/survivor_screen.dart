@@ -352,6 +352,20 @@ class _RunViewState extends State<_RunView> {
             child: _Hud(sim: sim, paused: _paused, onPause: _togglePause),
           ),
         ),
+        if (SurvivorGame.showPerf)
+          Positioned(
+            left: 12,
+            bottom: 12,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                color: const Color(0xAA000000),
+                child: Text(widget.game.perf.toString(),
+                    style: const TextStyle(
+                        fontSize: 11, fontFamily: 'monospace', color: _ink)),
+              ),
+            ),
+          ),
         if (sim.phase == RunPhase.levelUp)
           _LevelUpOverlay(sim: sim, onChoose: widget.onChoose),
         if (_paused)
@@ -443,12 +457,12 @@ class _Hud extends StatelessWidget {
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: sim.horde ? const Color(0xFFE5484D) : _ink,
-                    shadows: const [Shadow(blurRadius: 4)],
+                    shadows: const [Shadow(offset: Offset(1, 1))],
                   ),
                 ),
                 Text('撃破 ${sim.totalKills}・素材 $matCount',
                     style: const TextStyle(
-                        fontSize: 12, shadows: [Shadow(blurRadius: 4)])),
+                        fontSize: 12, shadows: [Shadow(offset: Offset(1, 1))])),
               ],
             ),
             const SizedBox(width: 4),
@@ -524,7 +538,7 @@ class _Bar extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    shadows: [Shadow(blurRadius: 3)])),
+                    shadows: [Shadow(offset: Offset(1, 1))])),
           ),
         ],
       ),
