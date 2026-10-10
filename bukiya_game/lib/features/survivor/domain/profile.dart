@@ -2,9 +2,10 @@ import 'dart:math';
 
 import 'loadout.dart';
 import 'run_result.dart';
+import 'shop.dart';
 import 'stage.dart';
 
-/// ランをまたいで残る記録（最長生存時間・素材・武器の熟練度など）
+/// ランをまたいで残る記録（最長生存時間・お金・素材・店の武器など）
 class SurvivorProfile {
   /// ステージごとの最長生存時間（秒）
   final Map<String, double> bestSeconds;
@@ -13,26 +14,36 @@ class SurvivorProfile {
   final Map<String, int> bossKills;
   final Map<MaterialKind, int> materials;
 
-  /// 武器ごとの累計撃破数（熟練度）
-  final Map<String, int> weaponKills;
+  /// 店にある武器（熟練度・耐久・強化値は武器ごと）
+  final List<OwnedWeapon> weapons;
+
+  /// 持ち出す武器の uid
   List<String> selectedWeapons;
   String selectedStage;
+  int gold;
   int runs;
+  int _nextWeaponId;
 
   SurvivorProfile({
     Map<String, double>? bestSeconds,
     Map<String, int>? bossKills,
     Map<MaterialKind, int>? materials,
-    Map<String, int>? weaponKills,
+    List<OwnedWeapon>? weapons,
     List<String>? selectedWeapons,
     this.selectedStage = 'forest',
+    this.gold = startingGold,
     this.runs = 0,
+    int nextWeaponId = 1,
   })  : bestSeconds = bestSeconds ?? {},
         bossKills = bossKills ?? {},
         materials = materials ?? {},
-        weaponKills = weaponKills ?? {},
-        selectedWeapons = selectedWeapons ??
-            [for (final w in mockShopStock.take(maxCarriedWeapons)) w.id];
+        weapons = weapons ?? starterWeapons(),
+        selectedWeapons = selectedWeapons ?? [],
+        _nextWeaponId = nextWeaponId {
+    _fixSelection();
+  }
+
+  static const int startingGold = 100;
 
   /// 前のステージで 3:00 生き残るか、ボスを1体倒すと次のステージが開く
   static const double unlockSeconds = 180;
@@ -48,18 +59,107 @@ class SurvivorProfile {
   StageDef get stage => allStages.firstWhere((s) => s.id == selectedStage,
       orElse: () => allStages.first);
 
+  OwnedWeapon? weapon(String uid) =>
+      weapons.where((w) => w.uid == uid).firstOrNull;
+
+  /// 持ち出す武器（壊れたものは除く）
   List<CarriedWeapon> get loadout => [
-        for (final w in mockShopStock)
-          if (selectedWeapons.contains(w.id)) w,
+        for (final id in selectedWeapons)
+          if (weapon(id) case final w? when !w.broken) w.toCarried(),
       ];
 
   int get totalMaterials => materials.entries
       .where((e) => e.key != MaterialKind.bossCore)
       .fold(0, (a, e) => a + e.value);
 
-  /// 武器の今の売値（累計の熟練度で上がる）
-  int priceOf(CarriedWeapon w) =>
-      (w.basePrice * proficiencyMultiplier(weaponKills[w.id] ?? 0)).round();
+  int have(MaterialKind m) => materials[m] ?? 0;
+
+  // ---- 持ち出す武器の選択 ----
+
+  /// 選択を切り替える。上限を超えたら古い方を外す。壊れた武器は選べない
+  void toggleWeapon(String uid) {
+    final w = weapon(uid);
+    if (w == null) return;
+    if (selectedWeapons.contains(uid)) {
+      if (selectedWeapons.length > 1) selectedWeapons.remove(uid);
+      return;
+    }
+    if (w.broken) return;
+    if (selectedWeapons.length >= maxCarriedWeapons) {
+      selectedWeapons.removeAt(0);
+    }
+    selectedWeapons.add(uid);
+  }
+
+  /// 消えた・壊れた武器を選択から外し、空なら使える武器で埋める
+  void _fixSelection() {
+    selectedWeapons.removeWhere((id) => weapon(id)?.broken ?? true);
+    if (selectedWeapons.isEmpty) {
+      for (final w in weapons) {
+        if (selectedWeapons.length >= maxCarriedWeapons) break;
+        if (!w.broken) selectedWeapons.add(w.uid);
+      }
+    }
+    while (selectedWeapons.length > maxCarriedWeapons) {
+      selectedWeapons.removeLast();
+    }
+  }
+
+  // ---- 店：売る・鍛える・強化・修理 ----
+
+  bool _canPay(int g, Map<MaterialKind, int> mats) =>
+      gold >= g && mats.entries.every((e) => have(e.key) >= e.value);
+
+  void _pay(int g, Map<MaterialKind, int> mats) {
+    gold -= g;
+    for (final e in mats.entries) {
+      materials[e.key] = have(e.key) - e.value;
+    }
+  }
+
+  /// 使える武器が1本も残らなくなる売却はできない
+  bool canSell(OwnedWeapon w) =>
+      weapons.contains(w) && weapons.any((o) => !identical(o, w) && !o.broken);
+
+  void sell(OwnedWeapon w) {
+    if (!canSell(w)) return;
+    gold += w.sellPrice;
+    weapons.remove(w);
+    _fixSelection();
+  }
+
+  bool canCraft(Recipe r) =>
+      weapons.length < maxOwnedWeapons && _canPay(r.gold, r.materials);
+
+  OwnedWeapon? craft(Recipe r) {
+    if (!canCraft(r)) return null;
+    _pay(r.gold, r.materials);
+    final w = OwnedWeapon(uid: 'w${_nextWeaponId++}', type: r.type);
+    weapons.add(w);
+    return w;
+  }
+
+  bool canEnchant(OwnedWeapon w) {
+    if (w.enchantLevel >= maxEnchantLevel) return false;
+    final c = enchantCost(w);
+    return _canPay(c.gold, c.materials);
+  }
+
+  void enchant(OwnedWeapon w) {
+    if (!canEnchant(w)) return;
+    final c = enchantCost(w);
+    _pay(c.gold, c.materials);
+    w.enchantLevel++;
+  }
+
+  bool canRepair(OwnedWeapon w) => w.durability < 100 && gold >= repairCost(w);
+
+  void repair(OwnedWeapon w) {
+    if (!canRepair(w)) return;
+    gold -= repairCost(w);
+    w.durability = 100;
+    _fixSelection();
+  }
 
   /// ランの結果を記録に反映する
   void applyResult(RunResult r, StageDef stage) {
@@ -69,21 +169,28 @@ class SurvivorProfile {
       bossKills[stage.id] = (bossKills[stage.id] ?? 0) + r.bossesDefeated;
     }
     for (final e in r.materialsKept.entries) {
-      materials[e.key] = (materials[e.key] ?? 0) + e.value;
+      materials[e.key] = have(e.key) + e.value;
     }
-    for (final w in r.weapons) {
-      weaponKills[w.weapon.id] = (weaponKills[w.weapon.id] ?? 0) + w.kills;
+    for (final o in r.weapons) {
+      final w = weapon(o.weapon.id);
+      if (w == null) continue;
+      w.kills += o.kills;
+      w.durability = o.durabilityAfter;
     }
+    _fixSelection();
   }
 
   Map<String, Object?> toJson() => {
+        'version': 2,
         'bestSeconds': bestSeconds,
         'bossKills': bossKills,
         'materials': {for (final e in materials.entries) e.key.name: e.value},
-        'weaponKills': weaponKills,
+        'weapons': [for (final w in weapons) w.toJson()],
         'selectedWeapons': selectedWeapons,
         'selectedStage': selectedStage,
+        'gold': gold,
         'runs': runs,
+        'nextWeaponId': _nextWeaponId,
       };
 
   /// 壊れた・古い形式のデータでも落ちないよう、読めた分だけ使う
@@ -93,15 +200,25 @@ class SurvivorProfile {
             for (final e in v.entries)
               if (e.value is num) '${e.key}': conv(e.value as num),
         };
+    int number(Object? v, int fallback) => v is num ? v.toInt() : fallback;
+
     final mats = map(j['materials'], (n) => n.toInt());
-    final weapons = j['selectedWeapons'];
-    final known = {for (final w in mockShopStock) w.id};
-    final selected = weapons is List
-        ? [
-            for (final w in weapons)
-              if (w is String && known.contains(w)) w
-          ].take(maxCarriedWeapons).toList()
-        : null;
+    final rawWeapons = j['weapons'];
+    final List<OwnedWeapon> weapons;
+    if (rawWeapons is List) {
+      weapons = rawWeapons
+          .map(OwnedWeapon.fromJson)
+          .whereType<OwnedWeapon>()
+          .toList();
+    } else {
+      // 1つ前の形式：はじめの武器に、武器ごとの撃破数を引き継ぐ
+      final oldKills = map(j['weaponKills'], (n) => n.toInt());
+      weapons = starterWeapons();
+      for (final w in weapons) {
+        w.kills = oldKills[w.uid] ?? 0;
+      }
+    }
+    final selected = j['selectedWeapons'];
     final stage = j['selectedStage'];
     return SurvivorProfile(
       bestSeconds: map(j['bestSeconds'], (n) => n.toDouble()),
@@ -110,12 +227,19 @@ class SurvivorProfile {
         for (final k in MaterialKind.values)
           if (mats[k.name] != null) k: mats[k.name]!,
       },
-      weaponKills: map(j['weaponKills'], (n) => n.toInt()),
-      selectedWeapons: selected == null || selected.isEmpty ? null : selected,
+      weapons: weapons.isEmpty ? starterWeapons() : weapons,
+      selectedWeapons: selected is List
+          ? [
+              for (final w in selected)
+                if (w is String) w
+            ]
+          : null,
       selectedStage: stage is String && allStages.any((s) => s.id == stage)
           ? stage
           : 'forest',
-      runs: j['runs'] is num ? (j['runs'] as num).toInt() : 0,
+      gold: max(0, number(j['gold'], startingGold)),
+      runs: max(0, number(j['runs'], 0)),
+      nextWeaponId: max(1, number(j['nextWeaponId'], 1)),
     );
   }
 }
