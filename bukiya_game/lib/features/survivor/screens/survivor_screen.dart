@@ -8,6 +8,7 @@ import '../domain/loadout.dart';
 import '../domain/run_result.dart';
 import '../domain/run_simulation.dart';
 import '../domain/skills.dart';
+import '../game/sfx_backend.dart';
 import '../game/survivor_audio.dart';
 import '../game/survivor_game.dart';
 
@@ -36,6 +37,8 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
   RunResult? _result;
 
   void _start() {
+    // 出発ボタンのタップをきっかけに音を出せるようにする（iPhone の制限）
+    SfxBackend.unlock();
     final loadout =
         mockShopStock.where((w) => _selected.contains(w.id)).toList();
     final sim = RunSimulation(loadout: loadout);
@@ -319,7 +322,10 @@ class _RunViewState extends State<_RunView> {
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onPanStart: (d) => _updateStick(d.localPosition, d.localPosition),
+          onPanStart: (d) {
+            SfxBackend.unlock();
+            _updateStick(d.localPosition, d.localPosition);
+          },
           onPanUpdate: (d) {
             final s = _stick.value;
             if (s != null) _updateStick(s.$1, d.localPosition);
@@ -531,7 +537,10 @@ class _Hud extends StatelessWidget {
             ValueListenableBuilder<bool>(
               valueListenable: SurvivorAudio.muted,
               builder: (context, muted, _) => IconButton(
-                onPressed: () => SurvivorAudio.muted.value = !muted,
+                onPressed: () {
+                  SfxBackend.unlock();
+                  SurvivorAudio.muted.value = !muted;
+                },
                 icon: Icon(muted ? Icons.volume_off : Icons.volume_up,
                     color: _ink),
                 tooltip: muted ? '音を出す' : '消音',

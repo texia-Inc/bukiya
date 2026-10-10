@@ -1,5 +1,6 @@
-import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/foundation.dart';
+
+import 'sfx_backend.dart';
 
 enum Sfx {
   swing,
@@ -16,7 +17,7 @@ enum Sfx {
   died,
 }
 
-/// 効果音の再生。頻繁に鳴る音はプールで同時に鳴らし、間隔を空けて鳴りすぎを防ぐ
+/// 効果音の再生。同じ音は間隔を空けて鳴りすぎを防ぐ。実際の再生は [SfxBackend] に任せる
 class SurvivorAudio {
   /// ミュート設定はランをまたいで保つ
   static final ValueNotifier<bool> muted = ValueNotifier(false);
@@ -45,17 +46,16 @@ class SurvivorAudio {
     Sfx.bow: 0.5,
   };
 
-  final Map<Sfx, AudioPool> _pools = {};
+  final SfxBackend _backend = SfxBackend.create();
+  final Set<Sfx> _loaded = {};
   final Map<Sfx, double> _lastPlayed = {};
   double _clock = 0;
 
   Future<void> load() async {
     await Future.wait(Sfx.values.map((s) async {
       try {
-        _pools[s] = await FlameAudio.createPool(
-          'survivor/${s.name}.wav',
-          maxPlayers: _maxPlayers[s] ?? 1,
-        );
+        await _backend.load(_path(s), maxPlayers: _maxPlayers[s] ?? 1);
+        _loaded.add(s);
       } catch (e) {
         // 音が鳴らなくてもゲームは続ける
         debugPrint('効果音 ${s.name} を読み込めませんでした: $e');
@@ -63,25 +63,18 @@ class SurvivorAudio {
     }));
   }
 
+  static String _path(Sfx s) => 'survivor/${s.name}.wav';
+
   void tick(double dt) => _clock += dt;
 
   void play(Sfx s) {
     if (muted.value) return;
-    final pool = _pools[s];
-    if (pool == null) return;
+    if (!_loaded.contains(s)) return;
     final last = _lastPlayed[s];
     if (last != null && _clock - last < (_minInterval[s] ?? 0)) return;
     _lastPlayed[s] = _clock;
-    pool.start(volume: _volume[s] ?? 0.8).catchError((Object e) {
-      debugPrint('効果音 ${s.name} を再生できませんでした: $e');
-      return () async {};
-    });
+    _backend.play(_path(s), _volume[s] ?? 0.8);
   }
 
-  Future<void> dispose() async {
-    for (final p in _pools.values) {
-      await p.dispose();
-    }
-    _pools.clear();
-  }
+  Future<void> dispose() => _backend.dispose();
 }
