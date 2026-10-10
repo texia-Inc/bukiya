@@ -37,13 +37,17 @@ class RunFx {
   /// 被弾時の赤いフラッシュ（0〜1）
   double hurtFlash = 0;
 
-  /// 進化時の白いフラッシュ（0〜1）
+  /// 進化・ボス撃破時の白いフラッシュ（0〜1）
   double whiteFlash = 0;
+
+  /// ボス出現の警告を出している残り秒数
+  double bossWarning = 0;
 
   RunFx(this.audio);
 
   void handle(RunSimulation sim) {
     var kills = 0;
+    var blasts = 0;
     for (final e in sim.events) {
       switch (e.type) {
         case RunEventType.hit:
@@ -57,6 +61,27 @@ class RunFx {
           if (sim.swordEvolved) _addTrauma(0.18);
         case RunEventType.bowShot:
           audio.play(Sfx.bow);
+        case RunEventType.spearThrust:
+          audio.play(Sfx.thrust);
+        case RunEventType.staffCast:
+          audio.play(Sfx.cast);
+        case RunEventType.blast:
+          blasts++;
+          audio.play(Sfx.blast);
+        case RunEventType.chest:
+          whiteFlash = max(whiteFlash, 0.5);
+          audio.play(Sfx.chest);
+        case RunEventType.bossSpawn:
+          bossWarning = 3;
+          _addTrauma(0.4);
+          audio.play(Sfx.boss);
+        case RunEventType.bossSlam:
+          _addTrauma(0.75);
+          audio.play(Sfx.slam);
+        case RunEventType.bossDefeated:
+          _addTrauma(0.9);
+          whiteFlash = 1;
+          audio.play(Sfx.evolve);
         case RunEventType.playerHurt:
           _addTrauma(0.55);
           hurtFlash = 1;
@@ -84,6 +109,7 @@ class RunFx {
     sim.events.clear();
     // まとめて倒したときは軽く揺らして爽快感を出す
     if (kills >= 6) _addTrauma(0.2);
+    if (blasts > 0) _addTrauma(0.08);
   }
 
   void update(double dt) {
@@ -96,6 +122,7 @@ class RunFx {
     trauma = max(0, trauma - dt * 2.2);
     hurtFlash = max(0, hurtFlash - dt * 3);
     whiteFlash = max(0, whiteFlash - dt * 2);
+    bossWarning = max(0, bossWarning - dt);
     final amp = 9 * trauma * trauma;
     shakeX = (_rng.nextDouble() * 2 - 1) * amp;
     shakeY = (_rng.nextDouble() * 2 - 1) * amp;

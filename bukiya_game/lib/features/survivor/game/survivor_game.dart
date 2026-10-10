@@ -34,7 +34,7 @@ class SurvivorGame extends FlameGame {
   }
 
   @override
-  Color backgroundColor() => const Color(0xFF243B2A);
+  Color backgroundColor() => Color(sim.stage.groundColor);
 
   @override
   Future<void> onLoad() async {

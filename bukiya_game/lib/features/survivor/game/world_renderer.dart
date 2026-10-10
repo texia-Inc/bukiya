@@ -60,6 +60,10 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       _numberPaint(const Color(0xFFFFFFFF), 17);
   static final TextPaint _bowNumber = _numberPaint(const Color(0xFFBFE8FF), 17);
   static final TextPaint _bigNumber = _numberPaint(const Color(0xFFFFD45E), 23);
+  static final TextPaint _spearNumber =
+      _numberPaint(const Color(0xFFFFE2B8), 17);
+  static final TextPaint _staffNumber =
+      _numberPaint(const Color(0xFFFF9A6B), 17);
 
   // 毎フレーム Path を作らないよう、原点基準の形を1回だけ作って移動・拡大して使う
   static final Path _unitDiamond = Path()
@@ -84,9 +88,13 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     _drawGround(canvas, view);
     _drawGate(canvas);
     _drawPickups(canvas);
+    _drawBossTelegraphs(canvas);
     _drawEnemies(canvas);
+    _drawBlasts(canvas);
     _drawArrows(canvas);
+    _drawThrusts(canvas);
     _drawPlayer(canvas);
+    _drawFireballs(canvas);
     _drawParticles(canvas);
     _drawNumbers(canvas);
     _drawGateArrow(canvas, view);
@@ -106,9 +114,12 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       final y = n.y - 34 * (1 - pow(1 - t, 2));
       final paint = n.big
           ? _bigNumber
-          : n.weapon == CarriedWeaponType.bow
-              ? _bowNumber
-              : _swordNumber;
+          : switch (n.weapon) {
+              CarriedWeaponType.bow => _bowNumber,
+              CarriedWeaponType.spear => _spearNumber,
+              CarriedWeaponType.staff => _staffNumber,
+              _ => _swordNumber,
+            };
       canvas.save();
       canvas.translate(n.x, y);
       canvas.scale(scale);
@@ -146,20 +157,20 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       for (var ty = y0; ty < y1; ty++) {
         final h = _hash(tx, ty);
         if ((tx + ty).isEven) {
-          _fill.color = const Color(0xFF284330);
+          _fill.color = Color(sim.stage.tileColor);
           canvas.drawRect(
               Rect.fromLTWH(tx * tile, ty * tile, tile, tile), _fill);
         }
         if (h % 5 == 0) {
           // 草むら
-          _fill.color = const Color(0xFF3E6B48);
+          _fill.color = Color(sim.stage.grassColor);
           final gx = tx * tile + (h % 37) + 10, gy = ty * tile + (h % 29) + 14;
           canvas.drawCircle(Offset(gx, gy), 3, _fill);
           canvas.drawCircle(Offset(gx + 5, gy + 2), 2.5, _fill);
           canvas.drawCircle(Offset(gx - 4, gy + 3), 2, _fill);
         } else if (h % 11 == 0) {
           // 小石
-          _fill.color = const Color(0xFF5B6660);
+          _fill.color = Color(sim.stage.stoneColor);
           canvas.drawOval(
               Rect.fromLTWH(
                   tx * tile + (h % 41) + 8, ty * tile + (h % 23) + 20, 7, 5),
@@ -206,6 +217,10 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   void _drawPickups(Canvas canvas) {
     for (final p in sim.pickups) {
       if (!_cull.contains(Offset(p.x, p.y))) continue;
+      if (p.kind == PickupKind.chest) {
+        _sprites.chest(canvas, p.x, p.y, sim.time);
+        continue;
+      }
       final m = p.material;
       if (m == null) {
         // まとめられて価値が高い宝石は大きく緑に
@@ -232,6 +247,21 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           _fill.color = const Color(0x55C77DFF);
           canvas.drawCircle(Offset(p.x, p.y), 11, _fill);
           _diamond(canvas, p.x, p.y, 7, const Color(0xFFC77DFF));
+        case MaterialKind.bone:
+          _fill.color = const Color(0xFFEDE6D6);
+          final bone = RRect.fromRectAndRadius(
+              Rect.fromCenter(center: Offset(p.x, p.y), width: 12, height: 4),
+              const Radius.circular(2));
+          canvas.drawRRect(bone, _fill);
+          canvas.drawRRect(bone, _outline);
+          for (final dx in const [-6.0, 6.0]) {
+            canvas.drawCircle(Offset(p.x + dx, p.y - 2), 2.4, _fill);
+            canvas.drawCircle(Offset(p.x + dx, p.y + 2), 2.4, _fill);
+          }
+        case MaterialKind.bossCore:
+          _fill.color = const Color(0x66FF6B6B);
+          canvas.drawCircle(Offset(p.x, p.y), 13, _fill);
+          _diamond(canvas, p.x, p.y, 9, const Color(0xFFFF6B6B));
       }
     }
   }
@@ -254,7 +284,7 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     // 奥（画面の上）にいる敵から描いて、手前の敵が上に重なるようにする
     final visible = [
       for (final e in sim.enemies)
-        if (_cull.contains(Offset(e.x, e.y))) e
+        if (e.isBoss || _cull.contains(Offset(e.x, e.y))) e
     ]..sort((a, b) => a.y.compareTo(b.y));
     for (final e in visible) {
       switch (e.kind) {
@@ -264,8 +294,104 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           _sprites.bat(canvas, e, sim.time, sim.px, sim.py);
         case EnemyKind.goblin:
           _sprites.goblin(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.skeleton:
+          _sprites.skeleton(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.ghost:
+          _sprites.ghost(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.ogre:
+          _sprites.ogre(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.kingSlime:
+          _sprites.kingSlime(canvas, e, sim.time, sim.px, sim.py);
       }
     }
+  }
+
+  /// ボスの大技の予告：オーガの突進線と、キングスライムの着地点
+  void _drawBossTelegraphs(Canvas canvas) {
+    for (final e in sim.enemies) {
+      if (!e.isBoss) continue;
+      if (e.kind == EnemyKind.ogre && e.bossState == BossState.windup) {
+        final len = ogreChargeSpeed * ogreChargeTime + e.stats.radius;
+        final a = atan2(e.dirY, e.dirX);
+        final blink = 0.25 + 0.2 * sin(sim.time * 30).abs();
+        canvas.save();
+        canvas.translate(e.x, e.y);
+        canvas.rotate(a);
+        _fill.color = Color.fromRGBO(229, 72, 77, blink);
+        canvas.drawRect(
+            Rect.fromLTWH(0, -e.stats.radius, len, e.stats.radius * 2), _fill);
+        canvas.restore();
+      }
+      if (e.kind == EnemyKind.kingSlime && e.airborne) {
+        final p = e.airProgress;
+        _fill.color = Color.fromRGBO(229, 72, 77, 0.15 + 0.25 * p);
+        canvas.drawCircle(Offset(e.toX, e.toY), kingSlimeSlamRadius, _fill);
+        _stroke
+          ..color = const Color(0xCCE5484D)
+          ..strokeWidth = 2;
+        canvas.drawCircle(Offset(e.toX, e.toY),
+            kingSlimeSlamRadius * (0.3 + 0.7 * p), _stroke);
+      }
+    }
+  }
+
+  void _drawThrusts(Canvas canvas) {
+    final evolved = sim.spearEvolved;
+    for (final t in sim.thrusts) {
+      if (!t.active) continue;
+      final reach = t.reach;
+      if (reach < 4) continue;
+      canvas.save();
+      canvas.translate(sim.px, sim.py);
+      canvas.rotate(t.angle);
+      // 突きの残像
+      _fill.color = evolved ? const Color(0x44FFD45E) : const Color(0x33FFFFFF);
+      canvas.drawRect(
+          Rect.fromLTWH(
+              8, -SpearThrust.width / 2, reach - 8, SpearThrust.width),
+          _fill);
+      // 柄と穂先
+      _fill.color = const Color(0xFF8A5A2B);
+      final shaft = Rect.fromLTWH(reach - 46, -2, 38, 4);
+      canvas.drawRect(shaft, _fill);
+      canvas.drawRect(shaft, _outline);
+      final tip = Path()
+        ..moveTo(reach, 0)
+        ..lineTo(reach - 12, -5)
+        ..lineTo(reach - 12, 5)
+        ..close();
+      _fill.color = evolved ? const Color(0xFFFFD45E) : const Color(0xFFDDE6EE);
+      canvas.drawPath(tip, _fill);
+      canvas.drawPath(tip, _outline);
+      canvas.restore();
+    }
+  }
+
+  void _drawFireballs(Canvas canvas) {
+    for (final f in sim.fireballs) {
+      if (!_cull.contains(Offset(f.x, f.y))) continue;
+      final flick = 1 + 0.15 * sin(sim.time * 40 + f.x);
+      _fill.color = const Color(0x55FF8A3D);
+      canvas.drawCircle(Offset(f.x, f.y), 11 * flick, _fill);
+      _fill.color = const Color(0xFFFF6A2B);
+      canvas.drawCircle(Offset(f.x, f.y), 6.5 * flick, _fill);
+      _fill.color = const Color(0xFFFFE08A);
+      canvas.drawCircle(Offset(f.x, f.y), 3.2, _fill);
+    }
+  }
+
+  void _drawBlasts(Canvas canvas) {
+    for (final b in sim.blasts) {
+      final p = b.progress;
+      final r = b.radius * (0.5 + 0.5 * p);
+      _fill.color = Color.fromRGBO(255, 140, 60, 0.45 * (1 - p));
+      canvas.drawCircle(Offset(b.x, b.y), r, _fill);
+      _stroke
+        ..color = Color.fromRGBO(255, 230, 150, 0.9 * (1 - p))
+        ..strokeWidth = 3;
+      canvas.drawCircle(Offset(b.x, b.y), r, _stroke);
+    }
+    _stroke.strokeWidth = 2;
   }
 
   void _drawArrows(Canvas canvas) {
@@ -307,6 +433,25 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       _stroke.strokeWidth = 2;
     }
 
+    final side = sim.facingX >= 0 ? -1.0 : 1.0;
+    if (sim.spear != null && sim.thrusts.isEmpty) {
+      // 突いていない間は槍を背負う
+      final a = Offset(sim.px + side * 4, sim.py + 8);
+      final b = Offset(sim.px - side * 10, sim.py - 26);
+      _stroke
+        ..color = const Color(0xFF1A1A1A)
+        ..strokeWidth = 4.5;
+      canvas.drawLine(a, b, _stroke);
+      _stroke
+        ..color = const Color(0xFF8A5A2B)
+        ..strokeWidth = 2.5;
+      canvas.drawLine(a, b, _stroke);
+      _stroke.strokeWidth = 2;
+      _fill.color = const Color(0xFFDDE6EE);
+      canvas.drawCircle(b, 3, _fill);
+      canvas.drawCircle(b, 3, _outline);
+    }
+
     final blink =
         sim.invulnerable > 0 && (sim.invulnerable * 20).floor().isEven;
     if (blink) return;
@@ -320,6 +465,25 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       walkDistance: sim.walkDistance,
       time: sim.time,
     );
+    if (sim.staff != null) {
+      // 杖は前の手に持つ。先の宝玉が光る
+      final hx = sim.px - side * 9, hy = sim.py + 2;
+      _stroke
+        ..color = const Color(0xFF1A1A1A)
+        ..strokeWidth = 4;
+      canvas.drawLine(Offset(hx, hy + 8), Offset(hx, hy - 16), _stroke);
+      _stroke
+        ..color = const Color(0xFF7A4E2A)
+        ..strokeWidth = 2.2;
+      canvas.drawLine(Offset(hx, hy + 8), Offset(hx, hy - 16), _stroke);
+      _stroke.strokeWidth = 2;
+      final glow = 0.5 + 0.5 * sin(sim.time * 5);
+      _fill.color = Color.fromRGBO(255, 140, 60, 0.25 + 0.2 * glow);
+      canvas.drawCircle(Offset(hx, hy - 19), 7, _fill);
+      _fill.color = const Color(0xFFFF6A2B);
+      canvas.drawCircle(Offset(hx, hy - 19), 3.8, _fill);
+      canvas.drawCircle(Offset(hx, hy - 19), 3.8, _outline);
+    }
   }
 
   void _drawSword(Canvas canvas, Offset c, double facing) {

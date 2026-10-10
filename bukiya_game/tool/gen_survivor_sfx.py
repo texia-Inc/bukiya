@@ -154,5 +154,53 @@ def main():
     ]), 0.6)
 
 
+
+def extra():
+    """槍・杖・ボス・宝箱の音"""
+    # 槍の突き：短く鋭い風切り音
+    sec = 0.13
+    n = noise(sec)
+    y = np.zeros_like(n)
+    acc = 0.0
+    sweep = np.linspace(0.15, 0.7, len(n))
+    for i, v in enumerate(n):
+        acc += sweep[i] * (v - acc)
+        y[i] = acc
+    write("thrust", y * env(len(y), 0.004, 0.04), 0.45)
+
+    # 杖：火の玉を放つ「ボッ」
+    sec = 0.22
+    write("cast", (lowpass(noise(sec), 0.25) * 0.8
+                   + tone(np.geomspace(300, 700, int(RATE * sec)), sec) * 0.3)
+          * env(int(RATE * sec), 0.01, 0.08), 0.45)
+
+    # 爆発：低いノイズの破裂音
+    sec = 0.35
+    write("blast", (lowpass(noise(sec), 0.12) * 0.9
+                    + tone(np.geomspace(120, 40, int(RATE * sec)), sec) * 0.6)
+          * env(int(RATE * sec), 0.002, 0.1), 0.6)
+
+    # ボス出現：低いうなり声
+    sec = 1.0
+    f = 70 + 15 * np.sin(2 * np.pi * 3 * t(sec))
+    write("boss", (tone(f, sec, "square") * 0.5 + lowpass(noise(sec), 0.05) * 0.8)
+          * env(int(RATE * sec), 0.08, 0.45), 0.7)
+
+    # 着地の衝撃：重い「ドスン」
+    sec = 0.5
+    write("slam", (tone(np.geomspace(90, 30, int(RATE * sec)), sec) * 0.9
+                   + lowpass(noise(sec), 0.08) * 0.6)
+          * env(int(RATE * sec), 0.002, 0.15), 0.8)
+
+    # 宝箱：きらめく上昇アルペジオ
+    notes = [784, 988, 1175, 1568, 1976]
+    write("chest", seq([
+        (tone(f, 0.07) + tone(f * 2, 0.07) * 0.3)
+        * env(int(RATE * 0.07), 0.002, 0.06) for f in notes[:-1]
+    ] + [(tone(1976, 0.4) + tone(2637, 0.4) * 0.4)
+         * env(int(RATE * 0.4), 0.002, 0.18)]), 0.5)
+
+
 if __name__ == "__main__":
     main()
+    extra()

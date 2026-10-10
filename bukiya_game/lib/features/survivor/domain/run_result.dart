@@ -1,12 +1,14 @@
 import 'loadout.dart';
 
-enum MaterialKind { ironOre, fang, manaStone }
+enum MaterialKind { ironOre, fang, manaStone, bone, bossCore }
 
 extension MaterialKindLabel on MaterialKind {
   String get label => switch (this) {
         MaterialKind.ironOre => '鉄鉱石',
         MaterialKind.fang => '魔物の牙',
         MaterialKind.manaStone => '魔石',
+        MaterialKind.bone => '古い骨',
+        MaterialKind.bossCore => '魔核',
       };
 }
 
