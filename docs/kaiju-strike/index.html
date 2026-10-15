@@ -36,6 +36,37 @@ body{font-family:var(--f-body);-webkit-user-select:none;user-select:none;-webkit
 #hud{position:absolute;inset:0;pointer-events:none;font-family:var(--f-hud)}
 #hud button{pointer-events:auto}
 #app.is-title #hud{display:none}
+#cockpit,.btn-saber,.btn-boost{display:none}
+#app.mode-robot #cockpit{display:block}
+#app.mode-robot .btn-saber,#app.mode-robot .btn-boost{display:block}
+#app.mode-robot .btn-mis{display:none}
+#cockpit{position:absolute;inset:0;font-family:var(--f-hud);color:#8eeeff;text-shadow:0 0 6px rgba(80,220,255,.8)}
+#cockpit .frame{position:absolute;inset:0;width:100%;height:100%}
+#cockpit::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(120,220,255,.035) 0 1px,transparent 1px 3px);pointer-events:none}
+.ck-top{position:absolute;left:50%;top:calc(104px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;gap:6px;align-items:baseline;font-size:11px;letter-spacing:.14em}
+.ck-top b{font-size:16px}
+.ck-left,.ck-right{position:absolute;top:44%;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;letter-spacing:.14em;font-variant-numeric:tabular-nums}
+.ck-left{left:4.5%}.ck-right{right:4.5%}
+.ck-left b,.ck-right b{font-size:20px;letter-spacing:.04em}
+.ck-left small,.ck-right small{font-size:9px;opacity:.75}
+.ck-mode{position:absolute;left:50%;top:calc(50% + min(26vw,125px));transform:translateX(-50%);font-size:12px;font-weight:700;letter-spacing:.3em}
+.ck-mode.air{color:#ffd86a;text-shadow:0 0 6px rgba(255,200,80,.8)}
+.ck-lock{position:absolute;left:50%;top:calc(50% - min(26vw,125px) - 18px);transform:translateX(-50%);font-size:12px;font-weight:700;letter-spacing:.3em;color:#ff7a8a;text-shadow:0 0 6px rgba(255,60,90,.9)}
+.ck-en{position:absolute;left:50%;bottom:calc(19% + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.14em}
+.ck-en .bar{width:150px;height:8px;border-color:#0b1a22}
+.ck-en .bar i{background:linear-gradient(180deg,#b5f4ff,#2bb7e8)}
+.ck-en .bar.low i{background:linear-gradient(180deg,#ffb08a,#e0381a)}
+.ck-en .bar::after{display:none}
+#app.mode-robot #reticle .in{stroke:#6fe6ff}
+#app.mode-robot #reticle .out{stroke:rgba(0,30,40,.55)}
+#app.mode-robot #reticle.hit .in{stroke:#ffe14a}
+.btn-saber,.btn-boost{position:absolute;width:78px;height:78px;border-radius:50%;cursor:pointer;border:4px solid #2d343a;outline:2px solid #6a757c;color:#fff;
+  font-family:var(--f-hud);font-weight:700;font-size:12px;letter-spacing:.08em;text-shadow:0 1px 0 #000;touch-action:none}
+.btn-saber{right:150px;bottom:calc(28px + env(safe-area-inset-bottom,0px));background:radial-gradient(circle at 50% 40%,#ff6ac8,#8a1660);box-shadow:0 0 16px rgba(255,80,190,.6)}
+.btn-boost{right:30px;bottom:calc(170px + env(safe-area-inset-bottom,0px));background:radial-gradient(circle at 50% 40%,#ffd36a,#a8660c)}
+.btn-boost.down,.btn-saber.down{transform:scale(.93);filter:brightness(1.3)}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cta.robot{background:linear-gradient(180deg,#3aa0ff,#1452a8);box-shadow:0 4px 0 #0b2c5c;text-shadow:0 2px 0 #0b2c5c}
 
 .boss{position:absolute;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));width:min(92%,420px);display:flex;flex-direction:column;align-items:center;gap:5px}
 .boss-name{display:flex;align-items:baseline;gap:10px;text-shadow:var(--stroke)}
@@ -151,6 +182,25 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   <div id="vignette"></div>
   <div id="flash"></div>
   <div id="hud">
+    <div id="cockpit" aria-hidden="true">
+      <svg class="frame" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="ckMetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a434c"/><stop offset=".5" stop-color="#1c2228"/><stop offset="1" stop-color="#0e1216"/></linearGradient>
+          <linearGradient id="ckSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0e1216"/><stop offset=".7" stop-color="#2a323a"/><stop offset="1" stop-color="#46525d"/></linearGradient>
+        </defs>
+        <path d="M0 0 H100 V6 Q50 10.5 0 6 Z" fill="url(#ckMetal)"/>
+        <path d="M0 6 L8.5 8.2 L2.6 60 L0 64 Z" fill="url(#ckSide)"/>
+        <path d="M100 6 L91.5 8.2 L97.4 60 L100 64 Z" fill="url(#ckSide)" transform="translate(0,0)"/>
+        <path d="M0 82 L12 77.5 H88 L100 82 V100 H0 Z" fill="url(#ckMetal)"/>
+        <path d="M0 6 Q50 10.5 100 6 M8.5 8.2 L2.6 60 M91.5 8.2 L97.4 60 M12 77.5 H88" fill="none" stroke="#5fe0ff" stroke-opacity=".45" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <div class="ck-top"><span>HDG</span><b id="ckHdg">000</b></div>
+      <div class="ck-left"><span>SPD</span><b id="ckSpd">000</b><small>km/h</small></div>
+      <div class="ck-right"><span>ALT</span><b id="ckAlt">000</b><small>m</small></div>
+      <div class="ck-mode" id="ckMode">GROUND</div>
+      <div class="ck-lock" id="ckLock" hidden>LOCK</div>
+      <div class="ck-en"><span>EN</span><div class="bar"><i id="enBar"></i></div></div>
+    </div>
     <div class="boss" id="bossBox">
       <div class="boss-name"><span id="waveLbl">WAVE 1</span><span id="bossName">ヴォルカドン</span></div>
       <div class="bar"><i class="ghost" id="bossGhost"></i><i id="bossHp"></i></div>
@@ -184,18 +234,23 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div id="stick"><div id="knob"></div></div>
     <button class="btn-mis" id="misBtn" aria-label="ミサイル発射">MISSILE<small id="misCount">×4</small></button>
     <button class="btn-fire" id="fireBtn" aria-label="射撃">FIRE</button>
+    <button class="btn-saber" id="saberBtn" aria-label="ビームサーベル">SABER</button>
+    <button class="btn-boost" id="boostBtn" aria-label="ブースト">BOOST</button>
   </div>
 
   <div class="panel" id="title">
     <div class="logo"><b>怪獣迎撃</b><span>KAIJU STRIKE</span></div>
     <div class="card">
       <dl class="how">
-        <dt>移動</dt><dd>画面の左側をドラッグ。砲台ごと動いて熱線を避ける（PCは WASD）</dd>
+        <dt>移動</dt><dd>画面の左側をドラッグ（PCは WASD）</dd>
         <dt>照準</dt><dd>画面の右側をドラッグ（PCは矢印キー）</dd>
-        <dt>FIRE</dt><dd>押している間、連装砲を連射（Space）</dd>
-        <dt>MISSILE</dt><dd>光る弱点コアを狙う追尾ミサイル（E）</dd>
+        <dt>砲台</dt><dd>FIREで連装砲、MISSILEで追尾ミサイル（Space / E）</dd>
+        <dt>ロボット</dt><dd>コックピットから操縦。FIREでビームライフル、SABERで斬りかかる、BOOST長押しで空へ（Space / E / Shift）</dd>
       </dl>
-      <button class="cta pulse" id="startBtn">タップして出撃</button>
+      <div class="modes">
+        <button class="cta pulse" id="startBtn">砲台で迎撃</button>
+        <button class="cta robot" id="robotBtn">ロボットで出撃</button>
+      </div>
     </div>
   </div>
 
@@ -674,6 +729,10 @@ const sfx = {
   beam() { noise(1.4, 'bandpass', 1800, 600, .35); tone('sawtooth', 70, 50, 1.4, .15); },
   missile() { noise(.6, 'highpass', 900, 3000, .25); },
   ui() { tone('square', 660, 990, .07, .06); },
+  rifle() { const n = performance.now(); if (n - lastShot < 60) return; lastShot = n; tone('square', 1400, 260, .14, .1); noise(.16, 'bandpass', 3000, 800, .2); },
+  saberOn() { tone('sawtooth', 160, 320, .15, .1); noise(.2, 'highpass', 1200, 4000, .15); },
+  saberSwing() { noise(.25, 'bandpass', 900, 2600, .3); tone('sawtooth', 210, 120, .22, .08); },
+  saberHit() { noise(.5, 'lowpass', 2400, 120, .7); tone('sawtooth', 260, 60, .35, .2); tone('sine', 90, 30, .5, .4); },
 };
 
 // ---------- turret (attached to camera) ----------
@@ -1266,9 +1325,9 @@ const mech = buildMech(); scene.add(mech.g); mech.g.visible = false;
 const MECH = { x: -320, z: -300, phase: 0, atk: 4, active: false, firing: 0, lastSin: 0 };
 
 // ---------- state ----------
-const G = { state: 'title', wave: 1, coins: 0, earned: 0, kills: 0, tower: 100, up: { dmg: 0, rate: 0, mis: 0 },
+const G = { state: 'title', mode: 'turret', hitStop: 0, wave: 1, coins: 0, earned: 0, kills: 0, tower: 100, up: { dmg: 0, rate: 0, mis: 0, saber: 0 },
   yaw: 0, pitch: -.14, roll: 0, pos: CAM_POS.clone(), vel: new V3(), fireCd: 0, misCd: 0, barrel: 0, shake: 0, destroyed: 0, t: 0, combo: 0, comboT: 0 };
-const I = { jx: 0, jy: 0, ax: 0, ay: 0, firing: false, keys: {} };
+const I = { jx: 0, jy: 0, ax: 0, ay: 0, firing: false, boost: false, keys: {} };
 let K = null;
 const stats = {
   dmg: () => 10 * (1 + .3 * G.up.dmg),
@@ -1443,6 +1502,7 @@ function fireGun() {
   const dir = target.sub(tip).normalize();
   dir.x += rand(-.005, .005); dir.y += rand(-.005, .005); dir.normalize();
   const bl = bullets.find(x => x.life <= 0); if (!bl) return;
+  bl.m.material = bulletMat; bl.m.scale.set(1, 1, 1); bl.dmg = 0; bl.beam = false;
   bl.m.position.copy(tip); bl.prev.copy(tip); bl.v.copy(dir).multiplyScalar(480); bl.life = 2.2; bl.m.visible = true;
   bl.m.lookAt(tip.clone().add(dir));
   b.recoil = .3; b.ft = .045; b.flash.visible = true; b.flash.material.rotation = rand(0, 6);
@@ -1472,7 +1532,8 @@ function updateBullets(dt) {
         for (let i = 0; i < 4; i++) SPARK.spawn(hp, { v: rv(40).add(back), life: rand(.25, .5), s0: 1.2, s1: .4, c0: 0xffd070, hdr: 3, c1: 0xff3010, g: 40 });
         if (Math.random() < .5) FIRE.spawn(hp, { v: rv(8), life: .4, s0: 3, s1: 8, c0: 0xffb040, hdr: 2, c1: 0xb02008, hdr1: .8 });
         if (Math.random() < .3) SMOKE.spawn(hp, { v: rv(4), life: 1.2, s0: 3, s1: 9, c0: 0x4a4440, c1: 0x9a938a, a: .6, fadeIn: true });
-        damageKaiju(stats.dmg(), hit.h, hp);
+        if (b.beam) { FIRE.spawn(hp, { life: .2, s0: 14, s1: 24, c0: 0xffc0f0, hdr: 3 }); ring(hp, 18); }
+        damageKaiju(b.dmg || stats.dmg(), hit.h, hp);
         done = true;
       }
     }
@@ -1560,12 +1621,12 @@ function hurtTower(n) {
   const f = $('flash'); f.style.background = 'radial-gradient(circle,transparent 30%,rgba(255,40,20,.55))'; f.style.opacity = 1;
   setTimeout(() => f.style.opacity = 0, 120);
   updateTowerUI();
-  if (G.tower <= 0) gameOver('砲台大破', 'TURRET DESTROYED');
+  if (G.tower <= 0) G.mode === 'robot' ? gameOver('機体大破', 'MECH DESTROYED') : gameOver('砲台大破', 'TURRET DESTROYED');
 }
 function hurtTowerSoft(n) {
   if (G.state !== 'play') return;
   G.tower = Math.max(0, G.tower - n); updateTowerUI();
-  if (G.tower <= 0) gameOver('砲台大破', 'TURRET DESTROYED');
+  if (G.tower <= 0) G.mode === 'robot' ? gameOver('機体大破', 'MECH DESTROYED') : gameOver('砲台大破', 'TURRET DESTROYED');
 }
 
 // ---------- beam ----------
@@ -1814,10 +1875,16 @@ const SHOP = [
   { id: 'mis', name: 'ミサイルポッド', desc: '発射数 +2、再装填 -1秒', cost: lv => 110 + 90 * lv, max: 5 },
   { id: 'fix', name: '装甲修理', desc: '砲台の装甲を40回復', cost: () => 60, max: 99 },
 ];
+const SHOP_ROBOT = [
+  { id: 'dmg', name: 'ビーム出力強化', desc: 'ビームライフルとサーベルの威力 +30%', cost: lv => 80 + 70 * lv, max: 8 },
+  { id: 'rate', name: '冷却ユニット', desc: 'ビームライフルの連射 +20%', cost: lv => 80 + 70 * lv, max: 6 },
+  { id: 'saber', name: 'サーベル出力', desc: 'ビームサーベルの威力 +40%', cost: lv => 100 + 80 * lv, max: 5 },
+  { id: 'fix', name: '装甲修理', desc: '機体の装甲を40回復', cost: () => 60, max: 99 },
+];
 function renderShop() {
   $('shopCoins').textContent = G.coins;
   const box = $('items'); box.innerHTML = '';
-  for (const it of SHOP) {
+  for (const it of (G.mode === 'robot' ? SHOP_ROBOT : SHOP)) {
     const lv = it.id === 'fix' ? 0 : G.up[it.id];
     const cost = it.cost(lv);
     const full = it.id === 'fix' ? G.tower >= 100 : lv >= it.max;
@@ -1854,7 +1921,7 @@ function startWave() {
   const promoted = !!NX;
   if (NX) { spawnKaiju('walk', NX); NX = null; } else spawnKaiju('emerge');
   sfx.roar(); G.shake = .8;
-  MECH.active = true; MECH.x = -230; MECH.z = clamp(K.z + 160, COAST + 30, -160); MECH.atk = 6;
+  MECH.active = G.mode === 'turret'; MECH.x = -230; MECH.z = clamp(K.z + 160, COAST + 30, -160); MECH.atk = 6;
   showBanner(`<small>WAVE ${G.wave}</small><b>${K.def.name}</b><em>${promoted ? '襲来！' : '上陸！'}</em>`);
   updateMisUI();
   // sculpt the next, bigger kaiju early so it can walk in mid-fight without a hitch
@@ -1892,8 +1959,9 @@ function updateNext(dt) {
 }
 function clearNext() { if (NX) { scene.remove(NX.p.g); NX = null; } }
 function newGame() {
-  Object.assign(G, { wave: 1, coins: 0, earned: 0, kills: 0, tower: 100, up: { dmg: 0, rate: 0, mis: 0 }, yaw: 0, pitch: -.14, roll: 0, combo: 0 });
+  Object.assign(G, { wave: 1, coins: 0, earned: 0, kills: 0, tower: 100, up: { dmg: 0, rate: 0, mis: 0, saber: 0 }, yaw: 0, pitch: -.14, roll: 0, combo: 0, hitStop: 0 });
   G.pos.copy(CAM_POS); G.vel.set(0, 0, 0); clearNext();
+  if (G.mode === 'robot') { G.pos.set(0, EYE, 30); G.pitch = .12; R.en = 100; SB.t = -1; SB.lunge = 0; I.boost = false; }
   $('coinVal').textContent = 0; resetCity(); updateTowerUI();
   PARTS.forEach(p => p.clear());
   startWave();
@@ -1936,24 +2004,257 @@ const fireOff = () => { I.firing = false; fireBtn.classList.remove('down'); };
 fireBtn.addEventListener('pointerdown', fireOn);
 fireBtn.addEventListener('pointerup', fireOff); fireBtn.addEventListener('pointercancel', fireOff); fireBtn.addEventListener('lostpointercapture', fireOff);
 $('misBtn').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); launchMissiles(); });
+$('saberBtn').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); saberPress(); const b = $('saberBtn'); b.classList.add('down'); setTimeout(() => b.classList.remove('down'), 120); });
+{
+  const bb = $('boostBtn');
+  const on = e => { e.preventDefault(); initAudio(); I.boost = true; bb.classList.add('down'); try { bb.setPointerCapture(e.pointerId); } catch (_) {} };
+  const off = () => { I.boost = false; bb.classList.remove('down'); };
+  bb.addEventListener('pointerdown', on); bb.addEventListener('pointerup', off); bb.addEventListener('pointercancel', off); bb.addEventListener('lostpointercapture', off);
+}
 $('muteBtn').addEventListener('click', () => { muted = !muted; $('muteBtn').textContent = muted ? '×' : '♪'; });
 app.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => {
   I.keys[e.code] = true;
   if (e.code === 'Space') { I.firing = true; fireBtn.classList.add('down'); e.preventDefault(); initAudio(); }
-  if (e.code === 'KeyE' || e.code === 'ShiftLeft') launchMissiles();
+  if (G.mode === 'robot') { if (e.code === 'KeyE' || e.code === 'KeyF') saberPress(); }
+  else if (e.code === 'KeyE' || e.code === 'ShiftLeft') launchMissiles();
 });
 addEventListener('keyup', e => { I.keys[e.code] = false; if (e.code === 'Space') fireOff(); });
 addEventListener('blur', () => { I.keys = {}; fireOff(); });
-$('startBtn').addEventListener('click', () => { initAudio(); sfx.ui(); $('title').hidden = true; app.classList.remove('is-title'); newGame(); });
+$('startBtn').addEventListener('click', () => { initAudio(); sfx.ui(); $('title').hidden = true; app.classList.remove('is-title'); setMode('turret'); newGame(); });
+$('robotBtn').addEventListener('click', () => { initAudio(); sfx.ui(); $('title').hidden = true; app.classList.remove('is-title'); setMode('robot'); newGame(); });
 $('retryBtn').addEventListener('click', () => { sfx.ui(); $('over').hidden = true; newGame(); });
 $('nextBtn').addEventListener('click', () => { sfx.ui(); $('shop').hidden = true; G.wave++; startWave(); });
+
+// ---------- robot mode: piloting a mech from the cockpit ----------
+const EYE = 62;                       // cockpit height when standing
+const SABER_REACH = 70, LUNGE_RANGE = 340;
+const R = { en: 100, walkT: 0, lastStep: 0, bob: 0, grounded: true, boost: false, assist: null };
+const SB = { t: -1, dir: 1, hit: false, lunge: 0, target: null, cd: 0 };
+const robotStats = {
+  rifle: () => 32 * (1 + .3 * G.up.dmg),
+  saber: () => 150 * (1 + .3 * G.up.dmg) * (1 + .4 * (G.up.saber || 0)),
+  interval: () => .2 / (1 + .2 * G.up.rate),
+};
+// arms seen through the canopy: rifle on the right, beam saber on the left
+const arms3d = new THREE.Group(); arms3d.visible = false; camera.add(arms3d);
+{
+  arms3d.add(new THREE.HemisphereLight(0xffffff, 0x445566, .2));
+}
+const armWhite = new THREE.MeshStandardMaterial({ color: 0x9aa6b2, roughness: .45, metalness: .3 });
+const armBlue = new THREE.MeshStandardMaterial({ color: 0x1f5fa8, roughness: .4, metalness: .35 });
+const armDark = new THREE.MeshStandardMaterial({ color: 0x2a3038, roughness: .5, metalness: .5 });
+function box(w, h, d, mat, p, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); p.add(m); return m; }
+const rArm = new THREE.Group(); arms3d.add(rArm);
+box(.32, .3, 1, armBlue, rArm, 0, 0, .2); box(.36, .12, .72, armWhite, rArm, 0, .19, .15); box(.27, .27, .27, armDark, rArm, 0, -.02, -.42);
+const rifle = new THREE.Group(); rifle.position.set(-.05, -.07, -.5); rArm.add(rifle);
+box(.15, .25, 1.15, armDark, rifle, 0, 0, -.35); box(.1, .1, .45, armWhite, rifle, 0, .18, -.3); box(.12, .3, .16, armDark, rifle, 0, -.22, -.05);
+{ const b = new THREE.Mesh(new THREE.CylinderGeometry(.045, .055, 1.1, 10), armDark); b.rotation.x = Math.PI / 2; b.position.z = -1.45; rifle.add(b); }
+const muzzle = new THREE.Object3D(); muzzle.position.z = -2.05; rifle.add(muzzle);
+const rifleFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: SPARK.mat.uniforms.map.value, color: new THREE.Color(3, 1.4, 2.6), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+rifleFlash.scale.set(.7, .7, 1); rifleFlash.visible = false; muzzle.add(rifleFlash);
+const lPivot = new THREE.Group(); arms3d.add(lPivot);
+const lArm = new THREE.Group(); lPivot.add(lArm);
+box(.32, .3, 1, armBlue, lArm, 0, 0, .2); box(.36, .12, .72, armWhite, lArm, 0, .19, .15); box(.27, .27, .27, armDark, lArm, 0, -.02, -.42);
+const hilt = new THREE.Group(); hilt.position.set(0, .02, -.45); hilt.rotation.x = -1.25; lArm.add(hilt);
+{ const h = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, .42, 10), armWhite); hilt.add(h); }
+const bladeGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true); bladeGeo.translate(0, .5, 0);
+const blade = new THREE.Group(); blade.position.y = .2; hilt.add(blade);
+blade.add(new THREE.Mesh(bladeGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.6, 3), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })));
+blade.children[0].scale.set(.04, 3.2, .04);
+{ const o = new THREE.Mesh(bladeGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, .5, 1.6), transparent: true, opacity: .5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })); o.scale.set(.11, 3.3, .11); blade.add(o); }
+blade.scale.y = .001;
+const trail = new THREE.Mesh(new THREE.RingGeometry(1.5, 2.9, 40, 1, Math.PI * .1, Math.PI * .8),
+  new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, .7, 1.9), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+trail.position.set(0, -.5, -2.6); trail.visible = false; arms3d.add(trail);
+const ARM = { rx: .6, ry: -.62, lx: -.55 };
+
+function nearestHit(range, cone) {
+  if (!kaijuAlive() || K.mode === 'emerge') return null;
+  let best = null, bd = range;
+  for (const h of K.p.hb) {
+    if (h.kind === 'weak' && h.core.broken) continue;
+    const to = h.w.clone().sub(camera.position), d = to.length() - h.wr;
+    if (to.normalize().dot(camFwd) < cone) continue;
+    const score = d - (h.kind === 'weak' ? 25 : 0);
+    if (score < bd) { bd = score; best = h; }
+  }
+  return best;
+}
+function lookToward(p, rate, dt) {
+  const dx = p.x - camera.position.x, dy = p.y - camera.position.y, dz = p.z - camera.position.z;
+  const yawT = Math.atan2(-dx, -dz), pitchT = Math.atan2(dy, Math.hypot(dx, dz));
+  let dyaw = yawT - G.yaw; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+  const k = Math.min(1, dt * rate);
+  G.yaw += dyaw * k; G.pitch += (pitchT - G.pitch) * k;
+}
+function fireRifle() {
+  if (R.en < 2) return;
+  R.en -= 2.5;
+  const tip = new V3(); muzzle.getWorldPosition(tip);
+  let dist = 500;
+  const aimAt = R.assist || (kaijuAlive() ? K.p.g.position : null);
+  if (aimAt) dist = clamp(camera.position.distanceTo(aimAt), 40, 900);
+  const target = R.assist ? R.assist.clone() : camera.position.clone().addScaledVector(camFwd, dist);
+  const dir = target.sub(tip).normalize();
+  const bl = bullets.find(x => x.life <= 0); if (!bl) return;
+  bl.m.material = boltMat; bl.m.scale.set(2.4, 2.4, 2.8); bl.dmg = robotStats.rifle(); bl.beam = true;
+  bl.m.position.copy(tip); bl.prev.copy(tip); bl.v.copy(dir).multiplyScalar(980); bl.life = 1.6; bl.m.visible = true;
+  bl.m.lookAt(tip.clone().add(dir));
+  rArm.position.z = -.95; rifleFlash.visible = true; rifleFlash.material.rotation = rand(0, 6); R.flashT = .05;
+  G.shake = Math.max(G.shake, .08);
+  sfx.rifle();
+}
+const boltMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 1.5, 2.7), fog: false });
+function saberPress() {
+  if (G.state !== 'play' || G.mode !== 'robot' || SB.cd > 0) return;
+  SB.cd = .36; SB.t = 0; SB.dir *= -1; SB.hit = false; SB.lunge = 0; SB.target = null;
+  const tgt = nearestHit(LUNGE_RANGE, .45);
+  if (tgt && camera.position.distanceTo(tgt.w) - tgt.wr > SABER_REACH * .6) { SB.lunge = .4; SB.target = tgt; }
+  sfx.saberOn();
+}
+function saberHit() {
+  let hitAny = false;
+  for (const o of orbs) {
+    if (o.life <= 0 || o.delay > 0) continue;
+    if (o.m.position.distanceTo(camera.position) < SABER_REACH + 10) { boom(o.m.position, 1.3); o.life = 0; o.m.visible = false; dropCoins(o.m.position, 2, .5); popNum(o.m.position, '斬！', 'weak'); hitAny = true; }
+  }
+  const h = nearestHit(SABER_REACH, .1);
+  if (h) {
+    const p = h.w.clone().lerp(camera.position, h.wr / Math.max(1, camera.position.distanceTo(h.w)));
+    damageKaiju(robotStats.saber(), h, p);
+    for (let i = 0; i < 26; i++) SPARK.spawn(p, { v: rv(90).add(new V3(0, 20, 0)), life: rand(.4, .9), s0: 2, s1: .5, c0: 0xffb0e0, hdr: 3, c1: 0xff3090, g: 40 });
+    FIRE.spawn(p, { life: .18, s0: 10, s1: 18, c0: 0xffc0ec, hdr: 1.8 });
+    for (let i = 0; i < 6; i++) FIRE.spawn(p, { v: rv(40), life: .5, s0: 5, s1: 12, c0: 0xff7ad0, hdr: 1.6, c1: 0x801040, hdr1: .6 });
+    ring(p, 22);
+    G.hitStop = .08; G.shake = Math.max(G.shake, .8); sfx.saberHit();
+    hitAny = true;
+  }
+  if (!hitAny) sfx.saberSwing();
+}
+function updateSaber(dt) {
+  SB.cd -= dt;
+  if (SB.t < 0) {
+    blade.scale.y += (.001 - blade.scale.y) * Math.min(1, dt * 12);
+    lPivot.rotation.z += (0 - lPivot.rotation.z) * Math.min(1, dt * 8);
+    lPivot.position.x += (ARM.lx - lPivot.position.x) * Math.min(1, dt * 8);
+    trail.material.opacity = Math.max(0, trail.material.opacity - dt * 5); trail.visible = trail.material.opacity > 0;
+    return;
+  }
+  blade.scale.y += (1 - blade.scale.y) * Math.min(1, dt * 25);
+  if (SB.lunge > 0) {
+    // dash in, keeping the target in front of the canopy
+    SB.lunge -= dt;
+    const to = SB.target.w.clone().sub(G.pos), d = to.length() - SB.target.wr;
+    if (d > SABER_REACH * .55 && kaijuAlive()) { G.vel.copy(to.normalize().multiplyScalar(560)); lookToward(SB.target.w, 10, dt); }
+    else SB.lunge = 0;
+    lPivot.rotation.z = SB.dir * .9; lPivot.position.x = ARM.lx * (SB.dir > 0 ? 1 : -.3);
+    if (Math.random() < .6) SMOKE.spawn(camera.position.clone().add(new V3(rand(-6, 6), -20, rand(-6, 6))), { v: camFwd.clone().multiplyScalar(-60), life: .5, s0: 6, s1: 14, c0: 0xdfe8ff, a: .35 });
+    return;
+  }
+  SB.t += dt;
+  const k = clamp(SB.t / .17, 0, 1), e = 1 - Math.pow(1 - k, 3);
+  lPivot.rotation.z = SB.dir * (.9 - 2.5 * e);
+  lPivot.position.x = ARM.lx * (SB.dir > 0 ? 1 - 1.6 * e : -.3 + 1.3 * e);
+  if (!SB.hit && k > .4) {
+    SB.hit = true; saberHit();
+    trail.visible = true; trail.material.opacity = .95; trail.scale.set(SB.dir, 1, 1); trail.rotation.z = rand(-.35, .35);
+  }
+  trail.material.opacity = Math.max(0, trail.material.opacity - dt * 3.5);
+  if (SB.t > .34) SB.t = -1;
+}
+function updateRobot(dt) {
+  const k = I.keys;
+  const mx = clamp(I.jx + (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), -1, 1);
+  const my = clamp(I.jy + (k.KeyS ? 1 : 0) - (k.KeyW ? 1 : 0), -1, 1);
+  const tx = (k.ArrowRight ? 1 : 0) - (k.ArrowLeft ? 1 : 0), ty = (k.ArrowDown ? 1 : 0) - (k.ArrowUp ? 1 : 0);
+  G.yaw -= tx * 1.6 * dt; G.pitch -= ty * 1.1 * dt;
+  G.yaw += I.ax * 1.3; G.pitch += I.ay * 1.3; I.ax = I.ay = 0;
+  G.pitch = clamp(G.pitch, -1.2, 1.05);
+  R.grounded = G.pos.y <= EYE + .05;
+  const boosting = (I.boost || k.ShiftLeft || k.ShiftRight) && R.en > 1;
+  R.boost = boosting;
+  const fx = -Math.sin(G.yaw), fz = -Math.cos(G.yaw), rx = Math.cos(G.yaw), rz = -Math.sin(G.yaw);
+  const spd = R.grounded ? (boosting ? 175 : 85) : (boosting ? 175 : 125);
+  if (SB.lunge <= 0) {
+    const wx = (fx * -my + rx * mx) * spd, wz = (fz * -my + rz * mx) * spd;
+    const acc = Math.min(1, dt * (R.grounded ? 6 : 2.6));
+    G.vel.x += (wx - G.vel.x) * acc; G.vel.z += (wz - G.vel.z) * acc;
+    if (boosting) G.vel.y = Math.min(115, G.vel.y + 280 * dt);
+    else if (!R.grounded) G.vel.y = Math.max(-140, G.vel.y - 75 * dt);
+  }
+  if (boosting) { R.en = Math.max(0, R.en - 28 * dt); if (Math.random() < .7) SMOKE.spawn(camera.position.clone().add(new V3(fx * -8 + rand(-5, 5), -24, fz * -8 + rand(-5, 5))), { v: new V3(0, -60, 0), life: .6, s0: 5, s1: 16, c0: 0xcfe6ff, c1: 0xffffff, a: .35 }); }
+  else R.en = Math.min(100, R.en + (R.grounded ? 32 : 12) * dt);
+  G.pos.addScaledVector(G.vel, dt);
+  if (G.pos.y < EYE) {
+    if (G.vel.y < -50) { G.shake = Math.max(G.shake, .45); sfx.stomp(); dust(new V3(G.pos.x, 2, G.pos.z), 2.4); if (G.pos.z < COAST) splash(new V3(G.pos.x, 0, G.pos.z), 3); }
+    G.pos.y = EYE; G.vel.y = Math.max(0, G.vel.y);
+  }
+  G.pos.set(clamp(G.pos.x, -700, 700), Math.min(G.pos.y, 420), clamp(G.pos.z, -1050, 240));
+  // keep out of the kaiju's body
+  if (kaijuAlive()) for (const h of K.p.hb) {
+    if (h.kind === 'weak') continue;
+    const to = G.pos.clone().sub(h.w), d = to.length(), min = h.wr + 12;
+    if (d < min && d > .01) { G.pos.addScaledVector(to.normalize(), min - d); const vn = G.vel.dot(to); if (vn < 0) G.vel.addScaledVector(to, -vn); }
+  }
+  // footsteps when walking
+  const hs = Math.hypot(G.vel.x, G.vel.z);
+  if (R.grounded && hs > 15 && !boosting) {
+    R.walkT += dt * hs / 50;
+    if (Math.floor(R.walkT) !== R.lastStep) {
+      R.lastStep = Math.floor(R.walkT);
+      G.shake = Math.max(G.shake, .22); tone('sine', 60, 30, .3, .25);
+      const foot = new V3(G.pos.x + rx * (R.lastStep % 2 ? 8 : -8), 1, G.pos.z + rz * (R.lastStep % 2 ? 8 : -8));
+      if (foot.z < COAST) splash(foot, 1.6); else { dust(foot, 1.1); crush(foot.x, foot.z, 6); }
+    }
+    R.bob = -Math.abs(Math.sin(R.walkT * Math.PI)) * 1.8;
+  } else R.bob += ((R.grounded ? 0 : Math.sin(G.t * 2) * .8) - R.bob) * Math.min(1, dt * 6);
+  G.roll += (-mx * .1 - G.roll) * Math.min(1, dt * 4);
+  // gentle lock-on while shooting: pull the sight onto a nearby weak point or the body
+  R.assist = null;
+  if (kaijuAlive() && K.mode !== 'emerge') {
+    let best = null, ba = .14;
+    for (const h of K.p.hb) {
+      if (h.kind === 'weak' && h.core.broken) continue;
+      const to = h.w.clone().sub(camera.position).normalize(), a = Math.acos(clamp(to.dot(camFwd), -1, 1)) - (h.kind === 'weak' ? .04 : 0);
+      if (a < ba) { ba = a; best = h; }
+    }
+    if (best) { R.assist = best.w.clone(); if (I.firing) lookToward(best.w, 2.2, dt); }
+  }
+  G.fireCd -= dt;
+  if (I.firing && G.fireCd <= 0) { fireRifle(); G.fireCd = Math.max(G.fireCd, -.05) + robotStats.interval(); }
+  R.flashT = (R.flashT || 0) - dt; rifleFlash.visible = R.flashT > 0;
+  rArm.position.z += (-1.05 - rArm.position.z) * Math.min(1, dt * 10);
+  updateSaber(dt);
+  updateCockpitHUD(hs);
+}
+function updateCockpitHUD(hs) {
+  $('ckSpd').textContent = String(Math.round(hs * 3.6)).padStart(3, '0');
+  $('ckAlt').textContent = String(Math.max(0, Math.round(G.pos.y - EYE))).padStart(3, '0');
+  $('ckMode').textContent = R.grounded ? 'GROUND' : 'FLIGHT';
+  $('ckMode').classList.toggle('air', !R.grounded);
+  const en = $('enBar'); en.style.width = R.en + '%'; en.parentElement.classList.toggle('low', R.en < 20);
+  const hd = ((-G.yaw * 180 / Math.PI) % 360 + 360) % 360;
+  $('ckHdg').textContent = String(Math.round(hd)).padStart(3, '0');
+  $('ckLock').hidden = !R.assist;
+}
+function setMode(mode) {
+  G.mode = mode;
+  app.classList.toggle('mode-robot', mode === 'robot');
+  turret.visible = mode === 'turret';
+  arms3d.visible = mode === 'robot';
+  resize();
+}
 
 // ---------- resize ----------
 function resize() {
   const w = app.clientWidth, h = app.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h;
-  camera.fov = w / h < 1 ? 56 : 48; camera.updateProjectionMatrix();
+  camera.fov = G.mode === 'robot' ? (w / h < 1 ? 70 : 60) : (w / h < 1 ? 56 : 48); camera.updateProjectionMatrix();
+  { const vh = Math.tan(camera.fov * Math.PI / 360), hw = vh * camera.aspect;
+    ARM.rx = Math.min(.62, hw * 1.05 * .7); ARM.ry = -vh * 1.05 * .56; ARM.lx = -Math.min(.6, hw * 1.05 * .72);
+    rArm.position.set(ARM.rx, ARM.ry, -1.05); lPivot.position.set(ARM.lx, ARM.ry - .05, -1);
+    const as = clamp(hw * 1.5, .45, .8); rArm.scale.setScalar(as); lArm.scale.setScalar(as); trail.scale.setScalar(Math.min(1, hw * 1.6)); }
   if (composer) { composer.setPixelRatio(DPR); composer.setSize(w, h); }
   const sc = h * renderer.getPixelRatio() / (2 * Math.tan(camera.fov * Math.PI / 360));
   PARTS.forEach(p => p.mat.uniforms.scale.value = sc);
@@ -1968,11 +2269,15 @@ let last = performance.now();
 const offPos = new V3();
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  let dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (G.hitStop > 0) { G.hitStop -= dt; dt *= .1; }
   G.t += dt;
   const play = G.state === 'play';
 
-  if (play) {
+  if (play && G.mode === 'robot') {
+    updateRobot(dt);
+    G.comboT -= dt; if (G.comboT <= 0 && G.combo) { G.combo = 0; $('combo').hidden = true; }
+  } else if (play) {
     const k = I.keys;
     const mx = clamp(I.jx + (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), -1, 1);
     const my = clamp(I.jy + (k.KeyS ? 1 : 0) - (k.KeyW ? 1 : 0), -1, 1);
@@ -1992,14 +2297,14 @@ function frame(now) {
     G.comboT -= dt; if (G.comboT <= 0 && G.combo) { G.combo = 0; $('combo').hidden = true; }
   } else if (G.state === 'title') { G.yaw = Math.sin(G.t * .15) * .1; G.pitch = -.1; G.roll = 0; G.pos.copy(CAM_POS); }
   G.shake = Math.max(0, G.shake - dt * 2.2);
-  const sh = G.shake * G.shake, bob = Math.sin(G.t * 1.7) * .5;
+  const sh = G.shake * G.shake, bob = G.mode === 'robot' && G.state !== 'title' ? R.bob : Math.sin(G.t * 1.7) * .5;
   camera.rotation.set(G.pitch + rand(-1, 1) * sh * .02, G.yaw + rand(-1, 1) * sh * .02, G.roll);
   camera.position.set(G.pos.x + rand(-1, 1) * sh * .6, G.pos.y + bob + rand(-1, 1) * sh * .6, G.pos.z);
   camera.updateMatrixWorld();
   camera.getWorldDirection(camFwd);
   sky.position.copy(camera.position);
 
-  if (play) {
+  if (play && G.mode === 'turret') {
     G.fireCd -= dt;
     if (I.firing && G.fireCd <= 0) { fireGun(); G.fireCd = Math.max(G.fireCd, -.05) + stats.interval(); }
     G.misCd = Math.max(0, G.misCd - dt);
