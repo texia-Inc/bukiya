@@ -41,29 +41,29 @@ body{font-family:var(--f-body);-webkit-user-select:none;user-select:none;-webkit
 #app.mode-robot .btn-saber,#app.mode-robot .btn-boost{display:block}
 #app.mode-robot .btn-mis{display:none}
 #cockpit{position:absolute;inset:0;font-family:var(--f-hud);color:#8eeeff;text-shadow:0 0 6px rgba(80,220,255,.8)}
-#cockpit .frame{position:absolute;inset:0;width:100%;height:100%}
-#cockpit::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(120,220,255,.035) 0 1px,transparent 1px 3px);pointer-events:none}
-.ck-top{position:absolute;left:50%;top:calc(104px + env(safe-area-inset-top,0px));transform:translateX(-50%);display:flex;gap:6px;align-items:baseline;font-size:11px;letter-spacing:.14em}
-.ck-top b{font-size:16px}
-.ck-left,.ck-right{position:absolute;top:44%;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;letter-spacing:.14em;font-variant-numeric:tabular-nums}
-.ck-left{left:4.5%}.ck-right{right:4.5%}
-.ck-left b,.ck-right b{font-size:20px;letter-spacing:.04em}
-.ck-left small,.ck-right small{font-size:9px;opacity:.75}
-.ck-mode{position:absolute;left:50%;top:calc(50% + min(26vw,125px));transform:translateX(-50%);font-size:12px;font-weight:700;letter-spacing:.3em}
-.ck-mode.air{color:#ffd86a;text-shadow:0 0 6px rgba(255,200,80,.8)}
-.ck-lock{position:absolute;left:50%;top:calc(50% - min(26vw,125px) - 18px);transform:translateX(-50%);font-size:12px;font-weight:700;letter-spacing:.3em;color:#ff7a8a;text-shadow:0 0 6px rgba(255,60,90,.9)}
-.ck-en{position:absolute;left:50%;bottom:calc(19% + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.14em}
-.ck-en .bar{width:150px;height:8px;border-color:#0b1a22}
-.ck-en .bar i{background:linear-gradient(180deg,#b5f4ff,#2bb7e8)}
-.ck-en .bar.low i{background:linear-gradient(180deg,#ffb08a,#e0381a)}
-.ck-en .bar::after{display:none}
+#cockpit canvas{position:absolute;inset:0;width:100%;height:100%}
+#app.mode-robot #reticle,#app.mode-robot .res{display:none}
+#app.mode-robot .boss{top:calc(6px + env(safe-area-inset-top,0px));width:min(80%,360px);gap:3px;padding:4px 10px 5px;background:rgba(1,10,14,.82);border:1px solid rgba(95,224,255,.45);border-radius:4px;box-shadow:0 0 12px rgba(60,200,255,.25) inset}
+#app.mode-robot .boss-name{text-shadow:0 0 6px rgba(80,220,255,.8)}
+#app.mode-robot #bossName{font-family:var(--f-hud);font-weight:700;font-size:14px;color:#a8f2ff;letter-spacing:.08em}
+#app.mode-robot #waveLbl{font-size:11px;color:#ffd86a}
+#app.mode-robot .boss .bar{height:7px;border:1px solid rgba(95,224,255,.5);background:rgba(0,30,40,.7)}
+#app.mode-robot .boss .bar i:not(.ghost){background:linear-gradient(90deg,#ff4a6a,#ff8a5a)}
+#app.mode-robot #cores{font-size:9px;color:#a8f2ff}
+#app.mode-robot .res{top:calc(76px + env(safe-area-inset-top,0px));left:calc(max(26px, 8.5vw) + 6px)}
+#app.mode-robot #coinVal{font-size:18px}
+#app.mode-robot .nut{width:18px;height:18px}
+#app.mode-robot #muteBtn{top:calc(76px + env(safe-area-inset-top,0px));right:calc(max(26px, 8.5vw) + 6px);width:30px;height:30px;font-size:13px}
+#app.mode-robot #stick{background:radial-gradient(circle,#1a1f24 48%,#3a434c 49% 52%,#22292f 53% 64%,transparent 65%),conic-gradient(from 0deg,#2b333b,#47525c,#2b333b,#47525c,#2b333b);box-shadow:0 0 0 3px #11161a inset,0 0 0 2px #0a0d10,0 4px 12px rgba(0,0,0,.6)}
+#app.mode-robot #knob{background:radial-gradient(circle at 50% 38%,#d8312a 0 22%,#3a444e 24% 60%,#161b20 62%);box-shadow:0 3px 6px #000,0 0 0 2px #0a0d10}
+#app.mode-robot .btn-fire{width:122px;height:122px;font-size:26px}
 #app.mode-robot #reticle .in{stroke:#6fe6ff}
 #app.mode-robot #reticle .out{stroke:rgba(0,30,40,.55)}
 #app.mode-robot #reticle.hit .in{stroke:#ffe14a}
-.btn-saber,.btn-boost{position:absolute;width:78px;height:78px;border-radius:50%;cursor:pointer;border:4px solid #2d343a;outline:2px solid #6a757c;color:#fff;
+.btn-saber,.btn-boost{position:absolute;width:74px;height:74px;border-radius:50%;cursor:pointer;border:4px solid #2d343a;outline:2px solid #6a757c;color:#fff;
   font-family:var(--f-hud);font-weight:700;font-size:12px;letter-spacing:.08em;text-shadow:0 1px 0 #000;touch-action:none}
-.btn-saber{right:150px;bottom:calc(28px + env(safe-area-inset-bottom,0px));background:radial-gradient(circle at 50% 40%,#ff6ac8,#8a1660);box-shadow:0 0 16px rgba(255,80,190,.6)}
-.btn-boost{right:30px;bottom:calc(170px + env(safe-area-inset-bottom,0px));background:radial-gradient(circle at 50% 40%,#ffd36a,#a8660c)}
+.btn-saber{right:148px;bottom:calc(22px + env(safe-area-inset-bottom,0px));background:radial-gradient(circle at 50% 40%,#ff6ac8,#8a1660);box-shadow:0 0 16px rgba(255,80,190,.6)}
+.btn-boost{right:148px;bottom:calc(108px + env(safe-area-inset-bottom,0px));background:radial-gradient(circle at 50% 40%,#ffd36a,#a8660c)}
 .btn-boost.down,.btn-saber.down{transform:scale(.93);filter:brightness(1.3)}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cta.robot{background:linear-gradient(180deg,#3aa0ff,#1452a8);box-shadow:0 4px 0 #0b2c5c;text-shadow:0 2px 0 #0b2c5c}
@@ -182,25 +182,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   <div id="vignette"></div>
   <div id="flash"></div>
   <div id="hud">
-    <div id="cockpit" aria-hidden="true">
-      <svg class="frame" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="ckMetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a434c"/><stop offset=".5" stop-color="#1c2228"/><stop offset="1" stop-color="#0e1216"/></linearGradient>
-          <linearGradient id="ckSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0e1216"/><stop offset=".7" stop-color="#2a323a"/><stop offset="1" stop-color="#46525d"/></linearGradient>
-        </defs>
-        <path d="M0 0 H100 V6 Q50 10.5 0 6 Z" fill="url(#ckMetal)"/>
-        <path d="M0 6 L8.5 8.2 L2.6 60 L0 64 Z" fill="url(#ckSide)"/>
-        <path d="M100 6 L91.5 8.2 L97.4 60 L100 64 Z" fill="url(#ckSide)" transform="translate(0,0)"/>
-        <path d="M0 82 L12 77.5 H88 L100 82 V100 H0 Z" fill="url(#ckMetal)"/>
-        <path d="M0 6 Q50 10.5 100 6 M8.5 8.2 L2.6 60 M91.5 8.2 L97.4 60 M12 77.5 H88" fill="none" stroke="#5fe0ff" stroke-opacity=".45" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
-      </svg>
-      <div class="ck-top"><span>HDG</span><b id="ckHdg">000</b></div>
-      <div class="ck-left"><span>SPD</span><b id="ckSpd">000</b><small>km/h</small></div>
-      <div class="ck-right"><span>ALT</span><b id="ckAlt">000</b><small>m</small></div>
-      <div class="ck-mode" id="ckMode">GROUND</div>
-      <div class="ck-lock" id="ckLock" hidden>LOCK</div>
-      <div class="ck-en"><span>EN</span><div class="bar"><i id="enBar"></i></div></div>
-    </div>
+    <div id="cockpit" aria-hidden="true"><canvas id="ckFrame"></canvas><canvas id="ckHud"></canvas></div>
     <div class="boss" id="bossBox">
       <div class="boss-name"><span id="waveLbl">WAVE 1</span><span id="bossName">ヴォルカドン</span></div>
       <div class="bar"><i class="ghost" id="bossGhost"></i><i id="bossHp"></i></div>
@@ -1617,7 +1599,7 @@ function updateOrbs(dt) {
 }
 function hurtTower(n) {
   if (G.state !== 'play') return;
-  G.tower = Math.max(0, G.tower - n); G.shake = Math.max(G.shake, .7);
+  G.tower = Math.max(0, G.tower - n); G.shake = Math.max(G.shake, .7); R.dmgT = .4;
   const f = $('flash'); f.style.background = 'radial-gradient(circle,transparent 30%,rgba(255,40,20,.55))'; f.style.opacity = 1;
   setTimeout(() => f.style.opacity = 0, 120);
   updateTowerUI();
@@ -1625,7 +1607,7 @@ function hurtTower(n) {
 }
 function hurtTowerSoft(n) {
   if (G.state !== 'play') return;
-  G.tower = Math.max(0, G.tower - n); updateTowerUI();
+  G.tower = Math.max(0, G.tower - n); updateTowerUI(); R.dmgT = Math.max(R.dmgT || 0, .2);
   if (G.tower <= 0) G.mode === 'robot' ? gameOver('機体大破', 'MECH DESTROYED') : gameOver('砲台大破', 'TURRET DESTROYED');
 }
 
@@ -1820,6 +1802,10 @@ function updateMech(dt) {
 
 // ---------- coins update ----------
 function coinTarget() {
+  if (G.mode === 'robot' && CK.L) {
+    const m = CK.L.mfdR, a = app.getBoundingClientRect();
+    return new V3((m.x + 70) / a.width * 2 - 1, -((m.y + 62) / a.height * 2 - 1), .5).unproject(camera).sub(camera.position).normalize().multiplyScalar(18).add(camera.position);
+  }
   const r = $('coinChip').getBoundingClientRect(), a = app.getBoundingClientRect();
   const nx = ((r.left + 14 - a.left) / a.width) * 2 - 1, ny = -(((r.top + r.height / 2 - a.top) / a.height) * 2 - 1);
   return new V3(nx, ny, .5).unproject(camera).sub(camera.position).normalize().multiplyScalar(18).add(camera.position);
@@ -1961,7 +1947,7 @@ function clearNext() { if (NX) { scene.remove(NX.p.g); NX = null; } }
 function newGame() {
   Object.assign(G, { wave: 1, coins: 0, earned: 0, kills: 0, tower: 100, up: { dmg: 0, rate: 0, mis: 0, saber: 0 }, yaw: 0, pitch: -.14, roll: 0, combo: 0, hitStop: 0 });
   G.pos.copy(CAM_POS); G.vel.set(0, 0, 0); clearNext();
-  if (G.mode === 'robot') { G.pos.set(0, EYE, 30); G.pitch = .12; R.en = 100; SB.t = -1; SB.lunge = 0; I.boost = false; }
+  if (G.mode === 'robot') { G.pos.set(0, EYE, 30); G.pitch = .12; R.en = 100; SB.t = -1; SB.lunge = 0; I.boost = false; CK.boot = 2; R.dmgT = 0; }
   $('coinVal').textContent = 0; resetCity(); updateTowerUI();
   PARTS.forEach(p => p.clear());
   startWave();
@@ -2226,17 +2212,7 @@ function updateRobot(dt) {
   R.flashT = (R.flashT || 0) - dt; rifleFlash.visible = R.flashT > 0;
   rArm.position.z += (-1.05 - rArm.position.z) * Math.min(1, dt * 10);
   updateSaber(dt);
-  updateCockpitHUD(hs);
-}
-function updateCockpitHUD(hs) {
-  $('ckSpd').textContent = String(Math.round(hs * 3.6)).padStart(3, '0');
-  $('ckAlt').textContent = String(Math.max(0, Math.round(G.pos.y - EYE))).padStart(3, '0');
-  $('ckMode').textContent = R.grounded ? 'GROUND' : 'FLIGHT';
-  $('ckMode').classList.toggle('air', !R.grounded);
-  const en = $('enBar'); en.style.width = R.en + '%'; en.parentElement.classList.toggle('low', R.en < 20);
-  const hd = ((-G.yaw * 180 / Math.PI) % 360 + 360) % 360;
-  $('ckHdg').textContent = String(Math.round(hd)).padStart(3, '0');
-  $('ckLock').hidden = !R.assist;
+  drawCockpitHUD(dt, hs);
 }
 function setMode(mode) {
   G.mode = mode;
@@ -2244,6 +2220,270 @@ function setMode(mode) {
   turret.visible = mode === 'turret';
   arms3d.visible = mode === 'robot';
   resize();
+}
+
+// ---------- cockpit: frame, instruments and canopy HUD drawn on two 2D canvases ----------
+const CK = { frame: $('ckFrame'), hud: $('ckHud'), L: null, w: 0, h: 0, d: 1, lockWas: false };
+const HUD_C = 'rgba(130,238,255,', HUD_R = 'rgba(255,90,110,', HUD_A = 'rgba(255,200,90,';
+function ckLayout(w, h) {
+  const st = parseFloat(getComputedStyle(app).paddingTop) || 0;
+  const top = Math.max(44, h * .06) + st;
+  const dash = h - Math.min(265, h * .34);
+  return {
+    top, dash, pt: Math.max(26, w * .085), pb: Math.max(12, w * .035),
+    mfdL: { x: 12, y: h - 244, w: Math.min(140, w * .34), h: 84 },
+    mfdR: { x: w - 12 - Math.min(140, w * .34), y: h - 244, w: Math.min(140, w * .34), h: 84 },
+    mid: { x: w / 2 - 52, y: h - 262, w: 104, h: 40 },
+  };
+}
+function rrect(x, X, Y, W, H, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r); x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath(); }
+function bolt(x, X, Y, r = 2.6) {
+  const g = x.createRadialGradient(X - r * .3, Y - r * .3, 0, X, Y, r); g.addColorStop(0, '#9aa6b0'); g.addColorStop(1, '#1a1f24');
+  x.fillStyle = g; x.beginPath(); x.arc(X, Y, r, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(0,0,0,.6)'; x.lineWidth = .8; x.beginPath(); x.moveTo(X - r * .6, Y); x.lineTo(X + r * .6, Y); x.stroke();
+}
+function metalFill(x, y0, y1, dark) {
+  const g = x.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, dark ? '#2b333b' : '#4a5560'); g.addColorStop(.18, dark ? '#1d2329' : '#2c343c'); g.addColorStop(1, '#0c1014');
+  return g;
+}
+function drawCockpitFrame() {
+  const w = app.clientWidth, h = app.clientHeight, d = Math.min(window.devicePixelRatio || 1, 2);
+  CK.w = w; CK.h = h; CK.d = d;
+  for (const c of [CK.frame, CK.hud]) { c.width = Math.round(w * d); c.height = Math.round(h * d); }
+  const L = CK.L = ckLayout(w, h);
+  const x = CK.frame.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h);
+  // canopy glass: tinted edges, reflections and fine scratches
+  let g = x.createRadialGradient(w / 2, h * .42, Math.min(w, h) * .25, w / 2, h * .42, Math.max(w, h) * .72);
+  g.addColorStop(0, 'rgba(110,190,240,0)'); g.addColorStop(1, 'rgba(20,90,130,.32)');
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.save(); x.globalCompositeOperation = 'lighter';
+  for (const [x0, wd, a] of [[.12, .16, .07], [.34, .05, .05], [.7, .1, .04]]) {
+    const lg = x.createLinearGradient(w * x0, 0, w * (x0 + wd), 0); lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(.5, `rgba(220,240,255,${a})`); lg.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = lg; x.beginPath(); x.moveTo(w * x0, L.top); x.lineTo(w * (x0 + wd), L.top); x.lineTo(w * (x0 + wd - .22), L.dash); x.lineTo(w * (x0 - .22), L.dash); x.fill();
+  }
+  const r = seeded(77); x.strokeStyle = 'rgba(220,240,255,.06)'; x.lineWidth = .6;
+  for (let i = 0; i < 26; i++) { const sx = r() * w, sy = L.top + r() * (L.dash - L.top), a = r() * 6.28, l = 8 + r() * 30; x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l); x.stroke(); }
+  x.restore();
+  const edge = (path, dark) => { path(); x.fillStyle = metalFill(x, 0, h, dark); x.fill(); x.strokeStyle = '#05080a'; x.lineWidth = 2; x.stroke(); };
+  const glow = path => { x.save(); path(); x.strokeStyle = 'rgba(95,224,255,.55)'; x.lineWidth = 1.2; x.shadowColor = 'rgba(95,224,255,.9)'; x.shadowBlur = 6; x.stroke(); x.restore(); };
+  // top frame with the central sensor housing
+  const topP = () => { x.beginPath(); x.moveTo(0, 0); x.lineTo(w, 0); x.lineTo(w, L.top + 16); x.lineTo(w * .64, L.top + 2); x.lineTo(w * .56, L.top + 16); x.lineTo(w * .44, L.top + 16); x.lineTo(w * .36, L.top + 2); x.lineTo(0, L.top + 16); x.closePath(); };
+  edge(topP);
+  // side pillars
+  const leftP = () => { x.beginPath(); x.moveTo(0, L.top + 14); x.lineTo(L.pt, L.top + 10); x.lineTo(L.pb, L.dash - 4); x.lineTo(0, L.dash + 24); x.closePath(); };
+  const rightP = () => { x.beginPath(); x.moveTo(w, L.top + 14); x.lineTo(w - L.pt, L.top + 10); x.lineTo(w - L.pb, L.dash - 4); x.lineTo(w, L.dash + 24); x.closePath(); };
+  edge(leftP, true); edge(rightP, true);
+  // dashboard
+  const dashP = () => { x.beginPath(); x.moveTo(0, h); x.lineTo(0, L.dash + 24); x.lineTo(L.pb, L.dash - 4); x.quadraticCurveTo(w / 2, L.dash - 34, w - L.pb, L.dash - 4); x.lineTo(w, L.dash + 24); x.lineTo(w, h); x.closePath(); };
+  edge(dashP);
+  // glowing trim along the glass edges
+  glow(() => { x.beginPath(); x.moveTo(0, L.top + 16); x.lineTo(w * .36, L.top + 2); x.lineTo(w * .44, L.top + 16); x.lineTo(w * .56, L.top + 16); x.lineTo(w * .64, L.top + 2); x.lineTo(w, L.top + 16); });
+  glow(() => { x.beginPath(); x.moveTo(L.pt, L.top + 10); x.lineTo(L.pb, L.dash - 4); x.moveTo(w - L.pt, L.top + 10); x.lineTo(w - L.pb, L.dash - 4); });
+  glow(() => { x.beginPath(); x.moveTo(L.pb, L.dash - 4); x.quadraticCurveTo(w / 2, L.dash - 34, w - L.pb, L.dash - 4); });
+  // hazard stripes under the dashboard lip
+  x.save(); x.beginPath(); x.moveTo(w * .3, L.dash - 10); x.quadraticCurveTo(w / 2, L.dash - 24, w * .7, L.dash - 10); x.lineTo(w * .7, L.dash - 4); x.quadraticCurveTo(w / 2, L.dash - 18, w * .3, L.dash - 4); x.closePath(); x.clip();
+  for (let sx = w * .25; sx < w * .75; sx += 12) { x.fillStyle = '#e8b21a'; x.beginPath(); x.moveTo(sx, L.dash); x.lineTo(sx + 6, L.dash - 30); x.lineTo(sx + 12, L.dash - 30); x.lineTo(sx + 6, L.dash); x.fill(); }
+  x.restore();
+  // panel seams, bolts, sensor lamps
+  x.strokeStyle = 'rgba(0,0,0,.55)'; x.lineWidth = 1;
+  for (const fy of [.42, .7]) { x.beginPath(); x.moveTo(0, L.dash + (h - L.dash) * fy); x.lineTo(w, L.dash + (h - L.dash) * fy); x.stroke(); }
+  x.strokeStyle = 'rgba(255,255,255,.07)';
+  for (const fy of [.42, .7]) { x.beginPath(); x.moveTo(0, L.dash + (h - L.dash) * fy + 1); x.lineTo(w, L.dash + (h - L.dash) * fy + 1); x.stroke(); }
+  for (let i = 0; i < 6; i++) { const t = (i + .5) / 6; bolt(x, L.pt * .45 * (1 - t) + L.pb * .45 * t, L.top + 22 + (L.dash - L.top - 40) * t); bolt(x, w - (L.pt * .45 * (1 - t) + L.pb * .45 * t), L.top + 22 + (L.dash - L.top - 40) * t); }
+  for (const fx of [.08, .2, .8, .92]) bolt(x, w * fx, L.top * .55);
+  x.font = '600 8px "Chakra Petch", monospace'; x.fillStyle = 'rgba(160,200,215,.55)'; x.textAlign = 'center';
+  x.fillText('MAIN CAMERA', w / 2, L.top + 10);
+  for (let i = 0; i < 3; i++) { x.fillStyle = ['#1c3b22', '#3b331c', '#3b1c1c'][i]; x.beginPath(); x.arc(w / 2 - 14 + i * 14, L.top - 2, 3.2, 0, 7); x.fill(); }
+  // dashboard switch rows and labels
+  const rowY = L.dash + (h - L.dash) * .56;
+  x.font = '600 7px "Chakra Petch", monospace';
+  [['FCS', .3], ['GEN', .38], ['MAG', .62], ['AUX', .7]].forEach(([t, fx]) => {
+    x.fillStyle = '#0b0f12'; rrect(x, w * fx - 7, rowY - 9, 14, 18, 2); x.fill();
+    x.fillStyle = '#8e99a3'; x.fillRect(w * fx - 2, rowY - 7, 4, 8);
+    x.fillStyle = 'rgba(160,200,215,.5)'; x.fillText(t, w * fx, rowY + 18);
+  });
+  // instrument bezels
+  for (const m of [L.mfdL, L.mfdR, L.mid]) {
+    x.fillStyle = '#0b0e11'; rrect(x, m.x - 5, m.y - 5, m.w + 10, m.h + 10, 7); x.fill();
+    x.strokeStyle = '#3a444e'; x.lineWidth = 1.5; x.stroke();
+    x.fillStyle = '#02080b'; rrect(x, m.x, m.y, m.w, m.h, 4); x.fill();
+    bolt(x, m.x - 1, m.y - 1, 1.8); bolt(x, m.x + m.w + 1, m.y - 1, 1.8); bolt(x, m.x - 1, m.y + m.h + 1, 1.8); bolt(x, m.x + m.w + 1, m.y + m.h + 1, 1.8);
+  }
+  CK.boot = CK.boot || 0;
+}
+// a value tape on the side of the canopy
+function tape(x, cx, cy, hgt, value, step, label, unit, right) {
+  x.save();
+  x.beginPath(); x.rect(cx - 30, cy - hgt / 2, 60, hgt); x.clip();
+  const px = hgt / (step * 8);
+  x.strokeStyle = HUD_C + '.6)'; x.fillStyle = HUD_C + '.75)'; x.lineWidth = 1; x.font = '600 9px "Chakra Petch", monospace'; x.textAlign = right ? 'left' : 'right';
+  const base = Math.floor(value / step) * step;
+  for (let v = base - step * 5; v <= base + step * 5; v += step) {
+    const y = cy - (v - value) * px;
+    const big = Math.round(v / step) % 2 === 0;
+    x.beginPath(); x.moveTo(cx + (right ? -10 : 10), y); x.lineTo(cx + (right ? -10 + (big ? 8 : 4) : 10 - (big ? 8 : 4)), y); x.stroke();
+    if (big && v >= 0) x.fillText(String(v), cx + (right ? 2 : -2), y + 3);
+  }
+  x.restore();
+  x.strokeStyle = HUD_C + '.9)'; x.fillStyle = 'rgba(0,16,22,.75)';
+  x.beginPath(); x.rect(cx - (right ? 12 : 28), cy - 9, 40, 18); x.fill(); x.stroke();
+  x.fillStyle = HUD_C + '1)'; x.font = '700 12px "Chakra Petch", monospace'; x.textAlign = 'center';
+  x.fillText(String(Math.round(value)).padStart(3, '0'), cx + (right ? 8 : -8), cy + 4);
+  x.font = '600 8px "Chakra Petch", monospace'; x.fillStyle = HUD_C + '.75)';
+  x.fillText(label, cx + (right ? 8 : -8), cy - hgt / 2 - 6); x.fillText(unit, cx + (right ? 8 : -8), cy + hgt / 2 + 12);
+}
+const _hp = new V3();
+function toScreen(p) { _hp.copy(p).project(camera); return { x: (_hp.x * .5 + .5) * CK.w, y: (-_hp.y * .5 + .5) * CK.h, ok: _hp.z < 1 }; }
+function drawCockpitHUD(dt, hs) {
+  if (!CK.L || CK.w !== app.clientWidth || CK.h !== app.clientHeight) drawCockpitFrame();
+  const x = CK.hud.getContext('2d'), w = CK.w, h = CK.h, L = CK.L, cx = w / 2, cy = h / 2;
+  x.setTransform(CK.d, 0, 0, CK.d, 0, 0); x.clearRect(0, 0, w, h);
+  const boot = CK.boot > 0 ? clamp(1 - CK.boot / 2, 0, 1) : 1;
+  x.globalAlpha = boot < 1 ? (Math.random() < .3 ? .3 : boot) : 1;
+  x.shadowColor = 'rgba(80,220,255,.8)'; x.shadowBlur = 4;
+  x.lineWidth = 1.2;
+  // pitch ladder, rolling with the mech
+  const pxr = h / (camera.fov * Math.PI / 180);
+  x.save(); x.translate(cx, cy); x.rotate(-G.roll);
+  x.font = '600 9px "Chakra Petch", monospace'; x.textAlign = 'center';
+  for (let deg = -80; deg <= 80; deg += 10) {
+    const off = (G.pitch - deg * Math.PI / 180) * pxr;
+    if (Math.abs(off) > h * .2 || deg === 0) continue;
+    x.strokeStyle = HUD_C + '.32)'; x.setLineDash(deg < 0 ? [4, 4] : []);
+    x.beginPath(); x.moveTo(-70, off); x.lineTo(-40, off); x.lineTo(-40, off + (deg < 0 ? -5 : 5)); x.moveTo(70, off); x.lineTo(40, off); x.lineTo(40, off + (deg < 0 ? -5 : 5)); x.stroke();
+    x.fillStyle = HUD_C + '.45)'; x.fillText(String(Math.abs(deg)), -80, off + 3); x.fillText(String(Math.abs(deg)), 80, off + 3);
+  }
+  x.setLineDash([]);
+  const hz = G.pitch * pxr;
+  if (Math.abs(hz) < h * .3) { x.strokeStyle = HUD_C + '.6)'; x.beginPath(); x.moveTo(-w * .32, hz); x.lineTo(-30, hz); x.moveTo(30, hz); x.lineTo(w * .32, hz); x.stroke(); }
+  x.restore();
+  // center sight and flight-path marker
+  x.strokeStyle = HUD_C + '.95)';
+  x.beginPath(); x.arc(cx, cy, 14, 0, 7); x.moveTo(cx - 26, cy); x.lineTo(cx - 18, cy); x.moveTo(cx + 18, cy); x.lineTo(cx + 26, cy); x.moveTo(cx, cy - 26); x.lineTo(cx, cy - 18); x.stroke();
+  x.fillStyle = HUD_C + '1)'; x.fillRect(cx - 1, cy - 1, 2, 2);
+  if (G.vel.lengthSq() > 400) {
+    const s = toScreen(camera.position.clone().addScaledVector(G.vel, 3));
+    if (s.ok && Math.abs(s.x - cx) < w * .4 && Math.abs(s.y - cy) < h * .3) {
+      x.strokeStyle = HUD_C + '.7)'; x.beginPath(); x.arc(s.x, s.y, 5, 0, 7); x.moveTo(s.x - 14, s.y); x.lineTo(s.x - 5, s.y); x.moveTo(s.x + 5, s.y); x.lineTo(s.x + 14, s.y); x.moveTo(s.x, s.y - 5); x.lineTo(s.x, s.y - 10); x.stroke();
+    }
+  }
+  // heading tape
+  const hdg = ((-G.yaw * 180 / Math.PI) % 360 + 360) % 360;
+  const ty = L.top + 34;
+  x.save(); x.beginPath(); x.rect(cx - 110, ty - 16, 220, 30); x.clip();
+  x.font = '600 9px "Chakra Petch", monospace'; x.textAlign = 'center'; x.strokeStyle = HUD_C + '.6)'; x.fillStyle = HUD_C + '.75)';
+  for (let a = Math.floor(hdg / 5) * 5 - 60; a <= hdg + 60; a += 5) {
+    const px = cx + (a - hdg) * 3.2, big = ((a % 30) + 30) % 30 === 0;
+    x.beginPath(); x.moveTo(px, ty); x.lineTo(px, ty + (big ? 8 : 4)); x.stroke();
+    if (big) { const v = ((a % 360) + 360) % 360; x.fillText(({ 0: 'N', 90: 'E', 180: 'S', 270: 'W' })[v] || String(v / 10).padStart(2, '0'), px, ty - 4); }
+  }
+  x.restore();
+  x.fillStyle = 'rgba(0,16,22,.75)'; x.strokeStyle = HUD_C + '.9)'; x.beginPath(); x.rect(cx - 18, ty + 10, 36, 15); x.fill(); x.stroke();
+  x.fillStyle = HUD_C + '1)'; x.font = '700 11px "Chakra Petch", monospace'; x.textAlign = 'center'; x.fillText(String(Math.round(hdg)).padStart(3, '0'), cx, ty + 21);
+  // speed and altitude tapes
+  tape(x, L.pt + 34, cy, h * .26, hs * 3.6, 20, 'SPD', 'km/h', false);
+  tape(x, w - L.pt - 34, cy, h * .26, Math.max(0, G.pos.y - EYE), 20, 'ALT', 'm', true);
+  // target designators
+  if (kaijuAlive() && K.mode !== 'emerge') {
+    const body = K.p.hb[K.p.cores.length + 1], s = toScreen(body.w);
+    if (s.ok) {
+      const dist = camera.position.distanceTo(body.w);
+      const rad = clamp(body.wr * .9 / dist * pxr, 24, w * .26);
+      const col = K.mode === 'charge' || K.mode === 'beam' ? HUD_R : HUD_C;
+      x.strokeStyle = col + '.85)'; x.lineWidth = 1.6;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { x.beginPath(); x.moveTo(s.x + sx * rad, s.y + sy * rad * .55); x.lineTo(s.x + sx * rad, s.y + sy * rad); x.lineTo(s.x + sx * rad * .55, s.y + sy * rad); x.stroke(); }
+      x.fillStyle = col + '.95)'; x.font = '700 9px "Chakra Petch", monospace'; x.textAlign = 'center';
+      const lx = clamp(s.x, L.pt + 110, w - L.pt - 110), ly = clamp(s.y - rad - 18, L.top + 66, L.dash - 40);
+      x.fillText('TGT ' + K.def.name.replace(/^(超巨大|巨大) /, '') + '  DST ' + String(Math.round(dist)).padStart(4, '0') + 'm', lx, ly);
+    }
+    if (R.assist) {
+      const a = toScreen(R.assist);
+      if (a.ok) {
+        x.save(); x.translate(a.x, a.y); x.rotate(G.t * 2); x.strokeStyle = HUD_R + '.95)'; x.lineWidth = 1.8;
+        x.beginPath(); x.moveTo(0, -12); x.lineTo(12, 0); x.lineTo(0, 12); x.lineTo(-12, 0); x.closePath(); x.stroke(); x.restore();
+        x.fillStyle = HUD_R + '1)'; x.font = '700 9px "Chakra Petch", monospace'; x.textAlign = 'center'; x.fillText('LOCK', a.x, a.y - 18);
+      }
+      if (!CK.lockWas) tone('square', 1800, 1800, .05, .04);
+    }
+    CK.lockWas = !!R.assist;
+  }
+  if (NX) {
+    const s = toScreen(NX.p.g.position.clone().add(new V3(0, 40 * NX.def.scale, 0)));
+    if (s.ok && s.x > 0 && s.x < w && s.y > L.top && s.y < L.dash) {
+      x.strokeStyle = HUD_A + '.8)'; x.beginPath(); x.moveTo(s.x, s.y - 9); x.lineTo(s.x + 9, s.y); x.lineTo(s.x, s.y + 9); x.lineTo(s.x - 9, s.y); x.closePath(); x.stroke();
+      x.fillStyle = HUD_A + '.9)'; x.font = '700 8px "Chakra Petch", monospace'; x.textAlign = 'center'; x.fillText('UNKNOWN', s.x, s.y - 13);
+    }
+  }
+  // warnings on the glass
+  const blink = Math.sin(G.t * 14) > 0;
+  if (kaijuAlive() && (K.mode === 'charge' || K.mode === 'beam') && blink) {
+    x.strokeStyle = HUD_R + '.55)'; x.lineWidth = 6; x.strokeRect(L.pt, L.top + 18, w - L.pt * 2, L.dash - L.top - 40);
+    x.fillStyle = HUD_R + '1)'; x.font = '700 15px "Chakra Petch", monospace'; x.textAlign = 'center'; x.fillText('WARNING  BEAM LOCK', cx, L.top + 76);
+  } else if (G.tower < 30 && blink) {
+    x.fillStyle = HUD_A + '1)'; x.font = '700 13px "Chakra Petch", monospace'; x.textAlign = 'center'; x.fillText('HULL CRITICAL', cx, L.top + 76);
+  }
+  x.lineWidth = 1.2;
+  // left screen: radar, up = facing direction
+  const m = L.mfdL, rcx = m.x + m.h / 2 + 4, rcy = m.y + m.h / 2, rr = m.h / 2 - 6, RANGE = 900;
+  x.save(); rrect(x, m.x, m.y, m.w, m.h, 4); x.clip();
+  x.strokeStyle = 'rgba(80,220,140,.35)'; x.beginPath(); x.arc(rcx, rcy, rr, 0, 7); x.arc(rcx, rcy, rr * .5, 0, 7); x.moveTo(rcx - rr, rcy); x.lineTo(rcx + rr, rcy); x.moveTo(rcx, rcy - rr); x.lineTo(rcx, rcy + rr); x.stroke();
+  const sw = G.t * 2.4; const sg = x.createConicGradient ? x.createConicGradient(sw, rcx, rcy) : null;
+  if (sg) { sg.addColorStop(0, 'rgba(80,255,150,.35)'); sg.addColorStop(.12, 'rgba(80,255,150,0)'); sg.addColorStop(1, 'rgba(80,255,150,0)'); x.fillStyle = sg; x.beginPath(); x.arc(rcx, rcy, rr, 0, 7); x.fill(); }
+  const fx = -Math.sin(G.yaw), fz = -Math.cos(G.yaw), rxv = Math.cos(G.yaw), rzv = -Math.sin(G.yaw);
+  const blip = (p, size, col) => {
+    const dx = p.x - G.pos.x, dz = p.z - G.pos.z;
+    let bx = (dx * rxv + dz * rzv) / RANGE * rr, by = -(dx * fx + dz * fz) / RANGE * rr;
+    const l = Math.hypot(bx, by); if (l > rr - 2) { bx *= (rr - 2) / l; by *= (rr - 2) / l; }
+    x.fillStyle = col; x.beginPath(); x.arc(rcx + bx, rcy + by, size, 0, 7); x.fill();
+  };
+  if (kaijuAlive()) blip(K.p.g.position, 2 + K.def.scale, HUD_R + '1)');
+  if (NX) blip(NX.p.g.position, 2 + NX.def.scale * .8, HUD_A + '1)');
+  for (const o of orbs) if (o.life > 0 && o.delay <= 0) blip(o.m.position, 1.6, 'rgba(255,240,120,1)');
+  x.fillStyle = 'rgba(120,255,170,1)'; x.beginPath(); x.moveTo(rcx, rcy - 5); x.lineTo(rcx + 4, rcy + 4); x.lineTo(rcx - 4, rcy + 4); x.fill();
+  x.fillStyle = 'rgba(120,255,170,.85)'; x.font = '600 8px "Chakra Petch", monospace'; x.textAlign = 'left';
+  x.fillText('RADAR', m.x + m.h + 6, m.y + 14); x.fillText('900m', m.x + m.h + 6, m.y + 26);
+  x.fillText(R.grounded ? 'GND' : 'AIR', m.x + m.h + 6, m.y + m.h - 8);
+  x.restore();
+  // right screen: airframe status and weapons
+  const n = L.mfdR, hull = G.tower / 100;
+  x.save(); rrect(x, n.x, n.y, n.w, n.h, 4); x.clip();
+  const hc = hull > .6 ? 'rgba(110,240,140,' : hull > .3 ? HUD_A : HUD_R;
+  const sx0 = n.x + 26, sy0 = n.y + n.h / 2 + 2;
+  x.strokeStyle = hc + '.95)'; x.fillStyle = hc + '.25)'; x.lineWidth = 1.2;
+  const part = (X, Y, W, H) => { x.beginPath(); x.rect(sx0 + X, sy0 + Y, W, H); x.fill(); x.stroke(); };
+  part(-5, -30, 10, 8); part(-11, -21, 22, 18); part(-19, -21, 7, 20); part(12, -21, 7, 20); part(-10, -2, 8, 26); part(2, -2, 8, 26);
+  x.font = '700 9px "Chakra Petch", monospace'; x.textAlign = 'left'; x.fillStyle = hc + '1)';
+  x.fillText('HULL ' + String(Math.round(G.tower)).padStart(3, ' ') + '%', n.x + 56, n.y + 16);
+  x.fillStyle = HUD_C + '.95)';
+  x.fillText('BR    ' + (R.en < 2 ? 'NO EN' : 'READY'), n.x + 56, n.y + 34);
+  x.fillStyle = SB.cd > 0 ? HUD_A + '.95)' : 'rgba(255,120,210,.95)';
+  x.fillText('SABER ' + (SB.cd > 0 ? '----' : 'READY'), n.x + 56, n.y + 48);
+  x.fillStyle = 'rgba(255,215,90,.95)'; x.fillText('G ' + G.coins, n.x + 56, n.y + 66);
+  x.restore();
+  // center screen: generator output
+  const c2 = L.mid;
+  x.fillStyle = R.en < 20 ? HUD_R + '.95)' : HUD_C + '.95)'; x.font = '700 9px "Chakra Petch", monospace'; x.textAlign = 'left';
+  x.fillText('EN', c2.x + 6, c2.y + 15); x.textAlign = 'right'; x.fillText(String(Math.round(R.en)), c2.x + c2.w - 6, c2.y + 15);
+  x.strokeStyle = HUD_C + '.5)'; x.strokeRect(c2.x + 6, c2.y + 21, c2.w - 12, 11);
+  const segs = 12; for (let i = 0; i < segs; i++) if (R.en / 100 > i / segs) { x.fillStyle = R.en < 20 ? HUD_R + '.9)' : R.boost ? HUD_A + '.95)' : HUD_C + '.9)'; x.fillRect(c2.x + 8 + i * (c2.w - 16) / segs, c2.y + 23, (c2.w - 16) / segs - 2, 7); }
+  // boot sequence
+  if (CK.boot > 0) {
+    CK.boot -= dt;
+    const lines = ['MAIN SYSTEM ............ OK', 'GENERATOR OUTPUT ....... 100%', 'FCS LINK ............... OK', 'BEAM RIFLE / SABER ..... READY', 'COMBAT MODE ENGAGED'];
+    const k = Math.floor((2 - CK.boot) / 2 * (lines.length + 1));
+    x.globalAlpha = 1; x.fillStyle = 'rgba(0,10,16,.55)'; x.fillRect(L.pt, L.top + 18, w - L.pt * 2, L.dash - L.top - 40);
+    x.fillStyle = HUD_C + '1)'; x.font = '600 10px "Chakra Petch", monospace'; x.textAlign = 'left';
+    lines.slice(0, k).forEach((t, i) => x.fillText(t, L.pt + 16, cy - 40 + i * 16));
+  }
+  // damage glitch
+  if (R.dmgT > 0) {
+    R.dmgT -= dt;
+    x.globalAlpha = 1; x.shadowBlur = 0;
+    x.fillStyle = `rgba(255,30,40,${R.dmgT * .5})`; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 7; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.12)' : 'rgba(255,60,60,.18)'; x.fillRect(0, Math.random() * h, w, 2 + Math.random() * 10); }
+  }
+  x.globalAlpha = 1;
 }
 
 // ---------- resize ----------
@@ -2260,6 +2500,7 @@ function resize() {
   PARTS.forEach(p => p.mat.uniforms.scale.value = sc);
   const halfW = Math.tan(camera.fov * Math.PI / 360) * camera.aspect * 1.6;
   barrels.forEach(b => b.g.position.x = b.s * Math.min(.75, halfW * .42));
+  if (G.mode === 'robot') drawCockpitFrame();
 }
 addEventListener('resize', resize); resize();
 
