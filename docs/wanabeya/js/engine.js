@@ -1,7 +1,7 @@
 'use strict';
 
 // ゲームの土台：描画・入力・UI・ステージの読み込み。
-// ステージの中身は stages.js に書く。
+// ステージの中身は stages/ に書く。
 
 const $ = sel => document.querySelector(sel);
 const ROOM = 4;      // 部屋は x, z とも -4〜4
@@ -18,10 +18,18 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x2b2f36);
 
-// 斜め見下ろし（アイソメトリック風）の平行投影カメラ
+// 斜め見下ろし（アイソメトリック風）の平行投影カメラ。
+// zoom = 1 で部屋全体、小さいほど寄る。寄っているときは主人公を追い、ドラッグで見回せる
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
-camera.position.set(12, 11, 12);
-camera.lookAt(0, 0.8, 0);
+const CAM_OFFSET = new THREE.Vector3(12, 11, 12);
+const CAM_HOME = new THREE.Vector3(0, 0.8, 0);
+const camTarget = CAM_HOME.clone();
+const ZOOM_MIN = 0.45;
+const ZOOM_NEAR = 0.65;  // 縦長の画面での初期値
+let zoom = 1;
+let zoomChosen = false;  // プレイヤーが自分でズームを変えたら、画面の向きが変わっても維持する
+let fitHalf = 5.2;
+let lastPan = -Infinity;
 
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x9098a4, 0.75);
 scene.add(hemiLight);
@@ -40,19 +48,53 @@ function setLighting({ hemi = 0.75, sun: sunI = 0.75, bg = 0x2b2f36 } = {}) {
   scene.background.set(bg);
 }
 
-function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h);
-  const aspect = w / h;
-  const half = Math.max(5.2, 6.8 / aspect);   // 縦長の画面でも部屋全体が入るように
-  const shift = half * 0.08;                  // 下のUIぶん、部屋を少し上に寄せる
+function applyCamera() {
+  const aspect = window.innerWidth / window.innerHeight;
+  const half = fitHalf * zoom;
+  const shift = half * 0.08;   // 下のUIぶん、部屋を少し上に寄せる
   camera.left = -half * aspect;
   camera.right = half * aspect;
   camera.top = half - shift;
   camera.bottom = -half - shift;
   camera.updateProjectionMatrix();
+  camera.position.copy(camTarget).add(CAM_OFFSET);
+  camera.lookAt(camTarget);
+}
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  const aspect = w / h;
+  fitHalf = Math.max(5.2, 6.3 / aspect);   // 縦長の画面でも部屋全体が入るように
+  if (!zoomChosen) zoom = aspect < 0.8 ? ZOOM_NEAR : 1;
+  applyCamera();
+  renderZoomButton();
 }
 window.addEventListener('resize', resize);
+
+function setZoom(z) {
+  zoom = Math.min(1, Math.max(ZOOM_MIN, z));
+  zoomChosen = true;
+  applyCamera();
+  renderZoomButton();
+}
+function renderZoomButton() {
+  const b = $('#zoomBtn');
+  if (b) b.textContent = zoom > 0.95 ? '🔍＋' : '🔍－';
+}
+
+// 寄っているときは主人公をゆっくり追う（見回した直後の数秒は追わない）
+function updateCamera() {
+  const goal = new THREE.Vector3();
+  if (zoom > 0.95) goal.copy(CAM_HOME);
+  else if (performance.now() - lastPan < 2500 || !player) goal.copy(camTarget);
+  else goal.set(player.root.position.x * 0.7, CAM_HOME.y, player.root.position.z * 0.7);   // 少し部屋の中央寄り
+  const lim = (1 - zoom) * 5;
+  goal.x = Math.min(lim, Math.max(-lim, goal.x));
+  goal.z = Math.min(lim, Math.max(-lim, goal.z));
+  camTarget.lerp(goal, 0.08);
+  applyCamera();
+}
 resize();
 
 // ===================== 形を作るヘルパー =====================
@@ -80,14 +122,19 @@ function rod(a, b, r, color) {
   return m;
 }
 
-// canvas に描いた絵を貼った板（+z 向き）。draw(ctx, 幅px, 高さpx)
-function canvasPlane(w, h, draw) {
-  const PX = 256;
+// 絵を描いた canvas（1単位 = 512px）。draw(ctx, 幅px, 高さpx)
+function makeCanvas(w, h, draw) {
+  const PX = 512;
   const cv = document.createElement('canvas');
   cv.width = Math.round(w * PX);
   cv.height = Math.round(h * PX);
   draw(cv.getContext('2d'), cv.width, cv.height);
-  const tex = new THREE.CanvasTexture(cv);
+  return cv;
+}
+
+// canvas に描いた絵を貼った板（+z 向き）
+function canvasPlane(w, h, draw) {
+  const tex = new THREE.CanvasTexture(makeCanvas(w, h, draw));
   tex.anisotropy = 4;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
   m.receiveShadow = true;
@@ -95,8 +142,16 @@ function canvasPlane(w, h, draw) {
 }
 
 // 文字を書いた板。改行で複数行
-function textPlane(text, w, h, { bg = '#fdfdf8', fg = '#23272e' } = {}) {
-  return canvasPlane(w, h, (g, W, H) => {
+function textPlane(text, w, h, opts) {
+  return canvasPlane(w, h, drawText(text, opts));
+}
+// 文字だけの canvas（拡大表示用）
+function textCanvas(text, w, h, opts) {
+  return makeCanvas(w, h, drawText(text, opts));
+}
+
+function drawText(text, { bg = '#fdfdf8', fg = '#23272e' } = {}) {
+  return (g, W, H) => {
     g.fillStyle = bg;
     g.fillRect(0, 0, W, H);
     const lines = text.split('\n');
@@ -109,7 +164,7 @@ function textPlane(text, w, h, { bg = '#fdfdf8', fg = '#23272e' } = {}) {
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     lines.forEach((ln, i) => g.fillText(ln, W / 2, H / 2 + (i - (lines.length - 1) / 2) * size * 1.2));
-  });
+  };
 }
 
 // ===================== アニメーション =====================
@@ -137,6 +192,7 @@ function loop(now) {
     return true;
   });
   updaters.forEach(u => u(now / 1000));
+  updateCamera();
   renderer.render(scene, camera);
 }
 requestAnimationFrame(loop);
@@ -263,10 +319,13 @@ async function walkTo(x, z) {
   const dist = Math.hypot(dx, dz);
   if (dist < 0.05) return;
   player.root.rotation.y = Math.atan2(dx, dz);
+  let steps = -1;
   await tween(dist / 3.5, (e, t) => {
     p.x = sx + dx * t;
     p.z = sz + dz * t;
     player.body.position.y = Math.abs(Math.sin(t * dist * 6)) * 0.08;
+    const n = Math.floor((t * dist * 6) / Math.PI);   // 体が沈むたびに足音
+    if (n !== steps) { steps = n; Sound.sfx('step'); }
   }, ease.linear);
   player.body.position.y = 0;
 }
@@ -339,6 +398,7 @@ function renderInventory() {
 function addItem(id) {
   inventory.push(id);
   renderInventory();
+  Sound.sfx('get');
   toast(`${ITEMS[id].icon} ${ITEMS[id].name} を手に入れた`);
 }
 function removeItem(id) {
@@ -359,6 +419,7 @@ function keypad(len) {
       const btn = e.target.closest('[data-k]');
       if (!btn) return;
       const k = btn.dataset.k;
+      if (k !== 'close') Sound.sfx('beep');
       if (k === 'close') finish(null);
       else if (k === 'C') { code = ''; update(); }
       else if (k === 'OK') { if (code.length === len) finish(code); }
@@ -372,6 +433,24 @@ function keypad(len) {
     update();
     el.addEventListener('click', onClick);
     el.classList.remove('hidden');
+  });
+}
+
+// ----- 拡大表示（カレンダーやメモなど、小さくて読めない物） -----
+// src は canvas か、canvasPlane / textPlane で作った板
+function closeup(src, caption = '') {
+  const cv = src.isMesh ? src.material.map.image : src;
+  const el = $('#closeup');
+  el.querySelector('img').src = cv.toDataURL();
+  el.querySelector('.caption').textContent = caption;
+  el.classList.remove('hidden');
+  return new Promise(resolve => {
+    const close = () => {
+      el.classList.add('hidden');
+      el.removeEventListener('click', close);
+      resolve();
+    };
+    el.addEventListener('click', close);
   });
 }
 
@@ -427,6 +506,7 @@ function loadStage(index) {
   busy = false;
   $('#result').classList.add('hidden');
   $('#keypad').classList.add('hidden');
+  $('#closeup').classList.add('hidden');
   setLighting();
 
   const def = STAGES[index];
@@ -439,7 +519,12 @@ function loadStage(index) {
   registerObj('player', player.root, { onTap: async () => say('（自分だ。 …なんだか嫌な予感がする）') });
 
   $('#stageTitle').textContent = def.title;
+  Sound.music(def.music || 'normal');
   def.setup(api);
+  // 寄りのときは最初から主人公を映す
+  lastPan = -Infinity;
+  if (zoom <= 0.95) camTarget.set(player.root.position.x * 0.7, CAM_HOME.y, player.root.position.z * 0.7);
+  else camTarget.copy(CAM_HOME);
   renderInventory();
   say(def.intro);
 }
@@ -447,7 +532,9 @@ function loadStage(index) {
 async function clearStage() {
   current.ended = true;
   saveProgress(current.index + 1);
+  Sound.stopMusic();
   await wait(0.3);
+  Sound.sfx('clear');
   const last = current.index === STAGES.length - 1;
   if (last) {
     showResult('clear', '回避成功！', `全${STAGES.length}ステージクリア！ おめでとう！`, [{ label: 'タイトルへ', fn: showTitle }]);
@@ -459,7 +546,9 @@ async function clearStage() {
 
 async function failStage(big, sub) {
   current.ended = true;
+  Sound.stopMusic();
   await wait(0.5);
+  Sound.sfx('fail');
   const idx = current.index;
   showResult('fail', big, sub, [{ label: 'もう一度 ↺', fn: () => loadStage(idx) }]);
 }
@@ -480,6 +569,7 @@ function showTitle() {
     });
   }
   $('#title').classList.remove('hidden');
+  Sound.music('normal');
 }
 
 function startGame(index) {
@@ -496,9 +586,10 @@ const api = {
   room: o => buildRoom(current.root, o),
   door: buildDoor,
   lighting: setLighting,
-  say, addItem, removeItem, hasItem, keypad,
+  say, addItem, removeItem, hasItem, keypad, closeup,
   walkTo, face, exitThrough,
   tween, wait, ease, burst,
+  sfx: name => Sound.sfx(name),
   update: fn => updaters.push(fn),
   clear: clearStage,
   fail: failStage,
@@ -513,7 +604,7 @@ function visibleChain(o) {
   return true;
 }
 
-function pick(clientX, clientY) {
+function rayHit(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
@@ -526,6 +617,21 @@ function pick(clientX, clientY) {
   return null;
 }
 
+// タップ位置の物を探す。床に当たったときは周り（最大30px）も探して、
+// 少し外れたタップでも近くの物を調べられるようにする（指は太いので）
+function pick(clientX, clientY) {
+  const hit = rayHit(clientX, clientY);
+  if (hit && hit.id !== '__floor') return hit;
+  for (const radius of [10, 20, 30]) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      const near = rayHit(clientX + Math.cos(a) * radius, clientY + Math.sin(a) * radius);
+      if (near && near.id !== '__floor' && near.id !== 'player') return near;
+    }
+  }
+  return hit;
+}
+
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const worldPos = new THREE.Vector3();
 
@@ -535,7 +641,10 @@ async function interact(hit, itemId) {
   busy = true;
   try {
     if (hit.id === '__floor') {
-      if (itemId) return say(`${ITEMS[itemId].name}は ここでは使えないようだ。`);
+      if (itemId) {
+        Sound.sfx('nope');
+        return say(`${ITEMS[itemId].name}は ここでは使えないようだ。`);
+      }
       await walkTo(clamp(hit.point.x, -3.5, 3.5), clamp(hit.point.z, -3.5, 3.5));
       return;
     }
@@ -549,8 +658,12 @@ async function interact(hit, itemId) {
     if (o.onArrive && !(await o.onArrive())) return;
     if (itemId) {
       const fn = o.onItem && o.onItem[itemId];
-      if (fn) await fn();
-      else say(`${ITEMS[itemId].name}は ここでは使えないようだ。`);
+      if (fn) {
+        await fn();
+      } else {
+        Sound.sfx('nope');
+        say(`${ITEMS[itemId].name}は ここでは使えないようだ。`);
+      }
     } else if (o.onTap) {
       await o.onTap();
     }
@@ -559,17 +672,77 @@ async function interact(hit, itemId) {
   }
 }
 
-// ----- 3D画面のタップ -----
+// ----- 3D画面：タップで調べる / ドラッグで見回す / ピンチ・ホイールでズーム -----
+const pointers = new Map();
 let down = null;
-canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
-canvas.addEventListener('pointerup', e => {
+let gesture = null;   // null | 'pan' | { pinch: 距離, zoom }
+
+const panRight = new THREE.Vector3(CAM_OFFSET.z, 0, -CAM_OFFSET.x).normalize();   // 画面の右（地面上）
+const panForward = new THREE.Vector3(-CAM_OFFSET.x, 0, -CAM_OFFSET.z).normalize(); // 画面の上（地面上）
+const CAM_SIN = CAM_OFFSET.y / CAM_OFFSET.length();
+
+function panBy(dx, dy) {
+  const perPx = (camera.right - camera.left) / canvas.getBoundingClientRect().width;
+  camTarget.addScaledVector(panRight, -dx * perPx);
+  camTarget.addScaledVector(panForward, (dy * perPx) / CAM_SIN);
+  lastPan = performance.now();
+}
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) {
+    down = { x: e.clientX, y: e.clientY };
+    gesture = null;
+  } else if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    gesture = { pinch: Math.hypot(a.x - b.x, a.y - b.y), zoom };
+    down = null;
+  }
+});
+
+canvas.addEventListener('pointermove', e => {
+  const prev = pointers.get(e.pointerId);
+  if (!prev) return;
+  const cur = { x: e.clientX, y: e.clientY };
+  pointers.set(e.pointerId, cur);
+  if (gesture && gesture.pinch && pointers.size >= 2) {
+    const [a, b] = [...pointers.values()];
+    setZoom((gesture.zoom * gesture.pinch) / Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)));
+    lastPan = performance.now();
+    return;
+  }
   if (!down || drag) return;
+  if (!gesture && zoom <= 0.95 && Math.hypot(cur.x - down.x, cur.y - down.y) > 10) gesture = 'pan';
+  if (gesture === 'pan') panBy(cur.x - prev.x, cur.y - prev.y);
+});
+
+canvas.addEventListener('pointercancel', e => {
+  pointers.delete(e.pointerId);
+  down = null;
+  gesture = null;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  setZoom(zoom * (e.deltaY > 0 ? 1.1 : 0.9));
+}, { passive: false });
+
+canvas.addEventListener('pointerup', e => {
+  pointers.delete(e.pointerId);
+  const wasGesture = gesture !== null;
+  if (pointers.size === 0) gesture = null;
+  if (!down || drag || wasGesture) {
+    if (pointers.size === 0) down = null;
+    return;
+  }
   const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
   down = null;
   if (moved > 10) return;
   ripple(e.clientX, e.clientY);
   const hit = pick(e.clientX, e.clientY);
   if (!hit) return;
+  Sound.sfx('tap');
   if (selectedItem) {
     const id = selectedItem;
     selectedItem = null;
@@ -610,6 +783,7 @@ window.addEventListener('pointerup', e => {
   drag = null;
   ghost.classList.remove('show');
   if (!d.moved) {
+    Sound.sfx('tap');
     selectedItem = selectedItem === d.id ? null : d.id;
     renderInventory();
     if (selectedItem) say(`${ITEMS[d.id].name}：使いたい場所をタップしよう。`);

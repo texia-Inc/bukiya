@@ -37,7 +37,10 @@ STAGES.push({
     trap.add(trapKey);
     trap.position.set(MX, 0, MZ);
 
-    const snap = () => c.tween(0.12, e => { bar.rotation.x = Math.PI * e; }, c.ease.in);
+    const snap = async () => {
+      await c.tween(0.12, e => { bar.rotation.x = Math.PI * e; }, c.ease.in);
+      c.sfx('snap');
+    };
 
     c.obj('trap', trap, {
       stand: [MX, MZ + 0.8],
@@ -48,6 +51,7 @@ STAGES.push({
         c.say('そーっと手をのばして…');
         await c.wait(0.5);
         await snap();
+        c.sfx('bonk');
         stars(c);
         const b = c.player.body;
         await c.tween(0.6, (e, t) => { b.position.y = Math.abs(Math.sin(t * Math.PI * 4)) * 0.3; }, c.ease.linear);
@@ -88,9 +92,9 @@ STAGES.push({
       onTap: async () => c.say('流し台だ。 ピカピカに磨かれている。'),
     });
 
-    const drawer = place(new THREE.Group(), 2.9, 0.62, -3.26);
-    drawer.add(place(box(0.7, 0.2, 0.04, 0xd5d9df), 0, 0, 0));
-    drawer.add(place(box(0.2, 0.03, 0.03, 0x6c727c), 0, 0, 0.03));
+    const drawer = place(new THREE.Group(), 2.9, 0.62, -3.24);
+    drawer.add(place(box(0.8, 0.32, 0.08, 0xd5d9df), 0, 0, 0));
+    drawer.add(place(box(0.24, 0.04, 0.04, 0x6c727c), 0, 0, 0.05));
     const tongsIn = place(box(0.05, 0.02, 0.4, 0xc0c6cd, steel), 0, 0.09, -0.2);
     tongsIn.visible = false;
     drawer.add(tongsIn);
@@ -100,7 +104,8 @@ STAGES.push({
         if (s.gotTongs) return c.say('フォークとスプーンしか残っていない。');
         s.gotTongs = true;
         tongsIn.visible = true;
-        await c.tween(0.35, e => { drawer.position.z = -3.26 + 0.35 * e; });
+        c.sfx('drawer');
+        await c.tween(0.35, e => { drawer.position.z = -3.24 + 0.35 * e; });
         await c.wait(0.3);
         tongsIn.visible = false;
         c.addItem('tongs');
@@ -125,7 +130,10 @@ STAGES.push({
     table.position.set(-1.0, 0, 2.2);
     c.obj('table', table, {
       stand: [-1.0, 1.4],
-      onTap: async () => c.say('置き手紙：「ネズミが出るので、ワナを仕掛けておきました。 素手でさわらないように」'),
+      onTap: async () => {
+        c.say('置き手紙：「ネズミが出るので、ワナを仕掛けておきました。 素手でさわらないように」');
+        await c.closeup(textCanvas('ネズミが出るので、\nワナを仕掛けておきました。\n素手でさわらないように', 1.2, 0.9), '置き手紙');
+      },
     });
 
     // ---- ドア ----

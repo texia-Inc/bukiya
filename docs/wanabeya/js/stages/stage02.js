@@ -45,6 +45,7 @@ STAGES.push({
           s.plank = true;
           plank.visible = true;
           await c.tween(0.25, e => { plank.position.y = 0.4 - 0.37 * e; }, c.ease.in);
+          c.sfx('thud');
           c.say('板を渡した。 これで床が抜けても大丈夫…なはず。');
         },
       },
@@ -52,6 +53,8 @@ STAGES.push({
 
     const fallIn = async () => {
       c.say('ガコンッ！？');
+      c.sfx('crash');
+      c.sfx('fall');
       const p = c.player.root.position;
       c.tween(0.3, e => { tile.rotation.z = -1.5 * e; }, c.ease.in);
       await c.wait(0.12);
@@ -103,6 +106,7 @@ STAGES.push({
       held.position.set(0.28, 0.6, 0.12);
       c.player.body.add(held);
       for (let i = 0; i < 2; i++) {
+        c.sfx('whoosh');
         await c.tween(0.18, e => { held.rotation.x = 0.1 + 0.4 * e; });
         await c.tween(0.18, e => { held.rotation.x = 0.5 - 0.4 * e; });
       }
@@ -113,6 +117,7 @@ STAGES.push({
         key.rotation.z = e * 6;
       }, c.ease.in);
       key.rotation.set(-Math.PI / 2, 0, 0.6);
+      c.sfx('sparkle');
       c.burst(key.position.clone(), 0xe8b923, 10);
       c.player.body.remove(held);
       c.say('ほうきで突っついたら、鍵が落ちてきた！');
@@ -159,6 +164,7 @@ STAGES.push({
         if (s.lockerOpen) return c.say('ロッカーはもう空っぽだ。');
         s.lockerOpen = true;
         broomIn.visible = true;
+        c.sfx('door');
         await c.tween(0.45, e => { lockDoor.rotation.y = -1.9 * e; });
         await c.wait(0.3);
         broomIn.visible = false;

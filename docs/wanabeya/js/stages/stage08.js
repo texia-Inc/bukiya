@@ -28,7 +28,7 @@ STAGES.push({
       g.fillStyle = grad;
       g.fillRect(px, py, W - px * 2, H - py);
       g.strokeStyle = 'rgba(0,0,0,0.18)';
-      g.lineWidth = 6;
+      g.lineWidth = 12;
       g.strokeRect(px + W * 0.08, py + H * 0.06, W - px * 2 - W * 0.16, H * 0.32);
       g.strokeRect(px + W * 0.08, py + H * 0.45, W - px * 2 - W * 0.16, H * 0.38);
       g.fillStyle = '#d0d4da';
@@ -43,6 +43,7 @@ STAGES.push({
         c.say('よし、出口だ！');
         const p = c.player.root.position;
         await c.tween(0.2, e => { p.z = -3.0 - 0.5 * e; }, c.ease.in);
+        c.sfx('bonk');
         stars(c);
         c.say('ゴンッ！！');
         await c.tween(0.2, e => { p.z = -3.5 + 0.4 * e; });
@@ -71,8 +72,10 @@ STAGES.push({
         if (s.shelfMoved) return c.say('本がぎっしり並んでいる。');
         c.say('1冊だけ飛び出している本がある…。 押しこんでみた。');
         await c.tween(0.3, e => { sticking.position.z = 0.12 - 0.12 * e; });
+        c.sfx('click');
         await c.wait(0.3);
         c.say('ゴゴゴゴゴ……');
+        c.sfx('rumble');
         await c.tween(1.4, e => { shelf.position.x = DX - SHIFT * e; }, c.ease.inOut);
         s.shelfMoved = true;
         c.say('本棚が動いて、奥から本物のドアが現れた！');
@@ -108,7 +111,10 @@ STAGES.push({
     painting.position.set(-3.97, 1.7, -0.6);
     c.obj('painting', painting, {
       stand: [-3.0, -0.6],
-      onTap: async () => c.say('風景画だ。 空の雲が「2 5 8 1」の形に見える…。'),
+      onTap: async () => {
+        c.say('風景画だ。 空の雲が「2 5 8 1」の形に見える…。');
+        await c.closeup(art, '風景画');
+      },
     });
 
     // ---- メモの乗った小さなテーブル ----
@@ -122,6 +128,7 @@ STAGES.push({
       onTap: async () => {
         s.readMemo = true;
         c.say('メモ：「本物の出口は 本の向こう。 番号は 絵の数字を 逆から」');
+        await c.closeup(textCanvas('本物の出口は 本の向こう。\n番号は\n絵の数字を 逆から', 1.2, 0.9), 'メモ');
       },
     });
   },

@@ -9,6 +9,7 @@ Object.assign(ITEMS, {
 STAGES.push({
   title: 'STAGE 4　まっくらな部屋',
   intro: '真っ暗で ほとんど何も見えない…。 どこかで何かが ぼんやり光っている。',
+  music: 'dark',
 
   setup(c) {
     const s = c.state;
@@ -44,10 +45,12 @@ STAGES.push({
       onTap: async () => {
         if (s.light) return c.say('引き出しは空っぽだ。 光るシールが貼ってある。');
         torch.visible = true;
+        c.sfx('drawer');
         await c.tween(0.35, e => { drawer.position.x = 0.31 + 0.35 * e; });
         await c.wait(0.25);
         torch.visible = false;
         s.light = true;
+        c.sfx('click');
         const light = new THREE.PointLight(0xfff1d0, 1.6, 6, 1.5);
         light.position.set(0, 1.7, 0.3);
         c.player.body.add(light);
@@ -63,7 +66,12 @@ STAGES.push({
     sw.position.set(-3.98, 1.3, 1.8);
     c.obj('switch', sw, {
       stand: [-3.1, 1.8],
-      onTap: async () => c.say('電気のスイッチだ。 カチカチ…。 電球が切れているらしい。'),
+      onTap: async () => {
+        c.sfx('click');
+        await c.wait(0.15);
+        c.sfx('click');
+        c.say('電気のスイッチだ。 カチカチ…。 電球が切れているらしい。');
+      },
     });
 
     // ---- ベッド ----
@@ -104,6 +112,7 @@ STAGES.push({
       onArrive: async () => {
         if (s.bananaGone) return true;
         c.say('ツルッ――');
+        c.sfx('slip');
         c.tween(0.5, e => banana.position.set(DX, 0.01 + Math.sin(e * Math.PI) * 0.8, -2.95 + 1.2 * e), c.ease.linear);
         await fallBack(c);
         stars(c);
@@ -122,12 +131,14 @@ STAGES.push({
         if (!s.light) return c.say('ゴミ箱…かな？ 暗くて中が見えない。');
         if (s.gotKey) return c.say('もう何も入っていない。');
         s.gotKey = true;
+        c.sfx('rustle');
         c.addItem('key');
         c.say('ゴミ箱をあさったら… 鍵が出てきた！');
       },
       onItem: {
         banana: async () => {
           c.removeItem('banana');
+          c.sfx('rustle');
           c.say('バナナの皮をゴミ箱に捨てた。 ゴミはゴミ箱へ。');
         },
       },

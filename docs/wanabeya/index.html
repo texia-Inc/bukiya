@@ -16,6 +16,8 @@
   <div id="topbar">
     <div id="stageTitle"></div>
     <div class="tools">
+      <button id="zoomBtn" type="button" aria-label="寄り・全体の切り替え">🔍</button>
+      <button id="soundBtn" type="button" aria-label="音のオン・オフ">🔊</button>
       <button id="hintBtn" type="button">💡 ヒント</button>
       <button id="retryBtn" type="button" aria-label="やり直す">↺</button>
     </div>
@@ -50,6 +52,14 @@
   </div>
 </div>
 
+<div id="closeup" class="overlay hidden">
+  <div class="panel closeup">
+    <img alt="">
+    <div class="caption"></div>
+    <div class="note">タップで閉じる</div>
+  </div>
+</div>
+
 <div id="result" class="overlay hidden">
   <div class="panel result">
     <div class="big"></div>
@@ -64,10 +74,12 @@
     <div class="tagline">気になる所をタップして調べよう。<br>アイテムはドラッグして使う。<br>仕掛けられたワナを回避して脱出せよ！</div>
     <button id="startBtn" class="primary" type="button">はじめる</button>
     <div id="stageSelect"></div>
+    <button id="titleSoundBtn" class="soundToggle" type="button"></button>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/audio.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/stages/common.js"></script>
 <script src="js/stages/stage01.js"></script>

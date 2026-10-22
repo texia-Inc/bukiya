@@ -54,6 +54,7 @@ STAGES.push({
 
     const pounce = async () => {
       c.say('ワンワンッ！！');
+      c.sfx('bark');
       const p = c.player.root.position, d = dog.group.position;
       const sx = d.x, sz = d.z;
       await c.tween(0.3, e => {
@@ -74,6 +75,7 @@ STAGES.push({
       onTap: async () => {
         if (s.dogAway) return c.say('ボールに夢中で、こっちには見向きもしない。');
         s.dogTaps = (s.dogTaps || 0) + 1;
+        if (s.dogTaps === 2) c.sfx('bark');
         if (s.dogTaps === 1) c.say('人なつっこそうな犬がドアの前でおすわりしている。 近づいたら飛びつかれそう…。');
         else c.say('しっぽをブンブン振っている。 遊んでほしいみたいだ。');
       },
@@ -86,6 +88,7 @@ STAGES.push({
           c.root.add(b);
           const tx = 3.2, tz = 2.9;
           c.say('それっ！ ボールを投げた！');
+          c.sfx('whoosh');
           await c.tween(0.7, e => b.position.set(
             p.x + (tx - p.x) * e,
             1.0 + Math.sin(e * Math.PI) * 1.5 - 0.88 * e,
@@ -94,6 +97,7 @@ STAGES.push({
           const d = dog.group.position, sx = d.x, sz = d.z;
           const ex = tx - 0.3, ez = tz - 0.7;
           dog.group.rotation.y = Math.atan2(ex - sx, ez - sz);
+          c.sfx('bark');
           await c.tween(1.0, (e, t) => {
             d.x = sx + (ex - sx) * t;
             d.z = sz + (ez - sz) * t;
@@ -129,6 +133,7 @@ STAGES.push({
       onTap: async () => {
         if (s.gotBall) return c.say('ぬいぐるみしか残っていない。');
         s.gotBall = true;
+        c.sfx('drawer');
         await c.tween(0.35, e => { lid.rotation.z = 1.7 * e; });
         await c.wait(0.25);
         toyBall.visible = false;
@@ -146,11 +151,15 @@ STAGES.push({
     const roofR = place(box(0.65, 0.06, 1.0, 0x6b3f2a), 0.25, 0.86, 0);
     roofR.rotation.z = -0.6;
     house.add(roofL, roofR);
-    house.add(place(textPlane('ポチ\n11.22 生まれ', 0.5, 0.2), 0, 0.6, 0.452));
+    const plate = textPlane('ポチ\n11.22 生まれ', 0.5, 0.2);
+    house.add(place(plate, 0, 0.6, 0.452));
     house.position.set(3.0, 0, -3.3);
     c.obj('doghouse', house, {
       stand: [3.0, -2.2],
-      onTap: async () => c.say('犬小屋だ。 表札に「ポチ　11.22 生まれ」と書いてある。'),
+      onTap: async () => {
+        c.say('犬小屋だ。 表札に「ポチ　11.22 生まれ」と書いてある。');
+        await c.closeup(plate, '犬小屋の表札');
+      },
     });
 
     const bowl = new THREE.Group();

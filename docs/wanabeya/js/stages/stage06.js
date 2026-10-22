@@ -26,7 +26,12 @@ STAGES.push({
       c.root.add(sp);
       sparks.push(sp);
     }
-    c.update(() => {
+    let nextCrackle = 0;
+    c.update(t => {
+      if (s.power && t > nextCrackle) {
+        c.sfx('crackle');
+        nextCrackle = t + 0.3 + Math.random() * 0.9;
+      }
       sparks.forEach(sp => {
         sp.visible = s.power && Math.random() < 0.35;
         sp.position.set(KNOB.x + (Math.random() - 0.5) * 0.3, KNOB.y + (Math.random() - 0.5) * 0.3, KNOB.z + Math.random() * 0.15);
@@ -62,6 +67,7 @@ STAGES.push({
         if (!s.power) return c.say('ブレーカーは落ちている。 部屋は静かだ。');
         s.power = false;
         await c.tween(0.25, e => { lever.rotation.x = -0.3 + 2.5 * e; });
+        c.sfx('clunk');
         c.lighting({ hemi: 0.55, sun: 0.6 });
         c.say('ガチャン。 ブレーカーを落とした。 バチバチ音が止まった。');
       },
@@ -69,6 +75,7 @@ STAGES.push({
         smallKey: async () => {
           c.removeItem('smallKey');
           s.panelOpen = true;
+          c.sfx('unlock');
           await c.tween(0.4, e => { cover.rotation.y = -1.8 * e; });
           c.say('分電盤のフタが開いた。 中に赤いレバーがある。');
         },
@@ -82,6 +89,7 @@ STAGES.push({
       onTap: async () => {
         if (!s.power) return openAndExit(c, door, DX);
         c.say('ビリビリビリッ！！！');
+        c.sfx('zap');
         const b = c.player.body, shirt = c.player.shirtMat;
         await c.tween(1.0, (e, t) => {
           b.position.x = (Math.random() - 0.5) * 0.08;
@@ -110,6 +118,7 @@ STAGES.push({
         if (s.gotSmallKey) return c.say('ふかふかのじゅうたん。');
         s.gotSmallKey = true;
         smallKey.visible = true;
+        c.sfx('rustle');
         await c.wait(0.4);
         smallKey.visible = false;
         c.addItem('smallKey');

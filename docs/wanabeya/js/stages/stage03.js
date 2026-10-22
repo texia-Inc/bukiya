@@ -55,8 +55,10 @@ STAGES.push({
           c.removeItem('scissors');
           s.cut = true;
           c.say('チョキン！');
+          c.sfx('snip');
           ropes.forEach(r => { r.visible = false; });
           await c.tween(0.45, e => { tarai.position.y = 2.55 - 2.44 * e; }, c.ease.in);
+          c.sfx('clang');
           c.burst(new THREE.Vector3(DX, 0.1, TZ), 0xc0c6cd, 14);
           await c.tween(0.35, e => {
             tarai.position.x = DX - 1.0 * e;
@@ -76,7 +78,9 @@ STAGES.push({
       onArrive: async () => {
         if (s.cut) return true;
         c.say('…ん？ 上から何か――');
+        c.sfx('whoosh');
         await c.tween(0.3, e => { tarai.position.y = 2.55 - 0.97 * e; }, c.ease.in);
+        c.sfx('clang');
         stars(c);
         await c.tween(0.15, e => { c.player.body.scale.y = 1 - 0.2 * e; });
         c.say('ガーンッ！！');
@@ -139,7 +143,7 @@ STAGES.push({
         g.fillText(String(d), x, y);
         if (d === 14) {
           g.strokeStyle = '#d94b4b';
-          g.lineWidth = 5;
+          g.lineWidth = 10;
           g.beginPath();
           g.arc(x, y, ch * 0.42, 0, Math.PI * 2);
           g.stroke();
@@ -150,7 +154,10 @@ STAGES.push({
     calendar.position.set(-3.98, 1.7, 0.8);
     c.obj('calendar', calendar, {
       stand: [-3.0, 0.8],
-      onTap: async () => c.say('3月のカレンダー。 14日に赤い丸がついていて「大事な日」と書いてある。'),
+      onTap: async () => {
+        c.say('3月のカレンダー。 14日に赤い丸がついていて「大事な日」と書いてある。');
+        await c.closeup(calendar, '3月のカレンダー');
+      },
     });
 
     // ---- ゴミ箱 ----
@@ -158,7 +165,10 @@ STAGES.push({
     bin.position.set(-3.3, 0.25, 2.8);
     c.obj('bin', bin, {
       stand: [-2.6, 2.4],
-      onTap: async () => c.say('ゴミ箱の中に「タライ 10個入り」の空き箱が…。 イヤな予感しかしない。'),
+      onTap: async () => {
+        c.sfx('rustle');
+        c.say('ゴミ箱の中に「タライ 10個入り」の空き箱が…。 イヤな予感しかしない。');
+      },
     });
   },
 
