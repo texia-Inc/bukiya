@@ -66,6 +66,7 @@ STAGES.push({
     // ふたが飛び、グローブが reach（0〜1）の所まで伸びる
     const springOut = async reach => {
       c.say('ボヨヨーーンッ！！');
+      c.sfx('boing');
       c.tween(0.3, e => { lid.position.y = 0.36 + 0.6 * e; lid.rotation.x = -1.2 * e; });
       glove.visible = spring.visible = true;
       const target = new THREE.Vector3().lerpVectors(base, faceAt, reach);
@@ -84,8 +85,12 @@ STAGES.push({
           return c.say('グローブをよけて、箱の中の鍵を取り出した！');
         }
         s.boxTaps = (s.boxTaps || 0) + 1;
-        if (s.boxTaps === 1) return c.say('プレゼントの箱だ。 「あけてね♡」…。 耳をすますと、中から「ビヨン…」と音がする。');
+        if (s.boxTaps === 1) {
+          c.say('プレゼントの箱だ。 「あけてね♡」…。 耳をすますと、中から「ビヨン…」と音がする。');
+          return c.closeup(tag, 'プレゼントの札');
+        }
         await springOut(1);
+        c.sfx('bonk');
         stars(c);
         await fallBack(c);
         c.fail('ドッキリ大成功…', 'びっくり箱のパンチが顔面に…。 離れたところから開けられないかな？');
@@ -132,6 +137,7 @@ STAGES.push({
         if (s.closetOpen) return c.say('パーティー用の帽子しか残っていない。');
         s.closetOpen = true;
         handIn.visible = true;
+        c.sfx('door');
         await c.tween(0.45, e => { doorL.rotation.y = 1.6 * e; doorR.rotation.y = -1.6 * e; });
         await c.wait(0.3);
         handIn.visible = false;
@@ -156,7 +162,10 @@ STAGES.push({
     balloons.position.set(-3.0, 0, -3.0);
     c.obj('balloons', balloons, {
       stand: [-2.2, -2.2],
-      onTap: async () => c.say('風船だ。 割ったらびっくりしそう…。 そっとしておこう。'),
+      onTap: async () => {
+        c.sfx('rustle');
+        c.say('風船だ。 割ったらびっくりしそう…。 そっとしておこう。');
+      },
     });
   },
 

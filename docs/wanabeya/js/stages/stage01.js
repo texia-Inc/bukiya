@@ -7,6 +7,45 @@ Object.assign(ITEMS, {
   umbrella: { name: '傘',   icon: '☂️' },
 });
 
+// 拡大表示用の時計の絵（min: 0時0分からの分）
+function drawClock(min) {
+  return makeCanvas(1, 1, (g, W) => {
+    const r = W * 0.44, cx = W / 2, cy = W / 2;
+    g.fillStyle = '#f3f4f6';
+    g.fillRect(0, 0, W, W);
+    g.fillStyle = '#ffffff';
+    g.strokeStyle = '#3a3f47';
+    g.lineWidth = W * 0.04;
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#3a3f47';
+    g.font = `800 ${W * 0.08}px 'M PLUS Rounded 1c', sans-serif`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    for (let i = 1; i <= 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      g.fillText(String(i), cx + Math.sin(a) * r * 0.78, cy - Math.cos(a) * r * 0.78);
+    }
+    const hand = (turn, len, width) => {
+      g.lineWidth = width;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx, cy);
+      g.lineTo(cx + Math.sin(turn * Math.PI * 2) * len, cy - Math.cos(turn * Math.PI * 2) * len);
+      g.stroke();
+    };
+    g.strokeStyle = '#22262c';
+    hand(((min / 60) % 12) / 12, r * 0.5, W * 0.035);
+    hand((min % 60) / 60, r * 0.72, W * 0.022);
+    g.fillStyle = '#d04848';
+    g.beginPath();
+    g.arc(cx, cy, W * 0.025, 0, Math.PI * 2);
+    g.fill();
+  });
+}
+
 STAGES.push({
   title: 'STAGE 1　目覚めの部屋',
   intro: '……目が覚めると、知らない無機質な部屋にいた。 壁の時計が妙に気になる。',
@@ -48,14 +87,18 @@ STAGES.push({
       onTap: async () => {
         if (!s.clockRunning) c.say('壁掛け時計。 針が止まっている…。 裏の電池ボックスが空っぽだ。');
         else c.say('時計は 7時20分 を指したまま止まっている。');
+        await c.closeup(drawClock(s.clockRunning ? 7 * 60 + 20 : 10 * 60 + 10), '壁掛け時計');
       },
       onItem: {
         battery: async () => {
           c.removeItem('battery');
           c.say('電池を入れてみた…');
+          c.sfx('ticks');
           await c.tween(2.2, e => setTime(610 + 550 * e), c.ease.out);
+          c.sfx('ding');
           s.clockRunning = true;
           c.say('時計が勢いよく回り出し… 7時20分 でピタリと止まった。');
+          await c.closeup(drawClock(7 * 60 + 20), '壁掛け時計');
         },
       },
     });
@@ -76,6 +119,7 @@ STAGES.push({
       onTap: async () => {
         if (s.drawerOpen) return c.say('引き出しはもう空っぽだ。');
         s.drawerOpen = true;
+        c.sfx('drawer');
         await c.tween(0.4, e => { drawer.position.x = 0.5 * e; });
         await c.wait(0.25);
         battery.visible = false;
@@ -88,7 +132,10 @@ STAGES.push({
     memo.rotation.y = 0.3;
     c.obj('memo', memo, {
       stand: [-2.4, 1.1],
-      onTap: async () => c.say('メモがある。「扉の番号は、時計が知っている」'),
+      onTap: async () => {
+        c.say('メモがある。「扉の番号は、時計が知っている」');
+        await c.closeup(textCanvas('扉の番号は、\n時計が知っている', 1.2, 0.8), 'メモ');
+      },
     });
 
     // ---- ベッド ----
@@ -120,6 +167,7 @@ STAGES.push({
       s.umbrella = true;
       const u = c.player.umbrella;
       u.visible = true;
+      c.sfx('whoosh');
       await c.tween(0.3, e => u.scale.setScalar(0.3 + 0.7 * e), c.ease.out);
       c.say('傘をさした。 …室内で。');
     };
@@ -136,6 +184,7 @@ STAGES.push({
       onTap: async () => {
         if (!s.unlocked) return c.say('鍵がかかっている。 横にテンキーがあるようだ。');
         c.say('ドアを開けた――');
+        c.sfx('door');
         c.tween(0.7, e => { door.pivot.rotation.y = 1.4 * e; });
         await c.wait(0.25);
 
@@ -154,6 +203,7 @@ STAGES.push({
           blob.scale.set(1, 1 + e, 1);
         }, c.ease.in);
         c.root.remove(blob);
+        c.sfx('splash');
         c.burst(new THREE.Vector3(p.x, ty, p.z), 0x4aa3e0, s.umbrella ? 28 : 14);
 
         const bx = bucket.position.x, by = bucket.position.y, bz = bucket.position.z;
@@ -164,6 +214,7 @@ STAGES.push({
             bucket.rotation.x = 2.6 + (Math.PI - 2.6) * e;
           }, c.ease.in);
           c.player.shirtMat.color.set(0x4f86c6);
+          c.sfx('clang');
           c.say('バシャーッ！！');
           return c.fail('ドッキリ大成功…', 'バケツの水で びしょぬれ。 ドアの上をよく見て、身を守る方法を考えよう。');
         }
@@ -172,6 +223,7 @@ STAGES.push({
           bucket.position.set(bx + 1.2 * e, by + (0.2 - by) * e + Math.sin(e * Math.PI) * 0.6, bz + 1.0 * e);
           bucket.rotation.z = -4 * e;
         }, c.ease.linear);
+        c.sfx('clang');
         c.say('傘で華麗にガード！');
         await c.wait(0.6);
         c.player.umbrella.visible = false;

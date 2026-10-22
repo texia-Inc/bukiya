@@ -9,6 +9,7 @@ Object.assign(ITEMS, {
 STAGES.push({
   title: 'STAGE 10　仕掛け人の部屋',
   intro: 'ここが最後の部屋…？ ドアの上に、物騒な機械が付いている。',
+  music: 'final',
 
   setup(c) {
     const s = c.state;
@@ -39,6 +40,7 @@ STAGES.push({
       c.removeItem('tray');
       s.tray = true;
       held.visible = true;
+      c.sfx('whoosh');
       c.say('おぼんを顔の前に構えた。 …これで何が飛んできても大丈夫？');
     };
     c.obj('player', c.player.root, { onItem: { tray: useTray } });
@@ -50,8 +52,10 @@ STAGES.push({
       onTap: async () => {
         if (!s.unlocked) return c.say('鍵がかかっている。');
         c.say('ドアを開けた――');
+        c.sfx('door');
         await c.tween(0.6, e => { door.pivot.rotation.y = 1.4 * e; });
         c.say('ウィーン… ガシャッ！');
+        c.sfx('whirr');
         await c.tween(0.15, e => { machine.position.z = -3.75 - 0.08 * Math.sin(e * Math.PI); });
 
         const p = c.player.root.position;
@@ -62,7 +66,9 @@ STAGES.push({
         pie.children[1].scale.y = 0.5;
         pie.rotation.x = Math.PI / 2;
         c.root.add(pie);
+        c.sfx('whoosh');
         await c.tween(0.25, e => pie.position.lerpVectors(from, to, e), c.ease.in);
+        c.sfx('splat');
         c.burst(to, 0xffffff, s.tray ? 24 : 14);
 
         if (!s.tray) {
@@ -76,6 +82,7 @@ STAGES.push({
         c.say('ベチャッ！ …おぼんでガード！ 完全回避だ！');
         await c.wait(0.6);
         held.visible = false;
+        c.sfx('pop');
         const colors = [0xe0474c, 0x4d7cc9, 0xffd84a, 0x5aa36b, 0xc77fa0];
         colors.forEach((col, i) => c.burst(new THREE.Vector3(DX + (i - 2) * 0.5, 2.2, -2.6), col, 14));
         await c.exitThrough(DX);
@@ -85,6 +92,7 @@ STAGES.push({
         key: async () => {
           c.removeItem('key');
           s.unlocked = true;
+          c.sfx('unlock');
           c.say('カチャリ。 鍵が開いた！');
         },
         tray: async () => c.say('ドアにおぼんを当てても意味がない。 自分が持たないと。'),
@@ -104,11 +112,14 @@ STAGES.push({
         s.buttonTaps = (s.buttonTaps || 0) + 1;
         if (s.buttonTaps === 1) return c.say('「ぜったいに押すな」と書いてある 大きな赤いボタン。');
         c.say('…押すなと言われると、押したくなる。 ポチッ。');
+        c.sfx('click');
         await c.tween(0.15, e => { btn.position.y = 0.94 - 0.04 * e; });
+        c.sfx('whoosh');
         const tarai = makeTarai();
         const p = c.player.root.position;
         c.root.add(tarai);
         await c.tween(0.4, e => tarai.position.set(p.x, 4.5 - (4.5 - 1.56) * e, p.z), c.ease.in);
+        c.sfx('clang');
         stars(c);
         await c.tween(0.15, e => { c.player.body.scale.y = 1 - 0.2 * e; });
         c.say('ガーンッ！！');
@@ -121,7 +132,10 @@ STAGES.push({
     poster.position.set(-2.4, 1.6, -3.98);
     c.obj('poster', poster, {
       stand: [-2.4, -2.8],
-      onTap: async () => c.say('ポスター：「金庫の番号は、信号の色の順」'),
+      onTap: async () => {
+        c.say('ポスター：「金庫の番号は、信号の色の順」');
+        await c.closeup(poster, 'ポスター');
+      },
     });
 
     // ---- ビンの棚（左の壁）----
@@ -138,7 +152,26 @@ STAGES.push({
     shelf.position.set(-3.78, 1.1, -0.8);
     c.obj('bottles', shelf, {
       stand: [-2.9, -0.8],
-      onTap: async () => c.say('3本のビン。 赤に「4」、黄に「1」、青に「7」と書いてある。'),
+      onTap: async () => {
+        c.say('3本のビン。 赤に「4」、黄に「1」、青に「7」と書いてある。');
+        await c.closeup(makeCanvas(1.2, 0.8, (g, W, H) => {
+          g.fillStyle = '#f3f4f6';
+          g.fillRect(0, 0, W, H);
+          [['#e0474c', '4'], ['#ffd84a', '1'], ['#4d7cc9', '7']].forEach(([col, num], i) => {
+            const x = W * (0.2 + i * 0.3), bw = W * 0.18;
+            g.fillStyle = col;
+            g.fillRect(x - bw / 2, H * 0.3, bw, H * 0.6);
+            g.fillRect(x - bw * 0.2, H * 0.12, bw * 0.4, H * 0.2);
+            g.fillStyle = '#ffffff';
+            g.fillRect(x - bw * 0.38, H * 0.45, bw * 0.76, H * 0.3);
+            g.fillStyle = '#23272e';
+            g.font = `800 ${H * 0.24}px 'M PLUS Rounded 1c', sans-serif`;
+            g.textAlign = 'center';
+            g.textBaseline = 'middle';
+            g.fillText(num, x, H * 0.6);
+          });
+        }), '3本のビン');
+      },
     });
 
     // ---- 金庫 ----
@@ -168,9 +201,15 @@ STAGES.push({
         c.say('ダイヤル式の金庫。 3ケタの番号が必要だ。');
         const v = await c.keypad(3);
         if (v === null) return;
-        if (v !== '714') return c.say('ブブーッ。 開かない。');
+        if (v !== '714') {
+          c.sfx('buzzer');
+          return c.say('ブブーッ。 開かない。');
+        }
         s.safeOpen = true;
+        c.sfx('ticks');
         await c.tween(0.5, e => { dial.rotation.y = 6 * e; });
+        c.sfx('clunk');
+        c.sfx('door');
         await c.tween(0.5, e => { safeDoor.rotation.y = -1.8 * e; });
         safeKey.visible = true;
         c.say('ガチャン！ 金庫が開いた。 中に鍵が入っている！');

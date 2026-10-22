@@ -47,8 +47,10 @@ function addKeypad(c, { x, y = 1.3, z = -3.97, stand, code, onArrive }) {
       if (v === code) {
         s.unlocked = true;
         kp.unlock();
+        c.sfx('unlock');
         c.say('ピッ…カチャッ。 鍵が開いた！');
       } else {
+        c.sfx('buzzer');
         c.say('ブブーッ。 番号がちがうようだ。');
       }
     },
@@ -58,6 +60,7 @@ function addKeypad(c, { x, y = 1.3, z = -3.97, stand, code, onArrive }) {
 
 async function openAndExit(c, door, x) {
   c.say('ドアを開けた！');
+  c.sfx('door');
   await c.tween(0.6, e => { door.pivot.rotation.y = 1.4 * e; });
   await c.exitThrough(x);
   c.clear();
@@ -74,6 +77,7 @@ function addKeyDoor(c, door, x, { onArrive, lockedMsg = '鍵がかかってい�
       key: async () => {
         c.removeItem('key');
         s.unlocked = true;
+        c.sfx('unlock');
         c.say('カチャリ。 鍵が開いた！');
       },
     },
@@ -89,6 +93,7 @@ async function fallBack(c) {
     b.rotation.x = (-Math.PI / 2) * e;
     b.position.y = 0.28 * e;
   }, c.ease.in);
+  c.sfx('thud');
 }
 
 // 頭の上に星が飛ぶ
