@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ワナ部屋からの脱出</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="hud">
+  <div id="topbar">
+    <div id="stageTitle"></div>
+    <div class="tools">
+      <button id="hintBtn" type="button">💡 ヒント</button>
+      <button id="retryBtn" type="button" aria-label="やり直す">↺</button>
+    </div>
+  </div>
+  <div id="bottom">
+    <div id="message"></div>
+    <div id="inventory"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="ghost"></div>
+
+<div id="keypad" class="overlay hidden">
+  <div class="panel keypad">
+    <button class="close" data-k="close" type="button" aria-label="閉じる">×</button>
+    <div class="display"></div>
+    <div class="keys">
+      <button type="button" data-k="1">1</button>
+      <button type="button" data-k="2">2</button>
+      <button type="button" data-k="3">3</button>
+      <button type="button" data-k="4">4</button>
+      <button type="button" data-k="5">5</button>
+      <button type="button" data-k="6">6</button>
+      <button type="button" data-k="7">7</button>
+      <button type="button" data-k="8">8</button>
+      <button type="button" data-k="9">9</button>
+      <button type="button" data-k="C">C</button>
+      <button type="button" data-k="0">0</button>
+      <button type="button" data-k="OK">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="overlay hidden">
+  <div class="panel result">
+    <div class="big"></div>
+    <div class="sub"></div>
+    <div class="actions"></div>
+  </div>
+</div>
+
+<div id="title" class="overlay">
+  <div class="panel titlecard">
+    <div class="logo">ワナ部屋<small>からの</small>脱出</div>
+    <div class="tagline">気になる所をタップして調べよう。<br>アイテムはドラッグして使う。<br>仕掛けられたワナを回避して脱出せよ！</div>
+    <button id="startBtn" class="primary" type="button">はじめる</button>
+    <div id="stageSelect"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/stages/common.js"></script>
+<script src="js/stages/stage01.js"></script>
+<script src="js/stages/stage02.js"></script>
+<script src="js/stages/stage03.js"></script>
+<script src="js/stages/stage04.js"></script>
+<script src="js/stages/stage05.js"></script>
+<script src="js/stages/stage06.js"></script>
+<script src="js/stages/stage07.js"></script>
+<script src="js/stages/stage08.js"></script>
+<script src="js/stages/stage09.js"></script>
+<script src="js/stages/stage10.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
