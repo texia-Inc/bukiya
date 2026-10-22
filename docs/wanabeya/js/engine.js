@@ -30,6 +30,7 @@ let zoom = 1;
 let zoomChosen = false;  // プレイヤーが自分でズームを変えたら、画面の向きが変わっても維持する
 let fitHalf = 5.2;
 let lastPan = -Infinity;
+let viewW = 1, viewH = 1;   // 実際に画面に表示されているcanvasの大きさ（CSSで画面いっぱい）
 
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x9098a4, 0.75);
 scene.add(hemiLight);
@@ -49,7 +50,7 @@ function setLighting({ hemi = 0.75, sun: sunI = 0.75, bg = 0x2b2f36 } = {}) {
 }
 
 function applyCamera() {
-  const aspect = window.innerWidth / window.innerHeight;
+  const aspect = viewW / viewH;
   const half = fitHalf * zoom;
   const shift = half * 0.08;   // 下のUIぶん、部屋を少し上に寄せる
   camera.left = -half * aspect;
@@ -61,9 +62,14 @@ function applyCamera() {
   camera.lookAt(camTarget);
 }
 
+// 大きさはCSSに任せ、表示されている大きさに描画を合わせる。
+// iPhoneのブラウザは innerWidth/innerHeight や resize イベントが当てにならないことがあり、
+// それで canvas を直接サイズ指定すると画面からはみ出す
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h);
+  const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
+  viewW = w;
+  viewH = h;
+  renderer.setSize(w, h, false);
   const aspect = w / h;
   fitHalf = Math.max(5.2, 6.3 / aspect);   // 縦長の画面でも部屋全体が入るように
   if (!zoomChosen) zoom = aspect < 0.8 ? ZOOM_NEAR : 1;
@@ -85,6 +91,7 @@ function renderZoomButton() {
 
 // 寄っているときは主人公をゆっくり追う（見回した直後の数秒は追わない）
 function updateCamera() {
+  if (canvas.clientWidth !== viewW || canvas.clientHeight !== viewH) resize();
   const goal = new THREE.Vector3();
   if (zoom > 0.95) goal.copy(CAM_HOME);
   else if (performance.now() - lastPan < 2500 || !player) goal.copy(camTarget);
