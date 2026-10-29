@@ -143,6 +143,7 @@ extension _Field on RunSimulation {
     }
     final a = arena!;
     arena = null;
+    bossShots.clear();
     for (final e in enemies) {
       e.inArena = false;
     }

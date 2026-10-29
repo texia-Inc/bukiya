@@ -405,113 +405,359 @@ class Sprites {
     canvas.drawCircle(Offset(e.x + r * 0.55, y + r * 0.2), r * 0.15, _fill);
   }
 
-  /// オーガ（ボス）：大きな体に棍棒。溜めの間は赤く震える
+  /// オーガ（ボス）：牙と角のある大男。トゲ付きの棍棒を持ち、大技ごとに構えが変わる。
+  /// 怒ると赤くなり、頭から湯気が出る
   void ogre(Canvas canvas, Enemy e, double time, double toX, double toY) {
     final r = e.stats.radius;
     final flash = e.hitFlash > 0;
     final windup = e.bossState == BossState.windup;
-    final shake = windup ? sin(time * 60) * 1.5 : 0.0;
+    final wp = bossWindupProgress(e);
+    final shake = windup ? sin(time * 60) * (1 + wp * 1.5) : 0.0;
     final x = e.x + shake;
-    final step = e.bossState == BossState.walk ? sin(time * 6) : 0.0;
-    _shadowAt(canvas, x, e.y + r * 0.95, r * 2);
+    final walking = e.bossState == BossState.walk;
+    final step = walking ? sin(time * (e.enraged ? 8 : 6)) : 0.0;
+    final breath = 1 + 0.035 * sin(time * 3);
+    final smashed = e.attack == BossAttack.smash &&
+        e.bossState == BossState.recover &&
+        e.stateTime < 0.5;
+    // 突進の溜めと突進中は前のめり
+    final lean = e.attack == BossAttack.charge &&
+            (windup || e.bossState == BossState.charge)
+        ? 1.0
+        : 0.0;
+    final leanX = e.dirX * r * 0.15 * lean;
+    _shadowAt(canvas, x, e.y + r * 0.95, r * 2.1);
+
+    Color c(Color normal, Color angry) =>
+        flash ? _white : (e.enraged ? angry : normal);
     final skin = flash
         ? _white
         : windup
-            ? const Color(0xFFD9826B)
-            : const Color(0xFFB98A6B);
-    // 足
-    _fill.color = flash ? _white : const Color(0xFF6B4A35);
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(
-                x - r * 0.5, e.y + r * 0.5 + step * 2, r * 0.35, r * 0.45),
-            Radius.circular(r * 0.1)),
-        _fill);
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(
-                x + r * 0.15, e.y + r * 0.5 - step * 2, r * 0.35, r * 0.45),
-            Radius.circular(r * 0.1)),
-        _fill);
-    // 体と腰布
-    _filled(
+            ? Color.lerp(c(const Color(0xFFB98A6B), const Color(0xFFC9705A)),
+                const Color(0xFFE5484D), 0.35 * wp)!
+            : c(const Color(0xFFB98A6B), const Color(0xFFC9705A));
+    final skinDark = c(const Color(0xFF8E6650), const Color(0xFF9C4E3E));
+    final club = flash ? _white : const Color(0xFF7A5230);
+
+    // 足（太い脚と革のブーツ）
+    for (final (sx, st) in [(-1.0, step), (1.0, -step)]) {
+      final legX = x + sx * r * 0.33 - r * 0.18;
+      _filled(
+          canvas,
+          skinDark,
+          (p) => canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                  Rect.fromLTWH(
+                      legX, e.y + r * 0.45 + st * 2, r * 0.36, r * 0.38),
+                  Radius.circular(r * 0.12)),
+              p));
+      _filled(
+          canvas,
+          flash ? _white : const Color(0xFF4A3426),
+          (p) => canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                  Rect.fromLTWH(legX - r * 0.04, e.y + r * 0.72 + st * 2,
+                      r * 0.44, r * 0.22),
+                  Radius.circular(r * 0.1)),
+              p));
+    }
+
+    final side = toX >= x ? 1.0 : -1.0;
+    final bodyC = Offset(x + leanX, e.y + r * 0.12);
+    // 棍棒を持つ腕は、体の後ろ側から描き始める
+    void arm(double sx, double angle) {
+      canvas.save();
+      canvas.translate(bodyC.dx + sx * r * 0.82, bodyC.dy - r * 0.2);
+      canvas.rotate(angle);
+      _filled(
+          canvas,
+          skin,
+          (p) => canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                  Rect.fromLTWH(-r * 0.2, -r * 0.05, r * 0.4, r * 0.75),
+                  Radius.circular(r * 0.2)),
+              p));
+      // 腕輪
+      _filled(
+          canvas,
+          flash ? _white : const Color(0xFF6E7488),
+          (p) => canvas.drawRect(
+              Rect.fromLTWH(-r * 0.22, r * 0.38, r * 0.44, r * 0.12), p));
+      canvas.restore();
+    }
+
+    // 棍棒の構え：地面叩きは振りかぶる、叩いた直後は地面に、普段は肩に
+    final clubAngle = smashed
+        ? side * -1.3
+        : windup && e.attack == BossAttack.smash
+            ? side * (-0.4 - 2.4 * wp)
+            : windup
+                ? side * -0.9
+                : side * (-0.3 + 0.08 * step);
+    // 体（胸と腹）
+    canvas.save();
+    canvas.translate(bodyC.dx, bodyC.dy);
+    canvas.scale(1, breath);
+    _filledScaled(
         canvas,
         skin,
+        breath,
         (p) => canvas.drawOval(
             Rect.fromCenter(
-                center: Offset(x, e.y + r * 0.15),
-                width: r * 1.8,
-                height: r * 1.3),
+                center: Offset.zero, width: r * 1.85, height: r * 1.35),
+            p));
+    // 胸の筋肉とおへそ
+    _fill.color = skinDark;
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(-r * 0.3, -r * 0.25),
+            width: r * 0.6,
+            height: r * 0.3),
+        _fill);
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(r * 0.3, -r * 0.25),
+            width: r * 0.6,
+            height: r * 0.3),
+        _fill);
+    canvas.drawCircle(Offset(0, r * 0.12), r * 0.05, _fill);
+    // 古傷
+    _outline.strokeWidth = 1.6 / breath;
+    canvas.drawLine(
+        Offset(r * 0.15, -r * 0.45), Offset(r * 0.5, -r * 0.05), _outline);
+    canvas.drawLine(
+        Offset(r * 0.25, -r * 0.3), Offset(r * 0.4, -r * 0.33), _outline);
+    _outline.strokeWidth = 1.6;
+    canvas.restore();
+    // 腰布とベルト
+    final waist = bodyC.dy + r * 0.3;
+    final cloth = Path()
+      ..moveTo(bodyC.dx - r * 0.7, waist)
+      ..lineTo(bodyC.dx + r * 0.7, waist)
+      ..lineTo(bodyC.dx + r * 0.5, waist + r * 0.45)
+      ..lineTo(bodyC.dx + r * 0.15, waist + r * 0.32)
+      ..lineTo(bodyC.dx - r * 0.1, waist + r * 0.5)
+      ..lineTo(bodyC.dx - r * 0.55, waist + r * 0.38)
+      ..close();
+    _filled(canvas, flash ? _white : const Color(0xFF6E5A2E),
+        (p) => canvas.drawPath(cloth, p));
+    _filled(
+        canvas,
+        flash ? _white : const Color(0xFF4A3426),
+        (p) => canvas.drawRect(
+            Rect.fromLTWH(
+                bodyC.dx - r * 0.78, waist - r * 0.08, r * 1.56, r * 0.18),
             p));
     _filled(
         canvas,
-        flash ? _white : const Color(0xFF6E5A2E),
+        flash ? _white : const Color(0xFFFFD45E),
         (p) => canvas.drawRect(
-            Rect.fromLTWH(x - r * 0.75, e.y + r * 0.35, r * 1.5, r * 0.3), p));
-    // 棍棒（向いている側の手に）
-    final side = toX >= x ? 1.0 : -1.0;
+            Rect.fromCenter(
+                center: Offset(bodyC.dx, waist + r * 0.01),
+                width: r * 0.26,
+                height: r * 0.24),
+            p));
+
+    // 反対の腕：投石の溜めでは岩を頭上に持ち上げる
+    final throwing = windup && e.attack == BossAttack.rocks;
+    arm(-side, throwing ? side * (2.6 + 0.3 * wp) : side * 0.25);
+    if (throwing) {
+      final rockC = Offset(bodyC.dx - side * r * 0.7, bodyC.dy - r * 1.35);
+      _filled(canvas, flash ? _white : const Color(0xFF7A6A55),
+          (p) => canvas.drawCircle(rockC, r * 0.42, p));
+      _fill.color = const Color(0xFF9C8B72);
+      canvas.drawCircle(rockC.translate(-r * 0.12, -r * 0.12), r * 0.15, _fill);
+    }
+    // 棍棒の腕と、トゲ付きの棍棒
+    arm(side, clubAngle);
     canvas.save();
-    canvas.translate(x + side * r * 0.95, e.y + r * 0.1);
-    canvas.rotate(side * (windup ? -0.9 : -0.3));
+    canvas.translate(bodyC.dx + side * r * 0.82, bodyC.dy - r * 0.2);
+    canvas.rotate(clubAngle + pi);
+    canvas.translate(0, -r * 0.6);
     _filled(
         canvas,
-        flash ? _white : const Color(0xFF7A5230),
+        club,
         (p) => canvas.drawRRect(
             RRect.fromRectAndRadius(
-                Rect.fromLTWH(-r * 0.15, -r * 1.2, r * 0.3, r * 1.2),
-                Radius.circular(r * 0.15)),
+                Rect.fromLTWH(-r * 0.12, -r * 1.05, r * 0.24, r * 1.1),
+                Radius.circular(r * 0.12)),
             p));
-    _filled(canvas, flash ? _white : const Color(0xFF7A5230),
-        (p) => canvas.drawCircle(Offset(0, -r * 1.15), r * 0.28, p));
+    final headC = Offset(0, -r * 1.1);
+    _fill.color = flash ? _white : const Color(0xFFD9D4C7);
+    for (var i = 0; i < 6; i++) {
+      final a = i * pi / 3 + 0.3;
+      final spike = Path()
+        ..moveTo(headC.dx + cos(a - 0.25) * r * 0.3,
+            headC.dy + sin(a - 0.25) * r * 0.3)
+        ..lineTo(headC.dx + cos(a) * r * 0.55, headC.dy + sin(a) * r * 0.55)
+        ..lineTo(headC.dx + cos(a + 0.25) * r * 0.3,
+            headC.dy + sin(a + 0.25) * r * 0.3)
+        ..close();
+      canvas.drawPath(spike, _fill);
+      canvas.drawPath(spike, _outline);
+    }
+    _filled(canvas, club, (p) => canvas.drawCircle(headC, r * 0.36, p));
+    _fill.color = const Color(0xFF9C6B40);
+    canvas.drawCircle(headC.translate(-r * 0.1, -r * 0.1), r * 0.12, _fill);
     canvas.restore();
+
     // 頭と角
-    final head = Offset(x, e.y - r * 0.55);
+    final head = Offset(x + leanX * 1.6, e.y - r * 0.6);
     _fill.color = flash ? _white : const Color(0xFFF1E3C6);
     for (final s2 in const [-1.0, 1.0]) {
       final horn = Path()
-        ..moveTo(head.dx + s2 * r * 0.3, head.dy - r * 0.35)
-        ..lineTo(head.dx + s2 * r * 0.55, head.dy - r * 0.85)
-        ..lineTo(head.dx + s2 * r * 0.1, head.dy - r * 0.45)
+        ..moveTo(head.dx + s2 * r * 0.28, head.dy - r * 0.38)
+        ..quadraticBezierTo(head.dx + s2 * r * 0.75, head.dy - r * 0.6,
+            head.dx + s2 * r * 0.6, head.dy - r * 1.0)
+        ..lineTo(head.dx + s2 * r * 0.08, head.dy - r * 0.48)
         ..close();
       canvas.drawPath(horn, _fill);
       canvas.drawPath(horn, _outline);
     }
-    _filled(canvas, skin, (p) => canvas.drawCircle(head, r * 0.55, p));
-    _eyes(canvas, head.dx, head.dy, r * 0.55, toX, toY,
+    // 耳
+    for (final s2 in const [-1.0, 1.0]) {
+      _filled(
+          canvas,
+          skin,
+          (p) => canvas.drawOval(
+              Rect.fromCenter(
+                  center: head.translate(s2 * r * 0.55, 0),
+                  width: r * 0.22,
+                  height: r * 0.32),
+              p));
+    }
+    _filled(canvas, skin, (p) => canvas.drawCircle(head, r * 0.56, p));
+    // 怒ると目が赤く光る
+    if (e.enraged && !flash) {
+      _fill.color = Color.fromRGBO(255, 80, 60, 0.35 + 0.2 * sin(time * 10));
+      canvas.drawCircle(head.translate(0, -r * 0.05), r * 0.42, _fill);
+    }
+    _eyes(canvas, head.dx, head.dy - r * 0.05, r * 0.56, toX, toY,
         spread: 0.38, size: 0.2);
-    // 怒った眉
-    canvas.drawLine(Offset(head.dx - r * 0.35, head.dy - r * 0.3),
-        Offset(head.dx - r * 0.08, head.dy - r * 0.18), _outline);
-    canvas.drawLine(Offset(head.dx + r * 0.35, head.dy - r * 0.3),
-        Offset(head.dx + r * 0.08, head.dy - r * 0.18), _outline);
+    // 太い眉
+    _outline.strokeWidth = 2.6;
+    canvas.drawLine(head.translate(-r * 0.38, -r * 0.32),
+        head.translate(-r * 0.08, -r * 0.2), _outline);
+    canvas.drawLine(head.translate(r * 0.38, -r * 0.32),
+        head.translate(r * 0.08, -r * 0.2), _outline);
+    _outline.strokeWidth = 1.6;
+    // 口と下あごの牙。溜めの間は口を開けて吠える
+    final mouthOpen = windup || e.bossState == BossState.charge;
+    final mouth = head.translate(0, r * 0.28);
+    if (mouthOpen) {
+      _filled(
+          canvas,
+          flash ? _white : const Color(0xFF5A1E1E),
+          (p) => canvas.drawOval(
+              Rect.fromCenter(center: mouth, width: r * 0.5, height: r * 0.24),
+              p));
+    } else {
+      canvas.drawLine(mouth.translate(-r * 0.22, 0),
+          mouth.translate(r * 0.22, 0), _outline);
+    }
+    _fill.color = flash ? _white : const Color(0xFFFFFBEF);
+    for (final s2 in const [-1.0, 1.0]) {
+      final tusk = Path()
+        ..moveTo(mouth.dx + s2 * r * 0.24, mouth.dy + r * 0.04)
+        ..lineTo(mouth.dx + s2 * r * 0.3, mouth.dy - r * 0.22)
+        ..lineTo(mouth.dx + s2 * r * 0.14, mouth.dy + r * 0.02)
+        ..close();
+      canvas.drawPath(tusk, _fill);
+      canvas.drawPath(tusk, _outline);
+    }
+    // 怒っている間は頭から湯気
+    if (e.enraged) {
+      for (var i = 0; i < 3; i++) {
+        final t = (time * 0.9 + i / 3) % 1;
+        _fill.color = Color.fromRGBO(240, 240, 240, 0.55 * (1 - t));
+        canvas.drawCircle(
+            head.translate((i - 1) * r * 0.35 + sin(t * 6 + i) * 3,
+                -r * 0.6 - t * r * 1.1),
+            r * (0.12 + 0.18 * t),
+            _fill);
+      }
+    }
   }
 
-  /// キングスライム（ボス）：王冠をかぶった巨大スライム。跳んでいる間は浮き上がる
+  /// キングスライム（ボス）：宝石の王冠をかぶった巨大スライム。
+  /// 中に泡が浮かび、体からしずくが垂れる。跳んでいる間は浮き上がり、怒ると紫がかって目がつり上がる
   void kingSlime(Canvas canvas, Enemy e, double time, double toX, double toY) {
     final r = e.stats.radius;
     final flash = e.hitFlash > 0;
     final p = e.airProgress;
+    final wp = bossWindupProgress(e);
+    final windup = e.bossState == BossState.windup;
     final lift = e.airborne ? sin(p * pi) * 90 : 0.0;
     final squash = e.airborne
         ? -0.15
         : e.bossState == BossState.recover
             ? 0.25 * (1 - e.stateTime / kingSlimeRecoverTime)
-            : 0.06 * sin(time * 5);
+            : windup && e.attack == BossAttack.spray
+                // 弾を撒く前は、ためるように膨らんでからつぶれる
+                ? -0.12 * wp + (wp > 0.85 ? 0.3 : 0)
+                : windup && e.attack == BossAttack.summon
+                    ? 0.1 * sin(time * 30)
+                    : 0.06 * sin(time * 5);
     _shadowAt(canvas, e.x, e.y + r * 0.75, r * 2.2 * (1 - lift / 200));
     final w = r * 2 * (1 + squash), h = r * 1.7 * (1 - squash);
     final bottom = e.y + r * 0.75 - lift;
     final body = Rect.fromCenter(
         center: Offset(e.x, bottom - h / 2), width: w, height: h);
-    _filled(
-        canvas,
-        flash ? _white : const Color(0xFF4FB86A),
-        (paint) => canvas.drawRRect(
-            RRect.fromRectAndCorners(body,
-                topLeft: Radius.elliptical(w / 2, h * 0.75),
-                topRight: Radius.elliptical(w / 2, h * 0.75),
-                bottomLeft: Radius.elliptical(w * 0.3, h * 0.25),
-                bottomRight: Radius.elliptical(w * 0.3, h * 0.25)),
-            paint));
+    final bodyColor = flash
+        ? _white
+        : e.enraged
+            ? const Color(0xFF55A86E)
+            : const Color(0xFF4FB86A);
+    final shape = RRect.fromRectAndCorners(body,
+        topLeft: Radius.elliptical(w / 2, h * 0.75),
+        topRight: Radius.elliptical(w / 2, h * 0.75),
+        bottomLeft: Radius.elliptical(w * 0.3, h * 0.25),
+        bottomRight: Radius.elliptical(w * 0.3, h * 0.25));
+    // 垂れるしずく（体の後ろに描いて、根元を体で隠す）
+    if (!e.airborne) {
+      for (var i = 0; i < 3; i++) {
+        final t = (time * 0.6 + i * 0.37) % 1;
+        final dx = e.x + (i - 1) * w * 0.32;
+        final len = r * (0.15 + 0.35 * t);
+        _filled(
+            canvas,
+            bodyColor,
+            (pt) => canvas.drawOval(
+                Rect.fromCenter(
+                    center: Offset(dx, bottom - r * 0.05 + len / 2),
+                    width: r * 0.22,
+                    height: len),
+                pt));
+      }
+    }
+    _filled(canvas, bodyColor, (pt) => canvas.drawRRect(shape, pt));
+    // 体の中の泡と、飲み込んだ剣
+    canvas.save();
+    canvas.clipRRect(shape);
+    if (!flash) {
+      _fill.color =
+          e.enraged ? const Color(0x55B38BE8) : const Color(0x332F7A45);
+      canvas.drawOval(
+          Rect.fromLTWH(body.left, body.top + h * 0.55, w, h * 0.6), _fill);
+      canvas.save();
+      canvas.translate(e.x + r * 0.35, body.top + h * 0.72);
+      canvas.rotate(0.9);
+      _fill.color = const Color(0x667A8090);
+      canvas.drawRect(
+          Rect.fromLTWH(-r * 0.05, -r * 0.4, r * 0.1, r * 0.6), _fill);
+      canvas.drawRect(
+          Rect.fromLTWH(-r * 0.16, r * 0.18, r * 0.32, r * 0.07), _fill);
+      canvas.restore();
+      for (var i = 0; i < 5; i++) {
+        final t = (time * 0.35 + i * 0.21) % 1;
+        final bx = e.x + sin(i * 2.3 + time) * w * 0.3;
+        final by = body.bottom - t * h * 0.9;
+        _fill.color = Color.fromRGBO(255, 255, 255, 0.35 * (1 - t));
+        canvas.drawCircle(Offset(bx, by), r * (0.06 + 0.05 * (i % 3)), _fill);
+      }
+    }
+    canvas.restore();
+    // つや
     _fill.color = const Color(0x77FFFFFF);
     canvas.drawOval(
         Rect.fromCenter(
@@ -519,24 +765,94 @@ class Sprites {
             width: r * 0.55,
             height: r * 0.3),
         _fill);
-    _eyes(canvas, e.x, body.top + h * 0.48, r, toX, toY,
-        spread: 0.3, size: 0.14);
-    // 王冠
-    final cy = body.top + 2;
+    _fill.color = const Color(0x55FFFFFF);
+    canvas.drawCircle(
+        Offset(e.x - r * 0.15, body.top + h * 0.17), r * 0.07, _fill);
+    // 顔
+    final eyeY = body.top + h * 0.48;
+    _eyes(canvas, e.x, eyeY, r, toX, toY, spread: 0.3, size: 0.14);
+    if (e.enraged) {
+      // つり上がった眉
+      _outline.strokeWidth = 2.6;
+      canvas.drawLine(Offset(e.x - r * 0.52, eyeY - r * 0.36),
+          Offset(e.x - r * 0.12, eyeY - r * 0.2), _outline);
+      canvas.drawLine(Offset(e.x + r * 0.52, eyeY - r * 0.36),
+          Offset(e.x + r * 0.12, eyeY - r * 0.2), _outline);
+      _outline.strokeWidth = 1.6;
+    }
+    final mouthY = eyeY + r * 0.33;
+    if (e.enraged || windup) {
+      // 大きく開いた口
+      _filled(
+          canvas,
+          const Color(0xFF2F5E3A),
+          (pt) => canvas.drawOval(
+              Rect.fromCenter(
+                  center: Offset(e.x, mouthY),
+                  width: r * 0.45,
+                  height: r * (0.2 + 0.12 * wp)),
+              pt));
+    } else {
+      canvas.drawArc(
+          Rect.fromCenter(
+              center: Offset(e.x, mouthY - r * 0.08),
+              width: r * 0.4,
+              height: r * 0.22),
+          0.3,
+          pi - 0.6,
+          false,
+          _outline);
+    }
+    _fill.color = const Color(0x55F28B82);
+    canvas.drawCircle(Offset(e.x - r * 0.62, eyeY + r * 0.22), r * 0.13, _fill);
+    canvas.drawCircle(Offset(e.x + r * 0.62, eyeY + r * 0.22), r * 0.13, _fill);
+    // 王冠（帯と宝石つき）。跳ぶと少し遅れて浮く
+    final cy = body.top + 3 - (e.airborne ? 4 * sin(p * pi) : 0);
+    final tilt = 0.08 * sin(time * 2.5);
+    canvas.save();
+    canvas.translate(e.x, cy);
+    canvas.rotate(tilt);
     final crown = Path()
-      ..moveTo(e.x - r * 0.45, cy)
-      ..lineTo(e.x - r * 0.5, cy - r * 0.45)
-      ..lineTo(e.x - r * 0.22, cy - r * 0.2)
-      ..lineTo(e.x, cy - r * 0.55)
-      ..lineTo(e.x + r * 0.22, cy - r * 0.2)
-      ..lineTo(e.x + r * 0.5, cy - r * 0.45)
-      ..lineTo(e.x + r * 0.45, cy)
+      ..moveTo(-r * 0.48, 0)
+      ..lineTo(-r * 0.56, -r * 0.5)
+      ..lineTo(-r * 0.26, -r * 0.24)
+      ..lineTo(0, -r * 0.62)
+      ..lineTo(r * 0.26, -r * 0.24)
+      ..lineTo(r * 0.56, -r * 0.5)
+      ..lineTo(r * 0.48, 0)
       ..close();
-    _fill.color = const Color(0xFFFFD45E);
+    _fill.color = flash ? _white : const Color(0xFFFFD45E);
     canvas.drawPath(crown, _fill);
     canvas.drawPath(crown, _outline);
-    _fill.color = const Color(0xFFE5484D);
-    canvas.drawCircle(Offset(e.x, cy - r * 0.18), r * 0.08, _fill);
+    _filled(
+        canvas,
+        flash ? _white : const Color(0xFFE0A93A),
+        (pt) => canvas.drawRect(
+            Rect.fromLTWH(-r * 0.5, -r * 0.14, r * 1.0, r * 0.16), pt));
+    // 先の玉
+    _fill.color = flash ? _white : const Color(0xFFFFF1B8);
+    for (final tip in [
+      Offset(-r * 0.56, -r * 0.5),
+      Offset(0, -r * 0.62),
+      Offset(r * 0.56, -r * 0.5),
+    ]) {
+      canvas.drawCircle(tip, r * 0.07, _fill);
+    }
+    // 宝石：真ん中は赤、両脇は青
+    const gems = [Color(0xFF5BA8E8), Color(0xFFE5484D), Color(0xFF5BA8E8)];
+    for (var i = 0; i < 3; i++) {
+      final gx = (i - 1) * r * 0.3;
+      _filled(
+          canvas,
+          flash ? _white : gems[i],
+          (pt) => canvas.drawCircle(
+              Offset(gx, -r * 0.06), r * (i == 1 ? 0.1 : 0.07), pt));
+    }
+    // きらめき
+    final sparkle = (sin(time * 3) + 1) / 2;
+    _fill.color = Color.fromRGBO(255, 255, 255, 0.9 * sparkle);
+    canvas.drawCircle(Offset(-r * 0.03, -r * 0.1), r * 0.035, _fill);
+    canvas.restore();
   }
 
   /// ボスを倒すと出る宝箱。ふわふわ光る

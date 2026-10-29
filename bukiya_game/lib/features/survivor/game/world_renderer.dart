@@ -98,6 +98,7 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     _drawThrusts(canvas);
     _drawPlayer(canvas);
     _drawFireballs(canvas);
+    _drawBossShots(canvas);
     _drawParticles(canvas);
     _drawNumbers(canvas);
     _drawGateArrow(canvas, view);
@@ -400,34 +401,147 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     }
   }
 
-  /// ボスの大技の予告：オーガの突進線と、キングスライムの着地点
+  /// ボスの大技の予告（突進線・叩きの範囲・投石の向き・着地点など）と、叩きの衝撃波
   void _drawBossTelegraphs(Canvas canvas) {
     for (final e in sim.enemies) {
       if (!e.isBoss) continue;
-      if (e.kind == EnemyKind.ogre && e.bossState == BossState.windup) {
-        final len = ogreChargeSpeed * ogreChargeTime + e.stats.radius;
-        final a = atan2(e.dirY, e.dirX);
-        final blink = 0.25 + 0.2 * sin(sim.time * 30).abs();
-        canvas.save();
-        canvas.translate(e.x, e.y);
-        canvas.rotate(a);
-        _fill.color = Color.fromRGBO(229, 72, 77, blink);
-        canvas.drawRect(
-            Rect.fromLTWH(0, -e.stats.radius, len, e.stats.radius * 2), _fill);
-        canvas.restore();
+      final blink = 0.25 + 0.2 * sin(sim.time * 30).abs();
+      final p = bossWindupProgress(e);
+      if (e.bossState == BossState.windup) {
+        switch (e.attack) {
+          case BossAttack.charge:
+            final len = ogreChargeSpeed * ogreChargeTime + e.stats.radius;
+            canvas.save();
+            canvas.translate(e.x, e.y);
+            canvas.rotate(atan2(e.dirY, e.dirX));
+            _fill.color = Color.fromRGBO(229, 72, 77, blink);
+            canvas.drawRect(
+                Rect.fromLTWH(0, -e.stats.radius, len, e.stats.radius * 2),
+                _fill);
+            canvas.restore();
+          case BossAttack.smash:
+            final r = ogreSmashRadiusOf(e);
+            _fill.color = Color.fromRGBO(229, 72, 77, 0.12 + 0.2 * p);
+            canvas.drawCircle(Offset(e.x, e.y), r, _fill);
+            _fill.color = const Color.fromRGBO(229, 72, 77, 0.3);
+            canvas.drawCircle(Offset(e.x, e.y), r * p, _fill);
+            _stroke
+              ..color = Color.fromRGBO(229, 72, 77, 0.5 + blink)
+              ..strokeWidth = 2.5;
+            canvas.drawCircle(Offset(e.x, e.y), r, _stroke);
+          case BossAttack.rocks:
+            final n = e.enraged ? 5 : 3;
+            final base = atan2(e.dirY, e.dirX);
+            _stroke
+              ..color = Color.fromRGBO(229, 72, 77, 0.3 + blink)
+              ..strokeWidth = 3;
+            for (var i = 0; i < n; i++) {
+              final a = base + (i - (n - 1) / 2) * 0.32;
+              final from = e.stats.radius + 6;
+              final to = from + 60 + 140 * p;
+              canvas.drawLine(Offset(e.x + cos(a) * from, e.y + sin(a) * from),
+                  Offset(e.x + cos(a) * to, e.y + sin(a) * to), _stroke);
+            }
+          case BossAttack.spray:
+            // 弾が飛ぶ向きに短い棘を出す
+            final n = e.enraged ? 14 : 10;
+            final volley = e.repeatsTotal - e.repeatsLeft;
+            final offset = volley * pi / n;
+            _stroke
+              ..color = Color.fromRGBO(123, 211, 137, 0.4 + blink)
+              ..strokeWidth = 3;
+            for (var i = 0; i < n; i++) {
+              final a = offset + i * 2 * pi / n;
+              final from = e.stats.radius + 4;
+              final to = from + 10 + 26 * p;
+              canvas.drawLine(Offset(e.x + cos(a) * from, e.y + sin(a) * from),
+                  Offset(e.x + cos(a) * to, e.y + sin(a) * to), _stroke);
+            }
+          case BossAttack.summon:
+            _stroke
+              ..color = Color.fromRGBO(179, 139, 232, 0.4 + blink)
+              ..strokeWidth = 3;
+            canvas.drawCircle(
+                Offset(e.x, e.y), e.stats.radius + 8 + 30 * p, _stroke);
+          case BossAttack.jump:
+            break;
+        }
+      }
+      // 地面叩きの直後は、衝撃波の輪が広がる
+      if (e.attack == BossAttack.smash &&
+          e.bossState == BossState.recover &&
+          e.stateTime < 0.35) {
+        final t = e.stateTime / 0.35;
+        _stroke
+          ..color = Color.fromRGBO(255, 230, 180, 0.8 * (1 - t))
+          ..strokeWidth = 6 * (1 - t) + 1;
+        canvas.drawCircle(
+            Offset(e.x, e.y), ogreSmashRadiusOf(e) * (0.4 + 0.6 * t), _stroke);
       }
       if (e.kind == EnemyKind.kingSlime && e.airborne) {
-        final p = e.airProgress;
-        _fill.color = Color.fromRGBO(229, 72, 77, 0.15 + 0.25 * p);
+        final ap = e.airProgress;
+        _fill.color = Color.fromRGBO(229, 72, 77, 0.15 + 0.25 * ap);
         canvas.drawCircle(Offset(e.toX, e.toY), kingSlimeSlamRadius, _fill);
         _stroke
           ..color = const Color(0xCCE5484D)
           ..strokeWidth = 2;
         canvas.drawCircle(Offset(e.toX, e.toY),
-            kingSlimeSlamRadius * (0.3 + 0.7 * p), _stroke);
+            kingSlimeSlamRadius * (0.3 + 0.7 * ap), _stroke);
       }
     }
   }
+
+  /// ボスの弾：回りながら飛ぶ岩と、ぷるぷるのスライム弾
+  void _drawBossShots(Canvas canvas) {
+    for (final s in sim.bossShots) {
+      if (!_cull.contains(Offset(s.x, s.y))) continue;
+      final r = s.radius;
+      // 影
+      _fill.color = const Color(0x40000000);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(s.x, s.y + r + 4),
+              width: r * 1.8,
+              height: r * 0.6),
+          _fill);
+      canvas.save();
+      canvas.translate(s.x, s.y);
+      switch (s.kind) {
+        case BossShotKind.rock:
+          canvas.rotate(s.life * 9);
+          _fill.color = const Color(0xFF7A6A55);
+          canvas.drawPath(_rockPath(r), _fill);
+          canvas.drawPath(_rockPath(r), _outline);
+          _fill.color = const Color(0xFF9C8B72);
+          canvas.drawCircle(Offset(-r * 0.3, -r * 0.3), r * 0.35, _fill);
+        case BossShotKind.slime:
+          final wob = 1 + 0.12 * sin(s.life * 25);
+          canvas.scale(wob, 1 / wob);
+          _fill.color = const Color(0xFF5FBF6E);
+          canvas.drawCircle(Offset.zero, r, _fill);
+          canvas.drawCircle(Offset.zero, r, _outline);
+          _fill.color = const Color(0xCCFFFFFF);
+          canvas.drawCircle(Offset(-r * 0.35, -r * 0.35), r * 0.28, _fill);
+      }
+      canvas.restore();
+    }
+  }
+
+  static final Map<double, Path> _rockPaths = {};
+  static Path _rockPath(double r) => _rockPaths[r] ??= () {
+        final path = Path();
+        const n = 7;
+        for (var i = 0; i < n; i++) {
+          final a = i * 2 * pi / n;
+          final k = r * (0.8 + 0.25 * ((i * 37) % 5) / 4);
+          if (i == 0) {
+            path.moveTo(cos(a) * k, sin(a) * k);
+          } else {
+            path.lineTo(cos(a) * k, sin(a) * k);
+          }
+        }
+        return path..close();
+      }();
 
   void _drawThrusts(Canvas canvas) {
     final evolved = sim.spearEvolved;

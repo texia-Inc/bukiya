@@ -218,7 +218,36 @@ def extra2():
                    + lowpass(noise(sec), 0.2) * env(int(RATE * sec), 0.001, 0.03)), 0.6)
 
 
+def extra3():
+    """ボスの大技の音"""
+    # 怒り：うなりが高まる咆哮
+    sec = 0.9
+    x = t(sec)
+    f = np.geomspace(90, 180, len(x)) * (1 + 0.06 * np.sin(2 * np.pi * 9 * x))
+    write("roar", (tone(f, sec, "square") * 0.45 + tone(f * 1.5, sec, "tri") * 0.3
+                   + lowpass(noise(sec), 0.1) * 0.7)
+          * env(int(RATE * sec), 0.05, 0.4), 0.7)
+
+    # 投石：重い風切り音
+    sec = 0.3
+    n = noise(sec)
+    y = np.zeros_like(n)
+    acc = 0.0
+    sweep = np.linspace(0.05, 0.3, len(n))
+    for i, v in enumerate(n):
+        acc += sweep[i] * (v - acc)
+        y[i] = acc
+    write("toss", y * env(len(y), 0.01, 0.1), 0.6)
+
+    # スライム弾：ぷるっとした「ビチャ」
+    sec = 0.25
+    write("splat", (tone(np.geomspace(500, 160, int(RATE * sec)), sec) * 0.6
+                    + lowpass(noise(sec), 0.3) * 0.4)
+          * env(int(RATE * sec), 0.003, 0.08), 0.5)
+
+
 if __name__ == "__main__":
     main()
     extra()
     extra2()
+    extra3()

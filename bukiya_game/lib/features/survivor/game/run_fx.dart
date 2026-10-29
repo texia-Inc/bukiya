@@ -44,6 +44,9 @@ class RunFx {
   /// ボス出現の警告を出している残り秒数
   double bossWarning = 0;
 
+  /// ボスが怒ったときの帯の表示時間
+  double bossEnraged = 0;
+
   /// 大群の警告を出している残り秒数と、その種類（包囲か突撃か）
   double waveWarning = 0;
   WaveType waveType = WaveType.ring;
@@ -94,6 +97,21 @@ class RunFx {
         case RunEventType.bossSlam:
           _addTrauma(0.75);
           audio.play(Sfx.slam);
+        case RunEventType.bossSmash:
+          _addTrauma(0.7);
+          audio.play(Sfx.slam);
+        case RunEventType.bossThrow:
+          audio.play(Sfx.toss);
+        case RunEventType.bossSpray:
+          _addTrauma(0.15);
+          audio.play(Sfx.splat);
+        case RunEventType.bossSummon:
+          audio.play(Sfx.splat);
+        case RunEventType.bossEnrage:
+          _addTrauma(0.6);
+          bossEnraged = 2;
+          hurtFlash = max(hurtFlash, 0.4);
+          audio.play(Sfx.roar);
         case RunEventType.bossDefeated:
           _addTrauma(0.9);
           whiteFlash = 1;
@@ -139,6 +157,7 @@ class RunFx {
     hurtFlash = max(0, hurtFlash - dt * 3);
     whiteFlash = max(0, whiteFlash - dt * 2);
     bossWarning = max(0, bossWarning - dt);
+    bossEnraged = max(0, bossEnraged - dt);
     waveWarning = max(0, waveWarning - dt);
     final amp = 9 * trauma * trauma;
     shakeX = (_rng.nextDouble() * 2 - 1) * amp;

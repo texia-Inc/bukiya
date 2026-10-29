@@ -23,6 +23,9 @@ enum Sfx {
   chest,
   horn,
   cage,
+  roar,
+  toss,
+  splat,
 }
 
 /// 効果音の再生。同じ音は間隔を空けて鳴りすぎを防ぐ。実際の再生は [SfxBackend] に任せる
@@ -46,6 +49,7 @@ class SurvivorAudio {
     Sfx.material: 0.1,
     Sfx.blast: 0.08,
     Sfx.thrust: 0.06,
+    Sfx.splat: 0.1,
   };
 
   static const Map<Sfx, double> _volume = {

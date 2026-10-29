@@ -92,6 +92,17 @@ class Enemy {
   double toY = 0;
   bool split = false;
 
+  /// 今の大技と、これまでに繰り出した数（順番に回す）
+  BossAttack attack = BossAttack.charge;
+  int attackCount = 0;
+
+  /// 連続で繰り出す大技の残り回数と、全部の回数
+  int repeatsLeft = 0;
+  int repeatsTotal = 0;
+
+  /// 体力が半分を切ると怒る
+  bool enraged = false;
+
   Enemy(this.kind, this.x, this.y, this.hp) : maxHp = hp;
 
   EnemyStats get stats => enemyStats[kind]!;
@@ -189,6 +200,11 @@ enum RunEventType {
   waveWarning,
   waveStart,
   bossSlam,
+  bossSmash,
+  bossThrow,
+  bossSpray,
+  bossSummon,
+  bossEnrage,
   bossDefeated,
   returned,
   died,
@@ -273,6 +289,7 @@ class RunSimulation {
   final List<Blast> blasts = [];
   final List<Pickup> pickups = [];
   final List<Particle> particles = [];
+  final List<BossShot> bossShots = [];
   SwordSwing? swing;
   ReturnGate? gate;
 
@@ -370,6 +387,7 @@ class RunSimulation {
     _spawnBosses();
     _moveEnemies(dt);
     _updateBosses(dt);
+    _updateBossShots(dt);
     if (phase != RunPhase.playing) return;
     _separateEnemies();
     _clampEnemies();
