@@ -335,24 +335,27 @@ function openGacha(){$('gachaStage').innerHTML='<div style="font-size:42px">🎰
 $('gachaOne').addEventListener('click',()=>pull(1));$('gachaFive').addEventListener('click',()=>pull(5));$('gachaClose').addEventListener('click',closeModal);$('closetClose').addEventListener('click',closeModal);
 $('closetReset').addEventListener('click',()=>{SAVE.outfit=JSON.parse(JSON.stringify(DEFAULT_OUTFIT));save();applyOutfit(player,SAVE.outfit);renderCloset();});
 const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0,foot:false,tr:null,carry:'deck'};P.y=G(P.x,P.z);
-const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false;
+const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false,trickQ=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
   if(DLG&&DLG.choice){const i=+e.key-1;if(i>=0&&i<DLG.n)DLG.pick(i);return;}
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
-  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
+  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyK'&&!e.repeat)trickQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
 const stick={on:false,id:null,x:0,y:0};
-{ const el=$('stick'),kn=$('knob');const set=(e)=>{const r=el.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const L=Math.hypot(dx,dy),m=r.width/2-10;if(L>m){dx*=m/L;dy*=m/L;}
+// the floating stick: the ring jumps to where the thumb lands on the lower left, and goes back to its corner when let go
+{ const el=$('stick'),ring=$('ring'),kn=$('knob');let ox=0,oy=0;const set=(e)=>{let dx=e.clientX-ox,dy=e.clientY-oy;const L=Math.hypot(dx,dy),m=50;if(L>m){dx*=m/L;dy*=m/L;}
     stick.x=dx/m;stick.y=dy/m;kn.style.transform=`translate(${dx}px,${dy}px)`;};
-  el.addEventListener('pointerdown',e=>{stick.on=true;stick.id=e.pointerId;try{el.setPointerCapture(e.pointerId);}catch(_){}set(e);});
+  el.addEventListener('pointerdown',e=>{if(stick.on)return;stick.on=true;stick.id=e.pointerId;try{el.setPointerCapture(e.pointerId);}catch(_){}
+    const r=el.getBoundingClientRect();ox=e.clientX;oy=e.clientY;ring.style.left=(ox-r.left)+'px';ring.style.top=(oy-r.top)+'px';el.classList.add('on');set(e);});
   el.addEventListener('pointermove',e=>{if(stick.on&&e.pointerId===stick.id)set(e);});
-  for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,()=>{stick.on=false;stick.x=stick.y=0;kn.style.transform='';});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,e=>{if(e.pointerId!==stick.id)return;stick.on=false;stick.x=stick.y=0;kn.style.transform='';el.classList.remove('on');ring.style.left=ring.style.top='';});
   $('bJump').addEventListener('pointerdown',e=>{e.preventDefault();jumpQ=true;});
   $('bFoot').addEventListener('pointerdown',e=>{e.preventDefault();footQ=true;});
+  $('bTrick').addEventListener('pointerdown',e=>{e.preventDefault();trickQ=true;});
   const kb=$('bKick');kb.addEventListener('pointerdown',e=>{e.preventDefault();kickQ=true;kickHold=true;kb.classList.add('on');try{kb.setPointerCapture(e.pointerId);}catch(_){}});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])kb.addEventListener(ev,()=>{kickHold=false;kb.classList.remove('on');});
   kb.addEventListener('contextmenu',e=>e.preventDefault());
@@ -372,6 +375,7 @@ function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 function stepPlayer(dt){
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
+  if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   const g1=G(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=G(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
@@ -403,16 +407,18 @@ function stepPlayer(dt){
   else if(ok){P.x=nx;P.z=nz;}
   P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
-  if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;}jumpQ=false;
+  if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;trickAdd('ollie',10);}}jumpQ=false;
+  if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
   if(!P.air&&P.y-gy>0.3){P.air=true;P.vy=0;}
-  if(P.air){P.vy-=13.5*dt;P.y+=P.vy*dt;if(P.y<=gy){if(P.vy<-9)P.bump=0.25;P.y=gy;P.air=false;P.vy=0;}}else P.y+=(gy-P.y)*Math.min(1,18*dt);
+  if(P.air){P.vy-=13.5*dt;P.y+=P.vy*dt;if(P.y<=gy){if(P.vy<-9)P.bump=0.25;P.y=gy;P.air=false;P.vy=0;
+      if(!onFoot){if(P.trick){P.trick=null;P.v*=0.3;P.bump=0.5;trickLand(false);}else trickLand(true);}}}else P.y+=(gy-P.y)*Math.min(1,18*dt);
   player.g.position.set(P.x,P.y,P.z);
   const pitch=P.air?-P.vy*0.03:Math.atan(-slope);
   player.g.rotation.set(0,P.yaw,0);
   if(onFoot){player.root.rotation.set(0,0,0);poseRunner(player,dt,{v:P.v,turn:P.turn,air:P.air,vy:P.vy,tr:P.tr,carry:P.carry});}
   else{player.root.rotation.set(pitch*0.8,0,clamp(P.turn*P.v*0.03,-0.25,0.25));
     if(P.tr&&P.tr.type==='stow')P.tr=null;
-    poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy});}
+    const tk=P.trick;poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy,flip:tk&&tk.type==='flip'?tk.t:0,spin:tk&&tk.type==='spin'?tk.t:0});}
 }
 
 /* ---------- interaction ---------- */
@@ -478,7 +484,7 @@ let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    if(ST.run&&!storyFree())jumpQ=kickQ=footQ=false;
+    if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}

@@ -67,7 +67,7 @@ function solveLeg(L,hx,hy,hz,fx,fy,fz){
   const a=Math.acos(clamp((THIGH*THIGH+d*d-SHIN*SHIN)/(2*THIGH*d),-1,1)),kn=Math.acos(clamp((THIGH*THIGH+SHIN*SHIN-d*d)/(2*THIGH*SHIN),-1,1));
   const phi=Math.atan2(dz,-dy),side=Math.atan2(dx,Math.hypot(dy,dz));
   L.th.rotation.set(-(phi+a),0,side);L.kn.rotation.x=Math.PI-kn;L.ft.rotation.set(-(L.th.rotation.x+L.kn.rotation.x),L.sx*0.22,0);}
-const _v=new THREE.Vector3();
+const _v=new THREE.Vector3(),_e=new THREE.Euler();
 function lookAtTarget(h,target,dt,max){let want=0;if(target){h.g.getWorldPosition(_v);const yaw=Math.atan2(target.x-_v.x,target.z-_v.z);
     let d=yaw-h.g.rotation.y;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;want=Math.abs(d)<2.2?clamp(d,-(max||1),max||1):0;}
   h.yawHead+=(want-h.yawHead)*Math.min(1,4*dt);h.head.rotation.y=h.yawHead*0.75;h.torso.rotation.y=h.yawHead*0.25;}
@@ -225,7 +225,7 @@ function animHeroine(h,dt,s){
   h.charm.rotation.z=Math.sin(h.t*4.2)*0.25+turn*0.3;h.charm.rotation.x=Math.sin(h.t*3.1)*0.15-acc*0.01;
 }
 function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
-  let crouch=s.brake?0.2:s.v>6?0.55:0.28;if(s.air)crouch=0.8;P.c+=(crouch-P.c)*Math.min(1,6*dt);
+  let crouch=s.brake?0.2:s.v>6?0.55:0.28;if(s.air)crouch=0.8;if(s.grind)crouch=0.62;P.c+=(crouch-P.c)*Math.min(1,6*dt);
   P.st+=(clamp(s.turn,-1,1)-P.st)*Math.min(1,5*dt);P.push+=((s.push?1:0)-P.push)*Math.min(1,6*dt);
   // stance (LEAD = the leg on the nose, +1 = left foot forward, facing the right of the board seen from behind): riding, the body
   // turns side-on across the deck and the head looks
@@ -241,7 +241,11 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
   P.airT=s.air?(P.airT||0)+dt:0;P.tk=(P.tk||0)+((s.air?1:0)-(P.tk||0))*Math.min(1,(s.air?10:16)*dt);
   P.gr=(P.gr||0)+((s.air&&P.pop&&P.airT>0.16&&(s.vy==null||s.vy>-4.2)?1:0)-(P.gr||0))*Math.min(1,(s.air?9:18)*dt);
   const tk=P.tk,gr=P.gr,lift=0.3*tk+0.08*gr;
-  h.board.position.y=lift;h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3)):0,0,M*0.3*gr);
+  // tricks: the board turns under her feet — about its long axis for a kickflip, flat round for a shove-it — while the feet
+  // lift off it and come back down when it has gone round
+  const fp=s.flip||0,spn=s.spin||0,trk=Math.sin(Math.PI*Math.max(fp,spn));
+  h.board.position.y=lift+0.12*trk;h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3))*(1-trk):0,0,M*0.3*gr*(1-trk));
+  _e.copy(h.board.rotation);h.board.rotation.y+=TAU*spn;h.board.rotation.z+=TAU*fp;
   h.hips.position.set(0,lerp(hipY,lerp(0.71,0.47,gr)+lift,tk),-0.03*c*(1-sd)*(1-P.push));h.hips.rotation.set(0,yaw,LEAD*0.12*P.push);
   h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)*(1-0.6*P.push)+P.push*0.22+0.3*tk+0.8*gr,-yaw*0.2,-P.st*0.16-LEAD*0.12*P.push);
   h.head.rotation.order='YXZ';h.head.rotation.set(-(0.06+0.5*c)*(1-0.6*sd)-P.push*0.2-0.25*tk-0.55*gr,-yaw*0.8+P.st*0.25,P.st*0.08);
@@ -261,7 +265,7 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
       else if(k<0.65){z=lerp(fwdZ,backZ,ph);y=0.095+0.05*smooth(clamp((ph-0.6)/0.4,0,1));}else{z=lerp(backZ,-0.21,smooth(ph));y=0.145+Math.sin(Math.PI*ph)*0.12+(ANKLE_Y-0.145)*smooth(ph);}
       fz=lerp(fz,z,P.push);fy=lerp(fy,y,P.push);fx=lerp(fx,0.16*M,P.push);}
     // feet stay on the deck as it pops, tilts and rises
-    _v.set(fx,fy,fz).applyEuler(h.board.rotation);_v.y+=lift;
+    _v.set(fx,fy+0.2*trk,fz).applyEuler(_e);_v.y+=lift;
     solveLeg(L,L.sx*0.09*cy,hy,hz-L.sx*0.09*sy,_v.x,_v.y,_v.z);
     // feet lie across the deck when riding; the front foot points ahead and the pushing foot runs along the ground when kicking
     L.ft.rotation.y=(front?lerp(0.15,1.2,sd):lerp(0.05,1.45,sd)*(1-P.push))*M;}
