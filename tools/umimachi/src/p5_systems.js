@@ -365,9 +365,11 @@ const stick={on:false,id:null,x:0,y:0};
 // the mouse fires the pistols in the drone fight (left button on the 3D view)
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+if(hasTouch)for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());   // no long-press menu or selection while playing
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
-  if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
+  if(stick.on){if(stick.y>0.45)back=true;if(stick.y<-0.45)fwd=true;   // pushing the stick forward kicks (on foot: runs) like holding W
+   if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
 function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
