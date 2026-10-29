@@ -1,5 +1,5 @@
 
-/* ---------- the heroine model: the pixiv VRM sample reworked in Blender (tools/umimachi/heroine_vrm.py), driven by the skater rig ----------
+/* ---------- the heroine model: made in VRoid Studio and reworked in Blender (tools/umimachi/heroine_vrm.py), driven by the skater rig ----------
    The procedural skater still computes the pose (and carries the board); its body is hidden and the model's bones follow it:
    torso, neck and head copy the rig's rotations, the arms swing to the rig's elbow and hand positions, and the legs are solved
    with their own two-bone IK so the sneakers stay on the deck. */

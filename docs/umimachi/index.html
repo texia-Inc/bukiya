@@ -184,7 +184,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
     </dl>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="startBtn">散歩に出かける</button><button class="btn ghost" id="resetBtn" hidden>はじめからにする</button></div>
-    <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：pixiv Inc.「VRM1_Constraint_Twist_Sample」を改変（VRM Public License 1.0）</p>
+    <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：VRoid Studio で作成</p>
   </div>
 </div>
 <div id="loading">海街を準備しています…</div>
@@ -5058,7 +5058,7 @@ function poseRunner(h,dt,s){const P=h.pose;h.t+=dt;const tr=s.tr,v=s.v||0,r=clam
   if(h.vrm)driveVRM(h,dt,{v:Math.min(v,3),turn:s.turn||0,air:s.air,vy:s.vy});
 }
 
-/* ---------- the heroine model: the pixiv VRM sample reworked in Blender (tools/umimachi/heroine_vrm.py), driven by the skater rig ----------
+/* ---------- the heroine model: made in VRoid Studio and reworked in Blender (tools/umimachi/heroine_vrm.py), driven by the skater rig ----------
    The procedural skater still computes the pose (and carries the board); its body is hidden and the model's bones follow it:
    torso, neck and head copy the rig's rotations, the arms swing to the rig's elbow and hand positions, and the legs are solved
    with their own two-bone IK so the sneakers stay on the deck. */
@@ -5177,10 +5177,13 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
    An outfit picks one item per slot and one colour set for it. An item lists the parts it shows and how each is coloured:
    0 / 1 = the item's first / second colour, '#rrggbb' = a fixed colour, 'dark0' = recolour the dark parts of the texture with
    the first colour. Parts exported white are tinted; parts with their own colour (the bunny charm, straps) keep it.
+   W_tops is the school shirt of the VRoid model, so the hoodie and T-shirts are that shirt in another colour or pattern.
+   Colours are only ever appended to an item: saves and owned prizes refer to them by index.
    To add clothes: add a part in the Blender script, then an item here. ---------- */
 const CAMO={forest:['#5b6b3a','#3e4a2a','#8a7d52','#2a2a22'],desert:['#c9b07a','#a88a5a','#e0cfa0','#7a6448'],pink:['#f2a6c0','#d97a9e','#fbd6e2','#a85678'],urban:['#9aa0a8','#6a7078','#c8ccd2','#3a3e44']};
 const WARDROBE=[
   {slot:'tops',label:'トップス',items:[
+    {id:'uniform',name:'制服シャツ',parts:{W_tops:0},colors:[['#ffffff'],['#dde8f5'],['#f6efe0']]},
     {id:'hoodie',name:'パーカー',parts:{W_tops:0,W_sleeves:0,W_hood:0,W_strip:1,W_zip:'#a4a6b0'},
       colors:[['#33395e','#f6f5f1'],['#ece6dc','#3a3d52'],['#e48a9a','#ffffff'],['#5d8a64','#f6f5f1'],['#2b2b30','#f2d36b'],['#8fb8e0','#ffffff']]},
     {id:'camo',name:'迷彩パーカー',parts:{W_tops:{pat:'camo'},W_sleeves:{pat:'camo'},W_hood:{pat:'camo'},W_strip:'#2b2b2b',W_zip:'#a4a6b0'},
@@ -5189,13 +5192,14 @@ const WARDROBE=[
     {id:'tee_dots',name:'水玉Tシャツ',parts:{W_tops:{pat:'dots'}},colors:[['#f6f5f1','#e05a6a'],['#2b2b30','#f6f5f1'],['#9cc3e6','#ffffff']]},
     {id:'tee_stars',name:'星柄Tシャツ',parts:{W_tops:{pat:'stars'}},colors:[['#2d3a6a','#f5d86a'],['#f6f5f1','#e88fa8'],['#2b2b30','#9ad8f0']]}]},
   {slot:'neck',label:'えり元',items:[
+    {id:'ribbon',name:'制服リボン',parts:{W_tie:0},colors:[['#8fb8e0'],['#c8323a'],['#2d3a6a'],['#3f7a5a']]},
     {id:'bow',name:'リボン',parts:{W_bow:0},colors:[['#c8323a'],['#2d4f9a'],['#f0879c'],['#2b2b30']]},
     {id:'choker',name:'鈴のチョーカー',parts:{W_choker:0},colors:[['#2b2b30'],['#c8323a'],['#7a5a8f']]},
     {id:'dogtag',name:'ドッグタグ',parts:{W_dogtag:0},colors:[['#c5c9cf']]},
     {id:'sailor',name:'セーラーえり',parts:{W_sailorcollar:0,W_sailorcollar_line:1,W_bow:2},colors:[['#2d3a6a','#f6f5f1','#c8323a'],['#f6f5f1','#2d3a6a','#2d3a6a'],['#2b2b30','#f6f5f1','#e05a6a']]},
     {id:'none',name:'なし',parts:{}}]},
   {slot:'bottoms',label:'ボトムス',items:[
-    {id:'skirt',name:'チェックスカート',parts:{W_skirt:0,W_shorts:'#2c2f44'},colors:[['#6f7488'],['#b0484f'],['#4d7a5f'],['#9a8a6a'],['#c98aa0']]},
+    {id:'skirt',name:'チェックスカート',parts:{W_skirt:0,W_shorts:'#2c2f44'},colors:[['#6f7488'],['#b0484f'],['#4d7a5f'],['#9a8a6a'],['#c98aa0'],['#3b4a78']]},
     {id:'zigzag',name:'ギザギザスカート',parts:{W_skirtzig:0,W_shorts:'#2c2f44'},colors:[['#2b2433'],['#5a3a7a'],['#e07a2a']]},
     {id:'shorts',name:'ショートパンツ',parts:{W_shorts:0},colors:[['#2c2f44'],['#d9cdb4'],['#6f8fb5'],['#f2f0ea']]},
     {id:'cargo',name:'カーゴショーツ',parts:{W_shorts:{pat:'camo'},W_cargo:{pat:'camo'}},colors:[CAMO.forest,CAMO.desert,CAMO.urban]}]},
@@ -5207,7 +5211,7 @@ const WARDROBE=[
     {id:'witchtights',name:'しましまタイツ',parts:{W_tights:{pat:'stripe'}},colors:[['#e07a2a','#4a2a6a'],['#2b2b30','#f6f5f1'],['#7a3a9a','#9ad860']]},
     {id:'none',name:'なし',parts:{}}]},
   {slot:'shoes',label:'くつ',items:[
-    {id:'sneakers',name:'スニーカー',parts:{W_shoes:'dark0'},colors:[['#f07a93'],['#2b2b30'],['#f6f5f1'],['#4f8fd8'],['#f5c84a'],['#7cc39a']]}]},
+    {id:'sneakers',name:'スニーカー',parts:{W_shoes:'dark0'},colors:[['#f07a93'],['#2b2b30'],['#f6f5f1'],['#4f8fd8'],['#f5c84a'],['#7cc39a'],['#f2994a']]}]},
   {slot:'hands',label:'手',items:[
     {id:'none',name:'なし',parts:{}},
     {id:'paws',name:'肉球てぶくろ',parts:{W_paws:0},colors:[['#2b2b30'],['#f6f5f1'],['#e8b07a']]}]},
@@ -5223,7 +5227,7 @@ const WARDROBE=[
     {id:'marine',name:'マリン帽',parts:{W_marinecap:0,W_marinecap_brim:0,W_marinecap_band:1},colors:[['#f6f5f1','#2d3a6a'],['#2d3a6a','#f6f5f1']]},
     {id:'none',name:'なし',parts:{}}]},
   {slot:'tie',label:'シュシュ',items:[
-    {id:'scrunchie',name:'シュシュ',parts:{W_scrunchie:0},colors:[['#d8455a'],['#f6f5f1'],['#33395e'],['#f5c84a'],['#7cc39a']]}]},
+    {id:'scrunchie',name:'シュシュ',parts:{W_scrunchie:0},colors:[['#d8455a'],['#f6f5f1'],['#33395e'],['#f5c84a'],['#7cc39a'],['#9cc3e6']]}]},
   {slot:'back',label:'せなか',items:[
     {id:'pack',name:'リュック',parts:{W_pack:0},colors:[['#232327'],['#c9a36a'],['#ece6dc'],['#7a5a8f'],['#d86a7c']]},
     {id:'cape',name:'マント',parts:{W_cape:0},colors:[['#2b2433'],['#4a2a6a'],['#8a1f2a']]},
@@ -5238,7 +5242,10 @@ const WARDROBE=[
   {slot:'hair',label:'髪の色',items:[
     {id:'hair',name:'髪',parts:{},hair:true,colors:[[null],['#2a2220'],['#d9b06a'],['#e88fa8'],['#8a9fd0'],['#b9b9c2']]}]},
 ];
-const DEFAULT_OUTFIT={tops:['hoodie',0],neck:['bow',0],bottoms:['skirt',0],legs:['socks',0],shoes:['sneakers',0],hands:['none',0],head:['clip',0],tie:['scrunchie',0],back:['pack',0],waist:['none',0],hair:['hair',0]};
+// Nagi's summer school uniform (tools/umimachi/design/06_turnaround_uniform_fixed.png)
+const DEFAULT_OUTFIT={tops:['uniform',0],neck:['ribbon',0],bottoms:['skirt',5],legs:['knee',2],shoes:['sneakers',6],hands:['none',0],head:['none',0],tie:['scrunchie',5],back:['none',0],waist:['none',0],hair:['hair',0]};
+// the everyday outfit she used to start in stays free
+const OLD_STARTER=['tops:hoodie:0','tops:tee:0','neck:bow:0','bottoms:skirt:0','bottoms:shorts:0','legs:socks:0','shoes:sneakers:0','head:clip:0','tie:scrunchie:0','back:pack:0'];
 const _texCache={};
 // recolour a texture on a canvas: 'hair' keeps the shading and replaces the hue, 'dark' paints only the dark areas
 function recolorTex(map,hex,mode){const key=map.uuid+mode+hex;if(_texCache[key])return _texCache[key];
@@ -5294,7 +5301,7 @@ const COSTUME_SETS=[
   {name:'小悪魔',icon:'😈',keys:['head:horns','back:batwings','waist:deviltail']},
   {name:'天使',icon:'😇',keys:['head:halo','back:angelwings']},
   {name:'セーラー',icon:'⚓',keys:['neck:sailor','head:marine','legs:kneestripe']}];
-const STARTER=new Set([...Object.entries(DEFAULT_OUTFIT).map(([s,[id,ci]])=>s+':'+id+':'+ci),'tops:tee:0','bottoms:shorts:0']);
+const STARTER=new Set([...Object.entries(DEFAULT_OUTFIT).map(([s,[id,ci]])=>s+':'+id+':'+ci),...OLD_STARTER]);
 function prizeList(){const L=[];for(const S of WARDROBE)for(const it of S.items){if(it.id==='none')continue;
     (it.colors||[[]]).forEach((c,ci)=>{const key=S.slot+':'+it.id+':'+ci;if(STARTER.has(key))return;L.push({key,slot:S.slot,id:it.id,ci,name:it.name,r:RARITY[it.id]||'N',col:c});});}
   return L;}

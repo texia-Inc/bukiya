@@ -18,8 +18,9 @@
 - 走る車：セダン、軽自動車、ワゴン、軽トラ、タクシー
 
 ### 主人公
-- pixiv の VRM サンプルモデルを Blender で改変（ポニーテール、琥珀色の目）。まばたき・笑顔などの表情あり
-- 手続き生成の骨組み（見えない）が姿勢を計算し、モデルの骨を合わせる。腕は肘と手の位置へ、脚は2ボーンIKで足をデッキに固定、ひじ・肩の補助ボーン（VRMの制約）も計算
+- 汐見ナギ（仮）：VRoid Studio で作ったモデル（夏の制服、高いポニーテール、琥珀色の目）を Blender で改変。まばたき・笑顔などの表情あり
+- 設定画：`tools/umimachi/design/`（全身4面・表情・小物）、作り方：`tools/umimachi/VROID_GUIDE.md`
+- 手続き生成の骨組み（見えない）が姿勢を計算し、モデルの骨を合わせる。腕は肘と手の位置へ、脚は2ボーンIKで足をデッキに固定、ひじ・肩の補助ボーン（VRMの制約）があれば計算
 - モデルを読み込めなかったときは、以前の手続き生成キャラで動く
 
 ### スケボー
@@ -79,8 +80,8 @@
 1. `tools/umimachi/src/` のファイルを編集する
 2. `cd tools/umimachi/src && python3 build.py` で `docs/umimachi/index.html` を作り直す（1ファイル版 `umimachi_single.html` も作られる。コミット対象外）
 3. 手元で遊ぶ：`cd docs/umimachi && python3 -m http.server` → http://localhost:8000
-4. 服の部品を変えたとき：元モデル（vrm-c/vrm-specification の `VRM1_Constraint_Twist_Sample.vrm` を `.glb` に改名）を用意し、
-   `Blender -b --python tools/umimachi/heroine_vrm.py -- a.glb heroine.glb` → `docs/umimachi/heroine.glb` に置く
+4. 服の部品を変えたとき：`tools/umimachi/design/nagi.vrm` を `nagi.glb` に改名してコピーし、
+   `Blender -b --python tools/umimachi/heroine_vrm.py -- nagi.glb heroine.glb` → `docs/umimachi/heroine.glb` に置く
 
 ## わかっている課題
 - マントや羽を着て走ったときの、板の持ち方の見た目は未確認
