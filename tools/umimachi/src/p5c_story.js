@@ -8,12 +8,12 @@ const PHASE_NAME={morning:'朝',day:'昼',evening:'夕方',night:'夜'};
 function phaseOf(h){h=((h%24)+24)%24;return h<5||h>=19?'night':h<10?'morning':h<16?'day':'evening';}
 const DAY_START=8,DAY_CAP=15.5,TIME_RATE=1/75;   // a new day starts at 8:00; on its own the clock runs one hour every 75 s up to the cap
 // the light through the day: sky tint, fog, hemisphere sky/ground/strength, sun colour/strength/height, and how much the night lights glow
-const LIGHT=[[0,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1],[5,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1],
+const LIGHT=[[0,'#26315a','#141c34','#6a7eb0','#34323e',0.5,'#a8bce8',0.42,0.9,1],[5,'#26315a','#141c34','#6a7eb0','#34323e',0.5,'#a8bce8',0.42,0.9,1],
   [6.5,'#f6c8b0','#e6d6d0','#f0dcd0','#7a6a5a',0.5,'#ffc89a',0.7,0.25,0.3],[8.5,'#fff4e8','#e2eef2','#eef4ff','#8a7c66',0.58,'#fff0d8',0.9,0.7,0],
   [10,'#ffffff','#d6edf6','#e6f3ff','#8a7c66',0.62,'#fff3dc',0.95,0.95,0],[16,'#ffffff','#d6edf6','#e6f3ff','#8a7c66',0.62,'#fff3dc',0.95,0.95,0],
   [17.5,'#ffc49a','#f2c6a2','#ffd8b8','#7a5e4a',0.55,'#ffb070',0.9,0.35,0],[18.7,'#e88a78','#c88a86','#d8a0a0','#5a4448',0.45,'#ff7a48',0.6,0.1,0.4],
-  [19.6,'#6a5c8c','#4a4a70','#7a78a8','#3a3440',0.38,'#c08ab0',0.25,0.15,0.85],[21,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1],
-  [24,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1]].map(([h,...v])=>({h,v:v.map(x=>typeof x==='string'?new THREE.Color(x):x)}));
+  [19.6,'#6a5c8c','#4a4a70','#7a78a8','#3a3440',0.38,'#c08ab0',0.25,0.15,0.85],[21,'#26315a','#141c34','#6a7eb0','#34323e',0.5,'#a8bce8',0.42,0.9,1],
+  [24,'#26315a','#141c34','#6a7eb0','#34323e',0.5,'#a8bce8',0.42,0.9,1]].map(([h,...v])=>({h,v:v.map(x=>typeof x==='string'?new THREE.Color(x):x)}));
 const SUN_H=new THREE.Vector2(-0.55,-0.4).normalize(),LC=[0,1,2,3,5].map(()=>new THREE.Color());
 // night lights: glows on the coast-road lamps and the pier lamp, the lighthouse and its turning beam, the blinking light on the radio mast, stars
 const GLOW_TEX=canvasTex(64,64,(c,w,h)=>{const g=c.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.25,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,w,h);});

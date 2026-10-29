@@ -7,12 +7,12 @@
 const URA_START=[-222,COAST_Z+1.1,Math.PI/2],URA_EXIT=[-226,COAST_Z+1.1,5];
 const URA_CLUES=[{id:'photo',name:'駅のホーム',x:62,z:TRAM_Z-1.5},{id:'marble',name:'駄菓子まるや',x:SHOPS.dagashi.door[0],z:SHOPS.dagashi.door[1]},{id:'diary',name:'神社の本殿',x:SHRINE.x,z:-157.5}];
 const URA_BEATS=[[-45,-20,45,-20],[0,-120,0,-35],[0,40,0,190],[-150,COAST_Z,-30,COAST_Z],[25,COAST_Z+1,150,COAST_Z+1],[40,TRAM_Z-4,100,TRAM_Z-4],[SHRINE.x,-131,SHRINE.x,-152],[-120,-140,-120,60]];
-const URA={on:false,shadows:[],sus:0,chase:null,mood:new THREE.Color('#3a4a44'),fog:new THREE.Color('#1a2420')};
+const URA={on:false,shadows:[],sus:0,chase:null,mood:new THREE.Color('#4a5a54'),fog:new THREE.Color('#2a3430')};
 const SHADE={skin:'#141518',hair:'#0b0b0d',style:'short',shirt:'#1b1c21',sleeves:'long',bottom:'pants',bottomCol:'#121316',shoe:'#0b0b0d'};
 const torch=new THREE.SpotLight('#fff1d0',0,30,0.42,0.55,1);scene.add(torch);scene.add(torch.target);let torchOn=false;
 const uraGlints=URA_CLUES.map(c=>{const g=glow('#bfefff',c.x,G(c.x,c.z)+0.9,c.z,1.4);return g;});
 const omochi=makeCat({col:'#f2f2ee'});omochi.g.visible=false;world.add(omochi.g);
-function uraEnter(){URA.on=true;SAVE.flags.in_ura=1;canvas.style.filter='saturate(.28) sepia(.3) hue-rotate(-12deg) brightness(.96)';
+function uraEnter(){URA.on=true;SAVE.flags.in_ura=1;canvas.style.filter='saturate(.28) sepia(.3) hue-rotate(-12deg) brightness(1.12)';
   if(!URA.shadows.length)URA_BEATS.forEach(([x0,z0,x1,z1],k)=>{const h=makeHuman(SHADE);world.add(h.g);
     const eye=glow('#ff3020',0,0,0,0.9);URA.shadows.push({h,a:[x0,z0],b:[x1,z1],t:(k*0.37)%1,dir:1,sus:0,eye});});
   for(const s of URA.shadows){s.h.g.visible=true;s.sus=0;}
@@ -37,7 +37,7 @@ function updateUra(dt){
   $('lightBtn').hidden=!URA.on;
   if(!URA.on)return;
   // the light of the other side: thick fog, a dead green sky, unlit windows, lamps that flicker
-  scene.fog.color.copy(URA.fog);scene.background.copy(URA.fog);dome.material.color.copy(URA.mood);hemi.intensity=0.24;sun.intensity=0.06;
+  scene.fog.color.copy(URA.fog);scene.background.copy(URA.fog);dome.material.color.copy(URA.mood);hemi.intensity=0.5;sun.intensity=0.22;
   for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
   for(const m of NIGHT.lamps){m.visible=Math.random()>0.08;m.material.opacity=0.55+Math.random()*0.3;}
   for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;for(const c of CATS)c.g.visible=false;
