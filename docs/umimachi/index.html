@@ -4825,15 +4825,22 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
   // pushing: stand tall on a nearly straight front leg, drop the pelvis a little on the pushing side and sink slightly through the stroke
   const kp=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1,stroke=kp<0.3?0:kp<0.65?(kp-0.3)/0.35:1-(kp-0.65)/0.35;
   const hipY=lerp(0.93+0.045*sd-0.24*c*(1-0.55*sd),1.0-0.035*stroke,P.push);
-  h.hips.position.set(0,hipY,-0.03*c*(1-sd)*(1-P.push));h.hips.rotation.set(0,yaw,LEAD*0.12*P.push);
-  h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)*(1-0.6*P.push)+P.push*0.22,-yaw*0.2,-P.st*0.16-LEAD*0.12*P.push);
-  h.head.rotation.order='YXZ';h.head.rotation.set(-(0.06+0.5*c)*(1-0.6*sd)-P.push*0.2,-yaw*0.8+P.st*0.25,P.st*0.08);
+  // jumps: the ollie pop (tail down, nose up) on take-off, knees and board pulled up in the air, and an indy grab
+  // (back hand on the toe edge between the feet) while she is still rising or near the top
+  if(s.air&&!P.airT)P.pop=(s.vy||0)>3;   // a real jump (not rolling off a kerb) pops and grabs
+  P.airT=s.air?(P.airT||0)+dt:0;P.tk=(P.tk||0)+((s.air?1:0)-(P.tk||0))*Math.min(1,(s.air?10:16)*dt);
+  P.gr=(P.gr||0)+((s.air&&P.pop&&P.airT>0.16&&(s.vy==null||s.vy>-3.4)?1:0)-(P.gr||0))*Math.min(1,(s.air?9:18)*dt);
+  const tk=P.tk,gr=P.gr,lift=0.3*tk+0.08*gr;
+  h.board.position.y=lift;h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3)):0,0,M*0.3*gr);
+  h.hips.position.set(0,lerp(hipY,lerp(0.71,0.47,gr)+lift,tk),-0.03*c*(1-sd)*(1-P.push));h.hips.rotation.set(0,yaw,LEAD*0.12*P.push);
+  h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)*(1-0.6*P.push)+P.push*0.22+0.3*tk+0.8*gr,-yaw*0.2,-P.st*0.16-LEAD*0.12*P.push);
+  h.head.rotation.order='YXZ';h.head.rotation.set(-(0.06+0.5*c)*(1-0.6*sd)-P.push*0.2-0.25*tk-0.55*gr,-yaw*0.8+P.st*0.25,P.st*0.08);
   // arms stay loose with bent elbows: the lead arm a little forward, the back arm behind, a little wider with speed and in the air,
   // the outside arm lifts in a turn and both counter-swing the kicking leg
   const sp=clamp(s.v/12,0,1),air=s.air?1:0,kk=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1,swing=Math.sin(kk*Math.PI*2)*0.38*P.push;
   for(const a of h.arms){const lead=a.sx===LEAD;
-    const out=0.16+0.26*sp+0.55*air+(a.sx*P.st>0?-0.1:0.28)*Math.abs(P.st);
-    const fw=(lead?-0.3-0.12*sp:0.25+0.08*sp)+0.35*c+(lead?-swing:swing)+Math.sin(h.t*1.7+(lead?0:1.4))*0.04;
+    const out=0.16+0.26*sp+0.55*air+(a.sx*P.st>0?-0.1:0.28)*Math.abs(P.st)+(lead?0.6*gr:0);
+    const fw=(lead?-0.3-0.12*sp-0.5*gr:0.25+0.08*sp)+0.35*c+(lead?-swing:swing)+Math.sin(h.t*1.7+(lead?0:1.4))*0.04;
     a.sh.rotation.set(fw,0,a.sx*out);a.el.rotation.x=-(0.5+0.35*sp+0.2*P.push-0.15*air);}
   const hy=h.hips.position.y-0.07,hz=h.hips.position.z,cy=Math.cos(yaw),sy=Math.sin(yaw);
   for(const L of h.legs){const front=L.sx===LEAD;let fx=((front?0.03:-0.03)*(1-sd)+0.01*sd)*M,fy=ANKLE_Y,fz=front?0.2+0.02*sd:-0.21-0.03*sd;
@@ -4843,7 +4850,9 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
       let z,y;if(k<0.3){z=lerp(-0.21,fwdZ,smooth(ph));y=lerp(ANKLE_Y,0.095,smooth(ph));}
       else if(k<0.65){z=lerp(fwdZ,backZ,ph);y=0.095+0.05*smooth(clamp((ph-0.6)/0.4,0,1));}else{z=lerp(backZ,-0.21,smooth(ph));y=0.145+Math.sin(Math.PI*ph)*0.12+(ANKLE_Y-0.145)*smooth(ph);}
       fz=lerp(fz,z,P.push);fy=lerp(fy,y,P.push);fx=lerp(fx,0.16*M,P.push);}
-    solveLeg(L,L.sx*0.09*cy,hy,hz-L.sx*0.09*sy,fx,fy,fz);
+    // feet stay on the deck as it pops, tilts and rises
+    _v.set(fx,fy,fz).applyEuler(h.board.rotation);_v.y+=lift;
+    solveLeg(L,L.sx*0.09*cy,hy,hz-L.sx*0.09*sy,_v.x,_v.y,_v.z);
     // feet lie across the deck when riding; the front foot points ahead and the pushing foot runs along the ground when kicking
     L.ft.rotation.y=(front?lerp(0.15,1.2,sd):lerp(0.05,1.45,sd)*(1-P.push))*M;}
   for(const w of h.wheels)w.rotation.x+=s.v*dt/0.034;
@@ -4969,7 +4978,8 @@ function makeSkaterVRM(gl){
   for(const [S,sx] of [['L',1],['R',-1]]){
     legs[sx]={up:B['J_Bip_'+S+'_UpperLeg'],lo:B['J_Bip_'+S+'_LowerLeg'],ft:B['J_Bip_'+S+'_Foot'],dUp:dirRest('J_Bip_'+S+'_UpperLeg','J_Bip_'+S+'_LowerLeg'),dLo:dirRest('J_Bip_'+S+'_LowerLeg','J_Bip_'+S+'_Foot'),
       l1:rest['J_Bip_'+S+'_UpperLeg'].p.distanceTo(rest['J_Bip_'+S+'_LowerLeg'].p),l2:rest['J_Bip_'+S+'_LowerLeg'].p.distanceTo(rest['J_Bip_'+S+'_Foot'].p),n:S};
-    arms[sx]={up:B['J_Bip_'+S+'_UpperArm'],lo:B['J_Bip_'+S+'_LowerArm'],hand:B['J_Bip_'+S+'_Hand'],dUp:dirRest('J_Bip_'+S+'_UpperArm','J_Bip_'+S+'_LowerArm'),dLo:dirRest('J_Bip_'+S+'_LowerArm','J_Bip_'+S+'_Hand'),n:S};}
+    arms[sx]={up:B['J_Bip_'+S+'_UpperArm'],lo:B['J_Bip_'+S+'_LowerArm'],hand:B['J_Bip_'+S+'_Hand'],dUp:dirRest('J_Bip_'+S+'_UpperArm','J_Bip_'+S+'_LowerArm'),dLo:dirRest('J_Bip_'+S+'_LowerArm','J_Bip_'+S+'_Hand'),n:S,
+      l1:rest['J_Bip_'+S+'_UpperArm'].p.distanceTo(rest['J_Bip_'+S+'_LowerArm'].p),l2:rest['J_Bip_'+S+'_LowerArm'].p.distanceTo(rest['J_Bip_'+S+'_Hand'].p)};}
   const hipDrop=rest.J_Bip_C_Hips.p.y-rest.J_Bip_L_UpperLeg.p.y;
   const tail=[0,1,2,3].map(i=>B['Tail'+i]).filter(Boolean);
   // the model's twist/aim helper bones (VRMC_node_constraint in the source file), evaluated here every frame
@@ -5004,7 +5014,15 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   // arms: swing each segment toward the rig's elbow and hand
   for(const A of h.arms){const M=V.arms[A.sx>0?1:-1];   // rig side +x is the model's left
     A.sh.getWorldPosition(_a);A.el.getWorldPosition(_b);A.el.localToWorld(_c.set(0,-0.25,0));toModel(V,_a);toModel(V,_b);toModel(V,_c);
-    const up=M.up,lo=M.lo;
+    const up=M.up,lo=M.lo,gr=h.pose.gr||0;
+    if(gr>0.01&&A.sx!==1){   // the back hand reaches for the toe edge of the deck
+      const S0=up.getWorldPosition(new THREE.Vector3());toModel(V,S0);
+      const E0=S0.clone().addScaledVector(_d.copy(_b).sub(_a).normalize(),M.l1),H0=E0.clone().addScaledVector(_d.copy(_c).sub(_b).normalize(),M.l2);
+      const T=h.board.localToWorld(new THREE.Vector3(-0.1,0.16,-0.02));toModel(V,T);
+      const dd=Math.min(S0.distanceTo(T),M.l1+M.l2-1e-3),dir=T.clone().sub(S0).normalize(),aa=(M.l1*M.l1-M.l2*M.l2+dd*dd)/(2*dd),hh=Math.sqrt(Math.max(0,M.l1*M.l1-aa*aa));
+      const pole=E0.clone().sub(S0);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
+      const E1=S0.clone().addScaledVector(dir,aa).addScaledVector(pole,hh),H1=S0.clone().addScaledVector(dir,dd);
+      const E=E0.lerp(E1,gr),Hh=H0.lerp(H1,gr);_a.copy(S0);_b.copy(E);_c.copy(Hh);}
     swingTo(V,up,'J_Bip_'+M.n+'_UpperArm',M.dUp,_d.copy(_b).sub(_a));
     const sw=swingTo(V,lo,'J_Bip_'+M.n+'_LowerArm',M.dLo,_d.copy(_c).sub(_b));
     _q3.copy(sw).multiply(R['J_Bip_'+M.n+'_Hand'].q);setModelQ(V,M.hand,_q3);}
@@ -5359,7 +5377,7 @@ function stepPlayer(dt){
   player.g.position.set(P.x,P.y,P.z);
   const pitch=P.air?-P.vy*0.03:Math.atan(-slope);
   player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(pitch*0.8,0,clamp(P.turn*P.v*0.03,-0.25,0.25));
-  poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air});
+  poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy});
 }
 
 /* ---------- interaction ---------- */
