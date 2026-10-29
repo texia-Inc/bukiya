@@ -46,6 +46,7 @@ function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.hour&&(SAVE.hour<w.hour[0]||SAVE.hour>=w.hour[1]))return false;
   for(const k in w.flags||{})if(flag(k)!==w.flags[k])return false;
   for(const k in w.min||{})if(flag(k)<w.min[k])return false;
+  for(const k in w.max||{})if(flag(k)>w.max[k])return false;
   if(w.seen&&![].concat(w.seen).every(id=>SAVE.seen[id]))return false;
   if(w.unseen&&[].concat(w.unseen).some(id=>SAVE.seen[id]))return false;
   for(const k in w.quest||{})if(qs(k).state!==w.quest[k])return false;
@@ -98,13 +99,15 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'toast':toast(a[0],a[1]);break;
   case 'call':await a[0]();break;
   case 'night':{const e=findEvent('night');if(e){SAVE.seen[e.id]=1;return steps(e.script);}break;}   // ['night']  the first ready event marked on:{night:true}                                       // ['call', fn]  anything the data cannot say
+  case 'race':{const t=await raceP(a[0]);SAVE.flags[a[1]]=t<0?-1:Math.round(t*10);break;}   // ['race', {from:[x,z,yaw], to:[x,z,r], limit}, flag]  the time in tenths of a second, -1 if over the limit
+  case 'fireworks':fireworks(a[0]);break;                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
   SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
 function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
-function updateStory(dt){const tw=ST.tween;
+function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
   applyLight(SAVE.hour);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}

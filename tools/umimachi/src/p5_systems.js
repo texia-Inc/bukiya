@@ -107,6 +107,8 @@ const ITEMS={
   himono:{name:'あじの干物',d:(g,s)=>{g.fillStyle='#b88a5a';g.beginPath();g.ellipse(s/2,s/2,s*0.38,s*0.18,0,0,7);g.fill();g.beginPath();g.moveTo(s*0.86,s/2);g.lineTo(s*0.96,s*0.36);g.lineTo(s*0.96,s*0.64);g.fill();g.fillStyle='#2b2520';g.beginPath();g.arc(s*0.22,s*0.48,s*0.03,0,7);g.fill();}},
   bouquet:{name:'花束',d:(g,s)=>{g.fillStyle='#e9e2d4';g.beginPath();g.moveTo(s*0.5,s*0.92);g.lineTo(s*0.26,s*0.45);g.lineTo(s*0.74,s*0.45);g.fill();
     for(const [x,y,c] of [[0.38,0.34,'#e2584a'],[0.6,0.3,'#f2c230'],[0.5,0.42,'#f0a0b8'],[0.32,0.48,'#ffffff'],[0.66,0.46,'#a070d0']]){g.fillStyle=c;g.beginPath();g.arc(s*x,s*y,s*0.1,0,7);g.fill();}}},
+  chochin:{name:'提灯',d:(g,s)=>{g.fillStyle='#2b2520';g.fillRect(s*0.4,s*0.14,s*0.2,s*0.08);g.fillRect(s*0.4,s*0.78,s*0.2,s*0.08);g.fillStyle='#e8452f';g.beginPath();g.ellipse(s/2,s/2,s*0.24,s*0.3,0,0,7);g.fill();
+    g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=1.5;for(let k=-2;k<=2;k++){g.beginPath();g.moveTo(s*0.27,s/2+k*s*0.1);g.lineTo(s*0.73,s/2+k*s*0.1);g.stroke();}}},
   letter:{name:'手紙',d:(g,s)=>{g.fillStyle='#fffaf0';g.fillRect(s*0.18,s*0.3,s*0.64,s*0.42);g.strokeStyle='#c9b9a2';g.lineWidth=2;g.strokeRect(s*0.18,s*0.3,s*0.64,s*0.42);g.beginPath();g.moveTo(s*0.18,s*0.3);g.lineTo(s/2,s*0.52);g.lineTo(s*0.82,s*0.3);g.stroke();g.fillStyle='#d23a2c';g.fillRect(s*0.66,s*0.34,s*0.1,s*0.1);}},
 };
 const ICON={};for(const id in ITEMS){const c=document.createElement('canvas');c.width=c.height=64;ITEMS[id].d(c.getContext('2d'),64);ICON[id]=c.toDataURL();}
@@ -137,6 +139,18 @@ const QUESTS=[
   {id:'cat',title:'迷子のミケ',giver:'okami',
    start:['ちょいと聞いておくれ。うちの三毛猫のミケが、朝から帰ってこないんだよ。','あの子は高いところが好きでねえ。坂の上の神社のあたりかもしれない。見かけたら教えておくれ。'],
    steps:[{type:'find',hint:'神社のあたりでミケを探す',text:['ニャア。…いた！ 本殿の石段で、のんびり日なたぼっこしている。']},{type:'talk',to:'okami',hint:'魚松のおかみさんに知らせる',text:['神社の石段に？ まったく、あの子ったら！','知らせてくれてありがとね。これ、うちの干物。持っておいき。']}],reward:600,rewardItem:['himono',1]},
+  // the summer festival (easy-going route, from the fourth day)
+  {id:'fest_lantern',title:'提灯をつるそう',giver:'neko',when:{flags:{route:3}},
+   start:['やあ、ナギちゃん。じつはわたし、町内会の会長でね。','あさっての夏祭りに向けて、神社の参道に提灯をつるしたいんだが、この腰では脚立にのぼれなくて…','この提灯を、鳥居をくぐった参道に飾ってきてくれないか。'],give:['chochin',6],
+   steps:[{type:'place',at:[SHRINE.x,-128.5],item:'chochin',n:6,label:'提灯をつるす　神社の参道',hint:'神社の鳥居をくぐった参道に提灯をつるす',text:['参道の柱に縄を張って、提灯をひとつずつつるした。','夜になったら、きっときれいだ。']},
+          {type:'talk',to:'neko',hint:'古書うみねこの店主に知らせる',text:['おお、ありがとう。これで神社が祭りの顔になった。','商店街のほうにも、町の若いのがつるしてくれたよ。夜が楽しみだねえ。']}],reward:500},
+  {id:'fest_yatai',title:'屋台のみかん氷',giver:'okami',when:{flags:{route:3}},
+   start:['ナギちゃん、ちょうどいいところに！','お祭りでね、魚松は今年「みかん氷」の屋台を出すんだよ。','八百吉でみかんを2袋、買ってきてくれないかい？'],
+   steps:[{type:'have',item:'mikan',n:2,at:'yaoya',hint:'八百吉でみかんを2袋買う'},{type:'deliver',to:'okami',item:'mikan',n:2,hint:'魚松のおかみさんに届ける',text:['いいみかんだねえ！ これで甘いシロップができるよ。','屋台は神社の参道に出すからね。お祭りの日は食べにおいで！']}],reward:500},
+  {id:'fest_yukata',title:'お祭りの浴衣',giver:'hana',when:{flags:{route:3}},
+   start:['ナギちゃん、お祭りには浴衣で行くの？','トメさんがね、昔の浴衣をしまってあるって言ってたわよ。聞いてみたら？'],
+   steps:[{type:'talk',to:'tome',hint:'トメばあちゃんに浴衣のことを聞く',text:['浴衣かい？ あるある。ナギのお母さんが、ちょうどナギくらいのころに着てたのがね。','たんすの奥から出しておいたよ。着がえのとき、着てごらん。']}],reward:200,
+   done:()=>{SAVE.owned=SAVE.owned||{};for(const p of PRIZES)if(p.id==='yukata')SAVE.owned[p.key]=1;toast('浴衣を着られるようになった（着がえ C）',true);}},
   {id:'photo',title:'海街の景色めぐり',giver:'neko',
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
@@ -152,9 +166,9 @@ const QBY=id=>QUESTS.find(q=>q.id===id);
 function invN(id){return SAVE.inv[id]||0;}
 function addItem(id,n){SAVE.inv[id]=invN(id)+n;if(SAVE.inv[id]<=0)delete SAVE.inv[id];renderBag();}
 function stepOf(q){const s=qs(q.id);return s.state===1?q.steps[s.step]:null;}
-function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2);}
+function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2)&&(!q.when||cond(q.when));}
 function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;SAVE.flags['bond_'+q.giver]=(SAVE.flags['bond_'+q.giver]||0)+1;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
-    if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}
+    if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}if(q.done)q.done();
     if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=nx?nx.id:null;}}
   autoSteps();save();renderHUD();}
 function autoSteps(){for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='have'&&invN(st.item)>=st.n){qs(q.id).step++;toast(`${ITEMS[st.item].name}がそろった。次は「${q.steps[qs(q.id).step].hint}」`);}
@@ -163,7 +177,7 @@ function accept(q){const s=qs(q.id);s.state=1;s.step=0;if(q.give){addItem(...q.g
 function targetOf(q){const st=stepOf(q);if(!st)return null;
   if(st.type==='have'){if(st.at==='dagashi'){const a=SHOPS.dagashi.door,v=VEND[0];return Math.hypot(P.x-v.x,P.z-v.z)<Math.hypot(P.x-a[0],P.z-a[1])?[v.x,v.z]:a;}return SHOPS[st.at].door;}
   if(st.type==='deliver'||st.type==='talk'){const n=NPCS[st.to];return[n.x,n.z];}
-  if(st.type==='post')return[POSTBOX.x,POSTBOX.z];if(st.type==='find')return[-60,-150];
+  if(st.type==='post')return[POSTBOX.x,POSTBOX.z];if(st.type==='place')return st.at;if(st.type==='find')return[-60,-150];
   if(st.type==='photos'){let best=null,bd=1e9;for(const p of SPOTS){if(SAVE.spots.includes(p.id))continue;const d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best=[p.x,p.z];}}return best;}
   return null;}
 
@@ -204,11 +218,12 @@ function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').t
 $('dialog').addEventListener('click',nextLine);
 let talkNpc=null;
 function talk(n){talkNpc=n;
-  const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
+  // an errand step for this person comes first, then the story's events, then new errands
   for(const q of QUESTS){const st=stepOf(q);if(!st)continue;
-    if((st.type==='deliver'||st.type==='talk')&&st.to===n.id){
-      if(st.type==='deliver'&&invN(st.item)<st.n){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}
+    if((st.type==='deliver'||st.type==='talk')&&st.to===n.id&&!(st.type==='deliver'&&invN(st.item)<st.n)){
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
+  const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
+  for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='deliver'&&st.to===n.id){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}}
   for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
   if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
@@ -341,7 +356,7 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
-  fwd=fwd||kickHold;if(ST.run)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
+  fwd=fwd||kickHold;if(ST.run&&!RACE.on)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
@@ -400,6 +415,7 @@ function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}
+  for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='place'){const d=Math.hypot(P.x-st.at[0],P.z-st.at[1]);if(d<2.6)add(d,{kind:'place',q,label:st.label,verb:'飾る'});}}
   const gp=SHOPS.dagashi.gacha;if(gp){const d=Math.hypot(P.x-gp.x,P.z-gp.z);if(d<1.9)add(d-0.2,{kind:'gacha',label:'まわす　カプセルトイ（1回100円）',verb:'まわす'});}
   const cd=Math.hypot(P.x-MIKE.x,P.z-MIKE.z);if(cd<2.6)add(cd,{kind:'cat',label:'なでる　三毛猫',verb:'なでる'});
   for(const p of SPOTS){const d=Math.hypot(P.x-p.x,P.z-p.z);if(d<7&&!best)add(d+5,{kind:'spot',p,label:`写真を撮る　${p.name}`,verb:'撮る'});}
@@ -409,6 +425,7 @@ function act(o){if(!o)return;
   else if(o.kind==='post'){const q=QBY('letter'),st=stepOf(q);say('ポスト',st.text,()=>{addItem('letter',-1);advance(q);});}
   else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
   else if(o.kind==='spot')photoReq=true;
+  else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);advance(o.q);});}
   else if(o.kind==='gacha')openGacha();}
 
 /* ---------- camera ---------- */
@@ -453,7 +470,7 @@ let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    if(ST.run)jumpQ=kickQ=footQ=false;
+    if(ST.run&&!RACE.on)jumpQ=kickQ=footQ=false;
     updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
@@ -466,9 +483,10 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
   state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
-  // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning (they combine with &)
+  // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)
   const hr=/hour=([\d.]+)/.exec(location.hash),at=/at=(-?[\d.]+),(-?[\d.]+)/.exec(location.hash),dy=/day=(\d+)/.exec(location.hash);
   if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS)if(/^d(\d)_/.test(e.id)&&+e.id[1]<SAVE.day)SAVE.seen[e.id]=1;}
+  const fl=/set=([\w:,-]+)/.exec(location.hash);if(fl)for(const kv of fl[1].split(',')){const [k,v]=kv.split(':');SAVE.flags[k]=v==null?1:+v;}   // #set=route:3,met_mio:1
   if(hr)SAVE.hour=SAVE.cap=+hr[1];if(at){P.x=+at[1];P.z=+at[2];P.y=G(P.x,P.z);P.yaw=0;}
   if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once
 // the title lists the save slots: continue, start, or erase (a second press confirms)
