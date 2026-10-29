@@ -13,7 +13,7 @@ function makeSkaterVRM(gl){
   h.root.traverse(o=>{if(o.isMesh){let p=o,onBoard=false;while(p){if(p===h.board){onBoard=true;break;}p=p.parent;}if(!onBoard)o.visible=false;}});
   const model=gl.scene;model.scale.setScalar(1/0.96);h.root.add(model);
   const B={};model.traverse(o=>{if(o.isBone)B[o.name]=o;});
-  const morphs=[];
+  const morphs=[],parts=[],hair=[];
   model.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.frustumCulled=false;
     const src=o.material,name=src.name||'',face=FACE_MATS.test(name);
     if(src.map){src.map.encoding=THREE.LinearEncoding;src.map.needsUpdate=true;}
@@ -21,9 +21,12 @@ function makeSkaterVRM(gl){
     const opt={map:src.map||null,color:col,skinning:!!o.isSkinnedMesh,morphTargets:!!o.morphTargetInfluences,transparent:src.transparent,alphaTest:src.alphaTest,side:src.side,depthWrite:src.depthWrite};
     o.material=face?new THREE.MeshBasicMaterial(opt):new THREE.MeshToonMaterial(Object.assign(opt,{gradientMap:GRAD}));
     if(o.morphTargetDictionary)morphs.push(o);
-    const olw=/HAIR|Hair/.test(name)?0.0022:/Body_00|Tops|Bottoms|Shoes|Skirt|Pack|Hood/.test(name)?0.0026:0;
+    // wardrobe parts (W_*) can be shown, hidden and tinted; white parts take the tint, coloured ones keep their colour
+    if(/^W_/.test(o.name))parts.push({name:o.name,mesh:o,base:o.material.color.clone(),map0:o.material.map,tintable:o.material.color.r>0.98&&o.material.color.g>0.98&&o.material.color.b>0.98});
+    if(/^Hair/.test(name)&&o.material.map){o.userData.map0=o.material.map;hair.push(o);}
+    const olw=/HAIR|Hair/.test(name)?0.0022:/Body_00|Tops|Bottoms|Shoes|Cloth_(Skirt|Pack|Hood|Sleeves|Socks|KneeSocks)/.test(name)?0.0026:0;
     if(olw&&o.isSkinnedMesh&&!src.transparent){const ol=new THREE.SkinnedMesh(o.geometry,olSkinned(olw,!!o.morphTargetInfluences));ol.bind(o.skeleton,o.bindMatrix);ol.frustumCulled=false;
-      if(o.morphTargetInfluences)ol.morphTargetInfluences=o.morphTargetInfluences;o.parent.add(ol);ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);}});
+      if(o.morphTargetInfluences)ol.morphTargetInfluences=o.morphTargetInfluences;o.parent.add(ol);o.userData.ol=ol;ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);}});
   model.updateMatrixWorld(true);
   // rest pose, in the model's own space
   const inv=new THREE.Matrix4().copy(model.matrixWorld).invert(),rest={};
@@ -37,6 +40,7 @@ function makeSkaterVRM(gl){
       l1:rest['J_Bip_'+S+'_UpperArm'].p.distanceTo(rest['J_Bip_'+S+'_LowerArm'].p),l2:rest['J_Bip_'+S+'_LowerArm'].p.distanceTo(rest['J_Bip_'+S+'_Hand'].p)};}
   const hipDrop=rest.J_Bip_C_Hips.p.y-rest.J_Bip_L_UpperLeg.p.y;
   const tail=[0,1,2,3].map(i=>B['Tail'+i]).filter(Boolean);
+  const ctail=[0,1,2,3].map(i=>B['CTail'+i]).filter(Boolean);
   // the model's twist/aim helper bones (VRMC_node_constraint in the source file), evaluated here every frame
   const cons=[];
   for(const S of ['L','R']){
@@ -44,7 +48,7 @@ function makeSkaterVRM(gl){
       if(B[n]&&B[src])cons.push({aim:true,b:B[n],n,src:B[src],d:dirRest(n,src)});
     for(const [n,src,w] of [['J_Roll_'+S+'_UpperArm','J_Bip_'+S+'_UpperArm',0.5],['J_Roll_'+S+'_Elbow','J_Bip_'+S+'_LowerArm',0.5],['J_Roll_'+S+'_LowerArm','J_Bip_'+S+'_Hand',0.5],['J_Roll_'+S+'_Hand','J_Bip_'+S+'_Hand',1]])
       if(B[n]&&B[src])cons.push({aim:false,b:B[n],n,src:B[src],sn:src,w});}
-  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,cons,expr:{},t:0};
+  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,ctail,cons,parts,hair,expr:{},t:0};
   return h;}
 const _q1=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_q3=new THREE.Quaternion(),_mq=new THREE.Quaternion(),_a=new THREE.Vector3(),_b=new THREE.Vector3(),_c=new THREE.Vector3(),_d=new THREE.Vector3();
 // give bone b the model-space rotation q (model space = the model root's frame)
@@ -100,6 +104,8 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   V.tail.forEach((b,k)=>{b.quaternion.copy(R[b.name].local);
     _q1.setFromEuler(new THREE.Euler(-(k?acc*0.6+(s.v||0)*0.02*(k===1?1:0.5):0)-Math.sin(h.t*3+k)*0.03,0,(sw*(k+1)*0.6+turn*0.15*k)));
     b.quaternion.multiply(_q1);});
+  // the costume tail swishes lazily and streams back with speed
+  V.ctail.forEach((b,k)=>{b.quaternion.copy(R[b.name].local);_q1.setFromEuler(new THREE.Euler(Math.sin(V.t*2.2+k*0.7)*0.12+(s.v||0)*0.012*k,0,Math.sin(V.t*1.6+k*0.9)*0.22*(k+1)*0.5));b.quaternion.multiply(_q1);});
   // face: blink, smile and the happy squint follow the rig's expression state
   const want={};const map=h.faceM&&h.faces;let ex='smile';if(map)for(const k in h.faces)if(h.faces[k]===h.faceM.map)ex=k;
   if(ex==='blink')want.Fcl_EYE_Close=1;else if(ex==='happy'){want.Fcl_ALL_Joy=1;}else if(ex==='smile'){want.Fcl_ALL_Fun=0.55;}else{want.Fcl_ALL_Fun=0.15;}

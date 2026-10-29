@@ -56,6 +56,32 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 #dialog p{margin:0;font-size:16px;line-height:1.75;font-weight:700;min-height:3.5em}
 #dialog .nx{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--ink-soft);animation:bob 1s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(3px)}}
+#closet{place-items:end center;background:linear-gradient(transparent 45%,rgba(20,50,70,.22))}
+#closet .sheet{width:min(560px,100%);max-height:46vh;overflow-y:auto;padding:14px 16px}
+#closet h2{margin:0 0 6px}
+.cslot{display:grid;grid-template-columns:72px 1fr;gap:6px 10px;align-items:center;padding:6px 0;border-top:1px solid rgba(0,0,0,.06)}
+.cslot b{font-size:12px;color:var(--sea-deep)}
+.cslot .row{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;border:1.5px solid rgba(0,0,0,.12);background:#fff;border-radius:999px;padding:5px 10px;font:900 12px var(--round);color:var(--ink);cursor:pointer}
+.chip.on{background:var(--sea-deep);color:#fff;border-color:var(--sea-deep)}
+.sw{appearance:none;width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.18);cursor:pointer;padding:0}
+.sw.on{box-shadow:0 0 0 3px var(--sea-deep)}
+#gacha .sheet{width:min(520px,100%);max-height:88vh;overflow-y:auto}
+#gachaStage{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:120px;align-items:center}
+.cap{width:70px;height:70px;border-radius:50%;background:linear-gradient(#fff 50%,var(--c) 50%);box-shadow:0 3px 0 rgba(0,0,0,.15),inset 0 0 0 3px rgba(0,0,0,.08);animation:capdrop .5s cubic-bezier(.3,1.6,.6,1) both,capshake .5s .5s ease-in-out 2}
+@keyframes capdrop{from{transform:translateY(-120px) rotate(-90deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes capshake{50%{transform:rotate(14deg)}}
+.prize{width:150px;border-radius:14px;padding:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12);text-align:center;animation:pop .35s cubic-bezier(.3,1.6,.6,1) both;position:relative}
+.prize .rr{font:900 12px var(--round);letter-spacing:.1em;color:#fff;border-radius:999px;padding:2px 8px;display:inline-block}
+.prize .nm{font:900 13px var(--round);margin:6px 0 4px}
+.prize .nw{position:absolute;top:-6px;right:-6px;background:#e0503a;color:#fff;font:900 11px var(--round);border-radius:999px;padding:2px 7px}
+.prize .sw{width:22px;height:22px;cursor:default}
+.prize .btn{font-size:12px;padding:6px 10px;margin-top:6px}
+@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:none;opacity:1}}
+.r-N{background:#6f9fd0}.r-R{background:#d977a3}.r-SR{background:linear-gradient(90deg,#e8a930,#f5d86a,#e8a930)}
+#gachaShop .grp{margin:8px 0}#gachaShop .grp b{font-size:12px}
+#gachaShop .it{display:inline-flex;align-items:center;gap:4px;margin:3px;padding:3px 8px;border-radius:999px;background:#f3efe6;font:700 11px var(--round)}
+#gachaShop .it.have{background:#dff0e4}#gachaShop .it button{font:900 10px var(--round);border:0;border-radius:999px;background:var(--sea-deep);color:#fff;padding:2px 6px;cursor:pointer}
 .modal{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:rgba(20,50,70,.28);pointer-events:auto}
 .sheet{width:min(480px,100%);max-height:calc(100% - 32px);overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
 .sheet h2{margin:0;font-family:var(--title);font-size:22px;color:var(--ink)}
@@ -113,6 +139,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   <div id="tools">
     <button class="tool" id="logBtn">おつかい帳</button>
     <button class="tool" id="albumBtn">アルバム</button>
+    <button class="tool" id="closetBtn">着がえ</button>
     <button class="tool" id="photoBtn">写真を撮る</button>
   </div>
   <div id="bag"></div>
@@ -130,6 +157,15 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
+<div class="modal" id="closet" hidden><div class="sheet card"><h2>着がえ</h2><div id="closetSlots"></div>
+  <div style="display:flex;justify-content:space-between;gap:10px;margin-top:6px"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div></div>
+<div class="modal" id="gacha" hidden><div class="sheet card"><h2>まるやのカプセルトイ</h2>
+  <p class="sub">1回100円。出た服はすぐ「着がえ」で着られる。ダブりは「かけら」になって、ほしい物と交換できる。</p>
+  <div id="gachaStage"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0"><button class="btn" id="gachaOne">1回まわす（100円）</button><button class="btn" id="gachaFive">5回まわす（500円）</button></div>
+  <p class="sub" id="gachaInfo" style="text-align:center"></p>
+  <details id="gachaEx"><summary>かけら交換・コレクション</summary><div id="gachaShop"></div></details>
+  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="gachaClose">とじる</button></div></div></div>
 <div id="flash"></div>
 
 <div id="title" hidden>
@@ -142,6 +178,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>A D / ← →</dt><dd>曲がる</dd>
       <dt>E</dt><dd>話す・お店に入る・会話を進める</dd>
       <dt>Space</dt><dd>ジャンプ</dd>
+      <dt>C</dt><dd>着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
       <dt>F</dt><dd>スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
       <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
       <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
@@ -4232,6 +4269,10 @@ function aBoard(b,u,v,lines){const m=tmap(chalk(lines),{side:THREE.DoubleSide});
     const dm=M(new THREE.SphereGeometry(0.2,14,10,0,TAU,0,Math.PI/2),tm('#dff1fa',{transparent:true,opacity:0.7}));dm.position.y=0.6;g.add(dm);
     for(let j=0;j<5;j++){const c=new THREE.Mesh(new THREE.SphereGeometry(0.045,8,6),tm(pick(['#e2584a','#f2c230','#4f9a5a','#f0a0b8','#ffffff'])));c.position.set((j-2)*0.06,0.66,(j%2)*0.05);g.add(c);}
 addAt(B,g,-W/2+0.6+k*0.5,0,1.0);}
+  B.gacha=B.local(-W/2+1.1,0,1.0);   // the capsule machines are the gacha
+  { const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.42),tmap(canvasTex(256,84,(c,w,h)=>{c.fillStyle='#f2c230';c.fillRect(0,0,w,h);c.fillStyle='#c8372d';c.fillRect(0,h-12,w,12);
+      c.fillStyle='#3a2416';c.font=signFont(34,true);c.textAlign='center';c.textBaseline='middle';c.fillText('ガチャ 100円',w/2,h/2-4);})));
+    const pole=M(new THREE.BoxGeometry(0.05,1.25,0.05),tm('#7a5638'),0.01);addAt(B,pole,-W/2+1.1,0.62,1.32);addAt(B,sg,-W/2+1.1,1.32,1.34);}
   const bench=benchMesh('#c8372d');addAt(B,bench,W/2-1.8,0,1.2);
   const ice=M(new THREE.BoxGeometry(1.0,0.75,0.6),tm('#f2f2ee'),0.015);addAt(B,ice,0.4,0.38,1.0);}
 { const B=SHOPS.yaoya,W=along(B);for(let k=0;k<4;k++){const g=new THREE.Group();const cr=M(new THREE.BoxGeometry(0.7,0.25,0.5),tm('#b98f6a'),0.012);cr.position.y=0.62;cr.rotation.x=-0.35;g.add(cr);
@@ -5031,7 +5072,7 @@ function makeSkaterVRM(gl){
   h.root.traverse(o=>{if(o.isMesh){let p=o,onBoard=false;while(p){if(p===h.board){onBoard=true;break;}p=p.parent;}if(!onBoard)o.visible=false;}});
   const model=gl.scene;model.scale.setScalar(1/0.96);h.root.add(model);
   const B={};model.traverse(o=>{if(o.isBone)B[o.name]=o;});
-  const morphs=[];
+  const morphs=[],parts=[],hair=[];
   model.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.frustumCulled=false;
     const src=o.material,name=src.name||'',face=FACE_MATS.test(name);
     if(src.map){src.map.encoding=THREE.LinearEncoding;src.map.needsUpdate=true;}
@@ -5039,9 +5080,12 @@ function makeSkaterVRM(gl){
     const opt={map:src.map||null,color:col,skinning:!!o.isSkinnedMesh,morphTargets:!!o.morphTargetInfluences,transparent:src.transparent,alphaTest:src.alphaTest,side:src.side,depthWrite:src.depthWrite};
     o.material=face?new THREE.MeshBasicMaterial(opt):new THREE.MeshToonMaterial(Object.assign(opt,{gradientMap:GRAD}));
     if(o.morphTargetDictionary)morphs.push(o);
-    const olw=/HAIR|Hair/.test(name)?0.0022:/Body_00|Tops|Bottoms|Shoes|Skirt|Pack|Hood/.test(name)?0.0026:0;
+    // wardrobe parts (W_*) can be shown, hidden and tinted; white parts take the tint, coloured ones keep their colour
+    if(/^W_/.test(o.name))parts.push({name:o.name,mesh:o,base:o.material.color.clone(),map0:o.material.map,tintable:o.material.color.r>0.98&&o.material.color.g>0.98&&o.material.color.b>0.98});
+    if(/^Hair/.test(name)&&o.material.map){o.userData.map0=o.material.map;hair.push(o);}
+    const olw=/HAIR|Hair/.test(name)?0.0022:/Body_00|Tops|Bottoms|Shoes|Cloth_(Skirt|Pack|Hood|Sleeves|Socks|KneeSocks)/.test(name)?0.0026:0;
     if(olw&&o.isSkinnedMesh&&!src.transparent){const ol=new THREE.SkinnedMesh(o.geometry,olSkinned(olw,!!o.morphTargetInfluences));ol.bind(o.skeleton,o.bindMatrix);ol.frustumCulled=false;
-      if(o.morphTargetInfluences)ol.morphTargetInfluences=o.morphTargetInfluences;o.parent.add(ol);ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);}});
+      if(o.morphTargetInfluences)ol.morphTargetInfluences=o.morphTargetInfluences;o.parent.add(ol);o.userData.ol=ol;ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);}});
   model.updateMatrixWorld(true);
   // rest pose, in the model's own space
   const inv=new THREE.Matrix4().copy(model.matrixWorld).invert(),rest={};
@@ -5055,6 +5099,7 @@ function makeSkaterVRM(gl){
       l1:rest['J_Bip_'+S+'_UpperArm'].p.distanceTo(rest['J_Bip_'+S+'_LowerArm'].p),l2:rest['J_Bip_'+S+'_LowerArm'].p.distanceTo(rest['J_Bip_'+S+'_Hand'].p)};}
   const hipDrop=rest.J_Bip_C_Hips.p.y-rest.J_Bip_L_UpperLeg.p.y;
   const tail=[0,1,2,3].map(i=>B['Tail'+i]).filter(Boolean);
+  const ctail=[0,1,2,3].map(i=>B['CTail'+i]).filter(Boolean);
   // the model's twist/aim helper bones (VRMC_node_constraint in the source file), evaluated here every frame
   const cons=[];
   for(const S of ['L','R']){
@@ -5062,7 +5107,7 @@ function makeSkaterVRM(gl){
       if(B[n]&&B[src])cons.push({aim:true,b:B[n],n,src:B[src],d:dirRest(n,src)});
     for(const [n,src,w] of [['J_Roll_'+S+'_UpperArm','J_Bip_'+S+'_UpperArm',0.5],['J_Roll_'+S+'_Elbow','J_Bip_'+S+'_LowerArm',0.5],['J_Roll_'+S+'_LowerArm','J_Bip_'+S+'_Hand',0.5],['J_Roll_'+S+'_Hand','J_Bip_'+S+'_Hand',1]])
       if(B[n]&&B[src])cons.push({aim:false,b:B[n],n,src:B[src],sn:src,w});}
-  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,cons,expr:{},t:0};
+  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,ctail,cons,parts,hair,expr:{},t:0};
   return h;}
 const _q1=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_q3=new THREE.Quaternion(),_mq=new THREE.Quaternion(),_a=new THREE.Vector3(),_b=new THREE.Vector3(),_c=new THREE.Vector3(),_d=new THREE.Vector3();
 // give bone b the model-space rotation q (model space = the model root's frame)
@@ -5118,6 +5163,8 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   V.tail.forEach((b,k)=>{b.quaternion.copy(R[b.name].local);
     _q1.setFromEuler(new THREE.Euler(-(k?acc*0.6+(s.v||0)*0.02*(k===1?1:0.5):0)-Math.sin(h.t*3+k)*0.03,0,(sw*(k+1)*0.6+turn*0.15*k)));
     b.quaternion.multiply(_q1);});
+  // the costume tail swishes lazily and streams back with speed
+  V.ctail.forEach((b,k)=>{b.quaternion.copy(R[b.name].local);_q1.setFromEuler(new THREE.Euler(Math.sin(V.t*2.2+k*0.7)*0.12+(s.v||0)*0.012*k,0,Math.sin(V.t*1.6+k*0.9)*0.22*(k+1)*0.5));b.quaternion.multiply(_q1);});
   // face: blink, smile and the happy squint follow the rig's expression state
   const want={};const map=h.faceM&&h.faces;let ex='smile';if(map)for(const k in h.faces)if(h.faces[k]===h.faceM.map)ex=k;
   if(ex==='blink')want.Fcl_EYE_Close=1;else if(ex==='happy'){want.Fcl_ALL_Joy=1;}else if(ex==='smile'){want.Fcl_ALL_Fun=0.55;}else{want.Fcl_ALL_Fun=0.15;}
@@ -5125,6 +5172,136 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   for(const m of V.morphs){const D=m.morphTargetDictionary;for(const key in D){const short=key.replace(/^.*\./,'');const target=want[short]||0;const i=D[key];
       const cur=m.morphTargetInfluences[i];m.morphTargetInfluences[i]=short==='Fcl_EYE_Close'?target:cur+(target-cur)*Math.min(1,dt*10);}}
 }
+
+/* ---------- wardrobe: every garment is a part of the heroine model named W_<part> (see tools/umimachi/heroine_vrm.py).
+   An outfit picks one item per slot and one colour set for it. An item lists the parts it shows and how each is coloured:
+   0 / 1 = the item's first / second colour, '#rrggbb' = a fixed colour, 'dark0' = recolour the dark parts of the texture with
+   the first colour. Parts exported white are tinted; parts with their own colour (the bunny charm, straps) keep it.
+   To add clothes: add a part in the Blender script, then an item here. ---------- */
+const CAMO={forest:['#5b6b3a','#3e4a2a','#8a7d52','#2a2a22'],desert:['#c9b07a','#a88a5a','#e0cfa0','#7a6448'],pink:['#f2a6c0','#d97a9e','#fbd6e2','#a85678'],urban:['#9aa0a8','#6a7078','#c8ccd2','#3a3e44']};
+const WARDROBE=[
+  {slot:'tops',label:'トップス',items:[
+    {id:'hoodie',name:'パーカー',parts:{W_tops:0,W_sleeves:0,W_hood:0,W_strip:1,W_zip:'#a4a6b0'},
+      colors:[['#33395e','#f6f5f1'],['#ece6dc','#3a3d52'],['#e48a9a','#ffffff'],['#5d8a64','#f6f5f1'],['#2b2b30','#f2d36b'],['#8fb8e0','#ffffff']]},
+    {id:'camo',name:'迷彩パーカー',parts:{W_tops:{pat:'camo'},W_sleeves:{pat:'camo'},W_hood:{pat:'camo'},W_strip:'#2b2b2b',W_zip:'#a4a6b0'},
+      colors:[CAMO.forest,CAMO.desert,CAMO.pink,CAMO.urban]},
+    {id:'tee',name:'Tシャツ',parts:{W_tops:0},colors:[['#f6f5f1'],['#9cc3e6'],['#f2c9c4'],['#f5e07a'],['#b8d8a8'],['#2b2b30']]},
+    {id:'tee_dots',name:'水玉Tシャツ',parts:{W_tops:{pat:'dots'}},colors:[['#f6f5f1','#e05a6a'],['#2b2b30','#f6f5f1'],['#9cc3e6','#ffffff']]},
+    {id:'tee_stars',name:'星柄Tシャツ',parts:{W_tops:{pat:'stars'}},colors:[['#2d3a6a','#f5d86a'],['#f6f5f1','#e88fa8'],['#2b2b30','#9ad8f0']]}]},
+  {slot:'neck',label:'えり元',items:[
+    {id:'bow',name:'リボン',parts:{W_bow:0},colors:[['#c8323a'],['#2d4f9a'],['#f0879c'],['#2b2b30']]},
+    {id:'choker',name:'鈴のチョーカー',parts:{W_choker:0},colors:[['#2b2b30'],['#c8323a'],['#7a5a8f']]},
+    {id:'dogtag',name:'ドッグタグ',parts:{W_dogtag:0},colors:[['#c5c9cf']]},
+    {id:'sailor',name:'セーラーえり',parts:{W_sailorcollar:0,W_sailorcollar_line:1,W_bow:2},colors:[['#2d3a6a','#f6f5f1','#c8323a'],['#f6f5f1','#2d3a6a','#2d3a6a'],['#2b2b30','#f6f5f1','#e05a6a']]},
+    {id:'none',name:'なし',parts:{}}]},
+  {slot:'bottoms',label:'ボトムス',items:[
+    {id:'skirt',name:'チェックスカート',parts:{W_skirt:0,W_shorts:'#2c2f44'},colors:[['#6f7488'],['#b0484f'],['#4d7a5f'],['#9a8a6a'],['#c98aa0']]},
+    {id:'zigzag',name:'ギザギザスカート',parts:{W_skirtzig:0,W_shorts:'#2c2f44'},colors:[['#2b2433'],['#5a3a7a'],['#e07a2a']]},
+    {id:'shorts',name:'ショートパンツ',parts:{W_shorts:0},colors:[['#2c2f44'],['#d9cdb4'],['#6f8fb5'],['#f2f0ea']]},
+    {id:'cargo',name:'カーゴショーツ',parts:{W_shorts:{pat:'camo'},W_cargo:{pat:'camo'}},colors:[CAMO.forest,CAMO.desert,CAMO.urban]}]},
+  {slot:'legs',label:'くつ下',items:[
+    {id:'socks',name:'クルーソックス',parts:{W_socks:0,W_sockband:1},colors:[['#2a2a30','#f0879c'],['#f6f5f1','#33395e'],['#f6f5f1','#f0879c'],['#33395e','#f6f5f1']]},
+    {id:'knee',name:'ハイソックス',parts:{W_kneesocks:0},colors:[['#2a2a30'],['#f6f5f1'],['#33395e']]},
+    {id:'kneestripe',name:'しましまハイソックス',parts:{W_kneesocks:{pat:'stripe'}},colors:[['#2d3a6a','#f6f5f1'],['#e05a6a','#f6f5f1'],['#2b2b30','#f0879c']]},
+    {id:'tights',name:'タイツ',parts:{W_tights:0},colors:[['#2a2a30'],['#5a4a44'],['#e8d6c8']]},
+    {id:'witchtights',name:'しましまタイツ',parts:{W_tights:{pat:'stripe'}},colors:[['#e07a2a','#4a2a6a'],['#2b2b30','#f6f5f1'],['#7a3a9a','#9ad860']]},
+    {id:'none',name:'なし',parts:{}}]},
+  {slot:'shoes',label:'くつ',items:[
+    {id:'sneakers',name:'スニーカー',parts:{W_shoes:'dark0'},colors:[['#f07a93'],['#2b2b30'],['#f6f5f1'],['#4f8fd8'],['#f5c84a'],['#7cc39a']]}]},
+  {slot:'hands',label:'手',items:[
+    {id:'none',name:'なし',parts:{}},
+    {id:'paws',name:'肉球てぶくろ',parts:{W_paws:0},colors:[['#2b2b30'],['#f6f5f1'],['#e8b07a']]}]},
+  {slot:'head',label:'あたま',items:[
+    {id:'clip',name:'Xクリップ',parts:{W_clip:0},colors:[['#ef6f8a'],['#5fb0e8'],['#f5c84a'],['#f6f5f1']]},
+    {id:'glasses',name:'まるメガネ',parts:{W_glasses:0},colors:[['#5a3a2a'],['#2b2b30'],['#d4a24a']]},
+    {id:'sunglasses',name:'サングラス',parts:{W_sunglasses:0},colors:[['#2b2b30'],['#d4a24a'],['#e05a6a']]},
+    {id:'witchhat',name:'魔女のとんがり帽子',parts:{W_witchhat:0,W_witchhat_crown:0,W_witchhat_band:1},colors:[['#2b2433','#e07a2a'],['#4a2a6a','#9ad860'],['#e07a2a','#2b2433']]},
+    {id:'catears',name:'ねこ耳',parts:{W_catears:0},colors:[['#2b2b30'],['#f6f5f1'],['#e8b07a']]},
+    {id:'horns',name:'小悪魔の角',parts:{W_horns:0},colors:[['#2b2b30'],['#c8323a'],['#7a3a9a']]},
+    {id:'halo',name:'天使の輪',parts:{W_halo:0},colors:[['#f5d86a'],['#f6f5f1']]},
+    {id:'beret',name:'ベレー帽',parts:{W_beret:0,W_beret_nub:0},colors:[['#4d5a34'],['#c8323a'],['#2b2b30'],['#d9cdb4']]},
+    {id:'marine',name:'マリン帽',parts:{W_marinecap:0,W_marinecap_brim:0,W_marinecap_band:1},colors:[['#f6f5f1','#2d3a6a'],['#2d3a6a','#f6f5f1']]},
+    {id:'none',name:'なし',parts:{}}]},
+  {slot:'tie',label:'シュシュ',items:[
+    {id:'scrunchie',name:'シュシュ',parts:{W_scrunchie:0},colors:[['#d8455a'],['#f6f5f1'],['#33395e'],['#f5c84a'],['#7cc39a']]}]},
+  {slot:'back',label:'せなか',items:[
+    {id:'pack',name:'リュック',parts:{W_pack:0},colors:[['#232327'],['#c9a36a'],['#ece6dc'],['#7a5a8f'],['#d86a7c']]},
+    {id:'cape',name:'マント',parts:{W_cape:0},colors:[['#2b2433'],['#4a2a6a'],['#8a1f2a']]},
+    {id:'batwings',name:'コウモリの羽',parts:{W_batwings:0},colors:[['#2b2433'],['#4a2a6a'],['#8a1f2a']]},
+    {id:'angelwings',name:'天使の羽',parts:{W_angelwings:0},colors:[['#ffffff'],['#f2d8e4']]},
+    {id:'none',name:'なし',parts:{}}]},
+  {slot:'waist',label:'こし',items:[
+    {id:'none',name:'なし',parts:{}},
+    {id:'cattail',name:'ねこのしっぽ',parts:{W_cattail:0},colors:[['#2b2b30'],['#f6f5f1'],['#e8b07a']]},
+    {id:'deviltail',name:'小悪魔のしっぽ',parts:{W_deviltail:0},colors:[['#2b2b30'],['#c8323a']]},
+    {id:'pumpkin',name:'かぼちゃポーチ',parts:{W_pumpkin:'#ffffff'},colors:[['#ffffff']]}]},
+  {slot:'hair',label:'髪の色',items:[
+    {id:'hair',name:'髪',parts:{},hair:true,colors:[[null],['#2a2220'],['#d9b06a'],['#e88fa8'],['#8a9fd0'],['#b9b9c2']]}]},
+];
+const DEFAULT_OUTFIT={tops:['hoodie',0],neck:['bow',0],bottoms:['skirt',0],legs:['socks',0],shoes:['sneakers',0],hands:['none',0],head:['clip',0],tie:['scrunchie',0],back:['pack',0],waist:['none',0],hair:['hair',0]};
+const _texCache={};
+// recolour a texture on a canvas: 'hair' keeps the shading and replaces the hue, 'dark' paints only the dark areas
+function recolorTex(map,hex,mode){const key=map.uuid+mode+hex;if(_texCache[key])return _texCache[key];
+  const img=map.image,c=document.createElement('canvas');c.width=img.width;c.height=img.height;const g=c.getContext('2d');g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,c.width,c.height),p=d.data,col=new THREE.Color(hex);let ref=0.4;
+  if(mode==='hair'){let s=0,n=0;for(let i=0;i<p.length;i+=64){s+=(0.3*p[i]+0.59*p[i+1]+0.11*p[i+2])/255;n++;}ref=Math.max(0.05,s/n);}
+  for(let i=0;i<p.length;i+=4){const l=(0.3*p[i]+0.59*p[i+1]+0.11*p[i+2])/255;
+    if(mode==='hair'){const k=Math.pow(l/ref,0.9)*0.85;p[i]=clamp(col.r*k*255,0,255);p[i+1]=clamp(col.g*k*255,0,255);p[i+2]=clamp(col.b*k*255,0,255);}
+    else if(l<0.4){const k=0.78+l*0.9;p[i]=clamp(col.r*k*255,0,255);p[i+1]=clamp(col.g*k*255,0,255);p[i+2]=clamp(col.b*k*255,0,255);}}
+  g.putImageData(d,0,0);const t=new THREE.CanvasTexture(c);t.flipY=map.flipY;t.wrapS=map.wrapS;t.wrapT=map.wrapT;return _texCache[key]=t;}
+// patterns: on a textured garment they are painted into a texture; on a plain part (the skin shells, accessories) they become
+// vertex colours worked out from where each vertex sits on the body, so stripes run round the legs whatever the UVs are
+const _patCache={};
+function patternTex(kind,cols){const key=kind+cols.join();if(_patCache[key])return _patCache[key];
+  const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d'),r=mulberry(7+kind.length);g.fillStyle=cols[0];g.fillRect(0,0,256,256);
+  if(kind==='camo'){for(let L=1;L<cols.length;L++){g.fillStyle=cols[L];for(let k=0;k<26;k++){const x=r()*256,y=r()*256;g.beginPath();for(let a=0;a<7;a++){const t=a/7*TAU,rr=10+r()*18;g.lineTo(x+Math.cos(t)*rr*1.4,y+Math.sin(t)*rr);}g.closePath();g.fill();}}}
+  else if(kind==='stripe'){g.fillStyle=cols[1];for(let y=0;y<256;y+=32)g.fillRect(0,y,256,16);}
+  else if(kind==='dots'){g.fillStyle=cols[1];for(let y=0;y<256;y+=32)for(let x=(y/32)%2*16;x<256;x+=32){g.beginPath();g.arc(x,y,6,0,TAU);g.fill();}}
+  else if(kind==='stars'){g.fillStyle=cols[1];for(let k=0;k<40;k++){const x=r()*256,y=r()*256,s=5+r()*5;g.beginPath();for(let a=0;a<10;a++){const t=a/10*TAU-Math.PI/2,rr=a%2?s*0.45:s;g.lineTo(x+Math.cos(t)*rr,y+Math.sin(t)*rr);}g.closePath();g.fill();}}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,2);return _patCache[key]=t;}
+function patternVerts(mesh,kind,cols){const geo=mesh.geometry,p=geo.attributes.position,C=cols.map(x=>new THREE.Color(x)),out=new Float32Array(p.count*3);
+  for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);let k=0;
+    if(kind==='stripe')k=Math.floor(y/0.032+100)%2;
+    else{const n=vnoise(x*9+z*5,y*9+z*3);k=n<0.42?0:n<0.58?1:n<0.72?2:3;k=Math.min(k,C.length-1);}
+    out[i*3]=C[k].r;out[i*3+1]=C[k].g;out[i*3+2]=C[k].b;}
+  geo.setAttribute('color',new THREE.BufferAttribute(out,3));}
+function findItem(slot,id){const S=WARDROBE.find(s=>s.slot===slot);return S&&(S.items.find(i=>i.id===id)||S.items[0]);}
+function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Object.assign({},DEFAULT_OUTFIT,outfit||{});
+  h.backBusy=['cape','batwings','angelwings'].includes((outfit.back||[])[0]);   // then the board is carried in the hand, not on the back
+  const show={};   // part name -> colour spec
+  for(const S of WARDROBE){const [id,ci]=outfit[S.slot]||[];const it=findItem(S.slot,id);if(!it)continue;const cs=(it.colors&&it.colors[ci||0])||(it.colors&&it.colors[0])||[];
+    for(const k in it.parts){const v=it.parts[k];show[k]=typeof v==='number'?cs[v]:v==='dark0'?{dark:cs[0]}:v&&v.pat?{pat:v.pat,cols:cs}:v;}
+    if(it.hair)for(const m of V.hair){m.material.map=cs[0]?recolorTex(m.userData.map0,cs[0],'hair'):m.userData.map0;m.material.needsUpdate=true;}}
+  for(const P of V.parts){const key=Object.keys(show).filter(k=>P.name===k||P.name.startsWith(k+'_')).sort((a,b)=>b.length-a.length)[0];const on=!!key;
+    P.mesh.visible=on;if(P.mesh.userData.ol)P.mesh.userData.ol.visible=on;if(!on)continue;const spec=show[key];
+    const m=P.mesh.material,was=m.vertexColors,wasMap=m.map;
+    if(spec&&spec.pat){const cols=spec.cols;if(P.map0){m.map=patternTex(spec.pat,cols);m.vertexColors=false;}else{patternVerts(P.mesh,spec.pat,cols);m.vertexColors=true;}m.color.set('#ffffff');}
+    else{m.vertexColors=false;m.map=P.map0;
+      if(spec&&spec.dark){m.map=recolorTex(P.map0,spec.dark,'dark');m.color.set('#ffffff');}
+      else if(typeof spec==='string'&&P.tintable)m.color.set(spec);
+      else if(P.tintable)m.color.copy(P.base);}
+    if(m.vertexColors!==was||m.map!==wasMap)m.needsUpdate=true;}}
+
+/* ---------- gacha: every item and colour (except "none") is a prize; you start with the everyday outfit ---------- */
+const RARITY={camo:'R',tee_dots:'R',tee_stars:'R',choker:'R',dogtag:'R',sailor:'R',zigzag:'R',cargo:'R',kneestripe:'R',witchtights:'R',
+  glasses:'R',sunglasses:'R',beret:'R',marine:'R',pumpkin:'R',hair:'R',
+  witchhat:'SR',cape:'SR',catears:'SR',cattail:'SR',paws:'SR',horns:'SR',batwings:'SR',deviltail:'SR',halo:'SR',angelwings:'SR'};
+const RATES={N:0.7,R:0.25,SR:0.05},KAKERA_DUP={N:1,R:3,SR:10},KAKERA_COST={N:5,R:15,SR:40};
+const COSTUME_SETS=[
+  {name:'ハロウィン魔女',icon:'🎃',keys:['head:witchhat','back:cape','bottoms:zigzag','legs:witchtights','waist:pumpkin']},
+  {name:'黒ねこ',icon:'🐈‍⬛',keys:['head:catears','waist:cattail','hands:paws','neck:choker']},
+  {name:'ミリタリー',icon:'🪖',keys:['tops:camo','bottoms:cargo','head:beret','neck:dogtag','head:sunglasses']},
+  {name:'小悪魔',icon:'😈',keys:['head:horns','back:batwings','waist:deviltail']},
+  {name:'天使',icon:'😇',keys:['head:halo','back:angelwings']},
+  {name:'セーラー',icon:'⚓',keys:['neck:sailor','head:marine','legs:kneestripe']}];
+const STARTER=new Set([...Object.entries(DEFAULT_OUTFIT).map(([s,[id,ci]])=>s+':'+id+':'+ci),'tops:tee:0','bottoms:shorts:0']);
+function prizeList(){const L=[];for(const S of WARDROBE)for(const it of S.items){if(it.id==='none')continue;
+    (it.colors||[[]]).forEach((c,ci)=>{const key=S.slot+':'+it.id+':'+ci;if(STARTER.has(key))return;L.push({key,slot:S.slot,id:it.id,ci,name:it.name,r:RARITY[it.id]||'N',col:c});});}
+  return L;}
+const PRIZES=prizeList();
+function ownsKey(save,key){return STARTER.has(key)||!!(save.owned&&save.owned[key]);}
+function ownsItem(save,slot,it){return it.id==='none'||(it.colors||[[]]).some((c,ci)=>ownsKey(save,slot+':'+it.id+':'+ci));}
+function drawPrize(){const x=Math.random();const r=x<RATES.SR?'SR':x<RATES.SR+RATES.R?'R':'N';const pool=PRIZES.filter(p=>p.r===r);return pool[Math.floor(Math.random()*pool.length)];}
 
 /* ---------- the tram and its level crossings ---------- */
 const tramTex=canvasTex(512,128,(g,w,h)=>{g.fillStyle='#efe6c8';g.fillRect(0,0,w,h);g.fillStyle='#2f7d4f';g.fillRect(0,h*0.58,w,h*0.42);g.fillStyle='#f2c230';g.fillRect(0,h*0.56,w,4);
@@ -5392,6 +5569,45 @@ function placeName(){const x=P.x,z=P.z;
 
 /* ---------- player ---------- */
 const player=window.HEROINE_GLTF?makeSkaterVRM(HEROINE_GLTF):makeSkater();world.add(player.g);
+if(player.vrm)applyOutfit(player,SAVE.outfit);
+// the closet: one row per slot with its items and colour sets; changes show on the heroine at once and are saved
+function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{});
+  for(const S of WARDROBE){const [id,ci]=cur[S.slot];const it=findItem(S.slot,id);const items=S.items.filter(I=>ownsItem(SAVE,S.slot,I));const row=document.createElement('div');row.className='cslot';
+    const lab=document.createElement('b');lab.textContent=S.label;row.appendChild(lab);const col=document.createElement('div');row.appendChild(col);
+    if(items.length>1){const r=document.createElement('div');r.className='row';for(const I of items){const b=document.createElement('button');b.className='chip'+(I.id===it.id?' on':'');b.textContent=I.name;
+        b.onclick=()=>{const k=(I.colors||[[]]).findIndex((c,ci)=>ownsKey(SAVE,S.slot+':'+I.id+':'+ci));setOutfit(S.slot,I.id,Math.max(0,k));};r.appendChild(b);}col.appendChild(r);}
+    if(it.colors&&it.colors.length>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';
+      it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
+        b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
+    box.appendChild(row);}}
+function setOutfit(slot,id,ci){SAVE.outfit=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{});SAVE.outfit[slot]=[id,ci];save();applyOutfit(player,SAVE.outfit);renderCloset();}
+function openCloset(){if(!player.vrm){toast('この端末では着がえられない（主人公のモデルを読み込めなかった）');return;}renderCloset();openModal('closet');}
+$('closetBtn').addEventListener('click',openCloset);
+// the gacha at Maruya: rarity first, then an even pick among that rarity's prizes; duplicates turn into kakera
+const RCOL={N:'#6f9fd0',R:'#d977a3',SR:'#e8b030'},RNAME={N:'ノーマル',R:'レア',SR:'スーパーレア'};
+function swatchHTML(c){const a=c&&c[0]||'#7a4a30',b=c&&c[1]||a;return `<span class="sw" style="display:inline-block;background:linear-gradient(135deg,${a} 55%,${b} 55%)"></span>`;}
+function gachaInfo(){SAVE.owned=SAVE.owned||{};const have=PRIZES.filter(p=>SAVE.owned[p.key]).length;
+  $('gachaInfo').innerHTML=`さいふ <b>${SAVE.money}</b>円 ・ かけら <b>${SAVE.kakera||0}</b> ・ コレクション <b>${have}</b>/${PRIZES.length}<br><small>出る確率　スーパーレア${RATES.SR*100}%・レア${RATES.R*100}%・ノーマル${RATES.N*100}%</small>`;
+  $('gachaOne').disabled=SAVE.money<100;$('gachaFive').disabled=SAVE.money<500;}
+function renderGachaShop(){const box=$('gachaShop');box.innerHTML='';
+  const sets=document.createElement('div');sets.className='grp';sets.innerHTML='<b>セット</b><br>'+COSTUME_SETS.map(S=>{const got=S.keys.filter(k=>{const [sl,id]=k.split(':');const it=findItem(sl,id);return it&&ownsItem(SAVE,sl,it);}).length;
+    return `<span class="it${got===S.keys.length?' have':''}">${S.icon} ${S.name} ${got}/${S.keys.length}</span>`;}).join('');box.appendChild(sets);
+  for(const r of ['SR','R','N']){const g=document.createElement('div');g.className='grp';g.innerHTML=`<b>${RNAME[r]}</b>（交換 かけら${KAKERA_COST[r]}）<br>`;
+    for(const p of PRIZES.filter(p=>p.r===r)){const have=!!SAVE.owned[p.key],sp=document.createElement('span');sp.className='it'+(have?' have':'');sp.innerHTML=swatchHTML(p.col)+(have?p.name:'？？？');
+      if(!have){const b=document.createElement('button');b.textContent='交換';b.disabled=(SAVE.kakera||0)<KAKERA_COST[r];b.onclick=()=>{SAVE.kakera-=KAKERA_COST[r];SAVE.owned[p.key]=1;save();showPrizes([{p,isNew:true}]);renderGachaShop();gachaInfo();};sp.appendChild(b);}
+      g.appendChild(sp);}box.appendChild(g);}}
+function showPrizes(res){const st=$('gachaStage');st.innerHTML='';
+  res.forEach(({p,isNew},i)=>{const cap=document.createElement('div');cap.className='cap';cap.style.setProperty('--c',RCOL[p.r]);cap.style.animationDelay=(i*0.12)+'s,'+(0.5+i*0.12)+'s';st.appendChild(cap);});
+  setTimeout(()=>{st.innerHTML='';res.forEach(({p,isNew,dup},i)=>{const d=document.createElement('div');d.className='prize';d.style.animationDelay=(i*0.08)+'s';
+      d.innerHTML=`<span class="rr r-${p.r}">${RNAME[p.r]}</span><div class="nm">${p.name}</div>${swatchHTML(p.col)}${isNew?'<span class="nw">NEW</span>':`<div><small>ダブり → かけら+${KAKERA_DUP[p.r]}</small></div>`}`;
+      if(player.vrm){const b=document.createElement('button');b.className='btn ghost';b.textContent='着てみる';b.onclick=()=>{setOutfit(p.slot,p.id,p.ci);toast(p.name+' を着てみた');};d.appendChild(b);}
+      st.appendChild(d);});},1300);}
+function pull(n){if(SAVE.money<100*n)return;SAVE.money-=100*n;SAVE.owned=SAVE.owned||{};const res=[];
+  for(let i=0;i<n;i++){const p=drawPrize();const isNew=!SAVE.owned[p.key];if(isNew)SAVE.owned[p.key]=1;else SAVE.kakera=(SAVE.kakera||0)+KAKERA_DUP[p.r];res.push({p,isNew});}
+  save();renderHUD();showPrizes(res);gachaInfo();renderGachaShop();}
+function openGacha(){$('gachaStage').innerHTML='<div style="font-size:42px">🎰</div>';gachaInfo();renderGachaShop();openModal('gacha');}
+$('gachaOne').addEventListener('click',()=>pull(1));$('gachaFive').addEventListener('click',()=>pull(5));$('gachaClose').addEventListener('click',closeModal);$('closetClose').addEventListener('click',closeModal);
+$('closetReset').addEventListener('click',()=>{SAVE.outfit=JSON.parse(JSON.stringify(DEFAULT_OUTFIT));save();applyOutfit(player,SAVE.outfit);renderCloset();});
 const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0,foot:false,tr:null,carry:'deck'};P.y=G(P.x,P.z);
 const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
@@ -5399,7 +5615,7 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(state!=='play')return;
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
-  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;});
+  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;});
 const stick={on:false,id:null,x:0,y:0};
@@ -5437,7 +5653,8 @@ function stepPlayer(dt){
   let a=onFoot?0:-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
   if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?7.5*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
     P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?1.6:still?5:6));kickQ=false;P.kickT=-1;
-    if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr)P.tr={type:'stow',t:0,dur:0.4};}
+    if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr&&!player.backBusy)P.tr={type:'stow',t:0,dur:0.4};
+    if(P.foot&&P.carry==='back'&&player.backBusy&&!P.tr)P.carry='hand';}
   // each kick: the back foot plants, shoves, and the board surges forward; holding the key keeps kicking
   P.kickCD-=dt;if(P.kickT>=0){P.kickT+=dt/0.48;if(P.kickT>=1)P.kickT=-1;}
   if(!onFoot&&(kickQ||I.fwd)&&!P.air&&!busy&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.42;P.kicked=false;}kickQ=false;
@@ -5474,6 +5691,7 @@ function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}
+  const gp=SHOPS.dagashi.gacha;if(gp){const d=Math.hypot(P.x-gp.x,P.z-gp.z);if(d<1.9)add(d-0.2,{kind:'gacha',label:'まわす　カプセルトイ（1回100円）',verb:'まわす'});}
   const cd=Math.hypot(P.x-MIKE.x,P.z-MIKE.z);if(cd<2.6)add(cd,{kind:'cat',label:'なでる　三毛猫',verb:'なでる'});
   for(const p of SPOTS){const d=Math.hypot(P.x-p.x,P.z-p.z);if(d<7&&!best)add(d+5,{kind:'spot',p,label:`写真を撮る　${p.name}`,verb:'撮る'});}
   return best;}
@@ -5481,7 +5699,8 @@ function act(o){if(!o)return;
   if(o.kind==='npc')talk(o.n);else if(o.kind==='shop')openShop(o.id);
   else if(o.kind==='post'){const q=QBY('letter'),st=stepOf(q);say('ポスト',st.text,()=>{addItem('letter',-1);advance(q);});}
   else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
-  else if(o.kind==='spot')photoReq=true;}
+  else if(o.kind==='spot')photoReq=true;
+  else if(o.kind==='gacha')openGacha();}
 
 /* ---------- camera ---------- */
 const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false;
@@ -5493,6 +5712,8 @@ function updateCamera(dt){
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
+  else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
+    want=p.clone().addScaledVector(fw,3.3).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),0.7);want.y+=1.05;look=p.clone();look.y+=0.05;rate=4;}
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
