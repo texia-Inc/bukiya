@@ -303,8 +303,11 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
 { const [x,z,yaw]=shopFront('books',-2.8,1.6);placeNPC('neko',{skin:'#f1cdb0',hair:'#6b6560',style:'short',shirt:'#7a8a6a',sleeves:'long',bottom:'pants',bottomCol:'#4a4038',glasses:true,bend:0.1},x,z,yaw,'stand','古書うみねこの店主',['古い写真集をめくると、この町は昔からあまり変わらないんだ。']);}
 { placeNPC('sota',{skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78},-72,SHORE+13,Math.PI*0.85,'stand','ソウタくん',['波が高い日はサーフィンの人がいっぱい来るんだ。']);}
 { placeNPC('fisher',{skin:'#d9a987',hair:'#2b2520',style:'short',hat:'straw',shirt:'#5a7a8a',sleeves:'long',bottom:'pants',bottomCol:'#4a4a4a',y:PIER.y+0.02},-79.8,PIER.z1-3.2,0,'sit','釣りのおじさん',['ここで釣れるのは、だいたいあじかサバだな。','島の灯台、昔は夜になると光ったんだがなあ。']);
+  // Natsumi, Nagi's mother: she comes up the hill on the last morning of the true route
+  placeNPC('natsumi',{skin:'#efc9aa',hair:'#2a211c',style:'bob',shirt:'#efe6d8',sleeves:'long',bottom:'skirt',bottomCol:'#5a6a8a',shoe:'#6b4330'},-52.6,-123.6,0.6,'stand','お母さん',['ナギ、ばあちゃんの言うこと、ちゃんと聞いてた？']);
+  NPCS.natsumi.show=()=>!!SAVE.flags.mom_here;
   // Mio: the girl in white who stands at the end of the pier, only in the evening
-  placeNPC('mio',{skin:'#f3dcc8',hair:'#1c1a1a',style:'bob',shirt:'#f7f6f1',bottom:'skirt',bottomCol:'#f7f6f1',socks:'#f7f6f1',shoe:'#e8e4dc',scale:0.93,y:PIER.y+0.02},-81.3,PIER.z1-1.4,0,'stand','ミオ',['……海、きれいだね。','灯台、今日も光らないね。']);
+  placeNPC('mio',{skin:'#f3dcc8',hair:'#1c1a1a',style:'bob',shirt:'#f7f6f1',bottom:'skirt',bottomCol:'#f7f6f1',socks:'#f7f6f1',shoe:'#e8e4dc',scale:0.93,y:PIER.y+0.02},-78.6,PIER.z1-1.2,0,'stand','ミオ',['……海、きれいだね。','灯台、今日も光らないね。']);
   const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.015,2.6,5),tm('#3a2a1e'));rod.position.set(-79.6,PIER.y+1.4,PIER.z1-1.9);rod.rotation.x=0.9;world.add(rod);}
 { placeNPC('lady1',{skin:'#f1cdb0',hair:'#3a2a1e',style:'bob',shirt:'#e8c9b8',bottom:'skirt',bottomCol:'#6b7a8a'},5.6,30,-Math.PI/2+0.4,'stand','',['今日はいい風ねえ。']);
   placeNPC('lady2',{skin:'#efc9aa',hair:'#1c1a1a',style:'bun',shirt:'#cfe0d2',sleeves:'long',bottom:'pants',bottomCol:'#5a4a3a'},5.6,31.1,-Math.PI/2-0.6,'stand','',['商店街のコロッケ、食べた？']);

@@ -11,6 +11,13 @@
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
 const HOME=[-49.2,-123.6,-2.55];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
+const endingsSeen=()=>['ending_calm','ending_horror','ending_org'].filter(k=>SAVE.flags[k]).length;
+// back to the third evening: the route and what happened on it are undone; endings, friendships and finished errands stay
+function rewindTo3(){SAVE.day=3;SAVE.hour=18.2;SAVE.cap=18.9;SAVE.flags.mio_left=3;
+  for(const k of ['route','in_ura','clues','clue_photo','clue_marble','clue_diary','fest_day','contest_done','contest_t','og_saw','dark_day','true_key'])delete SAVE.flags[k];
+  for(const id in SAVE.seen)if(id==='d3_night'||/^(c\d|c_|o\d|ura_)/.test(id))delete SAVE.seen[id];
+  for(const q of ['fest_lantern','fest_yatai','fest_yukata','og_evidence'])if(SAVE.qs[q]&&SAVE.qs[q].state===1)delete SAVE.qs[q];
+  if(URA.on)uraExit();renderClock();save();}
 NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
 const EVENTS=[
@@ -308,6 +315,63 @@ const EVENTS=[
     ['toast','ホラールート「トンネルの向こう」 おしまい',true],
     ['say','','――ホラールート「トンネルの向こう」 おしまい。','灯台の灯りと、30年前の夜の本当のことは、まだ海街のどこかに眠っている。'],
     ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
+
+  /* ----- after an ending: Mio offers to take Nagi back to the third evening, to choose another way. All three endings open the true route ----- */
+  {id:'rewind',on:{talk:'mio'},once:false,when:{phase:'evening',test:()=>endingsSeen()>0&&endingsSeen()<3},script:[
+    ['say','mio','ナギ。……あの夜のこと、覚えてる？'],
+    ['ask','mio','もう一度、あの夜に戻ってみる？ 選ばなかった道の先にも、灯台につながる何かがあるはずだよ。',[
+      ['戻る',[['fade','out'],['call',rewindTo3],['cam','off'],['warp',...HOME],['fade','in'],['toast','3日目の夕方に戻った。ばあちゃんと家に帰ると、あの夜の分かれ道',true]]],
+      ['やめておく',[['say','mio','……うん。わたしは、いつでもここにいるよ。']]]]]]},
+
+  /* ----- the true route "灯台": all three endings seen ----- */
+  {id:'t_tome',on:{talk:'tome'},mark:true,when:{test:()=>endingsSeen()>=3},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','ナギ。……この夏、いろんなことがあったみたいだね。顔つきが、来たときとちがうよ。'],
+    ['say','nagi','ばあちゃん。お母さんから預かってたもの、まだ渡してなかった。'],
+    ['say','','ナギは、カバンの底にしまっていた手紙を、ばあちゃんにわたした。'],
+    ['say','tome','……ナツミからかい。','（ばあちゃんは、しばらく黙って手紙を読んでいた）','あの子、30年ずっと、自分を責めてたんだねえ。ミオちゃんがいなくなった夜のことを。'],
+    ['say','tome','ナギには話してなかったね。あの島の灯台の灯り守りは、ナギのじいちゃんだったんだよ。','30年前のあの夜、じいちゃんはミオちゃんを探しに出て、灯りをともせなかった。それっきり、灯台に上れなくなってねえ。'],
+    ['say','tome','灯台の灯りはね、昔はお盆の夜に、町の五つの灯りから火を分けてもらってともしたんだ。','見晴らし台、神社の鳥居、海の見える踏切、駅のホーム、それから桟橋の先。'],
+    ['say','','ばあちゃんは、古い鍵をナギの手にのせた。'],
+    ['say','tome','じいちゃんの形見の、灯台の鍵だよ。……ナギに、たのめるかい？'],
+    ['ask','nagi','（どうする？）',[['わたしが、灯りをともす',[]],['……うん。やってみる',[]]]],
+    ['say','tome','夜になったら、桟橋の釣りのおじさんに船を出してもらいな。あの人は、じいちゃんの古い友だちさ。'],
+    ['set','true_key'],['call',()=>{if(SAVE.cap<18.9)SAVE.cap=18.9;}],['cam','off'],['toast','夜、桟橋の釣りのおじさんに話そう',true]]},
+  {id:'t_fisher',on:{talk:'fisher'},mark:true,when:{flags:{true_key:1},phase:['evening','night']},script:[
+    ['say','fisher','灯台へ？ ……そうか、あのじいさんの孫か。','よし、船を出してやる。ただし、灯りがなきゃ灯台はともらんぞ。町の五つの灯りを、もらってきな。'],
+    ['fade','out'],['time',20.6,0],['fade','in'],
+    ['say','','ジジジジジ……！','電波塔が、これまででいちばん大きく鳴りはじめた。町の灯りが、ちらちらとふるえている。'],
+    ['say','mio','（ナギ、急いで。あの音が鳴りやんだら、今夜の扉は閉じてしまう）'],
+    ['say','nagi','ミオの声……！ よし、行こう！'],
+    ['lights',{limit:300,pts:[{name:'桟橋の先',x:-80,z:334},{name:'駅のホーム',x:62,z:TRAM_Z-1.5},{name:'海の見える踏切',x:3,z:TRAM_Z-7},{name:'神社の鳥居',x:-60,z:-119.5},{name:'見晴らし台',x:0,z:-205}]}],
+    ['say','','五つの灯りが、ナギの胸のあたりで、あたたかくまたたいている。'],
+    ['fade','out'],['warp',-79.5,333,0],
+    ['cam',[120,8,600],[198,62,760],0.8,'cut'],['fade','in'],
+    ['say','','釣りのおじさんの小さな船が、夜の海をすべっていく。','島の灯台が、黒い影になって近づいてくる。'],
+    ['say','','さびた扉を、じいちゃんの鍵で開けた。らせん階段をのぼって、てっぺんへ――'],
+    ['say','nagi','じいちゃん、ミオ、お母さん。……ともすよ。'],
+    ['set','lighthouse_lit'],['wait',1.5],
+    ['cam',[60,30,560],[198,72,760],0.8],
+    ['say','','30年ぶりに、灯台に灯りがともった。','光の帯が海をわたって、町の坂を、屋根を、やさしくなでていく。'],
+    ['set','tower_quiet'],
+    ['say','','西の山で、電波塔の赤い光が、ふっと消えた。あのいやな音も、もう聞こえない。'],
+    ['if',{min:{bond_mio:1}},[['say','mio','……ありがとう、ナギ。'],['say','','光の中に、白いワンピースの女の子が立っていた。']],[['say','','光の中に、白いワンピースの女の子が立っていた。']]],
+    ['say','mio','やっと、帰れる。','ナツミに伝えて。……あの夜のこと、ナツミのせいじゃないよって。ずっと、友だちだよって。'],
+    ['say','','ミオは笑って、光の帯の中へ歩いていった。'],
+    ['wait',1],['fade','out'],['cam','off'],
+    ['set','mom_here'],['warp',...HOME],['day',7],
+    ['cam','npc','natsumi',3.6],
+    ['say','','次の朝。坂の下から、聞きなれた声がした。'],
+    ['say','natsumi','ナギ！ ……お母さん！'],
+    ['say','tome','ナツミ。……おかえり。'],
+    ['say','natsumi','ゆうべ、夢を見たの。ミオが、灯台の光の中で手をふってた。','……ナギ、あなたが？'],
+    ['say','nagi','うん。ミオがね、伝えてって。「ナツミのせいじゃないよ。ずっと、友だちだよ」って。'],
+    ['say','','ナギは、色あせた写真と、青いビー玉をお母さんにわたした。お母さんは写真を胸に当てて、小さく泣いた。'],
+    ['say','tome','さあさあ、朝ごはんにしようかね。今夜も、灯台がよく見えるよ。'],
+    ['set','ending_true'],['cam','off'],
+    ['credits'],
+    ['toast','真ルート「灯台」 おわり',true],
+    ['say','','――真ルート「灯台」 おわり。','これからも夏休みは続く。夜になったら、灯台の光を見に行こう。']]},
 
   /* ----- every day ----- */
   // from the second day on, the afternoon turns to evening on its own once the clock reaches the day's cap
