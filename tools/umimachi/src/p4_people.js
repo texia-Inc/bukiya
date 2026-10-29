@@ -289,7 +289,7 @@ const NPCS={};
 function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
   const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;n.box=collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
 // someone who is only there at certain times has n.show(); hidden people neither stand in the way nor talk
-const present=n=>!n.show||n.show();
+const present=n=>!URA.on&&(!n.show||n.show());   // nobody you know is in 裏海街
 function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.yaw];}
 { const B=SHRINE;const bench=benchMesh();bench.position.set(-50.5,G(-50.5,-125.6),-125.6);world.add(bench);collide(-51.3,-49.7,-125.9,-125.3,'prop',G(-50.5,-125.6)+0.5);
   placeNPC('tome',{skin:'#efc9aa',hair:'#d9d6d0',style:'grey',shirt:'#8a6a8a',sleeves:'long',bottom:'long',bottomCol:'#5a5a6a',shoe:'#4a3a2e',bend:0.32,cane:true,y:G(-50.5,-125.6)},

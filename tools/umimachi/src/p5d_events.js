@@ -9,9 +9,9 @@
    On the third night Nagi chooses: follow Omochi the cat to the west tunnel (horror), follow the van to the port (Oceangate),
    or go to sleep (the easy-going summer). Flags kept on the way: bond_<npc> (errands and kind answers), met_mio, met_mochi,
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
-const HOME=[-50.5,-122.6,Math.PI];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
+const HOME=[-48.6,-123.4,-2.42];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
-NPCS.mio.show=()=>phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
+NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
 const EVENTS=[
   // a check of every kind of step; only index.html#storytest starts it
@@ -145,7 +145,14 @@ const EVENTS=[
       ['黒いバンを追って、港へ',[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
       ['外の物音を確かめに、坂の下へ',[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
       ['……そのまま寝る',[['set','route',3]]]]],
-    ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。夜のトンネルの奥から、冷たい風が吹いてくる……。'],['toast','ホラールート「トンネルの向こう」は準備中。いまは次の朝になる',true]]],
+    ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。','海岸通りを西へ。トンネルの入り口で、白い猫がこちらをふり返り、闇の中へ消えた。'],
+      ['say','nagi','待って、おもち……！'],['fade','out'],['ura',true],['time',23.3,0],['cam','off'],['warp',...URA_START],
+      ['cam',[URA_START[0]+9,G(URA_START[0],URA_START[1])+3,URA_START[1]-4],[URA_START[0]-2,G(URA_START[0],URA_START[1])+1.2,URA_START[1]],1.2,'cut'],['fade','in'],
+      ['say','','トンネルを抜けると、そこはまた海街だった。','……でも、ちがう。色がない。霧が濃い。灯りのついた窓が、ひとつもない。'],
+      ['say','','遠くで、だれも乗っていない電車が走っていく音がした。'],
+      ['say','nagi','ここ……海街、だよね？ ばあちゃん……？'],
+      ['say','','おもちが、ニャア、と小さく鳴いた。その目が、町の三つの方角を順に見る。駅、商店街、そして坂の上の神社。'],
+      ['cam','off'],['toast','L でライト。影の住人に見つからずに、3つの手がかりを探そう',true],['stop']]],
     ['if',{flags:{route:2}},[['say','','ナギはスケボーをかかえて、坂を下りはじめた。港の倉庫街に、小さな灯りがともっている……。'],['toast','悪の組織ルート「シーサイド・コンスピラシー」は準備中。いまは次の朝になる',true]]],
     ['if',{flags:{route:3}},[['say','nagi','……明日、ばあちゃんに聞いてみよう。','おやすみなさい。']]],
     ['wait',0.6],['fade','out']]},
@@ -215,11 +222,46 @@ const EVENTS=[
     ['say','','――のほほんルート「なつやすみ帳」 おしまい。','このあとも、夏休みは続く。夜の町を、花火の下で散歩してみよう。'],
     ['cam','off']]},
 
+  /* ----- the horror route "トンネルの向こう" (route 1), the third night: 裏海街. Three things Mio left behind, then the chase ----- */
+  {id:'ura_photo',on:{near:[62,TRAM_Z-1.5,2.4]},when:{flags:{in_ura:1,clue_photo:0}},script:[
+    ['say','','駅のベンチに、色あせた写真が一枚、置いてあった。','浜辺で笑う、ふたりの女の子。ひとりは白いワンピース。もうひとりは……'],
+    ['say','nagi','……お母さん？ 若いころの、お母さんだ。','裏に何か書いてある。「ミオと、ナツミ。1996年 夏」'],
+    ['set','clue_photo'],['add','clues'],['call',()=>renderHUD()]]},
+  {id:'ura_marble',on:{near:[SHOPS.dagashi.door[0],SHOPS.dagashi.door[1],2.4]},when:{flags:{in_ura:1,clue_marble:0}},script:[
+    ['say','','まるやの店先。ラムネの空きびんの中に、青いビー玉がひとつ。','手にとると、遠くで子どもの笑い声がした気がした。'],
+    ['say','','「ナツミちゃん、ビー玉とれた！ ……ずっと、いっしょに遊ぼうね」'],
+    ['say','nagi','いまの声……ミオ？'],
+    ['set','clue_marble'],['add','clues'],['call',()=>renderHUD()]]},
+  {id:'ura_diary',on:{near:[SHRINE.x,-157.5,2.6]},when:{flags:{in_ura:1,clue_diary:0}},script:[
+    ['say','','本殿の石段に、雨にぬれた日記の切れはしが落ちていた。'],
+    ['say','','「8月15日。今夜、電波塔が鳴ったら、トンネルの向こうへ行ってみる。」','「灯台の灯りが消えたのは、きっと向こう側にだれかがいるから。わたしが、たしかめてくる。」','「ナツミには、ないしょ。――ミオ」'],
+    ['say','nagi','30年前の、あの夜……ミオは、ここに来たんだ。'],
+    ['set','clue_diary'],['add','clues'],['call',()=>renderHUD()]]},
+  {id:'ura_chase',when:{flags:{in_ura:1},min:{clues:3}},script:[
+    ['say','','手がかりが、そろった。そのとき――','町じゅうの影の住人が、いっせいにこちらを向いた。'],
+    ['say','','背後で、地面がきしむ音。ふり返ると、家よりも大きな影が、赤い目でナギを見下ろしていた。'],
+    ['say','nagi','……っ！ 逃げなきゃ！ 西のトンネルへ！'],
+    ['chase'],
+    ['fade','out'],['ura',false],['set','mio_here'],['time',5.9,0],['warp',-79.5,333,0],
+    ['cam',[-77.2,PIER.y+1.7,330],[-81.2,PIER.y+1.1,336.6],1.2,'cut'],['fade','in'],
+    ['say','','トンネルを転がり出ると、空が白みはじめていた。','気がつくと、ナギは桟橋の先に立っていた。となりに、ミオがいる。'],
+    ['say','mio','……帰ってこられたね、ナギ。'],
+    ['say','nagi','ミオ。この写真……ミオと、わたしのお母さんだよね。'],
+    ['say','mio','うん。30年前の夏、わたしとナツミは、いつもいっしょだった。','あの夜、電波塔が鳴って、トンネルの向こうの扉が開いた。わたしは向こう側に入ったまま、帰れなくなったの。','灯台の灯りが消えたのも、あの夜。……灯りがもう一度ともったら、わたしも帰れるのかもしれない。'],
+    ['ask','nagi','（なんて言う？）',[
+      ['わたしが、灯りをともしてみせる',[['say','mio','……ありがとう。ナツミも、きっと同じことを言ったね。'],['set','promise_mio'],['add','bond_mio',2]]],
+      ['……ずっと、ひとりだったの？',[['say','mio','ううん。ときどき、ナツミの娘が遊びに来るのを見てた。……ずっと前から、知ってたよ。'],['add','bond_mio']]]]],
+    ['say','','朝日が海から顔を出した。まぶしさに目を細めて、もう一度見たとき、ミオはもういなかった。','手の中に、青いビー玉と、色あせた写真だけが残っていた。'],
+    ['set','mio_here',0],['set','ending_horror'],
+    ['toast','ホラールート「トンネルの向こう」 おしまい',true],
+    ['say','','――ホラールート「トンネルの向こう」 おしまい。','灯台の灯りと、30年前の夜の本当のことは、まだ海街のどこかに眠っている。'],
+    ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
+
   /* ----- every day ----- */
   // from the second day on, the afternoon turns to evening on its own once the clock reaches the day's cap
   {id:'dusk',once:false,when:{minDay:2,test:()=>SAVE.cap<18&&SAVE.hour>=SAVE.cap-0.02},script:[
     ['toast','日が傾いてきた'],['cap',18.9],['time',16.6,5]]},
-  {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day},script:[
+  {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]},
   // grandma takes you home in the evening: the night's event, then the next morning
   {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[

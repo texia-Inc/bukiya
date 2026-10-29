@@ -186,7 +186,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
@@ -245,7 +245,7 @@ function snap(){const src=renderer.domElement,w=360,h=Math.round(w*src.height/sr
   else toast(near?`${near.name}で1枚`:'パシャ。アルバムに残した');}
 function renderAlbum(){const A=$('albumGrid');A.innerHTML='';if(!ALBUM.length){const p=document.createElement('p');p.className='sub';p.textContent='まだ写真がありません。気に入った景色で撮ってみよう。';A.appendChild(p);return;}
   for(const a of ALBUM){const f=document.createElement('figure');const im=document.createElement('img');im.src=a.url;im.alt=a.cap;const c=document.createElement('figcaption');c.textContent=a.cap;f.append(im,c);A.appendChild(f);}}
-$('photoBtn').addEventListener('click',()=>{photoReq=true;});
+$('photoBtn').addEventListener('click',()=>{photoReq=true;});$('lightBtn').addEventListener('click',toggleTorch);
 // markers floating in the world
 const markTex=(ch,bg)=>canvasTex(64,64,(g,w,h)=>{g.fillStyle=bg;g.beginPath();g.arc(32,30,24,0,7);g.fill();g.beginPath();g.moveTo(22,48);g.lineTo(42,48);g.lineTo(32,62);g.fill();
   g.fillStyle='#fff';g.font='900 32px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(ch,32,31);});
@@ -335,7 +335,7 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(DLG&&DLG.choice){const i=+e.key-1;if(i>=0&&i<DLG.n)DLG.pick(i);return;}
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
-  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
+  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
 const stick={on:false,id:null,x:0,y:0};
@@ -356,7 +356,7 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
-  fwd=fwd||kickHold;if(ST.run&&!RACE.on)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
+  fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
@@ -462,7 +462,7 @@ function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
     poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
-function updateMarkers(){const calm=!!(DLG||modal||ST.run);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
+function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);tMark.visible=beam.visible=!!t&&state==='play'&&!calm;
   if(t){const y=G(t[0],t[1]);tMark.position.set(t[0],y+2.9+Math.sin(clock*3)*0.12,t[1]);beam.position.set(t[0],y+20,t[1]);beam.material.opacity=clamp(Math.hypot(P.x-t[0],P.z-t[1])/60,0,1)*0.22;}
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
@@ -470,7 +470,7 @@ let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    if(ST.run&&!RACE.on)jumpQ=kickQ=footQ=false;
+    if(ST.run&&!storyFree())jumpQ=kickQ=footQ=false;
     updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
@@ -485,7 +485,8 @@ function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
   // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)
   const hr=/hour=([\d.]+)/.exec(location.hash),at=/at=(-?[\d.]+),(-?[\d.]+)/.exec(location.hash),dy=/day=(\d+)/.exec(location.hash);
-  if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS)if(/^d(\d)_/.test(e.id)&&+e.id[1]<SAVE.day)SAVE.seen[e.id]=1;}
+  if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS){const m=/^d(\d)_/.exec(e.id);if(m&&+m[1]<SAVE.day)SAVE.seen[e.id]=1;else delete SAVE.seen[e.id];}
+    if(SAVE.day<=3)for(const k of ['route','in_ura','clues','clue_photo','clue_marble','clue_diary','fest_day','contest_done','ending_calm','ending_horror'])delete SAVE.flags[k];}
   const fl=/set=([\w:,-]+)/.exec(location.hash);if(fl)for(const kv of fl[1].split(',')){const [k,v]=kv.split(':');SAVE.flags[k]=v==null?1:+v;}   // #set=route:3,met_mio:1
   if(hr)SAVE.hour=SAVE.cap=+hr[1];if(at){P.x=+at[1];P.z=+at[2];P.y=G(P.x,P.z);P.yaw=0;}
   if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once

@@ -157,6 +157,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
     <button class="tool" id="albumBtn">アルバム</button>
     <button class="tool" id="closetBtn">着がえ</button>
     <button class="tool" id="photoBtn">写真を撮る</button>
+    <button class="tool" id="lightBtn" hidden>ライト</button>
   </div>
   <div id="bag"></div>
   <div id="prompt" class="card" hidden></div>
@@ -200,6 +201,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>C</dt><dd>着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
       <dt>F</dt><dd>スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
       <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
+      <dt>L</dt><dd>ライトをつける・消す（「トンネルの向こう」で）</dd>
       <dt>J ・ クリック</dt><dd>撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
       <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
     </dl>
@@ -4951,7 +4953,7 @@ const NPCS={};
 function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
   const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;n.box=collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
 // someone who is only there at certain times has n.show(); hidden people neither stand in the way nor talk
-const present=n=>!n.show||n.show();
+const present=n=>!URA.on&&(!n.show||n.show());   // nobody you know is in 裏海街
 function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.yaw];}
 { const B=SHRINE;const bench=benchMesh();bench.position.set(-50.5,G(-50.5,-125.6),-125.6);world.add(bench);collide(-51.3,-49.7,-125.9,-125.3,'prop',G(-50.5,-125.6)+0.5);
   placeNPC('tome',{skin:'#efc9aa',hair:'#d9d6d0',style:'grey',shirt:'#8a6a8a',sleeves:'long',bottom:'long',bottomCol:'#5a5a6a',shoe:'#4a3a2e',bend:0.32,cane:true,y:G(-50.5,-125.6)},
@@ -5543,6 +5545,7 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
+const storyFree=()=>RACE.on||!!URA.chase;   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -5604,7 +5607,9 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'call':await a[0]();break;
   case 'night':{const e=findEvent('night');if(e){SAVE.seen[e.id]=1;return steps(e.script);}break;}   // ['night']  the first ready event marked on:{night:true}                                       // ['call', fn]  anything the data cannot say
   case 'race':{const t=await raceP(a[0]);SAVE.flags[a[1]]=t<0?-1:Math.round(t*10);break;}   // ['race', {from:[x,z,yaw], to:[x,z,r], limit}, flag]  the time in tenths of a second, -1 if over the limit
-  case 'fireworks':fireworks(a[0]);break;                               // ['fireworks', seconds]
+  case 'fireworks':fireworks(a[0]);break;
+  case 'chase':await chaseP();break;                                     // ['chase']  in 裏海街: the big shadow chases you to the west tunnel
+  case 'ura':if(a[0])uraEnter();else uraExit();break;                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
@@ -5614,10 +5619,10 @@ function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
+  applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
-    m.visible=!calm&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
+    m.visible=!calm&&!URA.on&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   if(calm||DRONE.active)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
   const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}
 
@@ -5664,7 +5669,7 @@ function burst(p,col){const n=140,pos=new Float32Array(n*3),vel=[];const r=mulbe
 function fireworks(sec){FEST.fwUntil=clock+sec;FEST.fwT=0;}
 const FW_COL=['#ff5a4a','#ffd24a','#7ad8ff','#b78cff','#7dff9a','#ffffff','#ff9ad0'];
 function updateFestival(dt){const fest=SAVE.flags.fest_day;
-  FEST.lanterns.visible=fest||qs('fest_lantern').state===2;const st=fest||qs('fest_yatai').state===2;
+  FEST.lanterns.visible=!URA.on&&(fest||qs('fest_lantern').state===2);const st=!URA.on&&(fest||qs('fest_yatai').state===2);
   if(FEST.stalls.visible!==st){FEST.stalls.visible=st;for(const g of FEST.stalls.children)g.userData.box.on=st;}
   if(clock<FEST.fwUntil){FEST.fwT-=dt;if(FEST.fwT<=0){FEST.fwT=0.35+Math.random()*0.7;
       burst(new THREE.Vector3(-150+Math.random()*230,80+Math.random()*60,440+Math.random()*90),pick(FW_COL));}}
@@ -5688,6 +5693,75 @@ function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
   const done=Math.hypot(P.x-g[0],P.z-g[1])<g[2],over=RACE.t>RACE.limit;
   if(done||over){const r=RACE.res,t=RACE.t;RACE.on=false;RACE.res=null;RACE.mark.visible=false;tr.hidden=true;r(done?t:-1);}}
 
+/* ---------- the horror route "トンネルの向こう": 裏海街, the town on the other side of the west tunnel, stopped thirty years ago.
+   The same streets, drained of colour and sunk in fog; nobody about but the faceless shadows walking their beats and the tram
+   running with no driver. Nagi looks for three things Mio left behind by flashlight (L), keeping out of the shadows' sight —
+   skating is loud, walking (F) is quiet, the light carries far. Seen for too long and a cold hand sends you back to the tunnel.
+   After the third, the big shadow comes, and the only way out is the tunnel, on the board. ---------- */
+const URA_START=[-222,COAST_Z+1.1,Math.PI/2],URA_EXIT=[-226,COAST_Z+1.1,5];
+const URA_CLUES=[{id:'photo',name:'駅のホーム',x:62,z:TRAM_Z-1.5},{id:'marble',name:'駄菓子まるや',x:SHOPS.dagashi.door[0],z:SHOPS.dagashi.door[1]},{id:'diary',name:'神社の本殿',x:SHRINE.x,z:-157.5}];
+const URA_BEATS=[[-45,-20,45,-20],[0,-120,0,-35],[0,40,0,190],[-150,COAST_Z,-30,COAST_Z],[25,COAST_Z+1,150,COAST_Z+1],[40,TRAM_Z-4,100,TRAM_Z-4],[SHRINE.x,-131,SHRINE.x,-152],[-120,-140,-120,60]];
+const URA={on:false,shadows:[],sus:0,chase:null,mood:new THREE.Color('#3a4a44'),fog:new THREE.Color('#1a2420')};
+const SHADE={skin:'#141518',hair:'#0b0b0d',style:'short',shirt:'#1b1c21',sleeves:'long',bottom:'pants',bottomCol:'#121316',shoe:'#0b0b0d'};
+const torch=new THREE.SpotLight('#fff1d0',0,30,0.42,0.55,1);scene.add(torch);scene.add(torch.target);let torchOn=false;
+const uraGlints=URA_CLUES.map(c=>{const g=glow('#bfefff',c.x,G(c.x,c.z)+0.9,c.z,1.4);return g;});
+const omochi=makeCat({col:'#f2f2ee'});omochi.g.visible=false;world.add(omochi.g);
+function uraEnter(){URA.on=true;SAVE.flags.in_ura=1;canvas.style.filter='saturate(.28) sepia(.3) hue-rotate(-12deg) brightness(.96)';
+  if(!URA.shadows.length)URA_BEATS.forEach(([x0,z0,x1,z1],k)=>{const h=makeHuman(SHADE);world.add(h.g);
+    const eye=glow('#ff3020',0,0,0,0.9);URA.shadows.push({h,a:[x0,z0],b:[x1,z1],t:(k*0.37)%1,dir:1,sus:0,eye});});
+  for(const s of URA.shadows){s.h.g.visible=true;s.sus=0;}
+  omochi.g.position.set(URA_START[0]+3,G(URA_START[0]+3,URA_START[1]+2)+0.02,URA_START[1]+2);omochi.g.rotation.y=Math.PI/2;omochi.g.visible=true;
+  scene.fog.near=12;scene.fog.far=150;renderHUD();}
+function uraExit(){URA.on=false;SAVE.flags.in_ura=0;canvas.style.filter='';torchOn=false;torch.intensity=0;scene.fog.near=260;scene.fog.far=2600;
+  for(const s of URA.shadows){s.h.g.visible=false;s.eye.visible=false;}omochi.g.visible=false;
+  for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;for(const c of CATS)c.g.visible=true;$('hurt').style.opacity=0;$('lightBtn').hidden=true;renderHUD();}
+function toggleTorch(){if(!URA.on)return;torchOn=!torchOn;toast(torchOn?'ライトをつけた（遠くまで見えるけど、見つかりやすい）':'ライトを消した');}
+const clueLeft=()=>URA_CLUES.filter(c=>!SAVE.flags['clue_'+c.id]);
+function uraHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=URA.chase?'逃げろ！':'裏海街';const s=document.createElement('span');s.className='step';
+  s.textContent=URA.chase?'西のトンネルへ。スケボーで走りぬけろ':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
+  const m=document.createElement('span');m.className='meter';const L=clueLeft();m.textContent=URA.chase?'':L.length?`手がかり ${3-L.length} / 3　のこり：${L.map(c=>c.name).join('・')}`:'手がかりは そろった';tr.append(b,s,m);}
+// the chase: the big shadow comes from behind and gains on you; it pushes you back if it reaches you, and the tunnel ends it
+function chaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;
+  if(!URA.big){const h=makeHuman(SHADE);h.g.scale.setScalar(1.9);world.add(h.g);URA.big={h,eye:glow('#ff3020',0,0,0,2.2)};}
+  const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,0,P.z).addScaledVector(F,-24);
+  URA.big.h.g.position.set(p.x,G(p.x,p.z),p.z);URA.big.h.g.visible=URA.big.eye.visible=true;URA.chase={t:0,res,v:6};
+  if(!URA.goal){URA.goal=marker(MK.target);URA.goal.scale.set(1.6,1.6,1);}renderHUD();});}
+function updateUra(dt){
+  if(!URA.on&&SAVE.flags.in_ura&&state==='play')uraEnter();   // a save made in 裏海街 opens there again
+  $('lightBtn').hidden=!URA.on;
+  if(!URA.on)return;
+  // the light of the other side: thick fog, a dead green sky, unlit windows, lamps that flicker
+  scene.fog.color.copy(URA.fog);scene.background.copy(URA.fog);dome.material.color.copy(URA.mood);hemi.intensity=0.24;sun.intensity=0.06;
+  for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
+  for(const m of NIGHT.lamps){m.visible=Math.random()>0.08;m.material.opacity=0.55+Math.random()*0.3;}
+  for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;for(const c of CATS)c.g.visible=false;
+  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id];g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
+  // the flashlight, held at the chest and pointing where she goes
+  const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw));torch.intensity=torchOn?2.4:0;
+  torch.position.set(P.x,P.y+1.1,P.z).addScaledVector(F,0.7);torch.target.position.set(P.x,P.y+0.4,P.z).addScaledVector(F,9);torch.target.updateMatrixWorld();
+  const me=new THREE.Vector3(P.x,P.y,P.z),loud=!P.foot&&P.v>4.5,quiet=P.foot&&P.v<4;
+  let top=0;
+  for(const s of URA.shadows){const g=s.h.g,a=s.a,b=s.b,L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    const d=Math.hypot(P.x-g.position.x,P.z-g.position.z);
+    const R=(8+(torchOn?6:0)+(loud?6:0))*(quiet?0.65:1);
+    const fx=(b[0]-a[0])/L*s.dir,fz=(b[1]-a[1])/L*s.dir,toX=(P.x-g.position.x)/(d||1),toZ=(P.z-g.position.z)/(d||1);
+    const seen=!URA.chase&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
+    s.sus=clamp(s.sus+(seen?dt*(d<5?1.6:1):-dt*0.5),0,1);
+    if(s.sus<0.05&&!URA.chase){s.t+=s.dir*dt*1.1/L;if(s.t>1){s.t=1;s.dir=-1;}if(s.t<0){s.t=0;s.dir=1;}}   // walks its beat unless it has noticed you
+    const x=lerp(a[0],b[0],s.t),z=lerp(a[1],b[1],s.t);g.position.set(x,G(x,z),z);
+    g.rotation.y=s.sus>0.05?Math.atan2(P.x-x,P.z-z):Math.atan2(fx,fz);poseHuman(s.h,'stand',dt,{});
+    s.eye.visible=s.sus>0.02;s.eye.position.set(x,G(x,z)+1.62,z);s.eye.material.opacity=s.sus;top=Math.max(top,s.sus);}
+  URA.sus=top;$('hurt').style.opacity=URA.chase?0.35+0.15*Math.sin(clock*6):top*0.7;
+  if(top>=1&&!ST.run){for(const s of URA.shadows)s.sus=0;runEvent({id:'ura_caught',once:false,script:[
+    ['fade','out'],['warp',...URA_START],['fade','in'],['say','','冷たい手が、肩にふれた――。','……気がつくと、トンネルの出口に立っていた。'],['say','nagi','（見つかっちゃだめだ。歩けば、足音は小さい……）']]});}
+  // the chase
+  const C=URA.chase;if(!C)return;C.t+=dt;C.v=Math.min(11.5,6.5+C.t*0.12);const bg=URA.big.h.g,dx=P.x-bg.position.x,dz=P.z-bg.position.z,dd=Math.hypot(dx,dz);
+  bg.position.x+=dx/dd*C.v*dt;bg.position.z+=dz/dd*C.v*dt;bg.position.y=G(bg.position.x,bg.position.z);bg.rotation.y=Math.atan2(dx,dz);poseHuman(URA.big.h,'stand',dt,{});
+  URA.big.eye.position.set(bg.position.x,bg.position.y+3.05,bg.position.z);URA.big.eye.material.opacity=0.8+0.2*Math.sin(clock*9);
+  URA.goal.visible=true;URA.goal.position.set(URA_EXIT[0],G(URA_EXIT[0],URA_EXIT[1])+3.4+Math.sin(clock*3)*0.12,URA_EXIT[1]);
+  if(dd<1.8){P.v*=0.3;P.bump=0.6;bg.position.x-=dx/dd*14;bg.position.z-=dz/dd*14;C.t=Math.max(0,C.t-8);toast('つかまりそう……！ 走って！');}
+  if(Math.hypot(P.x-URA_EXIT[0],P.z-URA_EXIT[1])<URA_EXIT[2]){URA.chase=null;bg.visible=URA.big.eye.visible=false;URA.goal.visible=false;C.res();}}
+
 /* ---------- the events of the story, as data for the engine in p5c_story.js ----------
    {id, on:{talk:npcId} | on:{near:[x,z,radius]} | on:{night:true} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
    when: day, minDay, phase ('morning'|'day'|'evening'|'night', or a list), hour:[from,to], flags:{k:v}, min:{k:n}, seen, unseen, quest:{id:state}, test:fn
@@ -5698,9 +5772,9 @@ function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
    On the third night Nagi chooses: follow Omochi the cat to the west tunnel (horror), follow the van to the port (Oceangate),
    or go to sleep (the easy-going summer). Flags kept on the way: bond_<npc> (errands and kind answers), met_mio, met_mochi,
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
-const HOME=[-50.5,-122.6,Math.PI];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
+const HOME=[-48.6,-123.4,-2.42];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
-NPCS.mio.show=()=>phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
+NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
 const EVENTS=[
   // a check of every kind of step; only index.html#storytest starts it
@@ -5834,7 +5908,14 @@ const EVENTS=[
       ['黒いバンを追って、港へ',[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
       ['外の物音を確かめに、坂の下へ',[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
       ['……そのまま寝る',[['set','route',3]]]]],
-    ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。夜のトンネルの奥から、冷たい風が吹いてくる……。'],['toast','ホラールート「トンネルの向こう」は準備中。いまは次の朝になる',true]]],
+    ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。','海岸通りを西へ。トンネルの入り口で、白い猫がこちらをふり返り、闇の中へ消えた。'],
+      ['say','nagi','待って、おもち……！'],['fade','out'],['ura',true],['time',23.3,0],['cam','off'],['warp',...URA_START],
+      ['cam',[URA_START[0]+9,G(URA_START[0],URA_START[1])+3,URA_START[1]-4],[URA_START[0]-2,G(URA_START[0],URA_START[1])+1.2,URA_START[1]],1.2,'cut'],['fade','in'],
+      ['say','','トンネルを抜けると、そこはまた海街だった。','……でも、ちがう。色がない。霧が濃い。灯りのついた窓が、ひとつもない。'],
+      ['say','','遠くで、だれも乗っていない電車が走っていく音がした。'],
+      ['say','nagi','ここ……海街、だよね？ ばあちゃん……？'],
+      ['say','','おもちが、ニャア、と小さく鳴いた。その目が、町の三つの方角を順に見る。駅、商店街、そして坂の上の神社。'],
+      ['cam','off'],['toast','L でライト。影の住人に見つからずに、3つの手がかりを探そう',true],['stop']]],
     ['if',{flags:{route:2}},[['say','','ナギはスケボーをかかえて、坂を下りはじめた。港の倉庫街に、小さな灯りがともっている……。'],['toast','悪の組織ルート「シーサイド・コンスピラシー」は準備中。いまは次の朝になる',true]]],
     ['if',{flags:{route:3}},[['say','nagi','……明日、ばあちゃんに聞いてみよう。','おやすみなさい。']]],
     ['wait',0.6],['fade','out']]},
@@ -5904,11 +5985,46 @@ const EVENTS=[
     ['say','','――のほほんルート「なつやすみ帳」 おしまい。','このあとも、夏休みは続く。夜の町を、花火の下で散歩してみよう。'],
     ['cam','off']]},
 
+  /* ----- the horror route "トンネルの向こう" (route 1), the third night: 裏海街. Three things Mio left behind, then the chase ----- */
+  {id:'ura_photo',on:{near:[62,TRAM_Z-1.5,2.4]},when:{flags:{in_ura:1,clue_photo:0}},script:[
+    ['say','','駅のベンチに、色あせた写真が一枚、置いてあった。','浜辺で笑う、ふたりの女の子。ひとりは白いワンピース。もうひとりは……'],
+    ['say','nagi','……お母さん？ 若いころの、お母さんだ。','裏に何か書いてある。「ミオと、ナツミ。1996年 夏」'],
+    ['set','clue_photo'],['add','clues'],['call',()=>renderHUD()]]},
+  {id:'ura_marble',on:{near:[SHOPS.dagashi.door[0],SHOPS.dagashi.door[1],2.4]},when:{flags:{in_ura:1,clue_marble:0}},script:[
+    ['say','','まるやの店先。ラムネの空きびんの中に、青いビー玉がひとつ。','手にとると、遠くで子どもの笑い声がした気がした。'],
+    ['say','','「ナツミちゃん、ビー玉とれた！ ……ずっと、いっしょに遊ぼうね」'],
+    ['say','nagi','いまの声……ミオ？'],
+    ['set','clue_marble'],['add','clues'],['call',()=>renderHUD()]]},
+  {id:'ura_diary',on:{near:[SHRINE.x,-157.5,2.6]},when:{flags:{in_ura:1,clue_diary:0}},script:[
+    ['say','','本殿の石段に、雨にぬれた日記の切れはしが落ちていた。'],
+    ['say','','「8月15日。今夜、電波塔が鳴ったら、トンネルの向こうへ行ってみる。」','「灯台の灯りが消えたのは、きっと向こう側にだれかがいるから。わたしが、たしかめてくる。」','「ナツミには、ないしょ。――ミオ」'],
+    ['say','nagi','30年前の、あの夜……ミオは、ここに来たんだ。'],
+    ['set','clue_diary'],['add','clues'],['call',()=>renderHUD()]]},
+  {id:'ura_chase',when:{flags:{in_ura:1},min:{clues:3}},script:[
+    ['say','','手がかりが、そろった。そのとき――','町じゅうの影の住人が、いっせいにこちらを向いた。'],
+    ['say','','背後で、地面がきしむ音。ふり返ると、家よりも大きな影が、赤い目でナギを見下ろしていた。'],
+    ['say','nagi','……っ！ 逃げなきゃ！ 西のトンネルへ！'],
+    ['chase'],
+    ['fade','out'],['ura',false],['set','mio_here'],['time',5.9,0],['warp',-79.5,333,0],
+    ['cam',[-77.2,PIER.y+1.7,330],[-81.2,PIER.y+1.1,336.6],1.2,'cut'],['fade','in'],
+    ['say','','トンネルを転がり出ると、空が白みはじめていた。','気がつくと、ナギは桟橋の先に立っていた。となりに、ミオがいる。'],
+    ['say','mio','……帰ってこられたね、ナギ。'],
+    ['say','nagi','ミオ。この写真……ミオと、わたしのお母さんだよね。'],
+    ['say','mio','うん。30年前の夏、わたしとナツミは、いつもいっしょだった。','あの夜、電波塔が鳴って、トンネルの向こうの扉が開いた。わたしは向こう側に入ったまま、帰れなくなったの。','灯台の灯りが消えたのも、あの夜。……灯りがもう一度ともったら、わたしも帰れるのかもしれない。'],
+    ['ask','nagi','（なんて言う？）',[
+      ['わたしが、灯りをともしてみせる',[['say','mio','……ありがとう。ナツミも、きっと同じことを言ったね。'],['set','promise_mio'],['add','bond_mio',2]]],
+      ['……ずっと、ひとりだったの？',[['say','mio','ううん。ときどき、ナツミの娘が遊びに来るのを見てた。……ずっと前から、知ってたよ。'],['add','bond_mio']]]]],
+    ['say','','朝日が海から顔を出した。まぶしさに目を細めて、もう一度見たとき、ミオはもういなかった。','手の中に、青いビー玉と、色あせた写真だけが残っていた。'],
+    ['set','mio_here',0],['set','ending_horror'],
+    ['toast','ホラールート「トンネルの向こう」 おしまい',true],
+    ['say','','――ホラールート「トンネルの向こう」 おしまい。','灯台の灯りと、30年前の夜の本当のことは、まだ海街のどこかに眠っている。'],
+    ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
+
   /* ----- every day ----- */
   // from the second day on, the afternoon turns to evening on its own once the clock reaches the day's cap
   {id:'dusk',once:false,when:{minDay:2,test:()=>SAVE.cap<18&&SAVE.hour>=SAVE.cap-0.02},script:[
     ['toast','日が傾いてきた'],['cap',18.9],['time',16.6,5]]},
-  {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day},script:[
+  {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]},
   // grandma takes you home in the evening: the night's event, then the next morning
   {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[
@@ -6104,7 +6220,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
@@ -6163,7 +6279,7 @@ function snap(){const src=renderer.domElement,w=360,h=Math.round(w*src.height/sr
   else toast(near?`${near.name}で1枚`:'パシャ。アルバムに残した');}
 function renderAlbum(){const A=$('albumGrid');A.innerHTML='';if(!ALBUM.length){const p=document.createElement('p');p.className='sub';p.textContent='まだ写真がありません。気に入った景色で撮ってみよう。';A.appendChild(p);return;}
   for(const a of ALBUM){const f=document.createElement('figure');const im=document.createElement('img');im.src=a.url;im.alt=a.cap;const c=document.createElement('figcaption');c.textContent=a.cap;f.append(im,c);A.appendChild(f);}}
-$('photoBtn').addEventListener('click',()=>{photoReq=true;});
+$('photoBtn').addEventListener('click',()=>{photoReq=true;});$('lightBtn').addEventListener('click',toggleTorch);
 // markers floating in the world
 const markTex=(ch,bg)=>canvasTex(64,64,(g,w,h)=>{g.fillStyle=bg;g.beginPath();g.arc(32,30,24,0,7);g.fill();g.beginPath();g.moveTo(22,48);g.lineTo(42,48);g.lineTo(32,62);g.fill();
   g.fillStyle='#fff';g.font='900 32px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(ch,32,31);});
@@ -6253,7 +6369,7 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(DLG&&DLG.choice){const i=+e.key-1;if(i>=0&&i<DLG.n)DLG.pick(i);return;}
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
-  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
+  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
 const stick={on:false,id:null,x:0,y:0};
@@ -6274,7 +6390,7 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
-  fwd=fwd||kickHold;if(ST.run&&!RACE.on)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
+  fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
@@ -6380,7 +6496,7 @@ function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
     poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
-function updateMarkers(){const calm=!!(DLG||modal||ST.run);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
+function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);tMark.visible=beam.visible=!!t&&state==='play'&&!calm;
   if(t){const y=G(t[0],t[1]);tMark.position.set(t[0],y+2.9+Math.sin(clock*3)*0.12,t[1]);beam.position.set(t[0],y+20,t[1]);beam.material.opacity=clamp(Math.hypot(P.x-t[0],P.z-t[1])/60,0,1)*0.22;}
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
@@ -6388,7 +6504,7 @@ let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    if(ST.run&&!RACE.on)jumpQ=kickQ=footQ=false;
+    if(ST.run&&!storyFree())jumpQ=kickQ=footQ=false;
     updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
@@ -6403,7 +6519,8 @@ function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
   // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)
   const hr=/hour=([\d.]+)/.exec(location.hash),at=/at=(-?[\d.]+),(-?[\d.]+)/.exec(location.hash),dy=/day=(\d+)/.exec(location.hash);
-  if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS)if(/^d(\d)_/.test(e.id)&&+e.id[1]<SAVE.day)SAVE.seen[e.id]=1;}
+  if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS){const m=/^d(\d)_/.exec(e.id);if(m&&+m[1]<SAVE.day)SAVE.seen[e.id]=1;else delete SAVE.seen[e.id];}
+    if(SAVE.day<=3)for(const k of ['route','in_ura','clues','clue_photo','clue_marble','clue_diary','fest_day','contest_done','ending_calm','ending_horror'])delete SAVE.flags[k];}
   const fl=/set=([\w:,-]+)/.exec(location.hash);if(fl)for(const kv of fl[1].split(',')){const [k,v]=kv.split(':');SAVE.flags[k]=v==null?1:+v;}   // #set=route:3,met_mio:1
   if(hr)SAVE.hour=SAVE.cap=+hr[1];if(at){P.x=+at[1];P.z=+at[2];P.y=G(P.x,P.z);P.yaw=0;}
   if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once
