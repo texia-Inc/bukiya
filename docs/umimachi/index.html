@@ -4481,11 +4481,15 @@ const BEACHHOUSE={x:40,z:SHORE+10};
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.computeVertexNormals();return g;})();
   const tps=[];for(const sg of [-1,1])for(let k=0;k<46;k++){const x=sg*(120+rnd()*95),z=SHORE+(0-SEA_Y)/0.035+4+rnd()*10;tps.push({x,z});}
   inst(tetra,tm('#bdb8ae'),tps,(e,d)=>{d.position.set(e.x,SEA_Y+0.3+rnd()*0.4,e.z);d.rotation.set(rnd()*6,rnd()*6,rnd()*6);d.scale.setScalar(1.1+rnd()*0.4);},{cast:true,ol:0.04});
-  // houses and a radio mast on the hills either side of the town
-  const hh=[];for(let k=0;k<160;k++){const sg=rnd()<0.5?-1:1,x=sg*(208+rnd()*110),z=-175+rnd()*390;if(Math.abs(z-TRAM_Z)<14||(z>226&&z<252))continue;
-    hh.push({x,z,y:H(x,z),w:5+rnd()*3,d:5+rnd()*3,h:3+rnd()*2.5,yaw:sg>0?-Math.PI/2+(rnd()-.5)*0.4:Math.PI/2+(rnd()-.5)*0.4,col:C3(pick(WALLS)),roof:C3(pick(['#5d6470','#a9493a','#3a3d44','#6b4a2e']))});}
-  inst(boxG,tm('#ffffff'),hh,(e,d)=>{d.position.set(e.x,e.y+e.h/2-1,e.z);d.rotation.y=e.yaw;d.scale.set(e.w,e.h+2,e.d);},{recv:true});
-  inst(prism,tmap(kawara),hh.map(e=>({...e,col:e.roof})),(e,d)=>{const sy=1.4/1.5;d.position.set(e.x,e.y+e.h-1+sy*0.5+1,e.z);d.rotation.y=e.yaw;d.scale.set(e.w*1.1,sy,e.d*1.12/1.732);},{cast:true});
+  // wooded hills either side of the town: round broadleaf crowns mixed with dark cedars, and a radio mast
+  const woods=[];for(let k=0;k<460;k++){const sg=rnd()<0.5?-1:1,x=sg*(205+Math.pow(rnd(),0.8)*140),z=-205+rnd()*425;
+    if(Math.abs(z-TRAM_Z)<8.5||(z>230&&z<250))continue;
+    woods.push({x,z,y:H(x,z),s:2+rnd()*2.4,cedar:rnd()<0.33,lean:(rnd()-.5)*0.2,col:C3(pick(['#3f6e3c','#4b7d43','#5a8a4a','#365f36','#6a944f']))});}
+  const broad=woods.filter(e=>!e.cedar),ced=woods.filter(e=>e.cedar);
+  inst(new THREE.CylinderGeometry(0.16,0.26,1,6).translate(0,0.5,0),tm('#6b4a36'),woods.map(e=>({...e,col:null})),(e,d)=>{d.position.set(e.x,e.y-0.3,e.z);d.scale.set(e.s*0.5,e.s*1.2,e.s*0.5);});
+  inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),broad,(e,d)=>{d.position.set(e.x,e.y+e.s*1.35,e.z);d.scale.set(e.s,e.s*0.82,e.s);d.rotation.set(e.lean,e.s*3,0);},{cast:true});
+  inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),broad.map(e=>({...e,col:e.col.clone().multiplyScalar(1.12)})),(e,d)=>{d.position.set(e.x+e.s*0.45,e.y+e.s*1.75,e.z-e.s*0.2);d.scale.setScalar(e.s*0.62);});
+  inst(new THREE.ConeGeometry(1,1,7).translate(0,0.5,0),tm('#ffffff'),ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(e.x,e.y+e.s*0.5,e.z);d.scale.set(e.s*0.75,e.s*2.6,e.s*0.75);d.rotation.z=e.lean*0.5;},{cast:true});
   const mx=-285,mz=-40,my=H(mx,mz),mast=new THREE.Group();mast.position.set(mx,my,mz);world.add(mast);
   for(let k=0;k<8;k++){const s=new THREE.Mesh(new THREE.CylinderGeometry(1.2-k*0.13,1.33-k*0.13,5,6,1,true),tm(k%2?'#f2f2ee':'#d8452f',{side:THREE.DoubleSide}));s.position.y=2.5+k*5;mast.add(s);}
   mast.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6),new THREE.MeshBasicMaterial({color:'#ff4030'})).translateY(41));
