@@ -3864,8 +3864,12 @@ dome.material.map.wrapS=THREE.RepeatWrapping;
 const SEA_Y=-1.2,HILL=0.115,COAST_Z=240,SHORE=247,TRAM_Z=212,CUT_X=232;
 // the tram line and the coast road run through level cuttings into the hills on both sides
 function cutting(x,z){return Math.abs(x)<CUT_X+2&&(Math.abs(z-TRAM_Z)<6.6||(z>232.4&&z<SHORE+0.5));}
-function H(x,z){let y=z<COAST_Z?(COAST_Z-z)*HILL:z<SHORE?0:-(z-SHORE)*0.035;const ax=Math.abs(x);if(ax>200&&!cutting(x,z))y+=(ax-200)*(z<SHORE?0.45:0.32);return y;}
+// the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map
+function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7);}
+function H(x,z){let y=z<COAST_Z?(COAST_Z-z)*HILL:z<SHORE?0:-(z-SHORE)*0.035;const ax=Math.abs(x);if(ax>200&&!cutting(x,z))y+=hillY(ax,z);return y;}
 const PIER={x0:-82.5,x1:-77.5,z0:250,z1:338,y:0.45};
+const RIDGE_DECKS=[{x:318,z:60,yaw:-Math.PI/2,name:'東の峠 見晴らし'},{x:-318,z:-10,yaw:Math.PI/2,name:'西の峠 見晴らし'}];
+const HILL_TREES=[];   // hill trees, so the camera can keep out of them
 function onPier(x,z){return x>PIER.x0&&x<PIER.x1&&z>PIER.z0&&z<PIER.z1;}
 function G(x,z){let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
 
@@ -4454,7 +4458,7 @@ const BEACHHOUSE={x:40,z:SHORE+10};
 /* ---------- the edges of the world: cuttings, tunnel portals, rocky ends of the beach, hill houses ---------- */
 { const PX=CUT_X,bz=z=>z<COAST_Z?(COAST_Z-z)*HILL:0;
   // retaining walls along the cuttings the tram and the coast road take through the hills
-  const rw=[];for(const sg of [-1,1])for(let x=200;x<PX;x+=4){const xm=sg*(x+2),hh=(x+2-200)*0.45+0.6;
+  const rw=[];for(const sg of [-1,1])for(let x=200;x<PX;x+=4){const xm=sg*(x+2),hh=hillY(x+2,TRAM_Z)+0.6;
     for(const z of [TRAM_Z-6.6,TRAM_Z+6.6,232.4])rw.push({x:xm,z,h:hh});}
   inst(boxG,tmap(stone,{color:'#c9c2b4'}),rw,(e,d)=>{d.position.set(e.x,bz(e.z)+e.h/2-0.3,e.z);d.scale.set(4.05,e.h+0.6,0.7);},{recv:true});
   for(const r of rw)collide(r.x-2,r.x+2,r.z-0.35,r.z+0.35,'wall');
@@ -4481,10 +4485,26 @@ const BEACHHOUSE={x:40,z:SHORE+10};
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.computeVertexNormals();return g;})();
   const tps=[];for(const sg of [-1,1])for(let k=0;k<46;k++){const x=sg*(120+rnd()*95),z=SHORE+(0-SEA_Y)/0.035+4+rnd()*10;tps.push({x,z});}
   inst(tetra,tm('#bdb8ae'),tps,(e,d)=>{d.position.set(e.x,SEA_Y+0.3+rnd()*0.4,e.z);d.rotation.set(rnd()*6,rnd()*6,rnd()*6);d.scale.setScalar(1.1+rnd()*0.4);},{cast:true,ol:0.04});
+  // lookout decks on the ridges, reached by riding up through the woods
+  for(const d of RIDGE_DECKS){const y=G(d.x,d.z)+0.35,g=new THREE.Group();g.position.set(d.x,0,d.z);g.rotation.y=d.yaw;world.add(g);
+    const pt=canvasTex(64,64,(c,w,h)=>{c.fillStyle='#a77b52';c.fillRect(0,0,w,h);c.fillStyle='rgba(60,35,15,.35)';for(let x=0;x<w;x+=10)c.fillRect(x,0,1.5,h);},true);pt.repeat.set(3,3);const plank=tmap(pt);
+    const deck=M(new THREE.BoxGeometry(9,0.3,7),[tm('#8a6340'),tm('#8a6340'),plank,tm('#8a6340'),tm('#8a6340'),tm('#8a6340')],0.03);deck.position.y=y-0.15;g.add(deck);
+    const legs=M(new THREE.BoxGeometry(8.6,4,6.6),tm('#6b4a30'),0);legs.position.y=y-2.3;g.add(legs);
+    for(let k=0;k<7;k++){const p=M(new THREE.BoxGeometry(0.12,1,0.12),tm('#7a5638'),0.01);p.position.set(-4.4+k*1.47,y+0.5,3.4);g.add(p);}
+    const rail=M(new THREE.BoxGeometry(9,0.1,0.14),tm('#7a5638'),0.01);rail.position.set(0,y+1.0,3.4);g.add(rail);
+    const bench=benchMesh();bench.position.set(-1.6,y,1.8);bench.rotation.y=Math.PI;g.add(bench);
+    const scope=new THREE.Group();scope.position.set(2.2,y,2.6);g.add(scope);scope.add(M(new THREE.CylinderGeometry(0.06,0.09,1.1,8),tm('#3a6e8a'),0.01).translateY(0.55));
+    const eye=M(new THREE.CylinderGeometry(0.12,0.16,0.5,10),tm('#3a6e8a'),0.01);eye.rotation.x=Math.PI/2-0.25;eye.position.y=1.25;scope.add(eye);
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(1.8,0.6),tmap(canvasTex(192,64,(c,w,h)=>{c.fillStyle='#f4efe2';c.fillRect(0,0,w,h);c.strokeStyle='#6b4a30';c.lineWidth=5;c.strokeRect(3,3,w-6,h-6);c.fillStyle='#4a3424';c.font=signFont(28,true);c.textAlign='center';c.textBaseline='middle';c.fillText(d.name,w/2,h/2+1);})));
+    sign.position.set(3.6,y+1.4,-3.3);sign.rotation.y=Math.PI;g.add(sign);const sp=M(new THREE.BoxGeometry(0.1,1.4,0.1),tm('#6b4a30'),0.01);sp.position.set(3.6,y+0.7,-3.4);g.add(sp);
+    const c=Math.abs(Math.cos(d.yaw)),s2=Math.abs(Math.sin(d.yaw)),hx=4.5*c+3.5*s2,hz=4.5*s2+3.5*c;collide(d.x-hx,d.x+hx,d.z-hz,d.z+hz,'deck',y);}
   // wooded hills either side of the town: round broadleaf crowns mixed with dark cedars, and a radio mast
   const woods=[];for(let k=0;k<460;k++){const sg=rnd()<0.5?-1:1,x=sg*(205+Math.pow(rnd(),0.8)*140),z=-205+rnd()*425;
     if(Math.abs(z-TRAM_Z)<8.5||(z>230&&z<250))continue;
     woods.push({x,z,y:H(x,z),s:2+rnd()*2.4,cedar:rnd()<0.33,lean:(rnd()-.5)*0.2,col:C3(pick(['#3f6e3c','#4b7d43','#5a8a4a','#365f36','#6a944f']))});}
+  // keep the ridge decks clear, and give every trunk a collider
+  for(let i=woods.length-1;i>=0;i--){const e=woods[i];if(RIDGE_DECKS.some(d=>Math.hypot(e.x-d.x,e.z-d.z)<11))woods.splice(i,1);}
+  for(const e of woods){const r=0.12*e.s;collide(e.x-r,e.x+r,e.z-r,e.z+r,'tree');HILL_TREES.push(e);}
   const broad=woods.filter(e=>!e.cedar),ced=woods.filter(e=>e.cedar);
   inst(new THREE.CylinderGeometry(0.16,0.26,1,6).translate(0,0.5,0),tm('#6b4a36'),woods.map(e=>({...e,col:null})),(e,d)=>{d.position.set(e.x,e.y-0.3,e.z);d.scale.set(e.s*0.5,e.s*1.2,e.s*0.5);});
   inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),broad,(e,d)=>{d.position.set(e.x,e.y+e.s*1.35,e.z);d.scale.set(e.s,e.s*0.82,e.s);d.rotation.set(e.lean,e.s*3,0);},{cast:true});
@@ -4801,8 +4821,12 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
   // turns side-on across the deck and the head looks
   // down the line; pushing, the hips square up to face forward. On the title screen she stands half turned to the camera.
   const LEAD=1,M=-LEAD;const sideT=P.push>0.25?0:(typeof state!=='undefined'&&state==='title')?0.5:1;if(P.sd==null)P.sd=sideT;P.sd+=(sideT-P.sd)*Math.min(1,5*dt);
-  const c=P.c,sd=P.sd,yaw=1.25*sd*M;h.hips.position.set(0,0.93+0.045*sd-0.24*c*(1-0.55*sd)-P.push*0.07,-0.03*c*(1-sd));h.hips.rotation.set(0,yaw,0);
-  h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)+P.push*0.25,-yaw*0.2,-P.st*0.16);
+  const c=P.c,sd=P.sd,yaw=1.25*sd*M;
+  // pushing: stand tall on a nearly straight front leg, drop the pelvis a little on the pushing side and sink slightly through the stroke
+  const kp=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1,stroke=kp<0.3?0:kp<0.65?(kp-0.3)/0.35:1-(kp-0.65)/0.35;
+  const hipY=lerp(0.93+0.045*sd-0.24*c*(1-0.55*sd),1.0-0.035*stroke,P.push);
+  h.hips.position.set(0,hipY,-0.03*c*(1-sd)*(1-P.push));h.hips.rotation.set(0,yaw,LEAD*0.12*P.push);
+  h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)*(1-0.6*P.push)+P.push*0.22,-yaw*0.2,-P.st*0.16-LEAD*0.12*P.push);
   h.head.rotation.order='YXZ';h.head.rotation.set(-(0.06+0.5*c)*(1-0.6*sd)-P.push*0.2,-yaw*0.8+P.st*0.25,P.st*0.08);
   // arms stay loose with bent elbows: the lead arm a little forward, the back arm behind, a little wider with speed and in the air,
   // the outside arm lifts in a turn and both counter-swing the kicking leg
@@ -4815,9 +4839,9 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
   for(const L of h.legs){const front=L.sx===LEAD;let fx=((front?0.03:-0.03)*(1-sd)+0.01*sd)*M,fy=ANKLE_Y,fz=front?0.2+0.02*sd:-0.21-0.03*sd;
     if(!front&&P.push>0.03){const k=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1;
       // reach forward and down, plant beside the deck, sweep back hard, lift and return
-      const fwdZ=-0.05,backZ=-0.62,ph=k<0.3?k/0.3:k<0.65?(k-0.3)/0.35:(k-0.65)/0.35;
+      const fwdZ=-0.02,backZ=-0.45,ph=k<0.3?k/0.3:k<0.65?(k-0.3)/0.35:(k-0.65)/0.35;
       let z,y;if(k<0.3){z=lerp(-0.21,fwdZ,smooth(ph));y=lerp(ANKLE_Y,0.095,smooth(ph));}
-      else if(k<0.65){z=lerp(fwdZ,backZ,ph);y=0.095;}else{z=lerp(backZ,-0.21,smooth(ph));y=0.095+Math.sin(Math.PI*ph)*0.14+(ANKLE_Y-0.095)*smooth(ph);}
+      else if(k<0.65){z=lerp(fwdZ,backZ,ph);y=0.095+0.05*smooth(clamp((ph-0.6)/0.4,0,1));}else{z=lerp(backZ,-0.21,smooth(ph));y=0.145+Math.sin(Math.PI*ph)*0.12+(ANKLE_Y-0.145)*smooth(ph);}
       fz=lerp(fz,z,P.push);fy=lerp(fy,y,P.push);fx=lerp(fx,0.16*M,P.push);}
     solveLeg(L,L.sx*0.09*cy,hy,hz-L.sx*0.09*sy,fx,fy,fz);
     // feet lie across the deck when riding; the front foot points ahead and the pushing foot runs along the ground when kicking
@@ -4987,7 +5011,9 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   // legs: two-bone IK onto the rig's ankles, knees pointing forward and a little out
   for(const L of h.legs){const M=V.legs[L.sx>0?1:-1];
     M.up.getWorldPosition(_a);toModel(V,_a);L.ft.getWorldPosition(_b);toModel(V,_b);_b.y+=0.005;
-    const d=Math.min(_a.distanceTo(_b),M.l1+M.l2-1e-3),dir=_c.copy(_b).sub(_a).normalize(),a=(M.l1*M.l1-M.l2*M.l2+d*d)/(2*d),hh=Math.sqrt(Math.max(0,M.l1*M.l1-a*a));
+    // a leg that cannot quite reach (the pushing foot on the ground) stretches up to 8%
+    const raw=_a.distanceTo(_b),k=clamp(raw/((M.l1+M.l2)*0.995),1,1.08);M.up.scale.setScalar(k);M.ft.scale.setScalar(1/k);
+    const l1=M.l1*k,l2=M.l2*k,d=Math.min(raw,l1+l2-1e-3),dir=_c.copy(_b).sub(_a).normalize(),a=(l1*l1-l2*l2+d*d)/(2*d),hh=Math.sqrt(Math.max(0,l1*l1-a*a));
     const pole=_d.set(L.sx*0.18,0,1);nodeQ(V,h.hips,_q1);pole.applyQuaternion(_q1);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
     const knee=_a.clone().addScaledVector(dir,a).addScaledVector(pole,hh),tgt=_a.clone().addScaledVector(dir,d);
     swingTo(V,M.up,'J_Bip_'+M.n+'_UpperLeg',M.dUp,knee.clone().sub(_a));
@@ -5266,7 +5292,7 @@ function drawMap(){const V=150,S=mapc.width/V,cx=P.x-MAP_X0,cz=P.z-MAP_Z0;mg.fil
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
 function placeName(){const x=P.x,z=P.z;
-  if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
+  if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<12)return d.name;if(Math.abs(x)>212&&z<SHORE)return x>0?'東の山':'西の山';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
   if(onPier(x,z))return'桟橋';if(z>SHORE)return'しおさい海岸';if(x>STATION.x0-4&&x<STATION.x1+4&&Math.abs(z-TRAM_Z)<8)return'うみまち駅';
   if(Math.abs(z-TRAM_Z)<4)return'うみまち線の線路';
   let best=null,bd=1e9;for(const S of STREETS){const b=streetBox(S,3);if(x>b.x0&&x<b.x1&&z>b.z0&&z<b.z1){const d=S.ax==='z'?Math.abs(x-S.c):Math.abs(z-S.c);if(d<bd){bd=d;best=S;}}}
@@ -5325,7 +5351,7 @@ function stepPlayer(dt){
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  P.x=clamp(P.x,-CUT_X+0.5,CUT_X-0.5);P.z=clamp(P.z,-250,PIER.z1);
+  P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy){P.vy=6.5;P.air=true;}jumpQ=false;
   if(!P.air&&P.y-gy>0.3){P.air=true;P.vy=0;}
@@ -5355,7 +5381,8 @@ function act(o){if(!o)return;
 /* ---------- camera ---------- */
 const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false;
 const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}return false;}
+function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
+  if(Math.abs(x)>195)for(const e of HILL_TREES){if(Math.abs(e.x-x)<e.s*1.1&&Math.abs(e.z-z)<e.s*1.1&&y<e.y+e.s*2.7&&Math.hypot(e.x-x,e.z-z)<e.s*1.05)return true;}return false;}
 function updateCamera(dt){
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
