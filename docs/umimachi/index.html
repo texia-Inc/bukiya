@@ -1123,8 +1123,13 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
   P.st+=(clamp(s.turn,-1,1)-P.st)*Math.min(1,5*dt);P.push+=((s.push?1:0)-P.push)*Math.min(1,6*dt);
   const c=P.c;h.hips.position.set(0,0.93-0.27*c-P.push*0.07,-0.03*c);
   h.torso.rotation.set(0.1+0.6*c+P.push*0.25,0,-P.st*0.16);h.head.rotation.set(-(0.06+0.5*c+P.push*0.2),P.st*0.25,P.st*0.08);
-  const spread=s.v>3?0.95+0.3*c:0.25;
-  for(const a of h.arms){const z=a.sx*(spread+(a.sx*P.st>0?-0.35:0.22)*Math.abs(P.st));a.sh.rotation.set(-0.15+0.3*c,0,z);a.el.rotation.x=-0.35;}
+  // arms stay loose with bent elbows: the lead arm a little forward, the back arm behind, a little wider with speed and in the air,
+  // the outside arm lifts in a turn and both counter-swing the kicking leg
+  const sp=clamp(s.v/12,0,1),air=s.air?1:0,kk=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1,swing=Math.sin(kk*Math.PI*2)*0.38*P.push;
+  for(const a of h.arms){const lead=a.sx<0;
+    const out=0.16+0.26*sp+0.55*air+(a.sx*P.st>0?-0.1:0.28)*Math.abs(P.st);
+    const fw=(lead?-0.3-0.12*sp:0.25+0.08*sp)+0.35*c+(lead?-swing:swing)+Math.sin(h.t*1.7+(lead?0:1.4))*0.04;
+    a.sh.rotation.set(fw,0,a.sx*out);a.el.rotation.x=-(0.5+0.35*sp+0.2*P.push-0.15*air);}
   const hy=h.hips.position.y-0.07,hz=h.hips.position.z;
   for(const L of h.legs){const front=L.sx<0;let fx=front?0.03:-0.03,fy=ANKLE_Y,fz=front?0.2:-0.21;
     if(!front&&P.push>0.03){const k=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1;
