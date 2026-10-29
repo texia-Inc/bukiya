@@ -150,6 +150,71 @@ const EVENTS=[
     ['if',{flags:{route:3}},[['say','nagi','……明日、ばあちゃんに聞いてみよう。','おやすみなさい。']]],
     ['wait',0.6],['fade','out']]},
 
+  /* ----- the easy-going route "なつやすみ帳" (route 3), days 4–6: getting the town ready for the summer festival,
+     the skateboard contest (a race from the lookout down to the end of the pier) and fireworks over the sea ----- */
+  {id:'c4_morning',when:{day:4,flags:{route:3}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう、ナギ。ゆうべは、ぐっすりだったねえ。','あさっては夏祭りだよ。神社に屋台が出て、夜は海の上に花火が上がるんだ。','町のみんなが準備でてんてこまいでね。手伝っておやり。'],
+    ['if',{flags:{promise_contest:1}},[['say','tome','ソウタとスケボー大会の約束もしたんだろう？ 練習しておかないとね。']]],
+    ['cam','off'],['toast','「！」の人を手伝って、夏祭りの準備をしよう']]},
+  {id:'c_practice',on:{talk:'sota'},once:false,when:{flags:{route:3},test:()=>SAVE.day>=4&&SAVE.day<=5&&!available(QBY('ramune'))},script:[
+    ['say','sota','おねえちゃん！ 大会のコースはね、坂の上の見晴らし台から、桟橋の先までなんだ。'],
+    ['ask','sota','練習してみる？',[
+      ['練習する！',[['fade','out'],['warp',3,-196,0],['fade','in'],['race',{from:[3,-196,0],to:[-80,331,4],limit:150},'practice_t'],
+        ['call',()=>{const t=SAVE.flags.practice_t;if(t<0){toast('時間切れ…');return;}toast(`タイム ${(t/10).toFixed(1)} 秒`,true);
+          if(!SAVE.flags.best_t||t<SAVE.flags.best_t){SAVE.flags.best_t=t;toast('自己ベスト！');}}],
+        ['say','nagi','ふう……。本番は、ハヤトくんが55秒くらいで来るって言ってたっけ。']]],
+      ['また今度',[['say','sota','うん、いつでも言ってね！']]]]]]},
+  {id:'c5_morning',when:{day:5,flags:{route:3}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','明日はいよいよお祭りだねえ。'],
+    ['if',{quest:{fest_yukata:2}},[['say','tome','浴衣、似合うといいねえ。お母さんも、あれを着て花火を見たんだよ。']],[['say','tome','そうそう、はなもりの花江さんが、ナギに話があるって言ってたよ。']]],
+    ['cam','off']]},
+  {id:'c6_morning',when:{day:6,flags:{route:3}},script:[
+    ['set','fest_day'],['cap',18.9],
+    ['cam',[SHRINE.x+4,G(SHRINE.x,-126)+3,-122],[SHRINE.x,G(SHRINE.x,-140)+1.5,-142],1.5,'cut'],
+    ['say','','夏祭りの朝。参道には提灯がゆれて、屋台の準備をする音が聞こえる。'],
+    ['cam','npc','tome',3.4],
+    ['say','tome','さあ、今日は夏祭りだよ！','スケボー大会は夕方からだって。ソウタが浜で待ってるよ。'],
+    ['cam','off'],['toast','浜辺のソウタくんに話しかけると、スケボー大会が始まる']]},
+  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{day:6,flags:{route:3,contest_done:0}},script:[
+    ['say','sota','おねえちゃん！ いよいよ大会だよ！','コースは見晴らし台から桟橋の先まで。町の人もみんな見に来てるんだ！'],
+    ['if',{flags:{promise_contest:0}},[['ask','nagi','（大会に出る？）',[['出る！',[]],['もう少しあとで',[['say','sota','えー！ 待ってるからね！'],['stop']]]]]]],
+    ['fade','out'],['time',17.3,0],['warp',3,-196,0],
+    ['cam',[-6,G(0,-203)+2.6,-188],[2,G(0,-200)+1.2,-200],2,'cut'],['fade','in'],
+    ['say','','見晴らし台に、町の子どもたちと大人が集まっている。','高校生のハヤト、郵便屋さんのコウジさん、そしてソウタ。'],
+    ['say','sota','ハヤトにいちゃんは去年の優勝なんだ。55秒で下りたんだって！'],
+    ['cam','off'],
+    ['race',{from:[3,-196,0],to:[-80,331,4],limit:150},'contest_t'],
+    ['cam',[-77.5,PIER.y+2,322],[-80.5,PIER.y+1,331],2.5],
+    ['call',()=>{const t=SAVE.flags.contest_t;toast(t<0?'時間切れ…':`タイム ${(t/10).toFixed(1)} 秒`,true);}],
+    ['if',{min:{contest_t:0},max:{contest_t:550}},
+      [['say','','ゴール！ ハヤトより先に、桟橋の先へ飛びこんだ！'],['say','sota','おねえちゃん、優勝だ！ すっげー！'],['set','contest_rank',1],['money',1000]],
+      [['if',{min:{contest_t:0},max:{contest_t:680}},
+        [['say','','ゴール！ ハヤトにはわずかに届かなかったけど、2位だ！'],['say','sota','2位！ 来年はぜったい優勝だね！'],['set','contest_rank',2],['money',600]],
+        [['if',{min:{contest_t:0},max:{contest_t:800}},
+          [['say','','ゴール！ 3位。コウジさんと、ほとんど同時だった。'],['say','sota','3位だって！ やったね、おねえちゃん！'],['set','contest_rank',3],['money',400]],
+          [['if',{min:{contest_t:0}},[['say','','ゴール……！ 結果はびりだったけど、桟橋のみんなが大きな拍手をくれた。']],[['say','','時間切れ……。でも、桟橋のみんなが大きな拍手をくれた。']]],
+           ['say','sota','すっごくかっこよかったよ！'],['set','contest_rank',4],['money',200]]]]]]],
+    ['set','contest_done'],
+    ['fade','out'],['time',20.2,0],['warp',-79.5,326,0],
+    ['cam',[-78.5,PIER.y+1.6,318],[-40,62,480],1.5,'cut'],['fade','in'],
+    ['fireworks',60],
+    ['say','','日が暮れて、海の上に最初の花火が上がった。','ドン、と胸に響く音。桟橋も、浜も、坂の上も、みんなが空を見上げている。'],
+    ['wait',4],
+    ['if',{flags:{met_mio:1}},[['say','','ふと隣を見ると、白いワンピースの女の子が、花火を見上げていた。'],['say','mio','……きれいだね、ナギ。'],
+      ['say','','次の花火が上がって、もう一度見たときには、ミオはいなかった。']]],
+    ['wait',3],
+    ['say','tome','ナギ。ここにいたのかい。'],
+    ['say','tome','この夏、ナギが町じゅうを走り回ってくれたおかげで、みんな助かったって言ってたよ。','それでね、町内会からのお願いなんだけど……','夏休みのあいだ、「海街の配達係」をやってくれないかい？ スケボーで、町のみんなに届けものをするのさ。'],
+    ['ask','nagi','（どうする？）',[
+      ['やる！',[['say','nagi','まかせて、ばあちゃん！'],['set','delivery_job']]],
+      ['……考えておくね',[['say','tome','ふふ。ゆっくりでいいさ。']]]]],
+    ['wait',2],['set','ending_calm'],['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
+    ['toast','のほほんルート「なつやすみ帳」 おしまい',true],
+    ['say','','――のほほんルート「なつやすみ帳」 おしまい。','このあとも、夏休みは続く。夜の町を、花火の下で散歩してみよう。'],
+    ['cam','off']]},
+
   /* ----- every day ----- */
   // from the second day on, the afternoon turns to evening on its own once the clock reaches the day's cap
   {id:'dusk',once:false,when:{minDay:2,test:()=>SAVE.cap<18&&SAVE.hour>=SAVE.cap-0.02},script:[

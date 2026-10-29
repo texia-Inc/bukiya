@@ -5550,6 +5550,7 @@ function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.hour&&(SAVE.hour<w.hour[0]||SAVE.hour>=w.hour[1]))return false;
   for(const k in w.flags||{})if(flag(k)!==w.flags[k])return false;
   for(const k in w.min||{})if(flag(k)<w.min[k])return false;
+  for(const k in w.max||{})if(flag(k)>w.max[k])return false;
   if(w.seen&&![].concat(w.seen).every(id=>SAVE.seen[id]))return false;
   if(w.unseen&&[].concat(w.unseen).some(id=>SAVE.seen[id]))return false;
   for(const k in w.quest||{})if(qs(k).state!==w.quest[k])return false;
@@ -5602,13 +5603,15 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'toast':toast(a[0],a[1]);break;
   case 'call':await a[0]();break;
   case 'night':{const e=findEvent('night');if(e){SAVE.seen[e.id]=1;return steps(e.script);}break;}   // ['night']  the first ready event marked on:{night:true}                                       // ['call', fn]  anything the data cannot say
+  case 'race':{const t=await raceP(a[0]);SAVE.flags[a[1]]=t<0?-1:Math.round(t*10);break;}   // ['race', {from:[x,z,yaw], to:[x,z,r], limit}, flag]  the time in tenths of a second, -1 if over the limit
+  case 'fireworks':fireworks(a[0]);break;                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
   SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
 function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
-function updateStory(dt){const tw=ST.tween;
+function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
   applyLight(SAVE.hour);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
@@ -5617,6 +5620,73 @@ function updateStory(dt){const tw=ST.tween;
     m.visible=!calm&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   if(calm||DRONE.active)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
   const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}
+
+/* ---------- the summer festival of the easy-going route: lanterns over the shrine approach and the shopping street,
+   stalls at the shrine, fireworks over the sea, and the downhill race the kids call the skateboard contest ---------- */
+const FEST={lanterns:new THREE.Group(),stalls:new THREE.Group(),bursts:[],fwUntil:0,fwT:0};
+{ const red=new THREE.MeshToonMaterial({color:'#e8452f',gradientMap:GRAD,emissive:'#ffa060',emissiveIntensity:0}),
+    white=new THREE.MeshToonMaterial({color:'#f4efe2',gradientMap:GRAD,emissive:'#ffe2b0',emissiveIntensity:0}),cap=tm('#2b2520'),rope=tm('#3a2f26');
+  NIGHT_MATS.push(red,white);
+  const lg=new THREE.CylinderGeometry(0.2,0.2,0.42,10),cg=new THREE.CylinderGeometry(0.12,0.12,0.06,8);
+  const lantern=(x,y,z,k)=>{const m=new THREE.Mesh(lg,k%3===2?white:red);m.position.set(x,y,z);outline(m,0.012);FEST.lanterns.add(m);
+    for(const s of [1,-1]){const c=new THREE.Mesh(cg,cap);c.position.set(x,y+s*0.23,z);FEST.lanterns.add(c);}};
+  const line=(a,b,n,sag)=>{const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b);   // a rope with lanterns hanging along it
+    for(let k=0;k<n;k++){const t=(k+0.5)/n,p=A.clone().lerp(B,t);p.y-=Math.sin(t*Math.PI)*sag;lantern(p.x,p.y-0.32,p.z,k);}
+    const r=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,A.distanceTo(B),4),rope);r.position.copy(A).add(B).multiplyScalar(0.5);r.position.y-=sag*0.6;r.lookAt(B);r.rotateX(Math.PI/2);FEST.lanterns.add(r);};
+  // the shrine approach: posts on both sides with a rope of lanterns between them
+  const x=SHRINE.x;for(const sd of [-1,1]){const pts=[];for(let z=-127.5;z>=-157.5;z-=6){const y=G(x+sd*3.6,z);pts.push([x+sd*3.6,y+2.6,z]);
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.6,6),rope);p.position.set(x+sd*3.6,y+1.3,z);FEST.lanterns.add(p);}
+    for(let k=0;k+1<pts.length;k++)line(pts[k],pts[k+1],3,0.25);}
+  // across the shopping street and the top of the main street
+  for(let sx=-60;sx<=60;sx+=10)if(Math.abs(sx)>6){const y=G(sx,-20)+4.6;line([sx,y,-24.6],[sx,y,-15.4],4,0.5);}
+  for(let z=-190;z<=-120;z+=14){const y=G(0,z)+4.8;line([-5.4,y,z],[5.4,y,z],5,0.55);}
+  FEST.lanterns.visible=false;world.add(FEST.lanterns);
+  // three stalls along the approach, facing the path
+  const awning=canvasTex(128,32,(g,w,h)=>{for(let k=0;k<8;k++){g.fillStyle=k%2?'#f4efe2':'#d8452f';g.fillRect(k*16,0,16,h);}});
+  const signTex=t=>canvasTex(128,48,(g,w,h)=>{g.fillStyle='#fffaf0';g.fillRect(0,0,w,h);g.fillStyle='#c8372d';g.font='900 30px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,w/2,h/2+2);});
+  for(const [sd,z,name,col] of [[-1,-134,'かき氷','#5aa3d8'],[1,-134,'やきそば','#e8a23a'],[-1,-145,'金魚すくい','#e8452f']]){
+    const sx=x+sd*5.6,y=G(sx,z),g=new THREE.Group();g.position.set(sx,y,z);g.rotation.y=sd>0?-Math.PI/2:Math.PI/2;FEST.stalls.add(g);
+    const Mk=(geo,mat,ol)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;if(ol)outline(m,ol);g.add(m);return m;};
+    Mk(new THREE.BoxGeometry(2.6,0.95,1.1),tm('#8a6a4c'),0.02).position.set(0,0.48,0);
+    Mk(new THREE.BoxGeometry(2.6,0.05,1.1),tm(col),0).position.set(0,0.98,0);
+    for(const px of [-1.25,1.25])for(const pz of [-0.5,0.5])Mk(new THREE.CylinderGeometry(0.04,0.04,2.3,6),tm('#6b4a2e'),0).position.set(px,1.15,pz);
+    const aw=Mk(new THREE.BoxGeometry(2.9,0.06,1.6),tmap(awning),0.015);aw.position.set(0,2.35,0.15);aw.rotation.x=0.22;
+    const sg=Mk(new THREE.BoxGeometry(1.4,0.5,0.04),tmap(signTex(name)),0.01);sg.position.set(0,1.95,0.62);
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,6),white);bulb.position.set(0,2.15,0.5);g.add(bulb);
+    const c=collide(sx-0.7,sx+0.7,z-1.4,z+1.4,'prop',y+1);c.on=false;g.userData.box=c;}
+  FEST.stalls.visible=false;world.add(FEST.stalls);}
+// fireworks: each burst is a shell of sparks that falls and fades, with a flash at its heart
+function burst(p,col){const n=140,pos=new Float32Array(n*3),vel=[];const r=mulberry((Math.random()*1e6)|0);
+  for(let k=0;k<n;k++){const u=r()*2-1,a=r()*TAU,s=Math.sqrt(1-u*u),sp=22+r()*4;vel.push(new THREE.Vector3(Math.cos(a)*s*sp,u*sp,Math.sin(a)*s*sp));pos.set([p.x,p.y,p.z],k*3);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const m=new THREE.Points(g,new THREE.PointsMaterial({color:col,size:4,sizeAttenuation:false,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
+  scene.add(m);const f=glow(col,p.x,p.y,p.z,60);f.visible=true;FEST.bursts.push({m,vel,t:0,f});}
+function fireworks(sec){FEST.fwUntil=clock+sec;FEST.fwT=0;}
+const FW_COL=['#ff5a4a','#ffd24a','#7ad8ff','#b78cff','#7dff9a','#ffffff','#ff9ad0'];
+function updateFestival(dt){const fest=SAVE.flags.fest_day;
+  FEST.lanterns.visible=fest||qs('fest_lantern').state===2;const st=fest||qs('fest_yatai').state===2;
+  if(FEST.stalls.visible!==st){FEST.stalls.visible=st;for(const g of FEST.stalls.children)g.userData.box.on=st;}
+  if(clock<FEST.fwUntil){FEST.fwT-=dt;if(FEST.fwT<=0){FEST.fwT=0.35+Math.random()*0.7;
+      burst(new THREE.Vector3(-150+Math.random()*230,80+Math.random()*60,440+Math.random()*90),pick(FW_COL));}}
+  for(const b of FEST.bursts.slice()){b.t+=dt;const a=b.m.geometry.attributes.position;
+    for(let k=0;k<b.vel.length;k++){const v=b.vel[k];v.multiplyScalar(Math.exp(-dt*1.6));v.y-=6*dt;a.array[k*3]+=v.x*dt;a.array[k*3+1]+=v.y*dt;a.array[k*3+2]+=v.z*dt;}
+    a.needsUpdate=true;b.m.material.opacity=clamp(2.2-b.t,0,1);b.f.material.opacity=clamp(1-b.t*3,0,1);
+    if(b.t>2.4){scene.remove(b.m);scene.remove(b.f);b.m.geometry.dispose();b.m.material.dispose();b.f.material.dispose();FEST.bursts.splice(FEST.bursts.indexOf(b),1);}}}
+
+/* the downhill race: start on the hilltop, finish at the end of the pier. The board is yours during it; the clock shows in the tracker */
+const RACE={on:false,t:0,goal:null,res:null,mark:null,beam:null};
+function raceP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;
+  const lim=/racelimit=(\d+)/.exec(location.hash);   // test entry: #racelimit=5 ends the race after 5 s
+  Object.assign(RACE,{on:false,t:0,goal:o.to,limit:lim?+lim[1]:o.limit||150,res,count:3.2});});}
+function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
+  if(!RACE.mark){RACE.mark=marker(MK.target);RACE.mark.scale.set(1.6,1.6,1);}
+  RACE.mark.visible=true;RACE.mark.position.set(g[0],G(g[0],g[1])+3.2+Math.sin(clock*3)*0.12,g[1]);
+  tr.hidden=false;
+  if(!RACE.on){RACE.count-=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール。W で蹴って、A D で曲がる</span><span class="meter">${RACE.count>0.2?Math.ceil(RACE.count-0.2):'スタート！'}</span>`;
+    if(RACE.count<=0.2){RACE.on=true;toast('スタート！',true);}return;}
+  RACE.t+=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール</span><span class="meter">${RACE.t.toFixed(1)} 秒</span>`;
+  const done=Math.hypot(P.x-g[0],P.z-g[1])<g[2],over=RACE.t>RACE.limit;
+  if(done||over){const r=RACE.res,t=RACE.t;RACE.on=false;RACE.res=null;RACE.mark.visible=false;tr.hidden=true;r(done?t:-1);}}
 
 /* ---------- the events of the story, as data for the engine in p5c_story.js ----------
    {id, on:{talk:npcId} | on:{near:[x,z,radius]} | on:{night:true} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
@@ -5769,6 +5839,71 @@ const EVENTS=[
     ['if',{flags:{route:3}},[['say','nagi','……明日、ばあちゃんに聞いてみよう。','おやすみなさい。']]],
     ['wait',0.6],['fade','out']]},
 
+  /* ----- the easy-going route "なつやすみ帳" (route 3), days 4–6: getting the town ready for the summer festival,
+     the skateboard contest (a race from the lookout down to the end of the pier) and fireworks over the sea ----- */
+  {id:'c4_morning',when:{day:4,flags:{route:3}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう、ナギ。ゆうべは、ぐっすりだったねえ。','あさっては夏祭りだよ。神社に屋台が出て、夜は海の上に花火が上がるんだ。','町のみんなが準備でてんてこまいでね。手伝っておやり。'],
+    ['if',{flags:{promise_contest:1}},[['say','tome','ソウタとスケボー大会の約束もしたんだろう？ 練習しておかないとね。']]],
+    ['cam','off'],['toast','「！」の人を手伝って、夏祭りの準備をしよう']]},
+  {id:'c_practice',on:{talk:'sota'},once:false,when:{flags:{route:3},test:()=>SAVE.day>=4&&SAVE.day<=5&&!available(QBY('ramune'))},script:[
+    ['say','sota','おねえちゃん！ 大会のコースはね、坂の上の見晴らし台から、桟橋の先までなんだ。'],
+    ['ask','sota','練習してみる？',[
+      ['練習する！',[['fade','out'],['warp',3,-196,0],['fade','in'],['race',{from:[3,-196,0],to:[-80,331,4],limit:150},'practice_t'],
+        ['call',()=>{const t=SAVE.flags.practice_t;if(t<0){toast('時間切れ…');return;}toast(`タイム ${(t/10).toFixed(1)} 秒`,true);
+          if(!SAVE.flags.best_t||t<SAVE.flags.best_t){SAVE.flags.best_t=t;toast('自己ベスト！');}}],
+        ['say','nagi','ふう……。本番は、ハヤトくんが55秒くらいで来るって言ってたっけ。']]],
+      ['また今度',[['say','sota','うん、いつでも言ってね！']]]]]]},
+  {id:'c5_morning',when:{day:5,flags:{route:3}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','明日はいよいよお祭りだねえ。'],
+    ['if',{quest:{fest_yukata:2}},[['say','tome','浴衣、似合うといいねえ。お母さんも、あれを着て花火を見たんだよ。']],[['say','tome','そうそう、はなもりの花江さんが、ナギに話があるって言ってたよ。']]],
+    ['cam','off']]},
+  {id:'c6_morning',when:{day:6,flags:{route:3}},script:[
+    ['set','fest_day'],['cap',18.9],
+    ['cam',[SHRINE.x+4,G(SHRINE.x,-126)+3,-122],[SHRINE.x,G(SHRINE.x,-140)+1.5,-142],1.5,'cut'],
+    ['say','','夏祭りの朝。参道には提灯がゆれて、屋台の準備をする音が聞こえる。'],
+    ['cam','npc','tome',3.4],
+    ['say','tome','さあ、今日は夏祭りだよ！','スケボー大会は夕方からだって。ソウタが浜で待ってるよ。'],
+    ['cam','off'],['toast','浜辺のソウタくんに話しかけると、スケボー大会が始まる']]},
+  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{day:6,flags:{route:3,contest_done:0}},script:[
+    ['say','sota','おねえちゃん！ いよいよ大会だよ！','コースは見晴らし台から桟橋の先まで。町の人もみんな見に来てるんだ！'],
+    ['if',{flags:{promise_contest:0}},[['ask','nagi','（大会に出る？）',[['出る！',[]],['もう少しあとで',[['say','sota','えー！ 待ってるからね！'],['stop']]]]]]],
+    ['fade','out'],['time',17.3,0],['warp',3,-196,0],
+    ['cam',[-6,G(0,-203)+2.6,-188],[2,G(0,-200)+1.2,-200],2,'cut'],['fade','in'],
+    ['say','','見晴らし台に、町の子どもたちと大人が集まっている。','高校生のハヤト、郵便屋さんのコウジさん、そしてソウタ。'],
+    ['say','sota','ハヤトにいちゃんは去年の優勝なんだ。55秒で下りたんだって！'],
+    ['cam','off'],
+    ['race',{from:[3,-196,0],to:[-80,331,4],limit:150},'contest_t'],
+    ['cam',[-77.5,PIER.y+2,322],[-80.5,PIER.y+1,331],2.5],
+    ['call',()=>{const t=SAVE.flags.contest_t;toast(t<0?'時間切れ…':`タイム ${(t/10).toFixed(1)} 秒`,true);}],
+    ['if',{min:{contest_t:0},max:{contest_t:550}},
+      [['say','','ゴール！ ハヤトより先に、桟橋の先へ飛びこんだ！'],['say','sota','おねえちゃん、優勝だ！ すっげー！'],['set','contest_rank',1],['money',1000]],
+      [['if',{min:{contest_t:0},max:{contest_t:680}},
+        [['say','','ゴール！ ハヤトにはわずかに届かなかったけど、2位だ！'],['say','sota','2位！ 来年はぜったい優勝だね！'],['set','contest_rank',2],['money',600]],
+        [['if',{min:{contest_t:0},max:{contest_t:800}},
+          [['say','','ゴール！ 3位。コウジさんと、ほとんど同時だった。'],['say','sota','3位だって！ やったね、おねえちゃん！'],['set','contest_rank',3],['money',400]],
+          [['if',{min:{contest_t:0}},[['say','','ゴール……！ 結果はびりだったけど、桟橋のみんなが大きな拍手をくれた。']],[['say','','時間切れ……。でも、桟橋のみんなが大きな拍手をくれた。']]],
+           ['say','sota','すっごくかっこよかったよ！'],['set','contest_rank',4],['money',200]]]]]]],
+    ['set','contest_done'],
+    ['fade','out'],['time',20.2,0],['warp',-79.5,326,0],
+    ['cam',[-78.5,PIER.y+1.6,318],[-40,62,480],1.5,'cut'],['fade','in'],
+    ['fireworks',60],
+    ['say','','日が暮れて、海の上に最初の花火が上がった。','ドン、と胸に響く音。桟橋も、浜も、坂の上も、みんなが空を見上げている。'],
+    ['wait',4],
+    ['if',{flags:{met_mio:1}},[['say','','ふと隣を見ると、白いワンピースの女の子が、花火を見上げていた。'],['say','mio','……きれいだね、ナギ。'],
+      ['say','','次の花火が上がって、もう一度見たときには、ミオはいなかった。']]],
+    ['wait',3],
+    ['say','tome','ナギ。ここにいたのかい。'],
+    ['say','tome','この夏、ナギが町じゅうを走り回ってくれたおかげで、みんな助かったって言ってたよ。','それでね、町内会からのお願いなんだけど……','夏休みのあいだ、「海街の配達係」をやってくれないかい？ スケボーで、町のみんなに届けものをするのさ。'],
+    ['ask','nagi','（どうする？）',[
+      ['やる！',[['say','nagi','まかせて、ばあちゃん！'],['set','delivery_job']]],
+      ['……考えておくね',[['say','tome','ふふ。ゆっくりでいいさ。']]]]],
+    ['wait',2],['set','ending_calm'],['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
+    ['toast','のほほんルート「なつやすみ帳」 おしまい',true],
+    ['say','','――のほほんルート「なつやすみ帳」 おしまい。','このあとも、夏休みは続く。夜の町を、花火の下で散歩してみよう。'],
+    ['cam','off']]},
+
   /* ----- every day ----- */
   // from the second day on, the afternoon turns to evening on its own once the clock reaches the day's cap
   {id:'dusk',once:false,when:{minDay:2,test:()=>SAVE.cap<18&&SAVE.hour>=SAVE.cap-0.02},script:[
@@ -5890,6 +6025,8 @@ const ITEMS={
   himono:{name:'あじの干物',d:(g,s)=>{g.fillStyle='#b88a5a';g.beginPath();g.ellipse(s/2,s/2,s*0.38,s*0.18,0,0,7);g.fill();g.beginPath();g.moveTo(s*0.86,s/2);g.lineTo(s*0.96,s*0.36);g.lineTo(s*0.96,s*0.64);g.fill();g.fillStyle='#2b2520';g.beginPath();g.arc(s*0.22,s*0.48,s*0.03,0,7);g.fill();}},
   bouquet:{name:'花束',d:(g,s)=>{g.fillStyle='#e9e2d4';g.beginPath();g.moveTo(s*0.5,s*0.92);g.lineTo(s*0.26,s*0.45);g.lineTo(s*0.74,s*0.45);g.fill();
     for(const [x,y,c] of [[0.38,0.34,'#e2584a'],[0.6,0.3,'#f2c230'],[0.5,0.42,'#f0a0b8'],[0.32,0.48,'#ffffff'],[0.66,0.46,'#a070d0']]){g.fillStyle=c;g.beginPath();g.arc(s*x,s*y,s*0.1,0,7);g.fill();}}},
+  chochin:{name:'提灯',d:(g,s)=>{g.fillStyle='#2b2520';g.fillRect(s*0.4,s*0.14,s*0.2,s*0.08);g.fillRect(s*0.4,s*0.78,s*0.2,s*0.08);g.fillStyle='#e8452f';g.beginPath();g.ellipse(s/2,s/2,s*0.24,s*0.3,0,0,7);g.fill();
+    g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=1.5;for(let k=-2;k<=2;k++){g.beginPath();g.moveTo(s*0.27,s/2+k*s*0.1);g.lineTo(s*0.73,s/2+k*s*0.1);g.stroke();}}},
   letter:{name:'手紙',d:(g,s)=>{g.fillStyle='#fffaf0';g.fillRect(s*0.18,s*0.3,s*0.64,s*0.42);g.strokeStyle='#c9b9a2';g.lineWidth=2;g.strokeRect(s*0.18,s*0.3,s*0.64,s*0.42);g.beginPath();g.moveTo(s*0.18,s*0.3);g.lineTo(s/2,s*0.52);g.lineTo(s*0.82,s*0.3);g.stroke();g.fillStyle='#d23a2c';g.fillRect(s*0.66,s*0.34,s*0.1,s*0.1);}},
 };
 const ICON={};for(const id in ITEMS){const c=document.createElement('canvas');c.width=c.height=64;ITEMS[id].d(c.getContext('2d'),64);ICON[id]=c.toDataURL();}
@@ -5920,6 +6057,18 @@ const QUESTS=[
   {id:'cat',title:'迷子のミケ',giver:'okami',
    start:['ちょいと聞いておくれ。うちの三毛猫のミケが、朝から帰ってこないんだよ。','あの子は高いところが好きでねえ。坂の上の神社のあたりかもしれない。見かけたら教えておくれ。'],
    steps:[{type:'find',hint:'神社のあたりでミケを探す',text:['ニャア。…いた！ 本殿の石段で、のんびり日なたぼっこしている。']},{type:'talk',to:'okami',hint:'魚松のおかみさんに知らせる',text:['神社の石段に？ まったく、あの子ったら！','知らせてくれてありがとね。これ、うちの干物。持っておいき。']}],reward:600,rewardItem:['himono',1]},
+  // the summer festival (easy-going route, from the fourth day)
+  {id:'fest_lantern',title:'提灯をつるそう',giver:'neko',when:{flags:{route:3}},
+   start:['やあ、ナギちゃん。じつはわたし、町内会の会長でね。','あさっての夏祭りに向けて、神社の参道に提灯をつるしたいんだが、この腰では脚立にのぼれなくて…','この提灯を、鳥居をくぐった参道に飾ってきてくれないか。'],give:['chochin',6],
+   steps:[{type:'place',at:[SHRINE.x,-128.5],item:'chochin',n:6,label:'提灯をつるす　神社の参道',hint:'神社の鳥居をくぐった参道に提灯をつるす',text:['参道の柱に縄を張って、提灯をひとつずつつるした。','夜になったら、きっときれいだ。']},
+          {type:'talk',to:'neko',hint:'古書うみねこの店主に知らせる',text:['おお、ありがとう。これで神社が祭りの顔になった。','商店街のほうにも、町の若いのがつるしてくれたよ。夜が楽しみだねえ。']}],reward:500},
+  {id:'fest_yatai',title:'屋台のみかん氷',giver:'okami',when:{flags:{route:3}},
+   start:['ナギちゃん、ちょうどいいところに！','お祭りでね、魚松は今年「みかん氷」の屋台を出すんだよ。','八百吉でみかんを2袋、買ってきてくれないかい？'],
+   steps:[{type:'have',item:'mikan',n:2,at:'yaoya',hint:'八百吉でみかんを2袋買う'},{type:'deliver',to:'okami',item:'mikan',n:2,hint:'魚松のおかみさんに届ける',text:['いいみかんだねえ！ これで甘いシロップができるよ。','屋台は神社の参道に出すからね。お祭りの日は食べにおいで！']}],reward:500},
+  {id:'fest_yukata',title:'お祭りの浴衣',giver:'hana',when:{flags:{route:3}},
+   start:['ナギちゃん、お祭りには浴衣で行くの？','トメさんがね、昔の浴衣をしまってあるって言ってたわよ。聞いてみたら？'],
+   steps:[{type:'talk',to:'tome',hint:'トメばあちゃんに浴衣のことを聞く',text:['浴衣かい？ あるある。ナギのお母さんが、ちょうどナギくらいのころに着てたのがね。','たんすの奥から出しておいたよ。着がえのとき、着てごらん。']}],reward:200,
+   done:()=>{SAVE.owned=SAVE.owned||{};for(const p of PRIZES)if(p.id==='yukata')SAVE.owned[p.key]=1;toast('浴衣を着られるようになった（着がえ C）',true);}},
   {id:'photo',title:'海街の景色めぐり',giver:'neko',
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
@@ -5935,9 +6084,9 @@ const QBY=id=>QUESTS.find(q=>q.id===id);
 function invN(id){return SAVE.inv[id]||0;}
 function addItem(id,n){SAVE.inv[id]=invN(id)+n;if(SAVE.inv[id]<=0)delete SAVE.inv[id];renderBag();}
 function stepOf(q){const s=qs(q.id);return s.state===1?q.steps[s.step]:null;}
-function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2);}
+function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2)&&(!q.when||cond(q.when));}
 function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;SAVE.flags['bond_'+q.giver]=(SAVE.flags['bond_'+q.giver]||0)+1;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
-    if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}
+    if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}if(q.done)q.done();
     if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=nx?nx.id:null;}}
   autoSteps();save();renderHUD();}
 function autoSteps(){for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='have'&&invN(st.item)>=st.n){qs(q.id).step++;toast(`${ITEMS[st.item].name}がそろった。次は「${q.steps[qs(q.id).step].hint}」`);}
@@ -5946,7 +6095,7 @@ function accept(q){const s=qs(q.id);s.state=1;s.step=0;if(q.give){addItem(...q.g
 function targetOf(q){const st=stepOf(q);if(!st)return null;
   if(st.type==='have'){if(st.at==='dagashi'){const a=SHOPS.dagashi.door,v=VEND[0];return Math.hypot(P.x-v.x,P.z-v.z)<Math.hypot(P.x-a[0],P.z-a[1])?[v.x,v.z]:a;}return SHOPS[st.at].door;}
   if(st.type==='deliver'||st.type==='talk'){const n=NPCS[st.to];return[n.x,n.z];}
-  if(st.type==='post')return[POSTBOX.x,POSTBOX.z];if(st.type==='find')return[-60,-150];
+  if(st.type==='post')return[POSTBOX.x,POSTBOX.z];if(st.type==='place')return st.at;if(st.type==='find')return[-60,-150];
   if(st.type==='photos'){let best=null,bd=1e9;for(const p of SPOTS){if(SAVE.spots.includes(p.id))continue;const d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best=[p.x,p.z];}}return best;}
   return null;}
 
@@ -5987,11 +6136,12 @@ function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').t
 $('dialog').addEventListener('click',nextLine);
 let talkNpc=null;
 function talk(n){talkNpc=n;
-  const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
+  // an errand step for this person comes first, then the story's events, then new errands
   for(const q of QUESTS){const st=stepOf(q);if(!st)continue;
-    if((st.type==='deliver'||st.type==='talk')&&st.to===n.id){
-      if(st.type==='deliver'&&invN(st.item)<st.n){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}
+    if((st.type==='deliver'||st.type==='talk')&&st.to===n.id&&!(st.type==='deliver'&&invN(st.item)<st.n)){
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
+  const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
+  for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='deliver'&&st.to===n.id){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}}
   for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
   if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
@@ -6124,7 +6274,7 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
-  fwd=fwd||kickHold;if(ST.run)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
+  fwd=fwd||kickHold;if(ST.run&&!RACE.on)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
@@ -6183,6 +6333,7 @@ function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}
+  for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='place'){const d=Math.hypot(P.x-st.at[0],P.z-st.at[1]);if(d<2.6)add(d,{kind:'place',q,label:st.label,verb:'飾る'});}}
   const gp=SHOPS.dagashi.gacha;if(gp){const d=Math.hypot(P.x-gp.x,P.z-gp.z);if(d<1.9)add(d-0.2,{kind:'gacha',label:'まわす　カプセルトイ（1回100円）',verb:'まわす'});}
   const cd=Math.hypot(P.x-MIKE.x,P.z-MIKE.z);if(cd<2.6)add(cd,{kind:'cat',label:'なでる　三毛猫',verb:'なでる'});
   for(const p of SPOTS){const d=Math.hypot(P.x-p.x,P.z-p.z);if(d<7&&!best)add(d+5,{kind:'spot',p,label:`写真を撮る　${p.name}`,verb:'撮る'});}
@@ -6192,6 +6343,7 @@ function act(o){if(!o)return;
   else if(o.kind==='post'){const q=QBY('letter'),st=stepOf(q);say('ポスト',st.text,()=>{addItem('letter',-1);advance(q);});}
   else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
   else if(o.kind==='spot')photoReq=true;
+  else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);advance(o.q);});}
   else if(o.kind==='gacha')openGacha();}
 
 /* ---------- camera ---------- */
@@ -6236,7 +6388,7 @@ let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    if(ST.run)jumpQ=kickQ=footQ=false;
+    if(ST.run&&!RACE.on)jumpQ=kickQ=footQ=false;
     updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
@@ -6249,9 +6401,10 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
   state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
-  // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning (they combine with &)
+  // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)
   const hr=/hour=([\d.]+)/.exec(location.hash),at=/at=(-?[\d.]+),(-?[\d.]+)/.exec(location.hash),dy=/day=(\d+)/.exec(location.hash);
   if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS)if(/^d(\d)_/.test(e.id)&&+e.id[1]<SAVE.day)SAVE.seen[e.id]=1;}
+  const fl=/set=([\w:,-]+)/.exec(location.hash);if(fl)for(const kv of fl[1].split(',')){const [k,v]=kv.split(':');SAVE.flags[k]=v==null?1:+v;}   // #set=route:3,met_mio:1
   if(hr)SAVE.hour=SAVE.cap=+hr[1];if(at){P.x=+at[1];P.z=+at[2];P.y=G(P.x,P.z);P.yaw=0;}
   if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once
 // the title lists the save slots: continue, start, or erase (a second press confirms)
