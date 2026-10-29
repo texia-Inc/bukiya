@@ -4,6 +4,7 @@
    torso, neck and head copy the rig's rotations, the arms swing to the rig's elbow and hand positions, and the legs are solved
    with their own two-bone IK so the sneakers stay on the deck. */
 const FACE_MATS=/^(Face|Eye|FaceMouth|FaceEyeline|FaceBrow|EyeHighlight)/;
+const UNLIT_MATS=[];   // the face is drawn unlit for its flat anime look; the story's clock tints these with the light of the hour
 function olSkinned(w,morph){const key='s'+w.toFixed(4)+(morph?'m':'');if(OL[key])return OL[key];
   const m=new THREE.MeshBasicMaterial({color:'#2d241d',side:THREE.BackSide,skinning:true,morphTargets:!!morph});
   m.onBeforeCompile=sh=>{sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed = position + normal * '+w.toFixed(4)+';');};
@@ -20,6 +21,7 @@ function makeSkaterVRM(gl){
     const col=src.map?new THREE.Color(1,1,1):src.color.clone().convertLinearToSRGB();
     const opt={map:src.map||null,color:col,skinning:!!o.isSkinnedMesh,morphTargets:!!o.morphTargetInfluences,transparent:src.transparent,alphaTest:src.alphaTest,side:src.side,depthWrite:src.depthWrite};
     o.material=face?new THREE.MeshBasicMaterial(opt):new THREE.MeshToonMaterial(Object.assign(opt,{gradientMap:GRAD}));
+    if(face)UNLIT_MATS.push({m:o.material,c:col.clone()});
     if(o.morphTargetDictionary)morphs.push(o);
     // wardrobe parts (W_*) can be shown, hidden and tinted; white parts take the tint, coloured ones keep their colour
     if(/^W_/.test(o.name))parts.push({name:o.name,mesh:o,base:o.material.color.clone(),map0:o.material.map,tintable:o.material.color.r>0.98&&o.material.color.g>0.98&&o.material.color.b>0.98});

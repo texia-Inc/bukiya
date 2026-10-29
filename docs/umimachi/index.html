@@ -5121,6 +5121,7 @@ function poseRunner(h,dt,s){const P=h.pose;h.t+=dt;const tr=s.tr,v=s.v||0,r=clam
    torso, neck and head copy the rig's rotations, the arms swing to the rig's elbow and hand positions, and the legs are solved
    with their own two-bone IK so the sneakers stay on the deck. */
 const FACE_MATS=/^(Face|Eye|FaceMouth|FaceEyeline|FaceBrow|EyeHighlight)/;
+const UNLIT_MATS=[];   // the face is drawn unlit for its flat anime look; the story's clock tints these with the light of the hour
 function olSkinned(w,morph){const key='s'+w.toFixed(4)+(morph?'m':'');if(OL[key])return OL[key];
   const m=new THREE.MeshBasicMaterial({color:'#2d241d',side:THREE.BackSide,skinning:true,morphTargets:!!morph});
   m.onBeforeCompile=sh=>{sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed = position + normal * '+w.toFixed(4)+';');};
@@ -5137,6 +5138,7 @@ function makeSkaterVRM(gl){
     const col=src.map?new THREE.Color(1,1,1):src.color.clone().convertLinearToSRGB();
     const opt={map:src.map||null,color:col,skinning:!!o.isSkinnedMesh,morphTargets:!!o.morphTargetInfluences,transparent:src.transparent,alphaTest:src.alphaTest,side:src.side,depthWrite:src.depthWrite};
     o.material=face?new THREE.MeshBasicMaterial(opt):new THREE.MeshToonMaterial(Object.assign(opt,{gradientMap:GRAD}));
+    if(face)UNLIT_MATS.push({m:o.material,c:col.clone()});
     if(o.morphTargetDictionary)morphs.push(o);
     // wardrobe parts (W_*) can be shown, hidden and tinted; white parts take the tint, coloured ones keep their colour
     if(/^W_/.test(o.name))parts.push({name:o.name,mesh:o,base:o.material.color.clone(),map0:o.material.map,tintable:o.material.color.r>0.98&&o.material.color.g>0.98&&o.material.color.b>0.98});
@@ -5568,6 +5570,11 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
   NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
+// the unlit face takes the colour and strength of the light around it (sun and sky), so it does not glow at dusk or at night
+const _tint=new THREE.Color(),_tc=new THREE.Color();
+function tintUnlit(){_tint.copy(sun.color).multiplyScalar(sun.intensity*0.6);_tc.copy(hemi.color).multiplyScalar(hemi.intensity*0.9);_tint.add(_tc).multiplyScalar(1/1.13);
+  _tint.r=Math.min(1,_tint.r);_tint.g=Math.min(1,_tint.g);_tint.b=Math.min(1,_tint.b);for(const u of UNLIT_MATS)u.m.color.copy(u.c).multiply(_tint);}
+
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
@@ -5654,7 +5661,7 @@ function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
+  applyLight(SAVE.hour);updateUra(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
   if(ph!==ST.phase){ST.phase=ph;renderHUD();}if(tm!==ST.tm){ST.tm=tm;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
