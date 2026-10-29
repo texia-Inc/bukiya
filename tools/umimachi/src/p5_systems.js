@@ -193,7 +193,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
@@ -418,7 +418,8 @@ function stepPlayer(dt){
 /* ---------- interaction ---------- */
 let near=null;
 function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
-  for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d,{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
+  // someone with a story event waiting comes first when two people stand close together
+  for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}

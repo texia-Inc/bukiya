@@ -127,6 +127,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .slot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 2px var(--shade)}
 .slot .si{flex:1;min-width:150px;font-size:13px;font-weight:700;line-height:1.5}.slot .si b{display:block;font-size:14px}
 .slot .btn{padding:8px 16px;font-size:14px}.slot .del{font-size:12px;padding:6px 10px}
+#credits{position:fixed;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;background:rgba(13,12,11,.78);color:#f6efe2;text-align:center;transition:opacity .8s;cursor:pointer;padding:16px}
+#credits h2{font-family:var(--title);font-size:clamp(30px,8vw,46px);margin:0 0 6px}#credits p{margin:4px 0;font-size:14px;line-height:1.8;opacity:.9}#credits .sm{font-size:12px;opacity:.6;margin-top:18px}
 #hurt{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 140px 50px rgba(214,40,32,.75)}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
@@ -187,6 +189,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="gachaClose">とじる</button></div></div></div>
 <div id="flash"></div>
 <div class="cbar" id="cbarT"></div><div class="cbar" id="cbarB"></div><div id="fade"></div>
+<div id="credits" hidden><div><h2>海街スケート</h2><p>真ルート「灯台」</p><p style="margin-top:18px">汐見ナギ ・ トメばあちゃん ・ ミオ ・ ナツミ<br>こむぎ堂の主人 ・ ソウタと海街少年探偵団 ・ おもち<br>そして、海街のみなさん</p>
+<p style="margin-top:18px">主人公モデル：VRoid Studio で作成</p><p class="sm">夏休みは、まだ続く。（クリックでとじる）</p></div></div>
 
 <div id="title" hidden>
   <div class="sheet card">
@@ -4967,8 +4971,11 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
 { const [x,z,yaw]=shopFront('books',-2.8,1.6);placeNPC('neko',{skin:'#f1cdb0',hair:'#6b6560',style:'short',shirt:'#7a8a6a',sleeves:'long',bottom:'pants',bottomCol:'#4a4038',glasses:true,bend:0.1},x,z,yaw,'stand','古書うみねこの店主',['古い写真集をめくると、この町は昔からあまり変わらないんだ。']);}
 { placeNPC('sota',{skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78},-72,SHORE+13,Math.PI*0.85,'stand','ソウタくん',['波が高い日はサーフィンの人がいっぱい来るんだ。']);}
 { placeNPC('fisher',{skin:'#d9a987',hair:'#2b2520',style:'short',hat:'straw',shirt:'#5a7a8a',sleeves:'long',bottom:'pants',bottomCol:'#4a4a4a',y:PIER.y+0.02},-79.8,PIER.z1-3.2,0,'sit','釣りのおじさん',['ここで釣れるのは、だいたいあじかサバだな。','島の灯台、昔は夜になると光ったんだがなあ。']);
+  // Natsumi, Nagi's mother: she comes up the hill on the last morning of the true route
+  placeNPC('natsumi',{skin:'#efc9aa',hair:'#2a211c',style:'bob',shirt:'#efe6d8',sleeves:'long',bottom:'skirt',bottomCol:'#5a6a8a',shoe:'#6b4330'},-52.6,-123.6,0.6,'stand','お母さん',['ナギ、ばあちゃんの言うこと、ちゃんと聞いてた？']);
+  NPCS.natsumi.show=()=>!!SAVE.flags.mom_here;
   // Mio: the girl in white who stands at the end of the pier, only in the evening
-  placeNPC('mio',{skin:'#f3dcc8',hair:'#1c1a1a',style:'bob',shirt:'#f7f6f1',bottom:'skirt',bottomCol:'#f7f6f1',socks:'#f7f6f1',shoe:'#e8e4dc',scale:0.93,y:PIER.y+0.02},-81.3,PIER.z1-1.4,0,'stand','ミオ',['……海、きれいだね。','灯台、今日も光らないね。']);
+  placeNPC('mio',{skin:'#f3dcc8',hair:'#1c1a1a',style:'bob',shirt:'#f7f6f1',bottom:'skirt',bottomCol:'#f7f6f1',socks:'#f7f6f1',shoe:'#e8e4dc',scale:0.93,y:PIER.y+0.02},-78.6,PIER.z1-1.2,0,'stand','ミオ',['……海、きれいだね。','灯台、今日も光らないね。']);
   const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.015,2.6,5),tm('#3a2a1e'));rod.position.set(-79.6,PIER.y+1.4,PIER.z1-1.9);rod.rotation.x=0.9;world.add(rod);}
 { placeNPC('lady1',{skin:'#f1cdb0',hair:'#3a2a1e',style:'bob',shirt:'#e8c9b8',bottom:'skirt',bottomCol:'#6b7a8a'},5.6,30,-Math.PI/2+0.4,'stand','',['今日はいい風ねえ。']);
   placeNPC('lady2',{skin:'#efc9aa',hair:'#1c1a1a',style:'bun',shirt:'#cfe0d2',sleeves:'long',bottom:'pants',bottomCol:'#5a4a3a'},5.6,31.1,-Math.PI/2-0.6,'stand','',['商店街のコロッケ、食べた？']);
@@ -5539,13 +5546,13 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   dome.material.color.copy(LC[0]);scene.background.copy(LC[1]);scene.fog.color.copy(LC[1]);hemi.color.copy(LC[2]);hemi.groundColor.copy(LC[3]);hemi.intensity=v(4);
   sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
-  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.16*g;NIGHT.beam.rotation.y=clock*0.6;
-  NIGHT.mast.visible=on&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
+  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||!!URA.chase||ogBusy();   // events during which the board is yours
+const storyFree=()=>RACE.on||!!URA.chase||ogBusy()||lightsBusy();   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -5612,14 +5619,16 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'ura':if(a[0])uraEnter();else uraExit();break;
   case 'ogscene':ogScene(a[0]);break;                                   // ['ogscene', true|false]  the black van parked by the east tunnel, Kurosaki and his men round it
   case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
-  case 'vanchase':await vanChaseP();break;                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
+  case 'vanchase':await vanChaseP();break;
+  case 'lights':await lightsP(a[0]);break;                               // ['lights', {pts:[{name,x,z}…], limit}]  gather the five lights before time runs out
+  case 'credits':await creditsP();break;                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
   SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
 function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
-function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);
+function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
   applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
@@ -5811,6 +5820,29 @@ function updateOG(dt){
     if(C.near>=2.5){OG.van=null;OG.scene=true;OG.mark.visible=false;VAN.v=0;C.res(true);}   // traffic stays away until the scene ends (['ogscene',false])
     else if(VAN.x<-CUT_X+6){toast('逃げられた……！ もう一度',true);VAN.x=175;P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);camInit=false;C.t=0;C.near=0;}}}
 
+/* ---------- the true route "灯台": once all three endings are seen. The old custom of the town: on a summer night the lighthouse
+   was lit with fire shared from five lights of the town. While the radio mast howls, Nagi skates round the five places and
+   brings the light across to the island. Then the ending, and the credits. ---------- */
+const LIGHTS={run:null,marks:[]};
+// collect the five lights in any order before the time runs out; out of time, they go out and you start again where you are
+function lightsP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;LIGHTS.run={o,res,t:0,got:[]};
+  if(!LIGHTS.marks.length)LIGHTS.marks=o.pts.map(()=>{const m=marker(MK.target);m.scale.set(1.5,1.5,1);return m;});$('fade').style.opacity=0;renderHUD();});}
+const lightsBusy=()=>!!LIGHTS.run;
+function lightsHUD(tr){const L=LIGHTS.run;tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
+  b.textContent='五つの灯り';s.textContent='電波塔が鳴りやむ前に、町の5か所で灯りをもらう：'+L.o.pts.filter((p,k)=>!L.got.includes(k)).map(p=>p.name).join('・');
+  m.textContent=`灯り ${L.got.length} / ${L.o.pts.length}　のこり ${Math.max(0,Math.ceil(L.o.limit-L.t))} 秒`;tr.append(b,s,m);}
+function updateLights(dt){const L=LIGHTS.run;if(!L)return;L.t+=dt;
+  L.o.pts.forEach((p,k)=>{const m=LIGHTS.marks[k];m.visible=!L.got.includes(k);m.position.set(p.x,G(p.x,p.z)+3.2+Math.sin(clock*3+k)*0.12,p.z);
+    if(m.visible&&Math.hypot(P.x-p.x,P.z-p.z)<4.5){L.got.push(k);toast(`${p.name}の灯りをもらった（${L.got.length}/${L.o.pts.length}）`,true);
+      const g=glow('#ffd98a',p.x,G(p.x,p.z)+1.6,p.z,3);g.visible=true;fx(g,1.2,(f,k2)=>{g.material.opacity=1-k2;g.scale.setScalar(3+k2*6);});}});
+  lightsHUD($('tracker'));$('hurt').style.opacity=0.12+0.08*Math.sin(clock*7);   // the mast's howl at the edge of the screen
+  if(L.got.length>=L.o.pts.length){LIGHTS.run=null;for(const m of LIGHTS.marks)m.visible=false;$('hurt').style.opacity=0;renderHUD();L.res();}
+  else if(L.t>L.o.limit){L.t=0;L.got=[];toast('電波塔の音に、灯りがかき消された……。もう一度！',true);}}
+// the credits: a quiet card over the last morning
+function creditsP(){return new Promise(res=>{const c=$('credits');c.hidden=false;c.style.opacity=0;requestAnimationFrame(()=>{c.style.opacity=1;});
+  const done=()=>{c.removeEventListener('click',done);c.style.opacity=0;setTimeout(()=>{c.hidden=true;res();},800);};
+  setTimeout(()=>c.addEventListener('click',done),1500);setTimeout(done,16000);});}
+
 /* ---------- the events of the story, as data for the engine in p5c_story.js ----------
    {id, on:{talk:npcId} | on:{near:[x,z,radius]} | on:{night:true} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
    when: day, minDay, phase ('morning'|'day'|'evening'|'night', or a list), hour:[from,to], flags:{k:v}, min:{k:n}, seen, unseen, quest:{id:state}, test:fn
@@ -5823,6 +5855,13 @@ function updateOG(dt){
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
 const HOME=[-49.2,-123.6,-2.55];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
+const endingsSeen=()=>['ending_calm','ending_horror','ending_org'].filter(k=>SAVE.flags[k]).length;
+// back to the third evening: the route and what happened on it are undone; endings, friendships and finished errands stay
+function rewindTo3(){SAVE.day=3;SAVE.hour=18.2;SAVE.cap=18.9;SAVE.flags.mio_left=3;
+  for(const k of ['route','in_ura','clues','clue_photo','clue_marble','clue_diary','fest_day','contest_done','contest_t','og_saw','dark_day','true_key'])delete SAVE.flags[k];
+  for(const id in SAVE.seen)if(id==='d3_night'||/^(c\d|c_|o\d|ura_)/.test(id))delete SAVE.seen[id];
+  for(const q of ['fest_lantern','fest_yatai','fest_yukata','og_evidence'])if(SAVE.qs[q]&&SAVE.qs[q].state===1)delete SAVE.qs[q];
+  if(URA.on)uraExit();renderClock();save();}
 NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
 const EVENTS=[
@@ -6121,6 +6160,63 @@ const EVENTS=[
     ['say','','――ホラールート「トンネルの向こう」 おしまい。','灯台の灯りと、30年前の夜の本当のことは、まだ海街のどこかに眠っている。'],
     ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
 
+  /* ----- after an ending: Mio offers to take Nagi back to the third evening, to choose another way. All three endings open the true route ----- */
+  {id:'rewind',on:{talk:'mio'},once:false,when:{phase:'evening',test:()=>endingsSeen()>0&&endingsSeen()<3},script:[
+    ['say','mio','ナギ。……あの夜のこと、覚えてる？'],
+    ['ask','mio','もう一度、あの夜に戻ってみる？ 選ばなかった道の先にも、灯台につながる何かがあるはずだよ。',[
+      ['戻る',[['fade','out'],['call',rewindTo3],['cam','off'],['warp',...HOME],['fade','in'],['toast','3日目の夕方に戻った。ばあちゃんと家に帰ると、あの夜の分かれ道',true]]],
+      ['やめておく',[['say','mio','……うん。わたしは、いつでもここにいるよ。']]]]]]},
+
+  /* ----- the true route "灯台": all three endings seen ----- */
+  {id:'t_tome',on:{talk:'tome'},mark:true,when:{test:()=>endingsSeen()>=3},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','ナギ。……この夏、いろんなことがあったみたいだね。顔つきが、来たときとちがうよ。'],
+    ['say','nagi','ばあちゃん。お母さんから預かってたもの、まだ渡してなかった。'],
+    ['say','','ナギは、カバンの底にしまっていた手紙を、ばあちゃんにわたした。'],
+    ['say','tome','……ナツミからかい。','（ばあちゃんは、しばらく黙って手紙を読んでいた）','あの子、30年ずっと、自分を責めてたんだねえ。ミオちゃんがいなくなった夜のことを。'],
+    ['say','tome','ナギには話してなかったね。あの島の灯台の灯り守りは、ナギのじいちゃんだったんだよ。','30年前のあの夜、じいちゃんはミオちゃんを探しに出て、灯りをともせなかった。それっきり、灯台に上れなくなってねえ。'],
+    ['say','tome','灯台の灯りはね、昔はお盆の夜に、町の五つの灯りから火を分けてもらってともしたんだ。','見晴らし台、神社の鳥居、海の見える踏切、駅のホーム、それから桟橋の先。'],
+    ['say','','ばあちゃんは、古い鍵をナギの手にのせた。'],
+    ['say','tome','じいちゃんの形見の、灯台の鍵だよ。……ナギに、たのめるかい？'],
+    ['ask','nagi','（どうする？）',[['わたしが、灯りをともす',[]],['……うん。やってみる',[]]]],
+    ['say','tome','夜になったら、桟橋の釣りのおじさんに船を出してもらいな。あの人は、じいちゃんの古い友だちさ。'],
+    ['set','true_key'],['call',()=>{if(SAVE.cap<18.9)SAVE.cap=18.9;}],['cam','off'],['toast','夜、桟橋の釣りのおじさんに話そう',true]]},
+  {id:'t_fisher',on:{talk:'fisher'},mark:true,when:{flags:{true_key:1},phase:['evening','night']},script:[
+    ['say','fisher','灯台へ？ ……そうか、あのじいさんの孫か。','よし、船を出してやる。ただし、灯りがなきゃ灯台はともらんぞ。町の五つの灯りを、もらってきな。'],
+    ['fade','out'],['time',20.6,0],['fade','in'],
+    ['say','','ジジジジジ……！','電波塔が、これまででいちばん大きく鳴りはじめた。町の灯りが、ちらちらとふるえている。'],
+    ['say','mio','（ナギ、急いで。あの音が鳴りやんだら、今夜の扉は閉じてしまう）'],
+    ['say','nagi','ミオの声……！ よし、行こう！'],
+    ['lights',{limit:300,pts:[{name:'桟橋の先',x:-80,z:334},{name:'駅のホーム',x:62,z:TRAM_Z-1.5},{name:'海の見える踏切',x:3,z:TRAM_Z-7},{name:'神社の鳥居',x:-60,z:-119.5},{name:'見晴らし台',x:0,z:-205}]}],
+    ['say','','五つの灯りが、ナギの胸のあたりで、あたたかくまたたいている。'],
+    ['fade','out'],['warp',-79.5,333,0],
+    ['cam',[120,8,600],[198,62,760],0.8,'cut'],['fade','in'],
+    ['say','','釣りのおじさんの小さな船が、夜の海をすべっていく。','島の灯台が、黒い影になって近づいてくる。'],
+    ['say','','さびた扉を、じいちゃんの鍵で開けた。らせん階段をのぼって、てっぺんへ――'],
+    ['say','nagi','じいちゃん、ミオ、お母さん。……ともすよ。'],
+    ['set','lighthouse_lit'],['wait',1.5],
+    ['cam',[60,30,560],[198,72,760],0.8],
+    ['say','','30年ぶりに、灯台に灯りがともった。','光の帯が海をわたって、町の坂を、屋根を、やさしくなでていく。'],
+    ['set','tower_quiet'],
+    ['say','','西の山で、電波塔の赤い光が、ふっと消えた。あのいやな音も、もう聞こえない。'],
+    ['if',{min:{bond_mio:1}},[['say','mio','……ありがとう、ナギ。'],['say','','光の中に、白いワンピースの女の子が立っていた。']],[['say','','光の中に、白いワンピースの女の子が立っていた。']]],
+    ['say','mio','やっと、帰れる。','ナツミに伝えて。……あの夜のこと、ナツミのせいじゃないよって。ずっと、友だちだよって。'],
+    ['say','','ミオは笑って、光の帯の中へ歩いていった。'],
+    ['wait',1],['fade','out'],['cam','off'],
+    ['set','mom_here'],['warp',...HOME],['day',7],
+    ['cam','npc','natsumi',3.6],
+    ['say','','次の朝。坂の下から、聞きなれた声がした。'],
+    ['say','natsumi','ナギ！ ……お母さん！'],
+    ['say','tome','ナツミ。……おかえり。'],
+    ['say','natsumi','ゆうべ、夢を見たの。ミオが、灯台の光の中で手をふってた。','……ナギ、あなたが？'],
+    ['say','nagi','うん。ミオがね、伝えてって。「ナツミのせいじゃないよ。ずっと、友だちだよ」って。'],
+    ['say','','ナギは、色あせた写真と、青いビー玉をお母さんにわたした。お母さんは写真を胸に当てて、小さく泣いた。'],
+    ['say','tome','さあさあ、朝ごはんにしようかね。今夜も、灯台がよく見えるよ。'],
+    ['set','ending_true'],['cam','off'],
+    ['credits'],
+    ['toast','真ルート「灯台」 おわり',true],
+    ['say','','――真ルート「灯台」 おわり。','これからも夏休みは続く。夜になったら、灯台の光を見に行こう。']]},
+
   /* ----- every day ----- */
   // from the second day on, the afternoon turns to evening on its own once the clock reaches the day's cap
   {id:'dusk',once:false,when:{minDay:2,test:()=>SAVE.cap<18&&SAVE.hour>=SAVE.cap-0.02},script:[
@@ -6328,7 +6424,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
@@ -6553,7 +6649,8 @@ function stepPlayer(dt){
 /* ---------- interaction ---------- */
 let near=null;
 function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
-  for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d,{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
+  // someone with a story event waiting comes first when two people stand close together
+  for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}
