@@ -4793,8 +4793,12 @@ function animHeroine(h,dt,s){
 function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
   let crouch=s.brake?0.2:s.v>6?0.55:0.28;if(s.air)crouch=0.8;P.c+=(crouch-P.c)*Math.min(1,6*dt);
   P.st+=(clamp(s.turn,-1,1)-P.st)*Math.min(1,5*dt);P.push+=((s.push?1:0)-P.push)*Math.min(1,6*dt);
-  const c=P.c;h.hips.position.set(0,0.93-0.27*c-P.push*0.07,-0.03*c);
-  h.torso.rotation.set(0.1+0.6*c+P.push*0.25,0,-P.st*0.16);h.head.rotation.set(-(0.06+0.5*c+P.push*0.2),P.st*0.25,P.st*0.08);
+  // stance: riding, the body turns side-on across the deck (right foot forward, facing the left of the board) and the head looks
+  // down the line; pushing, the hips square up to face forward. On the title screen she stands half turned to the camera.
+  const sideT=P.push>0.25?0:(typeof state!=='undefined'&&state==='title')?0.5:1;if(P.sd==null)P.sd=sideT;P.sd+=(sideT-P.sd)*Math.min(1,5*dt);
+  const c=P.c,sd=P.sd,yaw=1.25*sd;h.hips.position.set(0,0.93+0.045*sd-0.24*c*(1-0.55*sd)-P.push*0.07,-0.03*c*(1-sd));h.hips.rotation.set(0,yaw,0);
+  h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)+P.push*0.25,-yaw*0.2,-P.st*0.16);
+  h.head.rotation.order='YXZ';h.head.rotation.set(-(0.06+0.5*c)*(1-0.6*sd)-P.push*0.2,-yaw*0.8+P.st*0.25,P.st*0.08);
   // arms stay loose with bent elbows: the lead arm a little forward, the back arm behind, a little wider with speed and in the air,
   // the outside arm lifts in a turn and both counter-swing the kicking leg
   const sp=clamp(s.v/12,0,1),air=s.air?1:0,kk=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1,swing=Math.sin(kk*Math.PI*2)*0.38*P.push;
@@ -4802,15 +4806,17 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
     const out=0.16+0.26*sp+0.55*air+(a.sx*P.st>0?-0.1:0.28)*Math.abs(P.st);
     const fw=(lead?-0.3-0.12*sp:0.25+0.08*sp)+0.35*c+(lead?-swing:swing)+Math.sin(h.t*1.7+(lead?0:1.4))*0.04;
     a.sh.rotation.set(fw,0,a.sx*out);a.el.rotation.x=-(0.5+0.35*sp+0.2*P.push-0.15*air);}
-  const hy=h.hips.position.y-0.07,hz=h.hips.position.z;
-  for(const L of h.legs){const front=L.sx<0;let fx=front?0.03:-0.03,fy=ANKLE_Y,fz=front?0.2:-0.21;
+  const hy=h.hips.position.y-0.07,hz=h.hips.position.z,cy=Math.cos(yaw),sy=Math.sin(yaw);
+  for(const L of h.legs){const front=L.sx<0;let fx=(front?0.03:-0.03)*(1-sd)+0.01*sd,fy=ANKLE_Y,fz=front?0.2+0.02*sd:-0.21-0.03*sd;
     if(!front&&P.push>0.03){const k=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1;
       // reach forward and down, plant beside the deck, sweep back hard, lift and return
       const fwdZ=-0.05,backZ=-0.62,ph=k<0.3?k/0.3:k<0.65?(k-0.3)/0.35:(k-0.65)/0.35;
       let z,y;if(k<0.3){z=lerp(-0.21,fwdZ,smooth(ph));y=lerp(ANKLE_Y,0.095,smooth(ph));}
       else if(k<0.65){z=lerp(fwdZ,backZ,ph);y=0.095;}else{z=lerp(backZ,-0.21,smooth(ph));y=0.095+Math.sin(Math.PI*ph)*0.14+(ANKLE_Y-0.095)*smooth(ph);}
-      fz=lerp(fz,z,P.push);fy=lerp(fy,y,P.push);fx=-0.15*P.push;}
-    solveLeg(L,L.sx*0.09,hy,hz,fx,fy,fz);}
+      fz=lerp(fz,z,P.push);fy=lerp(fy,y,P.push);fx=lerp(fx,0.16,P.push);}
+    solveLeg(L,L.sx*0.09*cy,hy,hz-L.sx*0.09*sy,fx,fy,fz);
+    // feet lie across the deck when riding; the front foot points ahead and the pushing foot runs along the ground when kicking
+    L.ft.rotation.y=front?lerp(0.15,1.2,sd):lerp(0.05,1.45,sd)*(1-P.push);}
   for(const w of h.wheels)w.rotation.x+=s.v*dt/0.034;
   if(h.faceM)animHeroine(h,dt,s);
   if(h.vrm)driveVRM(h,dt,s);
@@ -4977,7 +4983,7 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   for(const L of h.legs){const M=V.legs[L.sx>0?1:-1];
     M.up.getWorldPosition(_a);toModel(V,_a);L.ft.getWorldPosition(_b);toModel(V,_b);_b.y+=0.005;
     const d=Math.min(_a.distanceTo(_b),M.l1+M.l2-1e-3),dir=_c.copy(_b).sub(_a).normalize(),a=(M.l1*M.l1-M.l2*M.l2+d*d)/(2*d),hh=Math.sqrt(Math.max(0,M.l1*M.l1-a*a));
-    const pole=_d.set(L.sx<0?0.25:-0.25,0,1);nodeQ(V,h.hips,_q1);pole.applyQuaternion(_q1);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
+    const pole=_d.set(L.sx*0.18,0,1);nodeQ(V,h.hips,_q1);pole.applyQuaternion(_q1);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
     const knee=_a.clone().addScaledVector(dir,a).addScaledVector(pole,hh),tgt=_a.clone().addScaledVector(dir,d);
     swingTo(V,M.up,'J_Bip_'+M.n+'_UpperLeg',M.dUp,knee.clone().sub(_a));
     swingTo(V,M.lo,'J_Bip_'+M.n+'_LowerLeg',M.dLo,tgt.clone().sub(knee));
@@ -4985,7 +4991,7 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   for(const C of V.cons){if(C.aim){C.b.getWorldPosition(_a);C.src.getWorldPosition(_b);toModel(V,_a);toModel(V,_b);swingTo(V,C.b,C.n,C.d,_b.sub(_a));}
     else{_q1.copy(R[C.sn].local).invert().multiply(C.src.quaternion);_q2.identity().slerp(_q1,C.w);C.b.quaternion.copy(R[C.n].local).multiply(_q2);C.b.updateMatrixWorld(true);}}
   // ponytail: sways with speed, turns and jumps
-  const acc=h.tailV||0,sw=Math.sin(h.t*2.3)*0.06,turn=clamp(s.turn||0,-1,1);
+  const acc=clamp(h.tailV||0,-0.35,0.35),sw=Math.sin(h.t*2.3)*0.06,turn=clamp(s.turn||0,-1,1);
   V.tail.forEach((b,k)=>{b.quaternion.copy(R[b.name].local);
     _q1.setFromEuler(new THREE.Euler(-(k?acc*0.6+(s.v||0)*0.02*(k===1?1:0.5):0)-Math.sin(h.t*3+k)*0.03,0,(sw*(k+1)*0.6+turn*0.15*k)));
     b.quaternion.multiply(_q1);});
