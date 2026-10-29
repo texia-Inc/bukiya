@@ -9,7 +9,7 @@
    On the third night Nagi chooses: follow Omochi the cat to the west tunnel (horror), follow the van to the port (Oceangate),
    or go to sleep (the easy-going summer). Flags kept on the way: bond_<npc> (errands and kind answers), met_mio, met_mochi,
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
-const HOME=[-48.6,-123.4,-2.42];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
+const HOME=[-49.2,-123.6,-2.55];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
@@ -153,7 +153,21 @@ const EVENTS=[
       ['say','nagi','ここ……海街、だよね？ ばあちゃん……？'],
       ['say','','おもちが、ニャア、と小さく鳴いた。その目が、町の三つの方角を順に見る。駅、商店街、そして坂の上の神社。'],
       ['cam','off'],['toast','L でライト。影の住人に見つからずに、3つの手がかりを探そう',true],['stop']]],
-    ['if',{flags:{route:2}},[['say','','ナギはスケボーをかかえて、坂を下りはじめた。港の倉庫街に、小さな灯りがともっている……。'],['toast','悪の組織ルート「シーサイド・コンスピラシー」は準備中。いまは次の朝になる',true]]],
+    ['if',{flags:{route:2}},[['say','','ナギはスケボーをかかえて、そっと坂を下りた。'],
+      ['fade','out'],['ogscene',true],['time',23,0],['warp',186,COAST_Z-2.6,Math.PI/2],
+      ['cam',[188,G(188,COAST_Z)+2.2,COAST_Z-6],[200,G(200,COAST_Z)+1.2,COAST_Z+1.2],1.2,'cut'],['fade','in'],
+      ['say','','海岸トンネルの手前に、ライトを消した黒いバンが止まっている。','黒いスーツの男たちが、荷台から重そうな箱を下ろしていた。'],
+      ['say','黒崎','電波塔の出力は、明日の夜に最大まで上げる。町の連中は、何も気づかん。','島の灯台は、あさっての夜に片づける。あれさえなくなれば、リゾートの工事はすぐに始められる。'],
+      ['say','nagi','（灯台を……片づける？ 壊すってこと……？）'],
+      ['say','','ガタン。足もとのスケボーが、音を立てた。'],
+      ['say','黒崎','――だれだ！ つかまえろ！'],
+      ['say','nagi','やばっ……！ 坂の下まで逃げなきゃ！'],
+      ['cam','off'],
+      ['pursuit',{from:[186,COAST_Z-2.6,-Math.PI/2],to:[0,COAST_Z-1,6],hint:'海岸通りを西へ。海へつづく坂の下まで逃げる'}],
+      ['ogscene',false],
+      ['say','','坂の下の路地に飛びこんで、息をひそめた。','革靴の足音が、遠ざかっていく……。'],
+      ['say','nagi','（オーシャンゲート……灯台を壊すつもりなんだ。明日、こむぎ堂のおじさんに話してみよう）'],
+      ['set','og_saw']]],
     ['if',{flags:{route:3}},[['say','nagi','……明日、ばあちゃんに聞いてみよう。','おやすみなさい。']]],
     ['wait',0.6],['fade','out']]},
 
@@ -221,6 +235,44 @@ const EVENTS=[
     ['toast','のほほんルート「なつやすみ帳」 おしまい',true],
     ['say','','――のほほんルート「なつやすみ帳」 おしまい。','このあとも、夏休みは続く。夜の町を、花火の下で散歩してみよう。'],
     ['cam','off']]},
+
+  /* ----- the Oceangate route "シーサイド・コンスピラシー" (route 2), days 4–5: the baker's past, the drones, the kids' detective work,
+     and the chase after the black van ----- */
+  {id:'o4_morning',when:{day:4,flags:{route:2}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう、ナギ。……おや、目の下にくまができてるよ。ゆうべは、どこへ行ってたんだい？'],
+    ['ask','nagi','（どうする？）',[
+      ['正直に話す',[['say','tome','……オーシャンゲートの人たちが、灯台を？','こむぎ堂の主人に相談してごらん。あの人は昔、そういう仕事をしてたって、町のうわさだよ。']]],
+      ['なんでもない',[['say','tome','そうかい……。無理はおしでないよ。困ったら、こむぎ堂の主人を頼るといい。']]]]],
+    ['cam','off'],['toast','こむぎ堂の主人に、ゆうべのことを話そう']]},
+  {id:'o4_baker',on:{talk:'baker'},mark:true,when:{minDay:4,flags:{route:2}},script:[
+    ['say','baker','……黒崎たちが、灯台を？','ナギちゃん、ちょっと店の奥へ来てくれ。'],
+    ['say','baker','昔、おれは「こむぎ」って呼ばれてた。ある組織の……まあ、エージェントってやつだ。','黒崎は、昔の仕事相手さ。あいつらは電波塔とドローンで、この町を見張ってる。'],
+    ['if',{min:{drones_cleared:1}},[['say','baker','このあいだのドローン退治で、やつらの目は半分つぶれた。いい腕だったよ。']],
+      [['say','baker','まずは、やつらの目をつぶそう。町の上を飛んでる監視ドローンだ。','昔の仕事道具を貸してやる。スケボーに乗ったまま、クリックか J キーで撃てる。','気をつけろ、向こうも撃ってくる。目が赤く光ったら、曲がってよけるんだ。']]],
+    ['say','baker','それから、ソウタたちにも声をかけておいた。あの子たちは町じゅうに友だちがいる。証拠を集めてもらおう。'],
+    ['if',{min:{drones_cleared:1}},[],[['call',()=>startDrones()]]]]},
+  {id:'o5_morning',when:{day:5,flags:{route:2}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','今日は、なんだか町が静かだねえ。電波塔の音も、ゆうべはひどかった。','ナギ、気をつけるんだよ。'],
+    ['cam','off'],['toast','ドローンを撃ち落とし、探偵団の証拠を集めたら、こむぎ堂の主人に話そう']]},
+  {id:'o5_boss',on:{talk:'baker'},mark:true,when:{minDay:5,flags:{route:2},min:{drones_cleared:1},quest:{og_evidence:2}},script:[
+    ['say','baker','ドローンは落とした。証拠もそろった。','今夜、黒崎はバンで港へ向かう。灯台をふき飛ばす起爆装置は、バンの中だ。','警察には知らせたが、間に合わん。……あのバンに追いつけるのは、町でいちばん速い、ナギちゃんのスケボーだけだ。'],
+    ['ask','nagi','（どうする？）',[['まかせて！',[]],['……やるしかないよね',[]]]],
+    ['fade','out'],['time',20.6,0],['cam','off'],['vanchase'],
+    ['call',ogEndCam],
+    ['say','','バンのうしろにぴたりとつけて、荷台の扉に手をのばした――','キキーッ！ バンが急ブレーキをかけて止まった。'],
+    ['say','baker','そこまでだ、黒崎。'],
+    ['say','黒崎','……パン屋だと？ まさか、お前……「こむぎ」か。引退したと聞いていたが。'],
+    ['say','baker','今は、ただのパン屋さ。この町のな。'],
+    ['say','','こむぎ堂の主人は、バンの中から黒い箱――起爆装置を取り出した。遠くで、パトカーのサイレンが聞こえる。'],
+    ['say','nagi','灯台……守れたんだ。'],
+    ['if',{flags:{met_mio:1}},[['say','','桟橋の先で、白いワンピースの女の子が、こちらに小さく手をふった気がした。']]],
+    ['say','baker','いい腕だ、ナギちゃん。……このことは、町のみんなには内緒だぞ。'],
+    ['ogscene',false],['set','ending_org'],['money',1500],
+    ['toast','悪の組織ルート「シーサイド・コンスピラシー」 おしまい',true],
+    ['say','','――悪の組織ルート「シーサイド・コンスピラシー」 おしまい。','灯台は守られた。けれど、その灯りがともらない理由は、まだだれも知らない。'],
+    ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
 
   /* ----- the horror route "トンネルの向こう" (route 1), the third night: 裏海街. Three things Mio left behind, then the chase ----- */
   {id:'ura_photo',on:{near:[62,TRAM_Z-1.5,2.4]},when:{flags:{in_ura:1,clue_photo:0}},script:[

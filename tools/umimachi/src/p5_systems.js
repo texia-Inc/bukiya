@@ -88,7 +88,7 @@ for(const [x,z,yaw,col] of [[80,201.5,Math.PI/2,'#f2c230'],[93.6,60,0,'#f2f2ee']
 // the black van of Oceangate: no logo, windows you cannot see through; it keeps going round the coast road
 CARS.push({g:makeCar('#18191c',false,'van'),dir:-1,x:-30,z:COAST_Z+2.2,v:6,v0:5.5,van:true});const VAN=CARS[CARS.length-1];
 CARS.forEach(c=>{c.box=collide(0,0,0,0,'car');});
-function updateCars(dt){for(const c of CARS){let gap=1e9;for(const o of CARS){if(o===c||o.dir!==c.dir)continue;let d=(o.x-c.x)*c.dir;if(d<0)d+=520;if(d<gap)gap=d;}
+function updateCars(dt){for(const c of CARS){if(c.scripted)continue;let gap=1e9;for(const o of CARS){if(o===c||o.dir!==c.dir)continue;let d=(o.x-c.x)*c.dir;if(d<0)d+=520;if(d<gap)gap=d;}
     const pd=(P.x-c.x)*c.dir;if(Math.abs(P.z-c.z)<2.2&&pd>0&&pd<9)gap=Math.min(gap,pd);
     const tv=gap<7?0:gap<16?c.v0*(gap-7)/9:c.v0;c.v+=(tv-c.v)*Math.min(1,dt*2.5);c.x+=c.dir*c.v*dt;if(c.x>260)c.x-=520;if(c.x<-260)c.x+=520;for(const w of c.g.userData.wheels)w.rotation.x+=c.v*dt/0.3;
     c.g.position.set(c.x,G(clamp(c.x,-CUT_X,CUT_X),c.z)+0.02,c.z);c.g.rotation.y=c.dir>0?Math.PI/2:-Math.PI/2;const hl=c.g.userData.len/2+0.1;Object.assign(c.box,{x0:c.x-hl,x1:c.x+hl,z0:c.z-0.9,z1:c.z+0.9,top:G(clamp(c.x,-CUT_X,CUT_X),c.z)+1.45});}}
@@ -151,6 +151,13 @@ const QUESTS=[
    start:['ナギちゃん、お祭りには浴衣で行くの？','トメさんがね、昔の浴衣をしまってあるって言ってたわよ。聞いてみたら？'],
    steps:[{type:'talk',to:'tome',hint:'トメばあちゃんに浴衣のことを聞く',text:['浴衣かい？ あるある。ナギのお母さんが、ちょうどナギくらいのころに着てたのがね。','たんすの奥から出しておいたよ。着がえのとき、着てごらん。']}],reward:200,
    done:()=>{SAVE.owned=SAVE.owned||{};for(const p of PRIZES)if(p.id==='yukata')SAVE.owned[p.key]=1;toast('浴衣を着られるようになった（着がえ C）',true);}},
+  // the Oceangate route: the kids gather what the town saw
+  {id:'og_evidence',title:'海街少年探偵団',giver:'sota',when:{flags:{route:2},seen:'o4_baker'},
+   start:['おねえちゃん！ こむぎ堂のおじさんから聞いたよ。','おれたち「海街少年探偵団」も手伝う！ 町の人に、黒いバンのことを聞いて回ろうよ。','魚松のおかみさん、しおさいのマスター、桟橋の釣りのおじさん。みんな何か見てるはずだよ！'],
+   steps:[{type:'talk',to:'okami',hint:'魚松のおかみさんに、黒いバンのことを聞く',text:['黒いバンの人たち？ ゆうべ、港で船に箱を積んでたよ。','「取り扱い注意」って、赤い字で書いてあったねえ。']},
+          {type:'talk',to:'master',hint:'しおさいのマスターに聞く',text:['黒崎って男なら、店の前で電話してたよ。','「あさっての夜で、灯台も町も終わりだ」なんて言ってた。……冗談だといいんだが。']},
+          {type:'talk',to:'fisher',hint:'桟橋の釣りのおじさんに聞く',text:['島の灯台の下に、見なれない機械が置いてあった。','夜になると、電波塔と同じリズムで赤く光るんだ。']},
+          {type:'talk',to:'sota',hint:'浜辺のソウタくんに知らせる',text:['すごい、ぜんぶ集まった！','この証拠、こむぎ堂のおじさんに渡しておくね！ おれたち、いいチームだね！']}],reward:600},
   {id:'photo',title:'海街の景色めぐり',giver:'neko',
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
@@ -186,7 +193,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
