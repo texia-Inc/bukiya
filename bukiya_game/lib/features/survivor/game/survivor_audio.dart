@@ -21,6 +21,8 @@ enum Sfx {
   boss,
   slam,
   chest,
+  horn,
+  cage,
 }
 
 /// 効果音の再生。同じ音は間隔を空けて鳴りすぎを防ぐ。実際の再生は [SfxBackend] に任せる

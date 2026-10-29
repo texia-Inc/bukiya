@@ -38,10 +38,11 @@ extension _Bosses on RunSimulation {
     if (_nextBoss >= bosses.length || time < bosses[_nextBoss].time) return;
     final kind = bosses[_nextBoss].kind;
     _nextBoss++;
-    final a = rng.nextDouble() * 2 * pi;
-    final d = spawnDistance * 0.8;
-    final e = Enemy(kind, px + cos(a) * d, py + sin(a) * d,
-        enemyStats[kind]!.hp * stage.bossHpScale);
+    // プレイヤーの周りに檻を作り、その中にボスを出す
+    _closeArena();
+    final (x, y) = _bossSpawnPoint();
+    final e = Enemy(kind, x, y, enemyStats[kind]!.hp * stage.bossHpScale)
+      ..inArena = true;
     enemies.add(e);
     _emit(RunEvent(RunEventType.bossSpawn, e.x, e.y));
   }

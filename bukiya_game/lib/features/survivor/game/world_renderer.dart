@@ -86,10 +86,13 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     final view = game.camera.visibleWorldRect;
     _cull = view.inflate(40);
     _drawGround(canvas, view);
+    _drawCorridorWalls(canvas, view);
+    _drawArenaShade(canvas, view);
     _drawGate(canvas);
     _drawPickups(canvas);
     _drawBossTelegraphs(canvas);
     _drawEnemies(canvas);
+    _drawArenaFence(canvas);
     _drawBlasts(canvas);
     _drawArrows(canvas);
     _drawThrusts(canvas);
@@ -177,6 +180,97 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
               _fill);
         }
       }
+    }
+  }
+
+  /// 通路ステージの左右の崖
+  void _drawCorridorWalls(Canvas canvas, Rect view) {
+    final c = sim.stage.corridorHalfWidth;
+    if (c == null) return;
+    const step = 26.0;
+    final y0 = (view.top / step).floor() - 1,
+        y1 = (view.bottom / step).ceil() + 1;
+    for (final side in const [-1.0, 1.0]) {
+      final edge = side * c;
+      // ぎざぎざのふちを持つ崖
+      final path = Path()..moveTo(edge, y0 * step);
+      for (var i = y0; i <= y1; i++) {
+        final h = _hash(i, side > 0 ? 7 : 3);
+        final jut = 6 + (h % 9);
+        path.lineTo(edge - side * jut, i * step + step / 2);
+        path.lineTo(edge, (i + 1) * step);
+      }
+      path
+        ..lineTo(edge + side * 600, (y1 + 1) * step)
+        ..lineTo(edge + side * 600, y0 * step)
+        ..close();
+      _fill.color = const Color(0xFF8A6E48);
+      canvas.drawPath(path, _fill);
+      canvas.drawPath(path, _outline);
+      // 岩の模様
+      _fill.color = const Color(0xFF6E5638);
+      for (var i = y0; i <= y1; i += 2) {
+        final h = _hash(i, side > 0 ? 11 : 5);
+        canvas.drawOval(
+            Rect.fromCenter(
+                center: Offset(edge + side * (30 + h % 60), i * step),
+                width: 16 + (h % 10).toDouble(),
+                height: 9),
+            _fill);
+      }
+    }
+  }
+
+  /// 檻の外を少し暗くして、檻の中に目を向けさせる
+  void _drawArenaShade(Canvas canvas, Rect view) {
+    final a = sim.arena;
+    if (a == null) return;
+    final v = view.inflate(30);
+    _fill.color = const Color(0x55000000);
+    canvas.drawRect(Rect.fromLTRB(v.left, v.top, v.right, a.top), _fill);
+    canvas.drawRect(Rect.fromLTRB(v.left, a.bottom, v.right, v.bottom), _fill);
+    canvas.drawRect(Rect.fromLTRB(v.left, a.top, a.left, a.bottom), _fill);
+    canvas.drawRect(Rect.fromLTRB(a.right, a.top, v.right, a.bottom), _fill);
+  }
+
+  /// ボス戦の檻の柵。現れるときに地面からせり上がる
+  void _drawArenaFence(Canvas canvas) {
+    final a = sim.arena;
+    if (a == null) return;
+    final rise = ((sim.time - a.closedAt) / 0.4).clamp(0.0, 1.0);
+    const gap = 22.0;
+    final height = 18 * rise;
+    void post(double x, double y) {
+      if (!_cull.contains(Offset(x, y))) return;
+      final r = RRect.fromRectAndCorners(
+          Rect.fromLTWH(x - 3.5, y - height, 7, height + 2),
+          topLeft: const Radius.circular(3.5),
+          topRight: const Radius.circular(3.5));
+      _fill.color = const Color(0xFF8A5A2B);
+      canvas.drawRRect(r, _fill);
+      canvas.drawRRect(r, _outline);
+    }
+
+    // 横木
+    final rail = Rect.fromLTRB(
+        a.left, a.top - height * 0.5, a.right, a.bottom - height * 0.5);
+    _stroke
+      ..color = const Color(0xFF1A1A1A)
+      ..strokeWidth = 5;
+    canvas.drawRect(rail, _stroke);
+    _stroke
+      ..color = const Color(0xFFB07A42)
+      ..strokeWidth = 2.5;
+    canvas.drawRect(rail, _stroke);
+    _stroke.strokeWidth = 2;
+    // 杭
+    for (var x = a.left; x <= a.right + 0.1; x += gap) {
+      post(x, a.top);
+      post(x, a.bottom);
+    }
+    for (var y = a.top + gap; y < a.bottom - 0.1; y += gap) {
+      post(a.left, y);
+      post(a.right, y);
     }
   }
 

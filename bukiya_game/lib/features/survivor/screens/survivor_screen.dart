@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../domain/run_result.dart';
 import '../domain/run_simulation.dart';
 import '../domain/skills.dart';
+import '../domain/stage.dart';
 import '../data/profile_store.dart';
 import '../domain/profile.dart';
 import '../domain/shop.dart';
@@ -273,6 +274,7 @@ class _HudTickerState extends State<_HudTicker> {
           : (g.closesAt == null ? -1 : (g.closesAt! - s.time).ceil()),
       s.boss == null ? null : (s.boss!.hp / s.boss!.maxHp * 100).ceil(),
       widget.fx.bossWarning > 0,
+      widget.fx.waveWarning > 0,
     );
   }
 
@@ -428,6 +430,26 @@ class _Hud extends StatelessWidget {
               child: Text('ボス出現！ ${_bossName(boss.kind)}',
                   style: const TextStyle(
                       color: Color(0xFFFF8A8A),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
+        if (fx.waveWarning > 0)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xCC3D2A08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFFB13D)),
+              ),
+              child: Text(
+                  fx.waveType == WaveType.ring
+                      ? '大群に囲まれる！ 突破口を探せ'
+                      : '大群が突っ込んでくる！',
+                  style: const TextStyle(
+                      color: Color(0xFFFFC66B),
                       fontSize: 16,
                       fontWeight: FontWeight.w800)),
             ),

@@ -201,6 +201,24 @@ def extra():
          * env(int(RATE * 0.4), 0.002, 0.18)]), 0.5)
 
 
+def extra2():
+    """大群の警告と、ボス戦の檻の音"""
+    # 大群の警告：低く鳴り響く角笛（2回）
+    def horn(sec):
+        x = t(sec)
+        f = 147 * (1 + 0.02 * np.sin(2 * np.pi * 5 * x))
+        tone_ = tone(f, sec, "square") * 0.5 + tone(f * 2, sec, "tri") * 0.4
+        return lowpass(tone_, 0.2) * env(int(RATE * sec), 0.06, sec * 0.6)
+    write("horn", seq([horn(0.45), np.zeros(int(RATE * 0.08)), horn(0.75)]), 0.7)
+
+    # 檻が閉じる：金属がぶつかる音
+    sec = 0.6
+    clang = sum(tone(f, sec) * a for f, a in [(220, 0.6), (587, 0.4), (1244, 0.3), (2093, 0.2)])
+    write("cage", (clang * env(int(RATE * sec), 0.001, 0.15)
+                   + lowpass(noise(sec), 0.2) * env(int(RATE * sec), 0.001, 0.03)), 0.6)
+
+
 if __name__ == "__main__":
     main()
     extra()
+    extra2()

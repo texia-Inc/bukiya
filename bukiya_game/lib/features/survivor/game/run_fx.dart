@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../domain/loadout.dart';
 import '../domain/run_simulation.dart';
+import '../domain/stage.dart';
 import 'survivor_audio.dart';
 
 class FloatingNumber {
@@ -43,6 +44,10 @@ class RunFx {
   /// ボス出現の警告を出している残り秒数
   double bossWarning = 0;
 
+  /// 大群の警告を出している残り秒数と、その種類（包囲か突撃か）
+  double waveWarning = 0;
+  WaveType waveType = WaveType.ring;
+
   RunFx(this.audio);
 
   void handle(RunSimulation sim) {
@@ -75,6 +80,17 @@ class RunFx {
           bossWarning = 3;
           _addTrauma(0.4);
           audio.play(Sfx.boss);
+        case RunEventType.arenaClose:
+          _addTrauma(0.5);
+          audio.play(Sfx.cage);
+        case RunEventType.arenaOpen:
+          audio.play(Sfx.cage);
+        case RunEventType.waveWarning:
+          waveWarning = waveWarningTime;
+          waveType = WaveType.values[e.amount.toInt()];
+          audio.play(Sfx.horn);
+        case RunEventType.waveStart:
+          _addTrauma(0.3);
         case RunEventType.bossSlam:
           _addTrauma(0.75);
           audio.play(Sfx.slam);
@@ -123,6 +139,7 @@ class RunFx {
     hurtFlash = max(0, hurtFlash - dt * 3);
     whiteFlash = max(0, whiteFlash - dt * 2);
     bossWarning = max(0, bossWarning - dt);
+    waveWarning = max(0, waveWarning - dt);
     final amp = 9 * trauma * trauma;
     shakeX = (_rng.nextDouble() * 2 - 1) * amp;
     shakeY = (_rng.nextDouble() * 2 - 1) * amp;
