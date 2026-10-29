@@ -34,7 +34,8 @@ function trickAir(dt){TRICK.airT+=dt;
   if(player.pose&&player.pose.gr>0.6&&!TRICK.grab){TRICK.grab=1;trickAdd('grab',30);}   // the indy grab near the top of a big jump
   if(P.trick){P.trick.t+=dt/0.42;if(P.trick.t>=1){trickAdd(P.trick.type,P.trick.type==='flip'?100:80);P.trick=null;}}
   // catching a rail on the way down
-  if(P.vy>4)return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
+  // no catching while slow, or just after leaving a rail (otherwise a stop on the rail drops you straight back onto it)
+  if(P.vy>4||P.v<2.5||clock<(P.grindCD||0))return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   for(const r of RAILS){const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
     const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
     const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
@@ -45,10 +46,11 @@ function grindStep(dt){const g=P.grind,r=g.r;
   const ry0=railY(r,P.x,P.z),nx=P.x+g.ux*g.dir*0.5,nz=P.z+g.uz*g.dir*0.5,slope=(railY(r,nx,nz)-ry0)/0.5;
   P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);g.t+=g.dir*P.v*dt/g.L;
   P.x=r.x0+(r.x1-r.x0)*g.t;P.z=r.z0+(r.z1-r.z0)*g.t;P.y=railY(r,P.x,P.z);
-  TRICK.pts+=55*dt;g.sc+=dt;TRICK.shown=2;trickHUD();
+  TRICK.pts+=55*dt*clamp(P.v/6,0,1);g.sc+=dt;   // points only while she is really slidingTRICK.shown=2;trickHUD();
   if(Math.random()<dt*25)sparks(new THREE.Vector3(P.x,P.y+0.05,P.z),1,'#ffd27a',2.2,0.035);
   const off=g.t<=0||g.t>=1,pop=jumpQ,slow=P.v<1.2;jumpQ=false;
-  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;}
+  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;P.grindCD=clock+0.8;
+    if(slow){const cx=r.top!=null?(PIER.x0+PIER.x1)/2:0;P.x+=0.7*(Math.sign(cx-P.x)||1);}}   // too slow: she steps off toward the road (or the middle of the pier); the rails all run along z
   player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(0,0,0);
   poseSkater(player,dt,{v:P.v,turn:0,push:false,brake:false,air:false,grind:true});}
 function updateTricks(dt){if(TRICK.shown>0){TRICK.shown-=dt;if(TRICK.shown<=0&&!TRICK.mult)$('trick').hidden=true;}

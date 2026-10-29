@@ -5640,12 +5640,17 @@ async function step(s){const [op,...a]=s;switch(op){
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
   SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
-function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
+function renderClock(){const h=((SAVE.hour%24)+24)%24,hh=Math.floor(h),mm=Math.floor((h-hh)*6)*10;
+  $('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]} ${hh}:${String(mm).padStart(2,'0')}`;}
+// what to do next, when no errand is being followed: the tracker shows today's aim (storyGoal in p5d_events.js)
+function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.hidden=true;return;}tr.hidden=false;tr.innerHTML='';
+  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
+  applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
+  if(ph!==ST.phase){ST.phase=ph;renderHUD();}if(tm!==ST.tm){ST.tm=tm;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
     m.visible=!calm&&!URA.on&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
@@ -5892,7 +5897,8 @@ function trickAir(dt){TRICK.airT+=dt;
   if(player.pose&&player.pose.gr>0.6&&!TRICK.grab){TRICK.grab=1;trickAdd('grab',30);}   // the indy grab near the top of a big jump
   if(P.trick){P.trick.t+=dt/0.42;if(P.trick.t>=1){trickAdd(P.trick.type,P.trick.type==='flip'?100:80);P.trick=null;}}
   // catching a rail on the way down
-  if(P.vy>4)return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
+  // no catching while slow, or just after leaving a rail (otherwise a stop on the rail drops you straight back onto it)
+  if(P.vy>4||P.v<2.5||clock<(P.grindCD||0))return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   for(const r of RAILS){const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
     const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
     const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
@@ -5903,10 +5909,11 @@ function grindStep(dt){const g=P.grind,r=g.r;
   const ry0=railY(r,P.x,P.z),nx=P.x+g.ux*g.dir*0.5,nz=P.z+g.uz*g.dir*0.5,slope=(railY(r,nx,nz)-ry0)/0.5;
   P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);g.t+=g.dir*P.v*dt/g.L;
   P.x=r.x0+(r.x1-r.x0)*g.t;P.z=r.z0+(r.z1-r.z0)*g.t;P.y=railY(r,P.x,P.z);
-  TRICK.pts+=55*dt;g.sc+=dt;TRICK.shown=2;trickHUD();
+  TRICK.pts+=55*dt*clamp(P.v/6,0,1);g.sc+=dt;   // points only while she is really slidingTRICK.shown=2;trickHUD();
   if(Math.random()<dt*25)sparks(new THREE.Vector3(P.x,P.y+0.05,P.z),1,'#ffd27a',2.2,0.035);
   const off=g.t<=0||g.t>=1,pop=jumpQ,slow=P.v<1.2;jumpQ=false;
-  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;}
+  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;P.grindCD=clock+0.8;
+    if(slow){const cx=r.top!=null?(PIER.x0+PIER.x1)/2:0;P.x+=0.7*(Math.sign(cx-P.x)||1);}}   // too slow: she steps off toward the road (or the middle of the pier); the rails all run along z
   player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(0,0,0);
   poseSkater(player,dt,{v:P.v,turn:0,push:false,brake:false,air:false,grind:true});}
 function updateTricks(dt){if(TRICK.shown>0){TRICK.shown-=dt;if(TRICK.shown<=0&&!TRICK.mult)$('trick').hidden=true;}
@@ -5924,6 +5931,32 @@ function updateTricks(dt){if(TRICK.shown>0){TRICK.shown-=dt;if(TRICK.shown<=0&&!
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
 const HOME=[-49.2,-123.6,-2.55];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
+// today's aim, shown in the tracker when no errand is being followed: the next step of the story in a line
+function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
+  const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
+  if(f.in_ura)return null;
+  if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
+  if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
+  if(d===1){if(!SAVE.qs.melon)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
+    if(!seen('d1_mio'))return eve?'夕方の桟橋の先へ行ってみる':'ひと休みしたら、夕方の桟橋へ';return home;}
+  if(d<=3){if(d===3&&!seen('d3_sota'))return '浜辺のソウタくんに会いに行く';
+    if(eve||night)return seen('d'+d+'_mio')?home:'夕方の桟橋の先へ。それから'+home;
+    // the daytime: what can still be found today, then errands, then resting until the evening
+    const todo=[];
+    if(!f.saw_van)todo.push('海岸通りを走る黒いバンを見に行く');
+    else if(!seen('master_van'))todo.push('しおさいのマスターに、黒いバンのことを聞く');
+    if(!f.met_mochi)todo.push('浜辺の西の流木のあたりにいる白い猫に会う');
+    if(d===3&&(f.saw_van||f.heard_og)&&!seen('d3_baker'))todo.push('こむぎ堂の主人に話す');
+    if(QUESTS.some(available))todo.push('町の「！」の人を手伝う');
+    const rest='ばあちゃんに話すと夕方まで休める。夕方は桟橋へ';
+    return todo.length?todo.slice(0,2).join('、')+'。'+rest:'今日できることは終わった。'+rest;}
+  if(f.route===3&&!f.ending_calm){if(d<6)return '夏祭りの準備：「！」の人を手伝う。ソウタくんと大会の練習もできる。夕方は'+home;
+    return f.contest_done?null:'浜辺のソウタくんに話して、スケボー大会に出る';}
+  if(f.route===2&&!f.ending_org){if(!seen('o4_baker'))return 'こむぎ堂の主人に、ゆうべのことを話す';
+    const todo=[];if(!f.drones_cleared)todo.push('こむぎ堂の主人に話してドローン迎撃');if(qs('og_evidence').state<2)todo.push('ソウタくんの探偵団の聞き込み');
+    if(todo.length)return todo.join('、')+(d>=5?'':'。夕方は'+home);return d>=5?'こむぎ堂の主人に話して、黒いバンを追う':'あしたの夜が勝負。夕方は'+home;}
+  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
+  return eve||night?home:null;}
 const endingsSeen=()=>['ending_calm','ending_horror','ending_org'].filter(k=>SAVE.flags[k]).length;
 // back to the third evening: the route and what happened on it are undone; endings, friendships and finished errands stay
 function rewindTo3(){SAVE.day=3;SAVE.hour=18.2;SAVE.cap=18.9;SAVE.flags.mio_left=3;
@@ -6292,6 +6325,11 @@ const EVENTS=[
     ['toast','日が傾いてきた'],['cap',18.9],['time',16.6,5]]},
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]},
+  // in the daytime from the second day, grandma lets you rest until the evening
+  {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
+    ['ask','tome','どうする？ ちょっと休んでいくかい？',[
+      ['夕方まで、ひと休みする',[['fade','out'],['time',16.6,0],['cap',18.9],['wait',0.4],['fade','in'],['toast','夕方になった'],['say','tome','よく休めたかい。夕方の海は、きれいだよ。']]],
+      ['まだ町を回る',[['say','tome','気をつけて行っておいで。']]]]]]},
   // grandma takes you home in the evening: the night's event, then the next morning
   {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[
     ['ask','tome','そろそろ、家に帰ろうか？',[
@@ -6497,7 +6535,7 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');c
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
-  else tr.hidden=true;renderBag();}
+  else goalHUD(tr);renderBag();}
 function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){const s=qs(q.id);if(s.state===0&&!available(q))continue;
   const d=document.createElement('div');d.className='q'+(SAVE.tracked===q.id?' on':'');const st=document.createElement('span');
   st.className='st '+(s.state===2?'done':s.state===1?'act':'new');st.textContent=s.state===2?'完了':s.state===1?'おつかい中':'まだ話していない';
