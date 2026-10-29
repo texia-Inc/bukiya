@@ -4819,7 +4819,7 @@ function animHeroine(h,dt,s){
   h.tail.forEach((seg,k)=>{seg.rotation.x=seg.userData.rx+(k?h.tailV*0.6+s.v*0.025*(k===1?1:0.5):0)+Math.sin(h.t*3+k)*0.03;seg.rotation.z=sw*(k+1)*0.6+turn*0.18*k;});
   h.charm.rotation.z=Math.sin(h.t*4.2)*0.25+turn*0.3;h.charm.rotation.x=Math.sin(h.t*3.1)*0.15-acc*0.01;
 }
-function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;
+function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
   let crouch=s.brake?0.2:s.v>6?0.55:0.28;if(s.air)crouch=0.8;P.c+=(crouch-P.c)*Math.min(1,6*dt);
   P.st+=(clamp(s.turn,-1,1)-P.st)*Math.min(1,5*dt);P.push+=((s.push?1:0)-P.push)*Math.min(1,6*dt);
   // stance (LEAD = the leg on the nose, +1 = left foot forward, facing the right of the board seen from behind): riding, the body
@@ -4959,15 +4959,23 @@ const BACK_Q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Ma
 function boardOnBack(h,out){h.root.updateMatrixWorld(true);_bm.copy(h.root.matrixWorld).invert().multiply(h.torso.matrixWorld);
   const m=new THREE.Matrix4().compose(new THREE.Vector3(0,0.15,-0.34),BACK_Q,new THREE.Vector3(1,1,1));_bm.multiply(m);_bm.decompose(out.p,out.q,_bs);return out;}
 function setBoard(h,p,q){h.board.position.copy(p);h.board.quaternion.copy(q);}
-function poseRunner(h,dt,s){const P=h.pose;h.t+=dt;const tr=s.tr,v=s.v||0,run=clamp(v/5,0,1);
-  P.ph=(P.ph||0)+dt*(v>0.15?3.2+v*1.25:0);const ph=P.ph;
-  const LEAD=1;
-  // body: upright, leaning into the run, a small bob and counter-twist
-  let hipY=0.93-0.035*run+Math.abs(Math.sin(ph))*0.03*run,yaw=Math.sin(ph)*0.12*run,lean=0.05+0.22*run;
-  let feet={};
-  for(const L of h.legs){const phi=ph+(L.sx>0?0:Math.PI),stride=(0.06+0.2*run)*clamp(v/1.2,0,1),lift=(0.04+0.16*run)*clamp(v/1.2,0,1);
-    feet[L.sx]={x:L.sx*0.1,y:ANK_G+lift*Math.max(0,Math.cos(phi)),z:stride*Math.sin(phi)};}
-  if(s.air){for(const k in feet){feet[k].y+=0.18;feet[k].z*=0.5;}hipY-=0.05;lean+=0.1;}
+// one leg's foot path through a stride, u in [0,1): a short stance where the foot sweeps back under the hips at ground speed,
+// then the swing: heel kicks up behind, the knee drives through high, the shin reaches forward and the foot lands
+function strideFoot(u,sf,r,L){if(u<sf){const t=u/sf;return{z:lerp(L,-L,t),y:ANK_G,st:Math.sin(Math.PI*t),toe:0};}
+  const t=(u-sf)/(1-sf),hh=lerp(0.12,1,r);
+  const K=[[-L,0],[-L-0.08*r,0.34*hh],[0.02,0.36*hh],[L*0.95,0.13*hh],[L,0]],n=K.length-1,x=t*n,k=Math.min(n-1,Math.floor(x)),f=x-k;
+  const P=i=>K[Math.max(0,Math.min(n,i))];const cr=(a,b,c,d,f)=>0.5*(2*b+(-a+c)*f+(2*a-5*b+4*c-d)*f*f+(-a+3*b-3*c+d)*f*f*f);
+  const z=cr(P(k-1)[0],P(k)[0],P(k+1)[0],P(k+2)[0],f),y=cr(P(k-1)[1],P(k)[1],P(k+1)[1],P(k+2)[1],f);
+  return{z,y:ANK_G+Math.max(0,y),st:0,toe:t<0.35?0.7*Math.sin(Math.PI*t/0.35):t>0.75?-0.25*Math.sin(Math.PI*(t-0.75)/0.25):0};}
+function poseRunner(h,dt,s){const P=h.pose;h.t+=dt;const tr=s.tr,v=s.v||0,r=clamp((v-1.5)/4.5,0,1),moving=clamp(v/0.8,0,1);
+  const f=lerp(0.85,1.45,r),sf=lerp(0.6,clamp(0.8*f/Math.max(v,0.1),0.17,0.45),r),L=lerp(0.28,0.34,r)*moving;
+  P.ph=((P.ph||0)+dt*f*moving)%1;const ph=P.ph;
+  const LEAD=1;h.kneeOut=-0.03;
+  const feet={};let comp=0;
+  for(const L2 of h.legs){const u=(ph+(L2.sx>0?0:0.5))%1,F=strideFoot(u,sf,r,L);F.y=lerp(ANK_G,F.y,moving);F.x=L2.sx*lerp(0.085,0.055,r);feet[L2.sx]=F;comp=Math.max(comp,F.st);}
+  // hips dip as the weight lands and float in the flight phase; pelvis and shoulders twist against each other
+  let hipY=lerp(0.93,0.875,r)-comp*0.04*r+(1-comp)*0.02*r,yaw=-0.3*feet[1].z*moving,lean=0.04+0.16*r;
+  if(s.air){for(const k in feet){feet[k].y+=0.2;feet[k].z*=0.4;}hipY-=0.04;lean+=0.08;}
   let hold=0,boardP=null;
   if(tr&&tr.type==='off'){   // step off the back, press the tail, catch the nose
     const t=tr.t,sk=1-smooth(clamp(t/0.6,0,1));yaw=lerp(yaw,-1.25,sk);hipY=lerp(hipY,0.975,sk);lean=lerp(lean,0.1,sk);
@@ -4981,11 +4989,12 @@ function poseRunner(h,dt,s){const P=h.pose;h.t+=dt;const tr=s.tr,v=s.v||0,run=cl
     boardP={p:tail.sub(new THREE.Vector3(0,0.03,-0.42).applyQuaternion(q)),q};hold=smooth(clamp((t-0.5)/0.3,0,1));}
   // pose the rig
   h.hips.position.set(0,hipY,0);h.hips.rotation.set(0,yaw,0);
-  h.torso.rotation.set(lean,-yaw*0.6,0);h.head.rotation.order='YXZ';h.head.rotation.set(-lean*0.6,-yaw*0.4,0);
-  for(const a of h.arms){const phi=ph+(a.sx>0?Math.PI:0),sw=Math.sin(phi)*(0.15+0.75*run)*clamp(v/1.2,0,1);
-    a.sh.rotation.set(-sw*0.8,0,a.sx*(0.2+0.12*run));a.el.rotation.x=-(0.3+0.85*run)-Math.max(0,-sw)*0.4;}
+  h.torso.rotation.set(lean,-yaw*1.7,0);h.head.rotation.order='YXZ';h.head.rotation.set(-lean*0.7,yaw*0.7,0);
+  // arms bent at the elbow and pumping front to back, each with the opposite leg
+  for(const a of h.arms){const sw=clamp(feet[-a.sx].z/Math.max(L,0.01),-1,1)*moving,amp=lerp(0.28,0.62,r);
+    a.sh.rotation.set(-sw*amp-0.08*r,0,a.sx*lerp(0.1,0.16,r));a.el.rotation.x=-(lerp(0.2,1.3,r)+Math.max(0,sw)*0.12*r);}
   const hy=h.hips.position.y-0.07,cy=Math.cos(yaw),sy=Math.sin(yaw);
-  for(const L of h.legs){const f=feet[L.sx];solveLeg(L,L.sx*0.09*cy,hy,-L.sx*0.09*sy,f.x,f.y,f.z);L.ft.rotation.y=0;}
+  for(const L of h.legs){const f=feet[L.sx];solveLeg(L,L.sx*0.09*cy,hy,-L.sx*0.09*sy,f.x,f.y,f.z);L.ft.rotation.y=0;L.ft.rotation.x+=f.toe||0;}
   h.root.updateMatrixWorld(true);
   // the board
   const up=boardUpright({p:new THREE.Vector3(),q:new THREE.Quaternion()});
@@ -5097,7 +5106,7 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
     // a leg that cannot quite reach (the pushing foot on the ground) stretches up to 8%
     const raw=_a.distanceTo(_b),k=clamp(raw/((M.l1+M.l2)*0.995),1,1.08);M.up.scale.setScalar(k);M.ft.scale.setScalar(1/k);
     const l1=M.l1*k,l2=M.l2*k,d=Math.min(raw,l1+l2-1e-3),dir=_c.copy(_b).sub(_a).normalize(),a=(l1*l1-l2*l2+d*d)/(2*d),hh=Math.sqrt(Math.max(0,l1*l1-a*a));
-    const pole=_d.set(L.sx*0.18,0,1);nodeQ(V,h.hips,_q1);pole.applyQuaternion(_q1);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
+    const pole=_d.set(L.sx*(h.kneeOut!=null?h.kneeOut:0.18),0,1);nodeQ(V,h.hips,_q1);pole.applyQuaternion(_q1);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
     const knee=_a.clone().addScaledVector(dir,a).addScaledVector(pole,hh),tgt=_a.clone().addScaledVector(dir,d);
     swingTo(V,M.up,'J_Bip_'+M.n+'_UpperLeg',M.dUp,knee.clone().sub(_a));
     swingTo(V,M.lo,'J_Bip_'+M.n+'_LowerLeg',M.dLo,tgt.clone().sub(knee));
@@ -5426,8 +5435,8 @@ function stepPlayer(dt){
       $('bFoot').textContent=P.foot?'乗る':'降りる';}}
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   let a=onFoot?0:-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
-  if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?5.2*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
-    P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?2.6:still?5:7));kickQ=false;P.kickT=-1;
+  if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?7.5*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
+    P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?1.6:still?5:6));kickQ=false;P.kickT=-1;
     if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr)P.tr={type:'stow',t:0,dur:0.4};}
   // each kick: the back foot plants, shoves, and the board surges forward; holding the key keeps kicking
   P.kickCD-=dt;if(P.kickT>=0){P.kickT+=dt/0.48;if(P.kickT>=1)P.kickT=-1;}
