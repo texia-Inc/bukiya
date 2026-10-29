@@ -252,7 +252,11 @@ function snap(){const src=renderer.domElement,w=360,h=Math.round(w*src.height/sr
   else toast(near?`${near.name}で1枚`:'パシャ。アルバムに残した');}
 function renderAlbum(){const A=$('albumGrid');A.innerHTML='';if(!ALBUM.length){const p=document.createElement('p');p.className='sub';p.textContent='まだ写真がありません。気に入った景色で撮ってみよう。';A.appendChild(p);return;}
   for(const a of ALBUM){const f=document.createElement('figure');const im=document.createElement('img');im.src=a.url;im.alt=a.cap;const c=document.createElement('figcaption');c.textContent=a.cap;f.append(im,c);A.appendChild(f);}}
-$('photoBtn').addEventListener('click',()=>{photoReq=true;});$('lightBtn').addEventListener('click',toggleTorch);
+$('photoBtn').addEventListener('click',()=>{photoReq=true;});
+// phones: the menu button folds the tools away; choosing one folds them again. Tapping the tracker folds it to its title
+$('menuBtn').addEventListener('click',()=>{const T=$('tools');T.classList.toggle('open');$('menuBtn').textContent=T.classList.contains('open')?'とじる':'メニュー';});
+for(const id of ['logBtn','albumBtn','closetBtn','photoBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
+$('tracker').addEventListener('click',()=>{$('tracker').classList.toggle('mini');});$('lightBtn').addEventListener('click',toggleTorch);
 // markers floating in the world
 const markTex=(ch,bg)=>canvasTex(64,64,(g,w,h)=>{g.fillStyle=bg;g.beginPath();g.arc(32,30,24,0,7);g.fill();g.beginPath();g.moveTo(22,48);g.lineTo(42,48);g.lineTo(32,62);g.fill();
   g.fillStyle='#fff';g.font='900 32px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(ch,32,31);});

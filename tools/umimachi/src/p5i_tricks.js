@@ -49,4 +49,4 @@ function grindStep(dt){const g=P.grind,r=g.r;
   player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(0,0,0);
   poseSkater(player,dt,{v:P.v,turn:0,push:false,brake:false,air:false,grind:true});}
 function updateTricks(dt){if(TRICK.shown>0){TRICK.shown-=dt;if(TRICK.shown<=0)$('trick').hidden=true;}
-  $('bTrick').hidden=!hasTouch||state!=='play';}
+  $('bTrick').hidden=!hasTouch||state!=='play'||P.foot;}

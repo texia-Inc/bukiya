@@ -143,6 +143,21 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 .keys dt{font-weight:900;color:var(--sea-deep);white-space:nowrap}
 .keys dd{margin:0}
 #loading{position:fixed;inset:0;display:grid;place-items:center;background:#cfe8f5;font-weight:900;color:var(--sea-deep);font-size:16px}
+#menuBtn{display:none}
+/* phones: a quieter screen. The tools fold into one menu button, the top-left cards get smaller (tap the tracker to fold it),
+   the map and the round buttons shrink, the place name goes (the map shows it) */
+@media (pointer:coarse){
+  #topL{max-width:58vw;gap:6px}#wallet{font-size:15px;padding:5px 10px}#wallet small{display:none}#clock{font-size:11px;padding:4px 8px}#place{display:none}
+  #tracker{font-size:11.5px;padding:6px 9px;line-height:1.45;pointer-events:auto}#tracker b{font-size:12px}#tracker .meter{font-size:11px}
+  #tracker.mini .step,#tracker.mini .meter{display:none}#tracker.mini b::after{content:' ▸';color:var(--ink-soft)}
+  #map{width:92px;height:92px;padding:3px}
+  #tools{top:calc(env(safe-area-inset-top,0px) + 112px);gap:6px}#menuBtn{display:block}
+  #tools .tool{display:none}#tools #menuBtn,#tools #lightBtn,#tools.open .tool{display:block}#tools .tool[hidden]{display:none!important}
+  .tool{font-size:11px;padding:7px 9px;min-width:56px}
+  #pad{gap:9px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
+  .pb{width:56px;height:56px;font-size:12px}.pb.main{width:72px;height:72px}.pb.kick{width:80px;height:80px;font-size:15px}
+  #ring{opacity:.22}#bag .it{font-size:11px;padding:2px 6px 2px 2px}#bag .it img{width:20px;height:20px}
+}
 @media (prefers-reduced-motion: reduce){.tst{animation-duration:3.5s}#dialog .nx{animation:none}}
 </style>
 
@@ -155,6 +170,7 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
   </div>
   <div id="map" class="card" title="地図"><canvas id="mapc" width="244" height="244"></canvas></div>
   <div id="tools">
+    <button class="tool" id="menuBtn">メニュー</button>
     <button class="tool" id="logBtn">おつかい帳</button>
     <button class="tool" id="albumBtn">アルバム</button>
     <button class="tool" id="closetBtn">着がえ</button>
