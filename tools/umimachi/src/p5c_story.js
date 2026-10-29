@@ -39,7 +39,7 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||!!URA.chase;   // events during which the board is yours
+const storyFree=()=>RACE.on||!!URA.chase||ogBusy();   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -103,14 +103,17 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'race':{const t=await raceP(a[0]);SAVE.flags[a[1]]=t<0?-1:Math.round(t*10);break;}   // ['race', {from:[x,z,yaw], to:[x,z,r], limit}, flag]  the time in tenths of a second, -1 if over the limit
   case 'fireworks':fireworks(a[0]);break;
   case 'chase':await chaseP();break;                                     // ['chase']  in 裏海街: the big shadow chases you to the west tunnel
-  case 'ura':if(a[0])uraEnter();else uraExit();break;                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
+  case 'ura':if(a[0])uraEnter();else uraExit();break;
+  case 'ogscene':ogScene(a[0]);break;                                   // ['ogscene', true|false]  the black van parked by the east tunnel, Kurosaki and his men round it
+  case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
+  case 'vanchase':await vanChaseP();break;                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
   SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
 function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
-function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);
+function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
   applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}

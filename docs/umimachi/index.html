@@ -5447,7 +5447,7 @@ function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.li
 function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,6,'#fff3c0',4,0.04);
   if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);DRONE.killed++;SAVE.money+=50;
     sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();if(DRONE.killed>=DRONE.total)finishDrones();}}
-function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;save();renderHUD();
+function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;SAVE.flags.drones_cleared=1;save();renderHUD();
   toast('ドローンを全部撃ち落とした！ お礼 +1000円',true);setTimeout(()=>toast('こむぎ堂の主人「いい腕だ。…このことは、町のみんなには内緒だぞ」'),1800);}
 function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   // how you are moving, for the drones to lead their shots
@@ -5545,7 +5545,7 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||!!URA.chase;   // events during which the board is yours
+const storyFree=()=>RACE.on||!!URA.chase||ogBusy();   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -5609,14 +5609,17 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'race':{const t=await raceP(a[0]);SAVE.flags[a[1]]=t<0?-1:Math.round(t*10);break;}   // ['race', {from:[x,z,yaw], to:[x,z,r], limit}, flag]  the time in tenths of a second, -1 if over the limit
   case 'fireworks':fireworks(a[0]);break;
   case 'chase':await chaseP();break;                                     // ['chase']  in 裏海街: the big shadow chases you to the west tunnel
-  case 'ura':if(a[0])uraEnter();else uraExit();break;                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
+  case 'ura':if(a[0])uraEnter();else uraExit();break;
+  case 'ogscene':ogScene(a[0]);break;                                   // ['ogscene', true|false]  the black van parked by the east tunnel, Kurosaki and his men round it
+  case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
+  case 'vanchase':await vanChaseP();break;                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
   SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
 function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
-function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);
+function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
   applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
@@ -5762,6 +5765,52 @@ function updateUra(dt){
   if(dd<1.8){P.v*=0.3;P.bump=0.6;bg.position.x-=dx/dd*14;bg.position.z-=dz/dd*14;C.t=Math.max(0,C.t-8);toast('つかまりそう……！ 走って！');}
   if(Math.hypot(P.x-URA_EXIT[0],P.z-URA_EXIT[1])<URA_EXIT[2]){URA.chase=null;bg.visible=URA.big.eye.visible=false;URA.goal.visible=false;C.res();}}
 
+/* ---------- the Oceangate route "シーサイド・コンスピラシー": Kurosaki and his men in black, running after Nagi on foot,
+   and the last chase after the black van along the coast road. Nobody is hit; the board is the weapon. ---------- */
+const SUIT={skin:'#e9c3a4',hair:'#15130f',style:'short',shirt:'#1d1f24',sleeves:'long',vest:'#2a2d33',bottom:'pants',bottomCol:'#1d1f24',shoe:'#0e0e10',glasses:true};
+const OG={men:[],boss:null,run:null,van:null};
+function ogMan(o){const h=makeHuman(Object.assign({},SUIT,o||{}));h.g.visible=false;world.add(h.g);return h;}
+for(let k=0;k<3;k++)OG.men.push(ogMan(k===0?{hair:'#3a3a3a',shirt:'#f2f2ee',vest:'#1d1f24'}:{}));   // the first is Kurosaki: grey hair, white shirt
+// the scene by the parked van: the van stops on the coast road by the east tunnel and the men stand round it
+const OG_PARK=[200,COAST_Z+2.2];
+function ogScene(on){VAN.scripted=on;OG.scene=on;if(!on)for(const h of OG.men)h.g.visible=false;for(const c of CARS)if(c!==VAN){c.g.visible=!on;c.box.on=!on;}if(on){VAN.x=OG_PARK[0];VAN.z=OG_PARK[1];VAN.v=0;VAN.g.position.set(VAN.x,G(VAN.x,VAN.z)+0.02,VAN.z);VAN.g.rotation.y=-Math.PI/2;
+    const hl=VAN.g.userData.len/2+0.1;Object.assign(VAN.box,{x0:VAN.x-hl,x1:VAN.x+hl,z0:VAN.z-0.9,z1:VAN.z+0.9,top:G(VAN.x,VAN.z)+1.9,on:true});}
+  OG.men.forEach((h,k)=>{h.g.visible=on;if(on){const x=OG_PARK[0]-2+k*2.2,z=OG_PARK[1]-2.4-(k%2)*0.6;h.g.position.set(x,G(x,z),z);h.g.rotation.y=Math.PI*(k?0.9:1.1);}});}
+// the men run after you: get to the goal before one of them reaches you; caught, you start the run again
+function pursuitP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;OG.run={o,res,t:0};ogPlace();if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
+function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;OG.run.t=0;
+  const F=[Math.sin(P.yaw),Math.cos(P.yaw)];OG.men.forEach((h,k)=>{const x=P.x-F[0]*(15+k*2)+(k-1)*2,z=P.z-F[1]*(15+k*2);h.g.visible=true;h.g.position.set(x,G(x,z),z);});}
+// the van runs west along the coast road; catch up with its back bumper before it reaches the tunnel
+function vanChaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;VAN.scripted=true;VAN.x=175;VAN.z=COAST_Z+2.2;VAN.v=9;
+  P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;OG.van={res,t:0,near:0};$('fade').style.opacity=0;
+  if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
+const ogBusy=()=>!!(OG.run||OG.van);
+function ogHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
+  if(OG.run){b.textContent='逃げろ！';s.textContent=OG.run.o.hint;const g=OG.run.o.to;m.textContent=`のこり ${Math.round(Math.hypot(P.x-g[0],P.z-g[1]))} m`;}
+  else{b.textContent='黒いバンを止めろ！';s.textContent='W で蹴って追いつく。バンのうしろにぴったりつけたら勝ち';const d=Math.max(0,Math.round(Math.hypot(P.x-VAN.x,P.z-VAN.z)-2.6));
+    m.textContent=`バンまで ${d} m　ねばり ${'■'.repeat(Math.round(OG.van.near/0.5))}${'□'.repeat(Math.max(0,5-Math.round(OG.van.near/0.5)))}`;}
+  tr.append(b,s,m);}
+// the end of the van chase: a camera beside the stopped van
+function ogEndCam(){const k=OG.men[0],x=VAN.x-1.2,z=VAN.z-1.6;k.g.visible=true;k.g.position.set(x,G(x,z),z);k.g.rotation.y=Math.atan2(P.x-x,P.z-z);poseHuman(k,'stand',0.016,{});
+  setCam([[VAN.x+4,G(VAN.x,VAN.z)+2.2,VAN.z-5.5],[VAN.x,G(VAN.x,VAN.z)+1.1,VAN.z],2,'cut']);}
+function updateOG(dt){
+  if(OG.scene)for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}   // no traffic while the van is parked for the scene
+  if(SAVE.drones&&!SAVE.flags.drones_cleared)SAVE.flags.drones_cleared=1;   // saves from before the story
+  if(SAVE.flags.ending_org&&!OG.van){VAN.scripted=true;VAN.g.visible=false;VAN.box.on=false;}   // the van was taken away
+  if(OG.run){const R=OG.run,o=R.o;R.t+=dt;const v=Math.min(8.4,6.2+R.t*0.08);
+    for(const h of OG.men){const p=h.g.position,dx=P.x-p.x,dz=P.z-p.z,d=Math.hypot(dx,dz);p.x+=dx/d*v*dt;p.z+=dz/d*v*dt;p.y=G(p.x,p.z);h.g.rotation.y=Math.atan2(dx,dz);poseHuman(h,'walk',dt,{rate:13});
+      if(d<1.3){$('fade').style.opacity=1;setTimeout(()=>{$('fade').style.opacity=0;},500);toast('つかまった……！ もう一度',true);ogPlace();break;}}
+    OG.mark.visible=true;OG.mark.position.set(o.to[0],G(o.to[0],o.to[1])+3.2+Math.sin(clock*3)*0.12,o.to[1]);ogHUD($('tracker'));
+    if(Math.hypot(P.x-o.to[0],P.z-o.to[1])<o.to[2]){OG.run=null;OG.mark.visible=false;for(const h of OG.men)h.g.visible=false;R.res();}}
+  if(OG.van){const C=OG.van;C.t+=dt;VAN.v=Math.min(12.2,9+C.t*0.25);VAN.x-=VAN.v*dt;
+    for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}   // the coast road is cleared for the chase
+    VAN.g.position.set(VAN.x,G(clamp(VAN.x,-CUT_X,CUT_X),VAN.z)+0.02,VAN.z);VAN.g.rotation.y=-Math.PI/2;for(const w of VAN.g.userData.wheels)w.rotation.x+=VAN.v*dt/0.3;
+    const hl=VAN.g.userData.len/2+0.1;Object.assign(VAN.box,{x0:VAN.x-hl,x1:VAN.x+hl,z0:VAN.z-0.9,z1:VAN.z+0.9,top:G(VAN.x,VAN.z)+1.9,on:true});
+    const behind=P.x-VAN.x,close=behind>hl&&behind<hl+3.2&&Math.abs(P.z-VAN.z)<1.6;C.near=close?C.near+dt:Math.max(0,C.near-dt*0.5);
+    OG.mark.visible=true;OG.mark.position.set(VAN.x,G(VAN.x,VAN.z)+3.6+Math.sin(clock*3)*0.12,VAN.z);ogHUD($('tracker'));
+    if(C.near>=2.5){OG.van=null;OG.scene=true;OG.mark.visible=false;VAN.v=0;C.res(true);}   // traffic stays away until the scene ends (['ogscene',false])
+    else if(VAN.x<-CUT_X+6){toast('逃げられた……！ もう一度',true);VAN.x=175;P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);camInit=false;C.t=0;C.near=0;}}}
+
 /* ---------- the events of the story, as data for the engine in p5c_story.js ----------
    {id, on:{talk:npcId} | on:{near:[x,z,radius]} | on:{night:true} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
    when: day, minDay, phase ('morning'|'day'|'evening'|'night', or a list), hour:[from,to], flags:{k:v}, min:{k:n}, seen, unseen, quest:{id:state}, test:fn
@@ -5772,7 +5821,7 @@ function updateUra(dt){
    On the third night Nagi chooses: follow Omochi the cat to the west tunnel (horror), follow the van to the port (Oceangate),
    or go to sleep (the easy-going summer). Flags kept on the way: bond_<npc> (errands and kind answers), met_mio, met_mochi,
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
-const HOME=[-48.6,-123.4,-2.42];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
+const HOME=[-49.2,-123.6,-2.55];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
@@ -5916,7 +5965,21 @@ const EVENTS=[
       ['say','nagi','ここ……海街、だよね？ ばあちゃん……？'],
       ['say','','おもちが、ニャア、と小さく鳴いた。その目が、町の三つの方角を順に見る。駅、商店街、そして坂の上の神社。'],
       ['cam','off'],['toast','L でライト。影の住人に見つからずに、3つの手がかりを探そう',true],['stop']]],
-    ['if',{flags:{route:2}},[['say','','ナギはスケボーをかかえて、坂を下りはじめた。港の倉庫街に、小さな灯りがともっている……。'],['toast','悪の組織ルート「シーサイド・コンスピラシー」は準備中。いまは次の朝になる',true]]],
+    ['if',{flags:{route:2}},[['say','','ナギはスケボーをかかえて、そっと坂を下りた。'],
+      ['fade','out'],['ogscene',true],['time',23,0],['warp',186,COAST_Z-2.6,Math.PI/2],
+      ['cam',[188,G(188,COAST_Z)+2.2,COAST_Z-6],[200,G(200,COAST_Z)+1.2,COAST_Z+1.2],1.2,'cut'],['fade','in'],
+      ['say','','海岸トンネルの手前に、ライトを消した黒いバンが止まっている。','黒いスーツの男たちが、荷台から重そうな箱を下ろしていた。'],
+      ['say','黒崎','電波塔の出力は、明日の夜に最大まで上げる。町の連中は、何も気づかん。','島の灯台は、あさっての夜に片づける。あれさえなくなれば、リゾートの工事はすぐに始められる。'],
+      ['say','nagi','（灯台を……片づける？ 壊すってこと……？）'],
+      ['say','','ガタン。足もとのスケボーが、音を立てた。'],
+      ['say','黒崎','――だれだ！ つかまえろ！'],
+      ['say','nagi','やばっ……！ 坂の下まで逃げなきゃ！'],
+      ['cam','off'],
+      ['pursuit',{from:[186,COAST_Z-2.6,-Math.PI/2],to:[0,COAST_Z-1,6],hint:'海岸通りを西へ。海へつづく坂の下まで逃げる'}],
+      ['ogscene',false],
+      ['say','','坂の下の路地に飛びこんで、息をひそめた。','革靴の足音が、遠ざかっていく……。'],
+      ['say','nagi','（オーシャンゲート……灯台を壊すつもりなんだ。明日、こむぎ堂のおじさんに話してみよう）'],
+      ['set','og_saw']]],
     ['if',{flags:{route:3}},[['say','nagi','……明日、ばあちゃんに聞いてみよう。','おやすみなさい。']]],
     ['wait',0.6],['fade','out']]},
 
@@ -5984,6 +6047,44 @@ const EVENTS=[
     ['toast','のほほんルート「なつやすみ帳」 おしまい',true],
     ['say','','――のほほんルート「なつやすみ帳」 おしまい。','このあとも、夏休みは続く。夜の町を、花火の下で散歩してみよう。'],
     ['cam','off']]},
+
+  /* ----- the Oceangate route "シーサイド・コンスピラシー" (route 2), days 4–5: the baker's past, the drones, the kids' detective work,
+     and the chase after the black van ----- */
+  {id:'o4_morning',when:{day:4,flags:{route:2}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう、ナギ。……おや、目の下にくまができてるよ。ゆうべは、どこへ行ってたんだい？'],
+    ['ask','nagi','（どうする？）',[
+      ['正直に話す',[['say','tome','……オーシャンゲートの人たちが、灯台を？','こむぎ堂の主人に相談してごらん。あの人は昔、そういう仕事をしてたって、町のうわさだよ。']]],
+      ['なんでもない',[['say','tome','そうかい……。無理はおしでないよ。困ったら、こむぎ堂の主人を頼るといい。']]]]],
+    ['cam','off'],['toast','こむぎ堂の主人に、ゆうべのことを話そう']]},
+  {id:'o4_baker',on:{talk:'baker'},mark:true,when:{minDay:4,flags:{route:2}},script:[
+    ['say','baker','……黒崎たちが、灯台を？','ナギちゃん、ちょっと店の奥へ来てくれ。'],
+    ['say','baker','昔、おれは「こむぎ」って呼ばれてた。ある組織の……まあ、エージェントってやつだ。','黒崎は、昔の仕事相手さ。あいつらは電波塔とドローンで、この町を見張ってる。'],
+    ['if',{min:{drones_cleared:1}},[['say','baker','このあいだのドローン退治で、やつらの目は半分つぶれた。いい腕だったよ。']],
+      [['say','baker','まずは、やつらの目をつぶそう。町の上を飛んでる監視ドローンだ。','昔の仕事道具を貸してやる。スケボーに乗ったまま、クリックか J キーで撃てる。','気をつけろ、向こうも撃ってくる。目が赤く光ったら、曲がってよけるんだ。']]],
+    ['say','baker','それから、ソウタたちにも声をかけておいた。あの子たちは町じゅうに友だちがいる。証拠を集めてもらおう。'],
+    ['if',{min:{drones_cleared:1}},[],[['call',()=>startDrones()]]]]},
+  {id:'o5_morning',when:{day:5,flags:{route:2}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','今日は、なんだか町が静かだねえ。電波塔の音も、ゆうべはひどかった。','ナギ、気をつけるんだよ。'],
+    ['cam','off'],['toast','ドローンを撃ち落とし、探偵団の証拠を集めたら、こむぎ堂の主人に話そう']]},
+  {id:'o5_boss',on:{talk:'baker'},mark:true,when:{minDay:5,flags:{route:2},min:{drones_cleared:1},quest:{og_evidence:2}},script:[
+    ['say','baker','ドローンは落とした。証拠もそろった。','今夜、黒崎はバンで港へ向かう。灯台をふき飛ばす起爆装置は、バンの中だ。','警察には知らせたが、間に合わん。……あのバンに追いつけるのは、町でいちばん速い、ナギちゃんのスケボーだけだ。'],
+    ['ask','nagi','（どうする？）',[['まかせて！',[]],['……やるしかないよね',[]]]],
+    ['fade','out'],['time',20.6,0],['cam','off'],['vanchase'],
+    ['call',ogEndCam],
+    ['say','','バンのうしろにぴたりとつけて、荷台の扉に手をのばした――','キキーッ！ バンが急ブレーキをかけて止まった。'],
+    ['say','baker','そこまでだ、黒崎。'],
+    ['say','黒崎','……パン屋だと？ まさか、お前……「こむぎ」か。引退したと聞いていたが。'],
+    ['say','baker','今は、ただのパン屋さ。この町のな。'],
+    ['say','','こむぎ堂の主人は、バンの中から黒い箱――起爆装置を取り出した。遠くで、パトカーのサイレンが聞こえる。'],
+    ['say','nagi','灯台……守れたんだ。'],
+    ['if',{flags:{met_mio:1}},[['say','','桟橋の先で、白いワンピースの女の子が、こちらに小さく手をふった気がした。']]],
+    ['say','baker','いい腕だ、ナギちゃん。……このことは、町のみんなには内緒だぞ。'],
+    ['ogscene',false],['set','ending_org'],['money',1500],
+    ['toast','悪の組織ルート「シーサイド・コンスピラシー」 おしまい',true],
+    ['say','','――悪の組織ルート「シーサイド・コンスピラシー」 おしまい。','灯台は守られた。けれど、その灯りがともらない理由は、まだだれも知らない。'],
+    ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
 
   /* ----- the horror route "トンネルの向こう" (route 1), the third night: 裏海街. Three things Mio left behind, then the chase ----- */
   {id:'ura_photo',on:{near:[62,TRAM_Z-1.5,2.4]},when:{flags:{in_ura:1,clue_photo:0}},script:[
@@ -6122,7 +6223,7 @@ for(const [x,z,yaw,col] of [[80,201.5,Math.PI/2,'#f2c230'],[93.6,60,0,'#f2f2ee']
 // the black van of Oceangate: no logo, windows you cannot see through; it keeps going round the coast road
 CARS.push({g:makeCar('#18191c',false,'van'),dir:-1,x:-30,z:COAST_Z+2.2,v:6,v0:5.5,van:true});const VAN=CARS[CARS.length-1];
 CARS.forEach(c=>{c.box=collide(0,0,0,0,'car');});
-function updateCars(dt){for(const c of CARS){let gap=1e9;for(const o of CARS){if(o===c||o.dir!==c.dir)continue;let d=(o.x-c.x)*c.dir;if(d<0)d+=520;if(d<gap)gap=d;}
+function updateCars(dt){for(const c of CARS){if(c.scripted)continue;let gap=1e9;for(const o of CARS){if(o===c||o.dir!==c.dir)continue;let d=(o.x-c.x)*c.dir;if(d<0)d+=520;if(d<gap)gap=d;}
     const pd=(P.x-c.x)*c.dir;if(Math.abs(P.z-c.z)<2.2&&pd>0&&pd<9)gap=Math.min(gap,pd);
     const tv=gap<7?0:gap<16?c.v0*(gap-7)/9:c.v0;c.v+=(tv-c.v)*Math.min(1,dt*2.5);c.x+=c.dir*c.v*dt;if(c.x>260)c.x-=520;if(c.x<-260)c.x+=520;for(const w of c.g.userData.wheels)w.rotation.x+=c.v*dt/0.3;
     c.g.position.set(c.x,G(clamp(c.x,-CUT_X,CUT_X),c.z)+0.02,c.z);c.g.rotation.y=c.dir>0?Math.PI/2:-Math.PI/2;const hl=c.g.userData.len/2+0.1;Object.assign(c.box,{x0:c.x-hl,x1:c.x+hl,z0:c.z-0.9,z1:c.z+0.9,top:G(clamp(c.x,-CUT_X,CUT_X),c.z)+1.45});}}
@@ -6185,6 +6286,13 @@ const QUESTS=[
    start:['ナギちゃん、お祭りには浴衣で行くの？','トメさんがね、昔の浴衣をしまってあるって言ってたわよ。聞いてみたら？'],
    steps:[{type:'talk',to:'tome',hint:'トメばあちゃんに浴衣のことを聞く',text:['浴衣かい？ あるある。ナギのお母さんが、ちょうどナギくらいのころに着てたのがね。','たんすの奥から出しておいたよ。着がえのとき、着てごらん。']}],reward:200,
    done:()=>{SAVE.owned=SAVE.owned||{};for(const p of PRIZES)if(p.id==='yukata')SAVE.owned[p.key]=1;toast('浴衣を着られるようになった（着がえ C）',true);}},
+  // the Oceangate route: the kids gather what the town saw
+  {id:'og_evidence',title:'海街少年探偵団',giver:'sota',when:{flags:{route:2},seen:'o4_baker'},
+   start:['おねえちゃん！ こむぎ堂のおじさんから聞いたよ。','おれたち「海街少年探偵団」も手伝う！ 町の人に、黒いバンのことを聞いて回ろうよ。','魚松のおかみさん、しおさいのマスター、桟橋の釣りのおじさん。みんな何か見てるはずだよ！'],
+   steps:[{type:'talk',to:'okami',hint:'魚松のおかみさんに、黒いバンのことを聞く',text:['黒いバンの人たち？ ゆうべ、港で船に箱を積んでたよ。','「取り扱い注意」って、赤い字で書いてあったねえ。']},
+          {type:'talk',to:'master',hint:'しおさいのマスターに聞く',text:['黒崎って男なら、店の前で電話してたよ。','「あさっての夜で、灯台も町も終わりだ」なんて言ってた。……冗談だといいんだが。']},
+          {type:'talk',to:'fisher',hint:'桟橋の釣りのおじさんに聞く',text:['島の灯台の下に、見なれない機械が置いてあった。','夜になると、電波塔と同じリズムで赤く光るんだ。']},
+          {type:'talk',to:'sota',hint:'浜辺のソウタくんに知らせる',text:['すごい、ぜんぶ集まった！','この証拠、こむぎ堂のおじさんに渡しておくね！ おれたち、いいチームだね！']}],reward:600},
   {id:'photo',title:'海街の景色めぐり',giver:'neko',
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
@@ -6220,7 +6328,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}

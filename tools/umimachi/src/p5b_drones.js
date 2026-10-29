@@ -79,7 +79,7 @@ function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.li
 function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,6,'#fff3c0',4,0.04);
   if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);DRONE.killed++;SAVE.money+=50;
     sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();if(DRONE.killed>=DRONE.total)finishDrones();}}
-function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;save();renderHUD();
+function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;SAVE.flags.drones_cleared=1;save();renderHUD();
   toast('ドローンを全部撃ち落とした！ お礼 +1000円',true);setTimeout(()=>toast('こむぎ堂の主人「いい腕だ。…このことは、町のみんなには内緒だぞ」'),1800);}
 function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   // how you are moving, for the drones to lead their shots
