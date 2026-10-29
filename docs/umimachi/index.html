@@ -51,7 +51,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .tst{padding:8px 16px;font-weight:900;font-size:14px;animation:tin 2.8s ease forwards;white-space:nowrap}
 .tst.gold{background:#fff1c9;color:#7a4b06}
 @keyframes tin{0%{opacity:0;transform:translateY(-8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
-#dialog{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);translate:-50% 0;width:min(640px,calc(100% - 32px));padding:14px 18px 16px;pointer-events:auto;cursor:pointer}
+#dialog{position:fixed;z-index:5;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);translate:-50% 0;width:min(640px,calc(100% - 32px));padding:14px 18px 16px;pointer-events:auto;cursor:pointer}
 #dialog .who{display:inline-block;font-weight:900;font-size:13px;color:var(--paper);background:var(--rose);border-radius:99px;padding:3px 12px;margin-bottom:6px}
 #dialog p{margin:0;font-size:16px;line-height:1.75;font-weight:700;min-height:3.5em}
 #dialog .nx{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--ink-soft);animation:bob 1s ease-in-out infinite}
@@ -114,6 +114,19 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .pb{appearance:none;border:0;width:66px;height:66px;border-radius:50%;font-family:var(--round);font-weight:900;font-size:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 0 var(--shade);touch-action:none}
 .pb.shoot{grid-column:1/3;width:auto;height:58px;border-radius:29px;background:#d6453d;color:#fff;box-shadow:0 3px 0 #8e2a24;font-size:16px}
 .pb.shoot.on{transform:scale(.96)}
+#clock{padding:4px 10px;font-size:12px;font-weight:900;vertical-align:middle}
+.cbar{position:fixed;left:0;right:0;height:0;background:#0d0c0b;pointer-events:none;transition:height .6s ease;z-index:4}
+#cbarT{top:0}#cbarB{bottom:0}body.cine .cbar{height:9vh}body.cine #hud>*:not(#toast){opacity:0;pointer-events:none;transition:opacity .4s}
+#fade{position:fixed;inset:0;background:#0d0c0b;opacity:0;pointer-events:none;transition:opacity .8s;z-index:6}
+#dchoices{display:flex;flex-direction:column;gap:6px;margin-top:10px}#dchoices:empty{display:none}
+#dchoices button{font:inherit;font-weight:900;font-size:15px;text-align:left;padding:9px 14px;border-radius:12px;border:2px solid var(--shade);background:var(--paper);color:var(--ink);cursor:pointer}
+#dchoices button:hover,#dchoices button:focus-visible{border-color:var(--rose);outline:none}
+#dchoices button kbd{font-family:var(--round);background:var(--ink);color:var(--paper);border-radius:6px;padding:0 6px;margin-right:8px;font-size:12px}
+#dialog.choosing{cursor:default}#dialog.choosing .nx{display:none}
+#slots{display:flex;flex-direction:column;gap:8px}
+.slot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 2px var(--shade)}
+.slot .si{flex:1;min-width:150px;font-size:13px;font-weight:700;line-height:1.5}.slot .si b{display:block;font-size:14px}
+.slot .btn{padding:8px 16px;font-size:14px}.slot .del{font-size:12px;padding:6px 10px}
 #hurt{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 140px 50px rgba(214,40,32,.75)}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
@@ -134,7 +147,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 <canvas id="c" tabindex="0" aria-label="海街の3D画面"></canvas>
 <div class="hud" id="hud" hidden>
   <div id="topL">
-    <div id="wallet" class="card"><small>さいふ</small><span id="money">0</span>円</div>
+    <div style="display:flex;gap:8px;align-items:center"><div id="wallet" class="card"><small>さいふ</small><span id="money">0</span>円</div><span id="clock" class="card">1日目・昼</span></div>
     <div id="place">しおかぜ商店街</div>
     <div id="tracker" class="card" hidden></div>
   </div>
@@ -158,7 +171,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
     <button class="pb shoot" id="bShoot" hidden>撃つ</button>
   </div>
 </div>
-<div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><span class="nx">▼</span></div>
+<div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><div id="dchoices"></div><span class="nx">▼</span></div>
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
@@ -172,6 +185,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   <details id="gachaEx"><summary>かけら交換・コレクション</summary><div id="gachaShop"></div></details>
   <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="gachaClose">とじる</button></div></div></div>
 <div id="flash"></div>
+<div class="cbar" id="cbarT"></div><div class="cbar" id="cbarB"></div><div id="fade"></div>
 
 <div id="title" hidden>
   <div class="sheet card">
@@ -189,7 +203,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>J ・ クリック</dt><dd>撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
       <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
     </dl>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="startBtn">散歩に出かける</button><button class="btn ghost" id="resetBtn" hidden>はじめからにする</button></div>
+    <div id="slots" role="list" aria-label="セーブデータ"></div>
     <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：VRoid Studio で作成</p>
   </div>
 </div>
@@ -4087,8 +4101,14 @@ for(let gx=-190;gx<=190;gx+=8.5)for(let gz=-176;gz<=COAST_Z-12;gz+=8.5){ // hous
   if(freeBox(b,0.6))finish(b);
 }
 
-/* facades drawn on canvas: every face is white so the instance colour tints it */
-function win(g,x,y,w,h,o){o=o||{};g.fillStyle='#f7f4ee';g.fillRect(x-3,y-3,w+6,h+6);
+/* facades drawn on canvas: every face is white so the instance colour tints it. Each window drawn is also noted, so a second
+   canvas can light some of them for the night (the emissive map that the story's clock turns up after dark). */
+let WINLOG=null;const NIGHT_MATS=[];
+function litTex(w,h,rects,seed){const r=mulberry(seed);return canvasTex(w,h,(g)=>{g.fillStyle='#000';g.fillRect(0,0,w,h);
+  for(const [x,y,ww,hh] of rects){if(r()>0.62)continue;const gr=g.createLinearGradient(x,y,x,y+hh);gr.addColorStop(0,'#ffd99a');gr.addColorStop(1,'#e8a85a');g.fillStyle=gr;g.fillRect(x,y,ww,hh);}});}
+function nightMat(tex,opt){const m=tmap(tex,Object.assign({emissive:'#ffffff',emissiveMap:tex.lit,emissiveIntensity:0},opt||{}));NIGHT_MATS.push(m);return m;}
+function logged(w,h,seed,draw){WINLOG=[];const t=canvasTex(w,h,draw);t.lit=litTex(w,h,WINLOG,seed);WINLOG=null;return t;}
+function win(g,x,y,w,h,o){o=o||{};if(WINLOG)WINLOG.push([x,y,w,h]);g.fillStyle='#f7f4ee';g.fillRect(x-3,y-3,w+6,h+6);
   const gr=g.createLinearGradient(x,y,x+w,y+h);gr.addColorStop(0,'#5f7b8c');gr.addColorStop(1,'#3d5260');g.fillStyle=gr;g.fillRect(x,y,w,h);
   g.fillStyle='rgba(255,255,255,.28)';g.beginPath();g.moveTo(x+w*0.15,y+h);g.lineTo(x+w*0.45,y);g.lineTo(x+w*0.6,y);g.lineTo(x+w*0.3,y+h);g.fill();
   if(o.curtain){g.fillStyle=o.curtain;g.fillRect(x,y,w*0.32,h);g.fillRect(x+w*0.7,y,w*0.3,h);}
@@ -4100,12 +4120,12 @@ function slider(g,x,y,w,h){g.fillStyle='#8b6a4c';g.fillRect(x,y,w,h);for(let k=0
   g.fillStyle='rgba(139,106,76,.95)';for(let j=1;j<5;j++)g.fillRect(xx,y+4+j*(h-8)/5,w/2-6,2);g.fillRect(xx+(w/2-6)/2-1,y+4,2,h-8);}}
 const CURT=['#e8c9b8','#cfe0d2','#f2e2a8','#d6dcef','#f0d0d8','#ffffff'];
 function facadeTex(kind,txt,seed){const fl=kind==='house1'?1:kind==='apt3'||kind==='shop3'?3:2;const r=mulberry(seed||kind.length*31);
-  return canvasTex(256,128*fl,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
+  return logged(256,128*fl,seed||7,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
     g.fillStyle='rgba(0,0,0,.05)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1);
     const shopFloor=kind.startsWith('shop');
     for(let f=0;f<fl;f++){const y0=h-(f+1)*128;
       if(f===0&&shopFloor){g.fillStyle='#3a4552';g.fillRect(10,y0+34,w-20,94);
-        g.fillStyle='rgba(255,236,196,.55)';for(let x=18;x<w-30;x+=44){g.fillRect(x,y0+46,34,40);}
+        g.fillStyle='rgba(255,236,196,.55)';for(let x=18;x<w-30;x+=44){g.fillRect(x,y0+46,34,40);if(kind!=='shopD')WINLOG.push([x,y0+46,34,40],[x,y0+46,34,40]);}
         g.fillStyle='rgba(255,255,255,.18)';g.beginPath();g.moveTo(40,y0+128);g.lineTo(90,y0+34);g.lineTo(110,y0+34);g.lineTo(60,y0+128);g.fill();
         const colors=['#c8372d','#2f6b8a','#4f8a3a','#e8a23a','#6b4a8a','#2e3036'];g.fillStyle=colors[Math.floor(r()*colors.length)];g.fillRect(6,y0+4,w-12,28);
         g.fillStyle='#fffaf0';g.font='bold 22px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(txt||'',w/2,y0+19);
@@ -4120,15 +4140,15 @@ function facadeTex(kind,txt,seed){const fl=kind==='house1'?1:kind==='apt3'||kind
       }
       g.fillStyle='rgba(0,0,0,.07)';g.fillRect(0,y0,w,3);}
     g.fillStyle='rgba(0,0,0,.08)';g.fillRect(0,h-6,w,6);});}
-function sideTex(fl){return canvasTex(128,128*fl,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.fillStyle='rgba(0,0,0,.05)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1);
+function sideTex(fl){return logged(128,128*fl,fl*13,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.fillStyle='rgba(0,0,0,.05)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1);
   for(let f=0;f<fl;f++){const y0=h-(f+1)*128;win(g,44,y0+36,40,34,{});g.fillStyle='rgba(0,0,0,.07)';g.fillRect(0,y0,w,3);}});}
-const SIDE={1:tmap(sideTex(1)),2:tmap(sideTex(2)),3:tmap(sideTex(3))};
+const SIDE={1:nightMat(sideTex(1)),2:nightMat(sideTex(2)),3:nightMat(sideTex(3))};
 const roofTop=tm('#8f8b84'),under=tm('#6d6a64');
 const SHOP_TXT={shopA:['クリーニング','たばこ','美容室 ルナ','米・酒','田中電器'],shopB:['金物 マルニ','ふとん店','時計・メガネ','文房具'],shopC:['和菓子 つる屋','写真館','薬 ミナト'],shopD:['ガレージ'],shop3:['ホテル みさき','歯科クリニック','不動産']};
 const WALLS=['#f6f2ea','#f1e7d6','#efe2cf','#e9ede8','#f2dfd2','#e3e8ee','#f4ecd0','#e8e0d4','#dfe6dc','#f0e6e0'];
 const variantMat={};
 function matFor(b){let key=b.kind,txt='';if(SHOP_TXT[b.kind]){const list=SHOP_TXT[b.kind];txt=list[Math.floor(hash(b.cx*7,b.cz*3)*list.length)];key+='|'+txt;}
-  if(!variantMat[key]){const fl=b.floors,f=tmap(facadeTex(b.kind,txt,key.length*97+(txt.charCodeAt(0)||0)));variantMat[key]={mats:[SIDE[fl],SIDE[fl],roofTop,under,f,SIDE[fl]],list:[]};}
+  if(!variantMat[key]){const fl=b.floors,f=nightMat(facadeTex(b.kind,txt,key.length*97+(txt.charCodeAt(0)||0)));variantMat[key]={mats:[SIDE[fl],SIDE[fl],roofTop,under,f,SIDE[fl]],list:[]};}
   return variantMat[key];}
 const edges=[];
 function boxEdges(cx,y0,cz,yaw,wx,hh,dz){const X=[Math.cos(yaw),-Math.sin(yaw)],Z=[Math.sin(yaw),Math.cos(yaw)],P=[];
@@ -4577,7 +4597,7 @@ const BEACHHOUSE={x:40,z:SHORE+10};
 // a flat rooftop with a view, up a staircase of crates
 const ROOF={x0:18,x1:30,z0:186,z1:196};
 { const base=Math.max(H(ROOF.x0,ROOF.z0),H(ROOF.x0,ROOF.z1))+0.1,top=base+3.2,cx=(ROOF.x0+ROOF.x1)/2,cz=(ROOF.z0+ROOF.z1)/2,W=ROOF.x1-ROOF.x0,D=ROOF.z1-ROOF.z0;
-  const wall=tmap(facadeTex('house1','',77)),side=SIDE[1];
+  const wall=nightMat(facadeTex('house1','',77)),side=SIDE[1];
   const b=new THREE.Mesh(boxG,[side,side,tm('#b9b4ab'),under,side,wall]);b.scale.set(W,3.2,D);b.position.set(cx,base+1.6,cz);b.receiveShadow=true;world.add(b);boxEdges(cx,base,cz,0,W,3.2,D);
   const lowY=Math.min(H(ROOF.x0,ROOF.z1),H(ROOF.x1,ROOF.z1))-0.4;const f=new THREE.Mesh(boxG,tmap(stone));f.scale.set(W,base-lowY,D);f.position.set(cx,(base+lowY)/2,cz);world.add(f);
   collide(ROOF.x0,ROOF.x1,ROOF.z0,ROOF.z1,'roof',top);
@@ -5479,6 +5499,134 @@ function droneHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createEle
   const m=document.createElement('span');m.className='meter';
   m.textContent=`撃ち落とした ${DRONE.killed} / ${DRONE.total}　${'♥'.repeat(Math.max(0,DRONE.hp))}${'♡'.repeat(DRONE.maxHp-Math.max(0,DRONE.hp))}`;tr.append(b,s,m);}
 
+/* ---------- the story engine: the day and the hour, events written as data, choices in conversations, event cameras.
+   An event is {id, on, when, script}. `on` says what starts it: talking to someone ({talk:'tome'}), coming near a place
+   ({near:[x,z,r]}), or nothing, which starts it as soon as `when` holds. An event plays once unless it says once:false.
+   The script is a list of steps such as ['say','tome','…'] — the steps are listed at `step` below. The events themselves
+   live in p5d_events.js. ---------- */
+const PHASE_NAME={morning:'朝',day:'昼',evening:'夕方',night:'夜'};
+function phaseOf(h){h=((h%24)+24)%24;return h<5||h>=19?'night':h<10?'morning':h<16?'day':'evening';}
+const DAY_START=8,DAY_CAP=15.5,TIME_RATE=1/75;   // a new day starts at 8:00; on its own the clock runs one hour every 75 s up to the cap
+// the light through the day: sky tint, fog, hemisphere sky/ground/strength, sun colour/strength/height, and how much the night lights glow
+const LIGHT=[[0,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1],[5,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1],
+  [6.5,'#f6c8b0','#e6d6d0','#f0dcd0','#7a6a5a',0.5,'#ffc89a',0.7,0.25,0.3],[8.5,'#fff4e8','#e2eef2','#eef4ff','#8a7c66',0.58,'#fff0d8',0.9,0.7,0],
+  [10,'#ffffff','#d6edf6','#e6f3ff','#8a7c66',0.62,'#fff3dc',0.95,0.95,0],[16,'#ffffff','#d6edf6','#e6f3ff','#8a7c66',0.62,'#fff3dc',0.95,0.95,0],
+  [17.5,'#ffc49a','#f2c6a2','#ffd8b8','#7a5e4a',0.55,'#ffb070',0.9,0.35,0],[18.7,'#e88a78','#c88a86','#d8a0a0','#5a4448',0.45,'#ff7a48',0.6,0.1,0.4],
+  [19.6,'#6a5c8c','#4a4a70','#7a78a8','#3a3440',0.38,'#c08ab0',0.25,0.15,0.85],[21,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1],
+  [24,'#26315a','#141c34','#5a6ea0','#262430',0.34,'#a8bce8',0.3,0.9,1]].map(([h,...v])=>({h,v:v.map(x=>typeof x==='string'?new THREE.Color(x):x)}));
+const SUN_H=new THREE.Vector2(-0.55,-0.4).normalize(),LC=[0,1,2,3,5].map(()=>new THREE.Color());
+// night lights: glows on the coast-road lamps and the pier lamp, the lighthouse and its turning beam, the blinking light on the radio mast, stars
+const GLOW_TEX=canvasTex(64,64,(c,w,h)=>{const g=c.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.25,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,w,h);});
+function glow(col,x,y,z,s){const m=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX,color:col,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
+  m.position.set(x,y,z);m.scale.setScalar(s);m.visible=false;scene.add(m);return m;}
+const NIGHT={lamps:LAMPS.map(e=>glow('#ffd9a0',e.x,5.7,e.z-1.3,2.6)).concat([glow('#ffb0a0',PIER.x0+0.6,PIER.y+3.2,PIER.z1-0.8,2.2)]),
+  house:glow('#fff0c0',198,SEA_Y+72.5,760,26),mast:glow('#ff4030',-285,H(-285,-40)+41,-40,7),beam:new THREE.Group(),stars:null};
+{ const bm=new THREE.MeshBasicMaterial({color:'#fff3c4',transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,fog:false,side:THREE.DoubleSide});
+  for(const s of [1,-1]){const c=new THREE.Mesh(new THREE.ConeGeometry(14,420,16,1,true),bm);c.rotation.z=s*Math.PI/2;c.position.x=s*210;NIGHT.beam.add(c);}
+  NIGHT.beam.position.copy(NIGHT.house.position);NIGHT.beam.visible=false;NIGHT.beam.userData.m=bm;scene.add(NIGHT.beam);
+  const n=700,pos=new Float32Array(n*3),r=mulberry(31);for(let k=0;k<n;k++){const a=r()*TAU,e=0.08+Math.pow(r(),0.7)*1.4;pos.set([Math.cos(a)*Math.cos(e)*2800,Math.sin(e)*2800,Math.sin(a)*Math.cos(e)*2800],k*3);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  NIGHT.stars=new THREE.Points(g,new THREE.PointsMaterial({color:'#ffffff',size:2,sizeAttenuation:false,transparent:true,opacity:0,depthWrite:false,fog:false}));NIGHT.stars.renderOrder=-9;dome.add(NIGHT.stars);}
+function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+1].h<=h)k++;
+  const A=LIGHT[k],B=LIGHT[k+1],t=smooth(clamp((h-A.h)/(B.h-A.h),0,1)),v=k2=>typeof A.v[k2]==='number'?lerp(A.v[k2],B.v[k2],t):null;
+  [0,1,2,3,5].forEach((i,j)=>LC[j].copy(A.v[i]).lerp(B.v[i],t));
+  dome.material.color.copy(LC[0]);scene.background.copy(LC[1]);scene.fog.color.copy(LC[1]);hemi.color.copy(LC[2]);hemi.groundColor.copy(LC[3]);hemi.intensity=v(4);
+  sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
+  const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
+  NIGHT.house.visible=NIGHT.beam.visible=on;NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.16*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.mast.visible=on&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
+
+/* running events */
+const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
+const storyBusy=()=>!!ST.run;
+const flag=k=>SAVE.flags[k]||0;
+function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
+  if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
+  if(w.phase&&![].concat(w.phase).includes(phaseOf(SAVE.hour)))return false;
+  if(w.hour&&(SAVE.hour<w.hour[0]||SAVE.hour>=w.hour[1]))return false;
+  for(const k in w.flags||{})if(flag(k)!==w.flags[k])return false;
+  for(const k in w.min||{})if(flag(k)<w.min[k])return false;
+  if(w.seen&&![].concat(w.seen).every(id=>SAVE.seen[id]))return false;
+  if(w.unseen&&[].concat(w.unseen).some(id=>SAVE.seen[id]))return false;
+  for(const k in w.quest||{})if(qs(k).state!==w.quest[k])return false;
+  if(w.test&&!w.test())return false;return true;}
+const ready=e=>!(e.once!==false&&SAVE.seen[e.id])&&cond(e.when);
+function findEvent(kind,arg){return EVENTS.find(e=>{const o=e.on||{};
+  if(kind==='talk')return o.talk===arg&&ready(e);
+  if(kind==='near')return o.near&&Math.hypot(P.x-o.near[0],P.z-o.near[1])<o.near[2]&&ready(e);
+  if(kind==='auto')return!e.on&&ready(e);return false;});}
+const whoName=w=>w==='nagi'?'ナギ':NPCS[w]?NPCS[w].name||'町の人':w;
+const sleepP=s=>new Promise(r=>setTimeout(r,s*1000));
+function sayP(who,lines){if(!ST.cam&&NPCS[who]&&Math.hypot(P.x-NPCS[who].x,P.z-NPCS[who].z)<8)ST.actor=NPCS[who];talkNpc=ST.actor;return new Promise(r=>say(whoName(who),lines,r));}
+// a question with buttons under the dialog text; 1–4 on the keyboard pick too
+function askP(who,text,labels){talkNpc=ST.actor;return new Promise(res=>{say(whoName(who),[text],null);DLG.choice=true;const box=$('dchoices');box.innerHTML='';$('dialog').classList.add('choosing');
+  const pickIt=i=>{box.innerHTML='';$('dialog').classList.remove('choosing');DLG=null;$('dialog').hidden=true;res(i);};DLG.pick=pickIt;DLG.n=labels.length;
+  labels.forEach((l,i)=>{const b=document.createElement('button');const k=document.createElement('kbd');k.textContent=i+1;b.append(k,document.createTextNode(l));
+    b.addEventListener('click',e=>{e.stopPropagation();pickIt(i);});box.appendChild(b);});
+  setTimeout(()=>box.firstChild&&box.firstChild.focus({preventScroll:true}),0);});}
+function fadeP(out){$('fade').style.opacity=out?1:0;return sleepP(0.85);}
+function hourP(to,sec){return new Promise(res=>{ST.tween={from:SAVE.hour,to,t:0,dur:sec==null?2.5:sec,res};});}
+async function nextDay(h){await fadeP(true);SAVE.day++;SAVE.hour=h==null?DAY_START:h;SAVE.cap=DAY_CAP;renderClock();save();await sleepP(0.6);
+  toast(`${SAVE.day}日目の朝`,true);await fadeP(false);}
+function setCam(a){if(a[0]==='off'){ST.cam=null;document.body.classList.remove('cine');return;}
+  document.body.classList.add('cine');
+  if(a[0]==='npc'){const n=NPCS[a[1]],m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
+    ST.cam={pos:m.clone().addScaledVector(side,a[2]||3.4).setY(m.y+1.5),look:m.clone().setY(m.y+1.15),rate:3};return;}
+  const v=x=>new THREE.Vector3(...x);ST.cam={pos:v(a[0]),look:v(a[1]),rate:a[2]||2};if(a[3]==='cut')camInit=false;}
+async function steps(list){for(const s of list||[])if(await step(s)==='stop')return'stop';}
+async function step(s){const [op,...a]=s;switch(op){
+  case 'say':await sayP(a[0],a.slice(1));break;                         // ['say', who, line, line…]  who: an NPC id, 'nagi', '' for narration, or any name
+  case 'ask':{const i=await askP(a[0],a[1],a[2].map(o=>o[0]));            // ['ask', who, question, [[label, [steps…]], …]]
+    if(a[3])SAVE.flags[a[3]]=i+1;                                       //   an optional 4th item names a flag that records the answer (1, 2, …)
+    return steps(a[2][i][1]);}
+  case 'set':SAVE.flags[a[0]]=a[1]===undefined?1:a[1];break;           // ['set', flag, value]
+  case 'add':SAVE.flags[a[0]]=flag(a[0])+(a[1]==null?1:a[1]);break;    // ['add', flag, n]  e.g. friendship points
+  case 'if':return steps(cond(a[0])?a[1]:a[2]);                         // ['if', condition, [then…], [else…]]  condition as in `when`
+  case 'time':await hourP(a[0],a[1]);break;                             // ['time', hour, seconds]  move the clock (and the light) to that hour
+  case 'cap':SAVE.cap=a[0];break;                                       // ['cap', hour]  how far the clock may run on its own today
+  case 'day':await nextDay(a[0]);break;                                 // ['day', hour?]  fade out, next morning
+  case 'fade':await fadeP(a[0]==='out');break;                          // ['fade', 'out'|'in']
+  case 'cam':setCam(a);break;                                           // ['cam', [x,y,z], [lookX,lookY,lookZ], rate?, 'cut'?] / ['cam','npc',id] / ['cam','off']
+  case 'wait':await sleepP(a[0]);break;                                 // ['wait', seconds]
+  case 'warp':P.x=a[0];P.z=a[1];if(a[2]!=null)P.yaw=a[2];P.v=0;P.vy=0;P.air=false;P.y=G(P.x,P.z);camInit=false;break;   // ['warp', x, z, yaw?]
+  case 'money':SAVE.money+=a[0];toast(`${a[0]>0?'+':''}${a[0]}円`,true);renderHUD();break;
+  case 'item':addItem(a[0],a[1]==null?1:a[1]);toast(`${ITEMS[a[0]].name}をもらった`);break;
+  case 'quest':accept(QBY(a[0]));break;                                 // ['quest', id]  take on an errand
+  case 'toast':toast(a[0],a[1]);break;
+  case 'call':await a[0]();break;                                       // ['call', fn]  anything the data cannot say
+  case 'stop':return'stop';}}
+async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
+  try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
+  SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
+function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
+// every frame: the clock and the light, the event markers, and the events that start by place or by time
+function updateStory(dt){const tw=ST.tween;
+  if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
+  else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
+  applyLight(SAVE.hour);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
+  const calm=!!(DLG||modal||ST.run)||state!=='play';
+  for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
+    m.visible=!calm&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
+  if(calm||DRONE.active)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
+  const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}
+
+/* ---------- the events of the story, as data for the engine in p5c_story.js ----------
+   {id, on:{talk:npcId} | on:{near:[x,z,radius]} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
+   when: day, minDay, phase ('morning'|'day'|'evening'|'night', or a list), hour:[from,to], flags:{k:v}, min:{k:n}, seen, unseen, quest:{id:state}, test:fn */
+const EVENTS=[
+  // a check of every kind of step; only index.html#storytest starts it
+  {id:'storytest',once:false,when:{test:()=>location.hash==='#storytest'&&!SAVE.flags.storytest_done},script:[
+    ['cam',[0,G(0,-209)+6,-200],[0,4,-40],1.2],
+    ['say','','夏休み。うみまち線の終点、坂の町。'],
+    ['time',18.4,3],
+    ['say','nagi','うわあ、海がオレンジ色だ…'],
+    ['ask','nagi','これからどうしよう？',[['もう少しここにいる',[['add','test_stay'],['time',20.5,3],['say','nagi','島の灯台が光りはじめた。']]],['先に進む',[['say','nagi','よし、行こう。']]]],'test_choice'],
+    ['if',{flags:{test_choice:1}},[['say','','（ここにいることにした）']],[['say','','（先に進むことにした）']]],
+    ['cam','off'],
+    ['set','storytest_done'],
+    ['toast','テストの出来事が終わった',true]]},
+];
+
 /* ---------- the tram and its level crossings ---------- */
 const tramTex=canvasTex(512,128,(g,w,h)=>{g.fillStyle='#efe6c8';g.fillRect(0,0,w,h);g.fillStyle='#2f7d4f';g.fillRect(0,h*0.58,w,h*0.42);g.fillStyle='#f2c230';g.fillRect(0,h*0.56,w,4);
   for(let k=0;k<7;k++){const x=22+k*68;g.fillStyle='#2b3a44';g.fillRect(x,18,50,40);g.fillStyle='rgba(255,255,255,.25)';g.fillRect(x+4,22,14,32);}
@@ -5619,9 +5767,12 @@ const QUESTS=[
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
 ];
-const S0={money:600,inv:{},qs:{},tracked:null,spots:[]};
-let SAVE=(()=>{try{const s=JSON.parse(store.get('umimachi_save')||'null');if(s&&typeof s.money==='number')return Object.assign({},S0,s);}catch(e){}return JSON.parse(JSON.stringify(S0));})();
-function save(){store.set('umimachi_save',JSON.stringify(SAVE));}
+// three save slots; slot 1 keeps the key the game has always used, so older saves open there
+const S0={money:600,inv:{},qs:{},tracked:null,spots:[],day:1,hour:DAY_START,cap:DAY_CAP,flags:{},seen:{}};
+const SLOTS=3,slotKey=k=>k===1?'umimachi_save':'umimachi_save'+k;
+function loadSlot(k){try{const s=JSON.parse(store.get(slotKey(k))||'null');if(s&&typeof s.money==='number')return Object.assign(JSON.parse(JSON.stringify(S0)),s);}catch(e){}return null;}
+let SLOT=clamp(+(store.get('umimachi_slot')||1)||1,1,SLOTS),SAVE=loadSlot(SLOT)||JSON.parse(JSON.stringify(S0));
+function save(){SAVE.at=Date.now();store.set(slotKey(SLOT),JSON.stringify(SAVE));}
 const qs=id=>SAVE.qs[id]||(SAVE.qs[id]={state:0,step:0});
 const QBY=id=>QUESTS.find(q=>q.id===id);
 function invN(id){return SAVE.inv[id]||0;}
@@ -5674,11 +5825,12 @@ function openShop(key){shopCam=key;const m=MENUS[key];$('shopName').textContent=
   draw();openModal('shop');}
 // dialog
 let DLG=null;
-function say(who,lines,done){DLG={who,lines:lines.slice(),done};$('dwho').textContent=who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
-function nextLine(){if(!DLG)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;talkNpc=null;if(d)d();}
+function say(who,lines,done){DLG={who,lines:lines.slice(),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
+function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;if(!ST.run)talkNpc=null;if(d)d();}
 $('dialog').addEventListener('click',nextLine);
 let talkNpc=null;
 function talk(n){talkNpc=n;
+  const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
   for(const q of QUESTS){const st=stepOf(q);if(!st)continue;
     if((st.type==='deliver'||st.type==='talk')&&st.to===n.id){
       if(st.type==='deliver'&&invN(st.item)<st.n){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}
@@ -5791,6 +5943,7 @@ const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
+  if(DLG&&DLG.choice){const i=+e.key-1;if(i>=0&&i<DLG.n)DLG.pick(i);return;}
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
   if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
@@ -5814,7 +5967,7 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
-  fwd=fwd||kickHold;
+  fwd=fwd||kickHold;if(ST.run)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
@@ -5892,6 +6045,7 @@ function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0
 function updateCamera(dt){
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
+  else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
@@ -5917,15 +6071,17 @@ function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
     poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
-function updateMarkers(){const calm=!!(DLG||modal);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
+function updateMarkers(){const calm=!!(DLG||modal||ST.run);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);tMark.visible=beam.visible=!!t&&state==='play'&&!calm;
   if(t){const y=G(t[0],t[1]);tMark.position.set(t[0],y+2.9+Math.sin(clock*3)*0.12,t[1]);beam.position.set(t[0],y+20,t[1]);beam.material.opacity=clamp(Math.hypot(P.x-t[0],P.z-t[1])/60,0,1)*0.22;}
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
-  if(state==='play'){if(talkNpc&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:findNear();if(actQ&&near)act(near);actQ=false;
-    const pr=$('prompt');if(near&&!DLG&&!modal){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
+  updateStory(dt);
+  if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
+    if(ST.run)jumpQ=kickQ=footQ=false;
+    updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
+    const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
   updateTram(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
@@ -5933,11 +6089,23 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateCamera(dt);renderer.render(scene,camera);
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
-$('startBtn').addEventListener('click',()=>{state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderHUD();canvas.focus();
+function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
+  state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
-  if(location.hash==='#drones')startDrones();});   // test entry: index.html#drones starts the drone fight at once
-$('resetBtn').addEventListener('click',()=>{SAVE=JSON.parse(JSON.stringify(S0));save();$('resetBtn').hidden=true;toast('はじめからにした');renderHUD();});
-if(Object.keys(SAVE.qs).length||SAVE.money!==S0.money){$('resetBtn').hidden=false;$('startBtn').textContent='散歩のつづきへ';}
+  const hr=/#hour=([\d.]+)/.exec(location.hash);if(hr)SAVE.hour=SAVE.cap=+hr[1];   // test entry: index.html#hour=20 sets the clock
+  if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once
+// the title lists the save slots: continue, start, or erase (a second press confirms)
+function renderSlots(){const box=$('slots');box.innerHTML='';
+  for(let k=1;k<=SLOTS;k++){const s=loadSlot(k),row=document.createElement('div');row.className='slot';row.setAttribute('role','listitem');
+    const info=document.createElement('div');info.className='si';const b=document.createElement('b');b.textContent=`セーブ ${k}`;info.appendChild(b);
+    if(s){const done=QUESTS.filter(q=>s.qs[q.id]&&s.qs[q.id].state===2).length,at=s.at?new Date(s.at):null;
+      info.appendChild(document.createTextNode(`${s.day}日目・${PHASE_NAME[phaseOf(s.hour)]}　さいふ ${s.money.toLocaleString('ja-JP')}円　おつかい ${done}/${QUESTS.length}`+(at?`　${at.getMonth()+1}/${at.getDate()} ${String(at.getHours()).padStart(2,'0')}:${String(at.getMinutes()).padStart(2,'0')}`:'')));}
+    else info.appendChild(document.createTextNode('まだ何もない'));
+    const go=document.createElement('button');go.className='btn';go.textContent=s?'つづきから':'はじめる';go.addEventListener('click',()=>startGame(k));row.append(info,go);
+    if(s){const del=document.createElement('button');del.className='btn ghost del';del.textContent='消す';
+      del.addEventListener('click',()=>{if(del.dataset.sure){store.set(slotKey(k),'null');renderSlots();return;}del.dataset.sure=1;del.textContent='本当に消す？';});row.appendChild(del);}
+    if(k===SLOT&&s)row.style.boxShadow='inset 0 0 0 2px var(--sea)';box.appendChild(row);}}
+renderSlots();
 updateFolk(0,P.x,P.z,true);
 $('loading').hidden=true;$('title').hidden=false;
 requestAnimationFrame(t=>{last=t;requestAnimationFrame(frame);});

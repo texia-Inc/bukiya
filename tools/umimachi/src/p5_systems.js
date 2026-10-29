@@ -139,9 +139,12 @@ const QUESTS=[
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
 ];
-const S0={money:600,inv:{},qs:{},tracked:null,spots:[]};
-let SAVE=(()=>{try{const s=JSON.parse(store.get('umimachi_save')||'null');if(s&&typeof s.money==='number')return Object.assign({},S0,s);}catch(e){}return JSON.parse(JSON.stringify(S0));})();
-function save(){store.set('umimachi_save',JSON.stringify(SAVE));}
+// three save slots; slot 1 keeps the key the game has always used, so older saves open there
+const S0={money:600,inv:{},qs:{},tracked:null,spots:[],day:1,hour:DAY_START,cap:DAY_CAP,flags:{},seen:{}};
+const SLOTS=3,slotKey=k=>k===1?'umimachi_save':'umimachi_save'+k;
+function loadSlot(k){try{const s=JSON.parse(store.get(slotKey(k))||'null');if(s&&typeof s.money==='number')return Object.assign(JSON.parse(JSON.stringify(S0)),s);}catch(e){}return null;}
+let SLOT=clamp(+(store.get('umimachi_slot')||1)||1,1,SLOTS),SAVE=loadSlot(SLOT)||JSON.parse(JSON.stringify(S0));
+function save(){SAVE.at=Date.now();store.set(slotKey(SLOT),JSON.stringify(SAVE));}
 const qs=id=>SAVE.qs[id]||(SAVE.qs[id]={state:0,step:0});
 const QBY=id=>QUESTS.find(q=>q.id===id);
 function invN(id){return SAVE.inv[id]||0;}
@@ -194,11 +197,12 @@ function openShop(key){shopCam=key;const m=MENUS[key];$('shopName').textContent=
   draw();openModal('shop');}
 // dialog
 let DLG=null;
-function say(who,lines,done){DLG={who,lines:lines.slice(),done};$('dwho').textContent=who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
-function nextLine(){if(!DLG)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;talkNpc=null;if(d)d();}
+function say(who,lines,done){DLG={who,lines:lines.slice(),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
+function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;if(!ST.run)talkNpc=null;if(d)d();}
 $('dialog').addEventListener('click',nextLine);
 let talkNpc=null;
 function talk(n){talkNpc=n;
+  const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
   for(const q of QUESTS){const st=stepOf(q);if(!st)continue;
     if((st.type==='deliver'||st.type==='talk')&&st.to===n.id){
       if(st.type==='deliver'&&invN(st.item)<st.n){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}
@@ -311,6 +315,7 @@ const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
+  if(DLG&&DLG.choice){const i=+e.key-1;if(i>=0&&i<DLG.n)DLG.pick(i);return;}
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
   if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
@@ -334,7 +339,7 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
-  fwd=fwd||kickHold;
+  fwd=fwd||kickHold;if(ST.run)return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
@@ -412,6 +417,7 @@ function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0
 function updateCamera(dt){
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
+  else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
@@ -437,15 +443,17 @@ function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
     poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
-function updateMarkers(){const calm=!!(DLG||modal);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
+function updateMarkers(){const calm=!!(DLG||modal||ST.run);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);tMark.visible=beam.visible=!!t&&state==='play'&&!calm;
   if(t){const y=G(t[0],t[1]);tMark.position.set(t[0],y+2.9+Math.sin(clock*3)*0.12,t[1]);beam.position.set(t[0],y+20,t[1]);beam.material.opacity=clamp(Math.hypot(P.x-t[0],P.z-t[1])/60,0,1)*0.22;}
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
-  if(state==='play'){if(talkNpc&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:findNear();if(actQ&&near)act(near);actQ=false;
-    const pr=$('prompt');if(near&&!DLG&&!modal){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
+  updateStory(dt);
+  if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
+    if(ST.run)jumpQ=kickQ=footQ=false;
+    updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
+    const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
   updateTram(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
@@ -453,11 +461,23 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateCamera(dt);renderer.render(scene,camera);
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
-$('startBtn').addEventListener('click',()=>{state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderHUD();canvas.focus();
+function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
+  state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
-  if(location.hash==='#drones')startDrones();});   // test entry: index.html#drones starts the drone fight at once
-$('resetBtn').addEventListener('click',()=>{SAVE=JSON.parse(JSON.stringify(S0));save();$('resetBtn').hidden=true;toast('はじめからにした');renderHUD();});
-if(Object.keys(SAVE.qs).length||SAVE.money!==S0.money){$('resetBtn').hidden=false;$('startBtn').textContent='散歩のつづきへ';}
+  const hr=/#hour=([\d.]+)/.exec(location.hash);if(hr)SAVE.hour=SAVE.cap=+hr[1];   // test entry: index.html#hour=20 sets the clock
+  if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once
+// the title lists the save slots: continue, start, or erase (a second press confirms)
+function renderSlots(){const box=$('slots');box.innerHTML='';
+  for(let k=1;k<=SLOTS;k++){const s=loadSlot(k),row=document.createElement('div');row.className='slot';row.setAttribute('role','listitem');
+    const info=document.createElement('div');info.className='si';const b=document.createElement('b');b.textContent=`セーブ ${k}`;info.appendChild(b);
+    if(s){const done=QUESTS.filter(q=>s.qs[q.id]&&s.qs[q.id].state===2).length,at=s.at?new Date(s.at):null;
+      info.appendChild(document.createTextNode(`${s.day}日目・${PHASE_NAME[phaseOf(s.hour)]}　さいふ ${s.money.toLocaleString('ja-JP')}円　おつかい ${done}/${QUESTS.length}`+(at?`　${at.getMonth()+1}/${at.getDate()} ${String(at.getHours()).padStart(2,'0')}:${String(at.getMinutes()).padStart(2,'0')}`:'')));}
+    else info.appendChild(document.createTextNode('まだ何もない'));
+    const go=document.createElement('button');go.className='btn';go.textContent=s?'つづきから':'はじめる';go.addEventListener('click',()=>startGame(k));row.append(info,go);
+    if(s){const del=document.createElement('button');del.className='btn ghost del';del.textContent='消す';
+      del.addEventListener('click',()=>{if(del.dataset.sure){store.set(slotKey(k),'null');renderSlots();return;}del.dataset.sure=1;del.textContent='本当に消す？';});row.appendChild(del);}
+    if(k===SLOT&&s)row.style.boxShadow='inset 0 0 0 2px var(--sea)';box.appendChild(row);}}
+renderSlots();
 updateFolk(0,P.x,P.z,true);
 $('loading').hidden=true;$('title').hidden=false;
 requestAnimationFrame(t=>{last=t;requestAnimationFrame(frame);});

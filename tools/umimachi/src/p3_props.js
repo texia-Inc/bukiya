@@ -388,7 +388,7 @@ const BEACHHOUSE={x:40,z:SHORE+10};
 // a flat rooftop with a view, up a staircase of crates
 const ROOF={x0:18,x1:30,z0:186,z1:196};
 { const base=Math.max(H(ROOF.x0,ROOF.z0),H(ROOF.x0,ROOF.z1))+0.1,top=base+3.2,cx=(ROOF.x0+ROOF.x1)/2,cz=(ROOF.z0+ROOF.z1)/2,W=ROOF.x1-ROOF.x0,D=ROOF.z1-ROOF.z0;
-  const wall=tmap(facadeTex('house1','',77)),side=SIDE[1];
+  const wall=nightMat(facadeTex('house1','',77)),side=SIDE[1];
   const b=new THREE.Mesh(boxG,[side,side,tm('#b9b4ab'),under,side,wall]);b.scale.set(W,3.2,D);b.position.set(cx,base+1.6,cz);b.receiveShadow=true;world.add(b);boxEdges(cx,base,cz,0,W,3.2,D);
   const lowY=Math.min(H(ROOF.x0,ROOF.z1),H(ROOF.x1,ROOF.z1))-0.4;const f=new THREE.Mesh(boxG,tmap(stone));f.scale.set(W,base-lowY,D);f.position.set(cx,(base+lowY)/2,cz);world.add(f);
   collide(ROOF.x0,ROOF.x1,ROOF.z0,ROOF.z1,'roof',top);

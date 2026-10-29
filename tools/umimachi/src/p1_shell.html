@@ -46,7 +46,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .tst{padding:8px 16px;font-weight:900;font-size:14px;animation:tin 2.8s ease forwards;white-space:nowrap}
 .tst.gold{background:#fff1c9;color:#7a4b06}
 @keyframes tin{0%{opacity:0;transform:translateY(-8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
-#dialog{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);translate:-50% 0;width:min(640px,calc(100% - 32px));padding:14px 18px 16px;pointer-events:auto;cursor:pointer}
+#dialog{position:fixed;z-index:5;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);translate:-50% 0;width:min(640px,calc(100% - 32px));padding:14px 18px 16px;pointer-events:auto;cursor:pointer}
 #dialog .who{display:inline-block;font-weight:900;font-size:13px;color:var(--paper);background:var(--rose);border-radius:99px;padding:3px 12px;margin-bottom:6px}
 #dialog p{margin:0;font-size:16px;line-height:1.75;font-weight:700;min-height:3.5em}
 #dialog .nx{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--ink-soft);animation:bob 1s ease-in-out infinite}
@@ -109,6 +109,19 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .pb{appearance:none;border:0;width:66px;height:66px;border-radius:50%;font-family:var(--round);font-weight:900;font-size:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 0 var(--shade);touch-action:none}
 .pb.shoot{grid-column:1/3;width:auto;height:58px;border-radius:29px;background:#d6453d;color:#fff;box-shadow:0 3px 0 #8e2a24;font-size:16px}
 .pb.shoot.on{transform:scale(.96)}
+#clock{padding:4px 10px;font-size:12px;font-weight:900;vertical-align:middle}
+.cbar{position:fixed;left:0;right:0;height:0;background:#0d0c0b;pointer-events:none;transition:height .6s ease;z-index:4}
+#cbarT{top:0}#cbarB{bottom:0}body.cine .cbar{height:9vh}body.cine #hud>*:not(#toast){opacity:0;pointer-events:none;transition:opacity .4s}
+#fade{position:fixed;inset:0;background:#0d0c0b;opacity:0;pointer-events:none;transition:opacity .8s;z-index:6}
+#dchoices{display:flex;flex-direction:column;gap:6px;margin-top:10px}#dchoices:empty{display:none}
+#dchoices button{font:inherit;font-weight:900;font-size:15px;text-align:left;padding:9px 14px;border-radius:12px;border:2px solid var(--shade);background:var(--paper);color:var(--ink);cursor:pointer}
+#dchoices button:hover,#dchoices button:focus-visible{border-color:var(--rose);outline:none}
+#dchoices button kbd{font-family:var(--round);background:var(--ink);color:var(--paper);border-radius:6px;padding:0 6px;margin-right:8px;font-size:12px}
+#dialog.choosing{cursor:default}#dialog.choosing .nx{display:none}
+#slots{display:flex;flex-direction:column;gap:8px}
+.slot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 2px var(--shade)}
+.slot .si{flex:1;min-width:150px;font-size:13px;font-weight:700;line-height:1.5}.slot .si b{display:block;font-size:14px}
+.slot .btn{padding:8px 16px;font-size:14px}.slot .del{font-size:12px;padding:6px 10px}
 #hurt{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 140px 50px rgba(214,40,32,.75)}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
@@ -127,7 +140,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 <canvas id="c" tabindex="0" aria-label="海街の3D画面"></canvas>
 <div class="hud" id="hud" hidden>
   <div id="topL">
-    <div id="wallet" class="card"><small>さいふ</small><span id="money">0</span>円</div>
+    <div style="display:flex;gap:8px;align-items:center"><div id="wallet" class="card"><small>さいふ</small><span id="money">0</span>円</div><span id="clock" class="card">1日目・昼</span></div>
     <div id="place">しおかぜ商店街</div>
     <div id="tracker" class="card" hidden></div>
   </div>
@@ -151,7 +164,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
     <button class="pb shoot" id="bShoot" hidden>撃つ</button>
   </div>
 </div>
-<div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><span class="nx">▼</span></div>
+<div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><div id="dchoices"></div><span class="nx">▼</span></div>
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
@@ -165,6 +178,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   <details id="gachaEx"><summary>かけら交換・コレクション</summary><div id="gachaShop"></div></details>
   <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="gachaClose">とじる</button></div></div></div>
 <div id="flash"></div>
+<div class="cbar" id="cbarT"></div><div class="cbar" id="cbarB"></div><div id="fade"></div>
 
 <div id="title" hidden>
   <div class="sheet card">
@@ -182,7 +196,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>J ・ クリック</dt><dd>撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
       <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
     </dl>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="startBtn">散歩に出かける</button><button class="btn ghost" id="resetBtn" hidden>はじめからにする</button></div>
+    <div id="slots" role="list" aria-label="セーブデータ"></div>
     <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：VRoid Studio で作成</p>
   </div>
 </div>
