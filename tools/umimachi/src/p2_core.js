@@ -55,13 +55,18 @@ function olInst(im,w){const o=new THREE.InstancedMesh(im.geometry,olMat(w),im.co
 const dome=new THREE.Mesh(new THREE.SphereGeometry(3000,48,24),new THREE.MeshBasicMaterial({side:THREE.BackSide,fog:false,depthWrite:false}));
 dome.renderOrder=-10;scene.add(dome);
 function paintCloud(g,cx,base,size,cols,r){
-  const puffs=[],n=5+Math.floor(r()*6);
-  for(let k=0;k<n;k++){const rad=size*(0.32+r()*0.45);puffs.push([cx+(r()-0.5)*size*2.3,base-rad*(0.35+r()*0.7),rad]);}
-  puffs.push([cx,base-size*0.9,size*0.62]);
+  // a cumulus: a heap of soft round puffs, tallest in the middle, cut flat at the bottom; the underside is a shaded blue-grey
+  // and the sunlit tops are drawn over it a little up and to the left, every puff fading out at its edge so the outline stays soft
+  const puffs=[],n=12+Math.floor(r()*10);
+  for(let k=0;k<n;k++){const t=r()*2-1,hump=1-t*t,rad=size*(0.26+r()*0.3)*(0.55+0.65*hump);puffs.push([cx+t*size*1.7,base-rad*0.35-r()*hump*size*0.7,rad]);}
+  for(let k=0;k<3;k++)puffs.push([cx+(r()-0.5)*size*0.9,base-size*(0.6+r()*0.45),size*(0.48+r()*0.25)]);
   g.save();g.beginPath();g.rect(cx-size*4,0,size*8,base);g.clip();
-  g.fillStyle=cols[1];for(const [x,y,rr] of puffs){g.beginPath();g.arc(x,y+rr*0.16,rr,0,7);g.fill();}
-  g.fillStyle=cols[0];for(const [x,y,rr] of puffs){g.beginPath();g.arc(x-rr*0.1,y-rr*0.08,rr*0.9,0,7);g.fill();}
-  g.fillStyle=cols[2];for(const [x,y,rr] of puffs){g.beginPath();g.arc(x-rr*0.28,y-rr*0.3,rr*0.42,0,7);g.fill();}
+  for(const [x,y,rr] of puffs){const yy=y+rr*0.28,gr=g.createRadialGradient(x,yy,rr*0.15,x,yy,rr*1.05);
+    gr.addColorStop(0,'rgba(190,205,226,.95)');gr.addColorStop(0.72,'rgba(196,210,230,.85)');gr.addColorStop(1,'rgba(200,214,232,0)');g.fillStyle=gr;g.beginPath();g.arc(x,yy,rr*1.05,0,7);g.fill();}
+  for(const [x,y,rr] of puffs){const ox=x-rr*0.14,oy=y-rr*0.2,gr=g.createRadialGradient(ox-rr*0.25,oy-rr*0.3,rr*0.05,ox,oy,rr*0.95);
+    gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(0.6,'rgba(250,252,255,.96)');gr.addColorStop(1,'rgba(238,244,252,0)');g.fillStyle=gr;g.beginPath();g.arc(ox,oy,rr*0.95,0,7);g.fill();}
+  const bg=g.createLinearGradient(0,base-size*0.35,0,base);bg.addColorStop(0,'rgba(180,196,220,0)');bg.addColorStop(1,'rgba(180,196,220,.55)');   // the flat, darker base
+  g.fillStyle=bg;g.fillRect(cx-size*2.2,base-size*0.35,size*4.4,size*0.35);
   g.restore();
 }
 dome.material.map=canvasTex(2048,1024,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);
