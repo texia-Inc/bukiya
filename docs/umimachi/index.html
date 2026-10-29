@@ -106,8 +106,13 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .album img{width:100%;display:block;border-radius:2px}
 .album figcaption{font-size:11px;text-align:center;margin-top:4px;color:var(--ink-soft)}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .4s}
-#stick{position:absolute;left:22px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:120px;height:120px;border-radius:50%;background:rgba(255,250,240,.35);border:2px solid rgba(255,250,240,.7);pointer-events:auto;touch-action:none}
+/* the floating stick: touch anywhere on the lower left and the stick appears under your thumb */
+#stick{position:absolute;left:0;bottom:0;width:50%;height:58%;pointer-events:auto;touch-action:none}
+#ring{position:absolute;left:82px;top:calc(100% - 140px - env(safe-area-inset-bottom,0px));width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:rgba(255,250,240,.35);border:2px solid rgba(255,250,240,.7);opacity:.45;transition:opacity .2s}
+#stick.on #ring{opacity:1;transition:none}
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--card);box-shadow:0 3px 0 var(--shade)}
+#trick{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 86px);translate:-50% 0;text-align:center;pointer-events:none;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+#trick .tn{font-weight:900;font-size:17px;color:#fff}#trick .tp{font-weight:900;font-size:24px;color:#ffd24a;font-variant-numeric:tabular-nums}
 #pad{position:absolute;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:12px;align-items:end;pointer-events:auto}
 .pb.kick{grid-column:2;grid-row:1/3;width:92px;height:92px;font-size:17px}
 .pb.kick.on{transform:scale(.94);background:#f7c06a}
@@ -165,9 +170,11 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   <div id="prompt" class="card" hidden></div>
   <div id="hurt"></div>
   <div id="toast"></div>
-  <div id="stick" hidden><div id="knob"></div></div>
+  <div id="stick" hidden><div id="ring"><div id="knob"></div></div></div>
+  <div id="trick" hidden></div>
   <div id="pad" hidden>
     <button class="pb" id="bJump">ジャンプ</button>
+    <button class="pb" id="bTrick" hidden>技</button>
     <button class="pb" id="bAct">話す</button>
     <button class="pb" id="bFoot">降りる</button>
     <button class="pb main kick" id="bKick">ける</button>
@@ -203,6 +210,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>E</dt><dd>話す・お店に入る・会話を進める</dd>
       <dt>Space</dt><dd>ジャンプ</dd>
       <dt>C</dt><dd>着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
+      <dt>K</dt><dd>技（空中で）。キックフリップ、曲がりながらなら360ショービット。手すりに着地するとグラインド</dd>
       <dt>F</dt><dd>スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
       <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
       <dt>L</dt><dd>ライトをつける・消す（「トンネルの向こう」で）</dd>
@@ -4735,7 +4743,7 @@ function solveLeg(L,hx,hy,hz,fx,fy,fz){
   const a=Math.acos(clamp((THIGH*THIGH+d*d-SHIN*SHIN)/(2*THIGH*d),-1,1)),kn=Math.acos(clamp((THIGH*THIGH+SHIN*SHIN-d*d)/(2*THIGH*SHIN),-1,1));
   const phi=Math.atan2(dz,-dy),side=Math.atan2(dx,Math.hypot(dy,dz));
   L.th.rotation.set(-(phi+a),0,side);L.kn.rotation.x=Math.PI-kn;L.ft.rotation.set(-(L.th.rotation.x+L.kn.rotation.x),L.sx*0.22,0);}
-const _v=new THREE.Vector3();
+const _v=new THREE.Vector3(),_e=new THREE.Euler();
 function lookAtTarget(h,target,dt,max){let want=0;if(target){h.g.getWorldPosition(_v);const yaw=Math.atan2(target.x-_v.x,target.z-_v.z);
     let d=yaw-h.g.rotation.y;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;want=Math.abs(d)<2.2?clamp(d,-(max||1),max||1):0;}
   h.yawHead+=(want-h.yawHead)*Math.min(1,4*dt);h.head.rotation.y=h.yawHead*0.75;h.torso.rotation.y=h.yawHead*0.25;}
@@ -4893,7 +4901,7 @@ function animHeroine(h,dt,s){
   h.charm.rotation.z=Math.sin(h.t*4.2)*0.25+turn*0.3;h.charm.rotation.x=Math.sin(h.t*3.1)*0.15-acc*0.01;
 }
 function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
-  let crouch=s.brake?0.2:s.v>6?0.55:0.28;if(s.air)crouch=0.8;P.c+=(crouch-P.c)*Math.min(1,6*dt);
+  let crouch=s.brake?0.2:s.v>6?0.55:0.28;if(s.air)crouch=0.8;if(s.grind)crouch=0.62;P.c+=(crouch-P.c)*Math.min(1,6*dt);
   P.st+=(clamp(s.turn,-1,1)-P.st)*Math.min(1,5*dt);P.push+=((s.push?1:0)-P.push)*Math.min(1,6*dt);
   // stance (LEAD = the leg on the nose, +1 = left foot forward, facing the right of the board seen from behind): riding, the body
   // turns side-on across the deck and the head looks
@@ -4909,7 +4917,11 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
   P.airT=s.air?(P.airT||0)+dt:0;P.tk=(P.tk||0)+((s.air?1:0)-(P.tk||0))*Math.min(1,(s.air?10:16)*dt);
   P.gr=(P.gr||0)+((s.air&&P.pop&&P.airT>0.16&&(s.vy==null||s.vy>-4.2)?1:0)-(P.gr||0))*Math.min(1,(s.air?9:18)*dt);
   const tk=P.tk,gr=P.gr,lift=0.3*tk+0.08*gr;
-  h.board.position.y=lift;h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3)):0,0,M*0.3*gr);
+  // tricks: the board turns under her feet — about its long axis for a kickflip, flat round for a shove-it — while the feet
+  // lift off it and come back down when it has gone round
+  const fp=s.flip||0,spn=s.spin||0,trk=Math.sin(Math.PI*Math.max(fp,spn));
+  h.board.position.y=lift+0.12*trk;h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3))*(1-trk):0,0,M*0.3*gr*(1-trk));
+  _e.copy(h.board.rotation);h.board.rotation.y+=TAU*spn;h.board.rotation.z+=TAU*fp;
   h.hips.position.set(0,lerp(hipY,lerp(0.71,0.47,gr)+lift,tk),-0.03*c*(1-sd)*(1-P.push));h.hips.rotation.set(0,yaw,LEAD*0.12*P.push);
   h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)*(1-0.6*P.push)+P.push*0.22+0.3*tk+0.8*gr,-yaw*0.2,-P.st*0.16-LEAD*0.12*P.push);
   h.head.rotation.order='YXZ';h.head.rotation.set(-(0.06+0.5*c)*(1-0.6*sd)-P.push*0.2-0.25*tk-0.55*gr,-yaw*0.8+P.st*0.25,P.st*0.08);
@@ -4929,7 +4941,7 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
       else if(k<0.65){z=lerp(fwdZ,backZ,ph);y=0.095+0.05*smooth(clamp((ph-0.6)/0.4,0,1));}else{z=lerp(backZ,-0.21,smooth(ph));y=0.145+Math.sin(Math.PI*ph)*0.12+(ANKLE_Y-0.145)*smooth(ph);}
       fz=lerp(fz,z,P.push);fy=lerp(fy,y,P.push);fx=lerp(fx,0.16*M,P.push);}
     // feet stay on the deck as it pops, tilts and rises
-    _v.set(fx,fy,fz).applyEuler(h.board.rotation);_v.y+=lift;
+    _v.set(fx,fy+0.2*trk,fz).applyEuler(_e);_v.y+=lift;
     solveLeg(L,L.sx*0.09*cy,hy,hz-L.sx*0.09*sy,_v.x,_v.y,_v.z);
     // feet lie across the deck when riding; the front foot points ahead and the pushing foot runs along the ground when kicking
     L.ft.rotation.y=(front?lerp(0.15,1.2,sd):lerp(0.05,1.45,sd)*(1-P.push))*M;}
@@ -5843,6 +5855,61 @@ function creditsP(){return new Promise(res=>{const c=$('credits');c.hidden=false
   const done=()=>{c.removeEventListener('click',done);c.style.opacity=0;setTimeout(()=>{c.hidden=true;res();},800);};
   setTimeout(()=>c.addEventListener('click',done),1500);setTimeout(done,16000);});}
 
+/* ---------- skateboard tricks: in the air, K (or the 技 button) flips the board — a kickflip, or a 360 shove-it when you are
+   turning. Come down on a rail and you grind along it; Space pops you off. Tricks in one go (air, grind, air…) add up as a combo
+   that counts when you land on the wheels; land with the board still turning and you fall and lose it. ---------- */
+// the rails: handrails both sides of the slope down to the sea (broken at the cross streets) and the pier railings
+const RAILS=[];
+for(const sx of [-1,1])for(const [a,b] of [[-196,-128],[-112,-28],[-12,82],[98,162],[178,204]])RAILS.push({x0:sx*4.75,z0:a,x1:sx*4.75,z1:b,h:0.5});
+for(const x of [PIER.x0+0.1,PIER.x1-0.1])RAILS.push({x0:x,z0:PIER.z0+8,x1:x,z1:PIER.z1-0.4,top:PIER.y+0.9});
+const railY=(r,x,z)=>r.top!=null?r.top:G(x,z)+r.h;
+{ const metal=tm('#9aa3ab'),posts=[];
+  for(const r of RAILS){const L=Math.hypot(r.x1-r.x0,r.z1-r.z0);if(r.top!=null)continue;   // the pier railings are already there
+    const a=new THREE.Vector3(r.x0,railY(r,r.x0,r.z0),r.z0),b=new THREE.Vector3(r.x1,railY(r,r.x1,r.z1),r.z1);
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,a.distanceTo(b),8),metal);m.position.copy(a).add(b).multiplyScalar(0.5);m.lookAt(b);m.rotateX(Math.PI/2);outline(m,0.012);world.add(m);
+    for(let t=0;t<=L;t+=3.2){const x=lerp(r.x0,r.x1,t/L),z=lerp(r.z0,r.z1,t/L);posts.push({x,z,y:G(x,z)});}}
+  inst(new THREE.CylinderGeometry(0.03,0.03,0.5,6),metal,posts,(e,d)=>{d.position.set(e.x,e.y+0.25,e.z);},{ol:0.01});}
+
+const TRICK={combo:[],pts:0,mult:0,shown:0,airT:0};
+const TRICK_NAME={flip:'キックフリップ',spin:'360ショービット',grind:'グラインド',ollie:'オーリー',grab:'インディーグラブ'};
+function trickAdd(kind,pts){TRICK.combo.push(kind);TRICK.pts+=pts;TRICK.mult++;TRICK.shown=2.2;trickHUD();}
+function trickHUD(){const el=$('trick');if(!TRICK.mult||!state||state!=='play'){el.hidden=true;return;}el.hidden=false;
+  const names=[];for(const k of TRICK.combo){const n=TRICK_NAME[k];if(names[names.length-1]&&names[names.length-1].n===n)names[names.length-1].c++;else names.push({n,c:1});}
+  el.innerHTML='';const a=document.createElement('div');a.className='tn';a.textContent=names.map(x=>x.n+(x.c>1?' ×'+x.c:'')).join(' ＋ ');
+  const b=document.createElement('div');b.className='tp';b.textContent=`${Math.round(TRICK.pts)} × ${TRICK.mult} ＝ ${Math.round(TRICK.pts*TRICK.mult)}`;el.append(a,b);}
+// the combo counts on a clean landing, or is lost in a fall
+function trickLand(clean){if(!TRICK.mult)return;const total=Math.round(TRICK.pts*TRICK.mult);
+  if(clean){const best=SAVE.flags.trick_best||0;if(TRICK.mult>1||total>=100){toast(total>best?`${total}点！ ベスト更新`:`${total}点`,total>best);}
+    if(total>best){SAVE.flags.trick_best=total;save();}}
+  else toast('失敗……',false);
+  TRICK.combo=[];TRICK.pts=0;TRICK.mult=0;TRICK.shown=clean?1.2:0.6;}
+// starting a trick in the air
+function trickStart(){if(!P.air||P.foot||P.trick||P.grind)return;P.trick={type:Math.abs(P.turn)>0.4?'spin':'flip',t:0};}
+// called every frame from stepPlayer while she is in the air on the board
+function trickAir(dt){TRICK.airT+=dt;
+  if(player.pose&&player.pose.gr>0.6&&!TRICK.grab){TRICK.grab=1;trickAdd('grab',30);}   // the indy grab near the top of a big jump
+  if(P.trick){P.trick.t+=dt/0.42;if(P.trick.t>=1){trickAdd(P.trick.type,P.trick.type==='flip'?100:80);P.trick=null;}}
+  // catching a rail on the way down
+  if(P.vy>4)return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
+  for(const r of RAILS){const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
+    const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
+    const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
+    if(P.trick){trickLand(false);P.trick=null;}   // a board still flipping cannot catch the rail
+    P.grind={r,t,dir:Math.sign(al),L,ux,uz,sc:0};P.air=false;P.vy=0;P.x=px;P.z=pz;P.y=ry;P.yaw=Math.atan2(ux*P.grind.dir,uz*P.grind.dir);trickAdd('grind',0);return;}}
+// on the rail: gravity along it, a little friction, sparks; Space pops off, the rail's end drops you off
+function grindStep(dt){const g=P.grind,r=g.r;
+  const ry0=railY(r,P.x,P.z),nx=P.x+g.ux*g.dir*0.5,nz=P.z+g.uz*g.dir*0.5,slope=(railY(r,nx,nz)-ry0)/0.5;
+  P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);g.t+=g.dir*P.v*dt/g.L;
+  P.x=r.x0+(r.x1-r.x0)*g.t;P.z=r.z0+(r.z1-r.z0)*g.t;P.y=railY(r,P.x,P.z);
+  TRICK.pts+=55*dt;g.sc+=dt;TRICK.shown=2;trickHUD();
+  if(Math.random()<dt*25)sparks(new THREE.Vector3(P.x,P.y+0.05,P.z),1,'#ffd27a',2.2,0.035);
+  const off=g.t<=0||g.t>=1,pop=jumpQ,slow=P.v<1.2;jumpQ=false;
+  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;}
+  player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(0,0,0);
+  poseSkater(player,dt,{v:P.v,turn:0,push:false,brake:false,air:false,grind:true});}
+function updateTricks(dt){if(TRICK.shown>0){TRICK.shown-=dt;if(TRICK.shown<=0&&!TRICK.mult)$('trick').hidden=true;}
+  $('bTrick').hidden=!hasTouch||state!=='play';}
+
 /* ---------- the events of the story, as data for the engine in p5c_story.js ----------
    {id, on:{talk:npcId} | on:{near:[x,z,radius]} | on:{night:true} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
    when: day, minDay, phase ('morning'|'day'|'evening'|'night', or a list), hour:[from,to], flags:{k:v}, min:{k:n}, seen, unseen, quest:{id:state}, test:fn
@@ -6566,24 +6633,27 @@ function openGacha(){$('gachaStage').innerHTML='<div style="font-size:42px">🎰
 $('gachaOne').addEventListener('click',()=>pull(1));$('gachaFive').addEventListener('click',()=>pull(5));$('gachaClose').addEventListener('click',closeModal);$('closetClose').addEventListener('click',closeModal);
 $('closetReset').addEventListener('click',()=>{SAVE.outfit=JSON.parse(JSON.stringify(DEFAULT_OUTFIT));save();applyOutfit(player,SAVE.outfit);renderCloset();});
 const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0,foot:false,tr:null,carry:'deck'};P.y=G(P.x,P.z);
-const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false;
+const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false,trickQ=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
   if(DLG&&DLG.choice){const i=+e.key-1;if(i>=0&&i<DLG.n)DLG.pick(i);return;}
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
-  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
+  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyK'&&!e.repeat)trickQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
 const stick={on:false,id:null,x:0,y:0};
-{ const el=$('stick'),kn=$('knob');const set=(e)=>{const r=el.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const L=Math.hypot(dx,dy),m=r.width/2-10;if(L>m){dx*=m/L;dy*=m/L;}
+// the floating stick: the ring jumps to where the thumb lands on the lower left, and goes back to its corner when let go
+{ const el=$('stick'),ring=$('ring'),kn=$('knob');let ox=0,oy=0;const set=(e)=>{let dx=e.clientX-ox,dy=e.clientY-oy;const L=Math.hypot(dx,dy),m=50;if(L>m){dx*=m/L;dy*=m/L;}
     stick.x=dx/m;stick.y=dy/m;kn.style.transform=`translate(${dx}px,${dy}px)`;};
-  el.addEventListener('pointerdown',e=>{stick.on=true;stick.id=e.pointerId;try{el.setPointerCapture(e.pointerId);}catch(_){}set(e);});
+  el.addEventListener('pointerdown',e=>{if(stick.on)return;stick.on=true;stick.id=e.pointerId;try{el.setPointerCapture(e.pointerId);}catch(_){}
+    const r=el.getBoundingClientRect();ox=e.clientX;oy=e.clientY;ring.style.left=(ox-r.left)+'px';ring.style.top=(oy-r.top)+'px';el.classList.add('on');set(e);});
   el.addEventListener('pointermove',e=>{if(stick.on&&e.pointerId===stick.id)set(e);});
-  for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,()=>{stick.on=false;stick.x=stick.y=0;kn.style.transform='';});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,e=>{if(e.pointerId!==stick.id)return;stick.on=false;stick.x=stick.y=0;kn.style.transform='';el.classList.remove('on');ring.style.left=ring.style.top='';});
   $('bJump').addEventListener('pointerdown',e=>{e.preventDefault();jumpQ=true;});
   $('bFoot').addEventListener('pointerdown',e=>{e.preventDefault();footQ=true;});
+  $('bTrick').addEventListener('pointerdown',e=>{e.preventDefault();trickQ=true;});
   const kb=$('bKick');kb.addEventListener('pointerdown',e=>{e.preventDefault();kickQ=true;kickHold=true;kb.classList.add('on');try{kb.setPointerCapture(e.pointerId);}catch(_){}});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])kb.addEventListener(ev,()=>{kickHold=false;kb.classList.remove('on');});
   kb.addEventListener('contextmenu',e=>e.preventDefault());
@@ -6603,6 +6673,7 @@ function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 function stepPlayer(dt){
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
+  if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   const g1=G(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=G(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
@@ -6634,16 +6705,18 @@ function stepPlayer(dt){
   else if(ok){P.x=nx;P.z=nz;}
   P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
-  if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;}jumpQ=false;
+  if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;trickAdd('ollie',10);}}jumpQ=false;
+  if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
   if(!P.air&&P.y-gy>0.3){P.air=true;P.vy=0;}
-  if(P.air){P.vy-=13.5*dt;P.y+=P.vy*dt;if(P.y<=gy){if(P.vy<-9)P.bump=0.25;P.y=gy;P.air=false;P.vy=0;}}else P.y+=(gy-P.y)*Math.min(1,18*dt);
+  if(P.air){P.vy-=13.5*dt;P.y+=P.vy*dt;if(P.y<=gy){if(P.vy<-9)P.bump=0.25;P.y=gy;P.air=false;P.vy=0;
+      if(!onFoot){if(P.trick){P.trick=null;P.v*=0.3;P.bump=0.5;trickLand(false);}else trickLand(true);}}}else P.y+=(gy-P.y)*Math.min(1,18*dt);
   player.g.position.set(P.x,P.y,P.z);
   const pitch=P.air?-P.vy*0.03:Math.atan(-slope);
   player.g.rotation.set(0,P.yaw,0);
   if(onFoot){player.root.rotation.set(0,0,0);poseRunner(player,dt,{v:P.v,turn:P.turn,air:P.air,vy:P.vy,tr:P.tr,carry:P.carry});}
   else{player.root.rotation.set(pitch*0.8,0,clamp(P.turn*P.v*0.03,-0.25,0.25));
     if(P.tr&&P.tr.type==='stow')P.tr=null;
-    poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy});}
+    const tk=P.trick;poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy,flip:tk&&tk.type==='flip'?tk.t:0,spin:tk&&tk.type==='spin'?tk.t:0});}
 }
 
 /* ---------- interaction ---------- */
@@ -6709,7 +6782,7 @@ let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    if(ST.run&&!storyFree())jumpQ=kickQ=footQ=false;
+    if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
