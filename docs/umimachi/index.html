@@ -82,7 +82,9 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .4s}
 #stick{position:absolute;left:22px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:120px;height:120px;border-radius:50%;background:rgba(255,250,240,.35);border:2px solid rgba(255,250,240,.7);pointer-events:auto;touch-action:none}
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--card);box-shadow:0 3px 0 var(--shade)}
-#pad{position:absolute;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:grid;grid-template-columns:auto auto;gap:12px;pointer-events:auto}
+#pad{position:absolute;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:12px;align-items:end;pointer-events:auto}
+.pb.kick{grid-column:2;grid-row:1/3;width:92px;height:92px;font-size:17px}
+.pb.kick.on{transform:scale(.94);background:#f7c06a}
 .pb{appearance:none;border:0;width:66px;height:66px;border-radius:50%;font-family:var(--round);font-weight:900;font-size:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 0 var(--shade);touch-action:none}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
@@ -119,7 +121,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   <div id="stick" hidden><div id="knob"></div></div>
   <div id="pad" hidden>
     <button class="pb" id="bJump">ジャンプ</button>
-    <button class="pb main" id="bAct">話す</button>
+    <button class="pb" id="bAct">話す</button>
+    <button class="pb main kick" id="bKick">ける</button>
   </div>
 </div>
 <div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><span class="nx">▼</span></div>
@@ -133,13 +136,13 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
     <h1 class="logo"><span>UMIMACHI SKATE</span>海街スケート</h1>
     <p class="lede">海へ下る坂の町を、スケートボードでのんびり散歩。パン屋でおつかい、浜辺へ届けもの、迷子の猫さがし。気に入った景色は写真に残して。</p>
     <dl class="keys">
-      <dt>W / ↑</dt><dd>地面を蹴って進む（坂は勝手に転がる）</dd>
+      <dt>W / ↑</dt><dd>地面をける。押すたびにひと蹴りで加速（押したままだと蹴りつづける。坂は勝手に転がる）</dd>
       <dt>S / ↓</dt><dd>ブレーキ</dd>
       <dt>A D / ← →</dt><dd>曲がる</dd>
       <dt>E</dt><dd>話す・お店に入る・会話を進める</dd>
       <dt>Space</dt><dd>ジャンプ</dd>
       <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
-      <dt>スマホ</dt><dd>左のスティックで移動、右のボタンで話す・ジャンプ</dd>
+      <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」</dd>
     </dl>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="startBtn">散歩に出かける</button><button class="btn ghost" id="resetBtn" hidden>はじめからにする</button></div>
   </div>
@@ -1051,7 +1054,12 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
   for(const a of h.arms){const z=a.sx*(spread+(a.sx*P.st>0?-0.35:0.22)*Math.abs(P.st));a.sh.rotation.set(-0.15+0.3*c,0,z);a.el.rotation.x=-0.35;}
   const hy=h.hips.position.y-0.07,hz=h.hips.position.z;
   for(const L of h.legs){const front=L.sx<0;let fx=front?0.03:-0.03,fy=ANKLE_Y,fz=front?0.2:-0.21;
-    if(!front&&P.push>0.03){const ph=h.t*6.2;fz=-0.26+Math.sin(ph)*0.3*P.push;fy=ANKLE_Y-P.push*0.13+Math.max(0,Math.cos(ph))*0.13*P.push;fx=-0.14*P.push;}
+    if(!front&&P.push>0.03){const k=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1;
+      // reach forward and down, plant beside the deck, sweep back hard, lift and return
+      const fwdZ=-0.05,backZ=-0.62,ph=k<0.3?k/0.3:k<0.65?(k-0.3)/0.35:(k-0.65)/0.35;
+      let z,y;if(k<0.3){z=lerp(-0.21,fwdZ,smooth(ph));y=lerp(ANKLE_Y,0.095,smooth(ph));}
+      else if(k<0.65){z=lerp(fwdZ,backZ,ph);y=0.095;}else{z=lerp(backZ,-0.21,smooth(ph));y=0.095+Math.sin(Math.PI*ph)*0.14+(ANKLE_Y-0.095)*smooth(ph);}
+      fz=lerp(fz,z,P.push);fy=lerp(fy,y,P.push);fx=-0.15*P.push;}
     solveLeg(L,L.sx*0.09,hy,hz,fx,fy,fz);}
   for(const w of h.wheels)w.rotation.x+=s.v*dt/0.034;
   if(h.faceM)animHeroine(h,dt,s);
@@ -1372,12 +1380,12 @@ function placeName(){const x=P.x,z=P.z;
 
 /* ---------- player ---------- */
 const player=makeSkater();world.add(player.g);
-const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0};P.y=G(P.x,P.z);
-const keys={};let jumpQ=false,actQ=false;
+const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0};P.y=G(P.x,P.z);
+const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
-  if(e.code==='Space')jumpQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
+  if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
   if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
@@ -1389,10 +1397,14 @@ const stick={on:false,id:null,x:0,y:0};
   el.addEventListener('pointermove',e=>{if(stick.on&&e.pointerId===stick.id)set(e);});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,()=>{stick.on=false;stick.x=stick.y=0;kn.style.transform='';});
   $('bJump').addEventListener('pointerdown',e=>{e.preventDefault();jumpQ=true;});
+  const kb=$('bKick');kb.addEventListener('pointerdown',e=>{e.preventDefault();kickQ=true;kickHold=true;kb.classList.add('on');try{kb.setPointerCapture(e.pointerId);}catch(_){}});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])kb.addEventListener(ev,()=>{kickHold=false;kb.classList.remove('on');});
+  kb.addEventListener('contextmenu',e=>e.preventDefault());
   $('bAct').addEventListener('pointerdown',e=>{e.preventDefault();if(DLG)nextLine();else if(!modal)actQ=true;});}
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
-  if(stick.on){if(stick.y<-0.3)fwd=true;if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
+  fwd=fwd||kickHold;
+  if(stick.on){if(stick.y>0.45)back=true;if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 function hits(x,z,r){for(const c of COLL){if(!c.on)continue;if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
 function stepPlayer(dt){
@@ -1401,7 +1413,11 @@ function stepPlayer(dt){
   const g1=G(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=G(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
   let a=-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
-  P.push=false;if(I.fwd&&!P.air){if(P.v<5.2){a+=2.6;P.push=true;}else a+=0.3;}
+  // each kick: the back foot plants, shoves, and the board surges forward; holding the key keeps kicking
+  P.kickCD-=dt;if(P.kickT>=0){P.kickT+=dt/0.6;if(P.kickT>=1)P.kickT=-1;}
+  if((kickQ||I.fwd)&&!P.air&&!busy&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.5499999999999999;P.kicked=false;}kickQ=false;
+  if(P.kickT>0.35&&!P.kicked){P.kicked=true;P.v=Math.min(P.v+0.6+2.1*Math.max(0,1-P.v/8.5),9.5);}
+  P.push=P.kickT>=0;
   P.brake=I.back;if(I.back&&!P.air)a-=P.v>0.2?4.2:0;
   P.v=clamp(P.v+a*dt,0,11.5);if(Math.abs(P.v)<0.04&&!I.fwd)P.v=0;
   P.turn+=(I.turn-P.turn)*Math.min(1,8*dt);
@@ -1419,7 +1435,7 @@ function stepPlayer(dt){
   player.g.position.set(P.x,P.y,P.z);
   const pitch=P.air?-P.vy*0.03:Math.atan(-slope);
   player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(pitch*0.8,0,clamp(P.turn*P.v*0.03,-0.25,0.25));
-  poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,brake:P.brake&&P.v>0.3,air:P.air});
+  poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air});
 }
 
 /* ---------- interaction ---------- */
@@ -1483,7 +1499,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 $('startBtn').addEventListener('click',()=>{state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderHUD();canvas.focus();
-  if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');});
+  toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');});
 $('resetBtn').addEventListener('click',()=>{SAVE=JSON.parse(JSON.stringify(S0));save();$('resetBtn').hidden=true;toast('はじめからにした');renderHUD();});
 if(Object.keys(SAVE.qs).length||SAVE.money!==S0.money){$('resetBtn').hidden=false;$('startBtn').textContent='散歩のつづきへ';}
 updateFolk(0,P.x,P.z,true);
