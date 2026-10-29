@@ -21,7 +21,15 @@ function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id
     if(!seen('d1_mio'))return eve?'夕方の桟橋の先へ行ってみる':'ひと休みしたら、夕方の桟橋へ';return home;}
   if(d<=3){if(d===3&&!seen('d3_sota'))return '浜辺のソウタくんに会いに行く';
     if(eve||night)return seen('d'+d+'_mio')?home:'夕方の桟橋の先へ。それから'+home;
-    return '町の「！」の人を手伝う。夕方（15時半ごろ）になったら桟橋へ。ばあちゃんに話すと夕方まで休める';}
+    // the daytime: what can still be found today, then errands, then resting until the evening
+    const todo=[];
+    if(!f.saw_van)todo.push('海岸通りを走る黒いバンを見に行く');
+    else if(!seen('master_van'))todo.push('しおさいのマスターに、黒いバンのことを聞く');
+    if(!f.met_mochi)todo.push('浜辺の西の流木のあたりにいる白い猫に会う');
+    if(d===3&&(f.saw_van||f.heard_og)&&!seen('d3_baker'))todo.push('こむぎ堂の主人に話す');
+    if(QUESTS.some(available))todo.push('町の「！」の人を手伝う');
+    const rest='ばあちゃんに話すと夕方まで休める。夕方は桟橋へ';
+    return todo.length?todo.slice(0,2).join('、')+'。'+rest:'今日できることは終わった。'+rest;}
   if(f.route===3&&!f.ending_calm){if(d<6)return '夏祭りの準備：「！」の人を手伝う。ソウタくんと大会の練習もできる。夕方は'+home;
     return f.contest_done?null:'浜辺のソウタくんに話して、スケボー大会に出る';}
   if(f.route===2&&!f.ending_org){if(!seen('o4_baker'))return 'こむぎ堂の主人に、ゆうべのことを話す';
