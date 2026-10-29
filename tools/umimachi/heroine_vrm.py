@@ -287,11 +287,15 @@ def split_material(ob, matname, name):
                 bpy.ops.object.material_slot_remove()
     return dup
 
-def shell(ob, pred, name, offset, material, mat_index=None):
-    """copy the faces of ob that satisfy pred (face centre) and push them out along the normals: a garment that bends exactly like the skin"""
+def shell(ob, pred, name, offset, material, mat_index=None, cut=()):
+    """copy the faces of ob that satisfy pred (face centre) and push them out along the normals: a garment that bends exactly like the skin.
+    cut: planes (point, normal) the garment is trimmed at, so a hem runs straight instead of along the skin's triangles
+    (pred then takes a little more than needed)"""
     dup = ob.copy(); dup.data = ob.data.copy(); dup.name = name; bpy.context.collection.objects.link(dup)
     bm = bmesh.new(); bm.from_mesh(dup.data)
     bmesh.ops.delete(bm, geom=[f for f in bm.faces if not ((mat_index is None or f.material_index == mat_index) and pred(f.calc_center_median()))], context='FACES')
+    for co, no in cut:
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=co, plane_no=no, clear_outer=True)
     bm.normal_update()
     for v in bm.verts:
         v.co += v.normal * offset
@@ -318,12 +322,15 @@ paint(BODY, 'Body_00', lambda x, y, z, p: thigh.append(p[:3].copy()) if 0.6 < z 
 SKIN = np.median(np.array(thigh), 0)
 paint(BODY, 'Body_00', lambda x, y, z, p: SKIN if z < 0.5 and np.abs(p[:3] - SKIN).sum() > 0.1 else None)
 
-shell(BODY, lambda c: 0.7 < c.z < 0.99 and abs(c.x) < 0.2, 'W_shorts', 0.0035, mat('Bottoms_Shorts', WHITE), skin_i)
-shell(BODY, lambda c: c.z > 1.18 and 0.12 < abs(c.x) < 0.515, 'W_sleeves', 0.0055, mat('Cloth_Sleeves', WHITE), skin_i)
-shell(BODY, lambda c: 0.075 < c.z < 0.33 and abs(c.x) < 0.16, 'W_socks', 0.0032, mat('Cloth_Socks', WHITE), skin_i)
-shell(BODY, lambda c: 0.296 < c.z < 0.316 and abs(c.x) < 0.16, 'W_sockband', 0.0046, mat('Cloth_SockBand', WHITE), skin_i)
-shell(BODY, lambda c: 0.075 < c.z < 0.47 and abs(c.x) < 0.16, 'W_kneesocks', 0.0032, mat('Cloth_KneeSocks', WHITE), skin_i)
-shell(BODY, lambda c: 0.075 < c.z < 0.9 and abs(c.x) < 0.2, 'W_tights', 0.0022, mat('Cloth_Tights', WHITE), skin_i)
+shell(BODY, lambda c: 0.67 < c.z < 1.02 and abs(c.x) < 0.2, 'W_shorts', 0.0035, mat('Bottoms_Shorts', WHITE), skin_i,
+      cut=[((0, 0, 0.99), (0, 0, 1)), ((0, 0, 0.7), (0, 0, -1))])
+shell(BODY, lambda c: c.z > 1.18 and 0.12 < abs(c.x) < 0.545, 'W_sleeves', 0.0055, mat('Cloth_Sleeves', WHITE), skin_i,
+      cut=[((0.515, 0, 0), (1, 0, 0)), ((-0.515, 0, 0), (-1, 0, 0))])
+shell(BODY, lambda c: 0.075 < c.z < 0.36 and abs(c.x) < 0.16, 'W_socks', 0.0032, mat('Cloth_Socks', WHITE), skin_i, cut=[((0, 0, 0.33), (0, 0, 1))])
+shell(BODY, lambda c: 0.27 < c.z < 0.34 and abs(c.x) < 0.16, 'W_sockband', 0.0046, mat('Cloth_SockBand', WHITE), skin_i,
+      cut=[((0, 0, 0.316), (0, 0, 1)), ((0, 0, 0.296), (0, 0, -1))])
+shell(BODY, lambda c: 0.075 < c.z < 0.5 and abs(c.x) < 0.16, 'W_kneesocks', 0.0032, mat('Cloth_KneeSocks', WHITE), skin_i, cut=[((0, 0, 0.47), (0, 0, 1))])
+shell(BODY, lambda c: 0.075 < c.z < 0.93 and abs(c.x) < 0.2, 'W_tights', 0.0022, mat('Cloth_Tights', WHITE), skin_i, cut=[((0, 0, 0.9), (0, 0, 1))])
 # an open hoodie shows the shirt and a zip down the front
 shell(TOPS, lambda c: c.y < -0.03 and 0.95 < c.z < 1.285 and abs(c.x) < 0.042, 'W_strip', 0.0022, mat('Cloth_Strip', WHITE))
 shell(TOPS, lambda c: c.y < -0.03 and 0.95 < c.z < 1.285 and 0.042 <= abs(c.x) < 0.05, 'W_zip', 0.0026, mat('Cloth_Zip', WHITE))
