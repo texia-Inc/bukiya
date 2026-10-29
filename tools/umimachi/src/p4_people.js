@@ -287,11 +287,13 @@ function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))
 /* townsfolk and the people you run errands for */
 const NPCS={};
 function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
-  const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
+  const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;n.box=collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
+// someone who is only there at certain times has n.show(); hidden people neither stand in the way nor talk
+const present=n=>!n.show||n.show();
 function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.yaw];}
 { const B=SHRINE;const bench=benchMesh();bench.position.set(-50.5,G(-50.5,-125.6),-125.6);world.add(bench);collide(-51.3,-49.7,-125.9,-125.3,'prop',G(-50.5,-125.6)+0.5);
   placeNPC('tome',{skin:'#efc9aa',hair:'#d9d6d0',style:'grey',shirt:'#8a6a8a',sleeves:'long',bottom:'long',bottomCol:'#5a5a6a',shoe:'#4a3a2e',bend:0.32,cane:true,y:G(-50.5,-125.6)},
-    -50.5,-125.55,0,'sit','トメさん',['この坂からの海がいちばん好きでねえ。','神社の鳥居の向こう、夕方はきれいだよ。']);}
+    -50.5,-125.55,0,'sit','トメばあちゃん',['この坂からの海がいちばん好きでねえ。','神社の鳥居の向こう、夕方はきれいだよ。']);}
 { const [x,z,yaw]=shopFront('flower',1.6,1.7);placeNPC('hana',{skin:'#f3d0b5',hair:'#3a2a1e',style:'pony',shirt:'#f2e8d6',bottom:'pants',bottomCol:'#3b4a66',apron:'#3f8a4f'},x,z,yaw,'stand','はなもりの花江さん',['今日はひまわりが入ったのよ。','お花は朝いちばんがいちばん元気。']);}
 { const [x,z,yaw]=shopFront('cafe',3.4,1.4);placeNPC('master',{skin:'#e6bb95',hair:'#2b2520',style:'short',shirt:'#f7f7f3',sleeves:'long',vest:'#3a2a20',bottom:'pants',bottomCol:'#2b2520',mustache:true},x,z,yaw,'stand','しおさいのマスター',['うちのナポリタンは昔ながらの味さ。','海の色が変わると、コーヒーの味も変わる気がするよ。']);}
 { const [x,z,yaw]=shopFront('bakery',2.2,1.5);placeNPC('baker',{skin:'#f1cdb0',hair:'#2a1d15',style:'short',shirt:'#fbfbf8',sleeves:'long',bottom:'pants',bottomCol:'#e9e2d4',apron:'#c8722e',hat:'chef'},x,z,yaw,'stand','こむぎ堂の主人',['いらっしゃい！ メロンパン、焼きたてだよ。']);}
@@ -300,7 +302,9 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
 { const [x,z,yaw]=shopFront('fish',2.6,1.9);placeNPC('okami',{skin:'#e9bf9b',hair:'#2b2520',style:'bun',shirt:'#f2f2ee',sleeves:'long',bottom:'pants',bottomCol:'#24466e',apron:'#2e5fa8',scarf:'#f2c230'},x,z,yaw,'stand','魚松のおかみさん',['今朝はあじがよく揚がったよ！']);}
 { const [x,z,yaw]=shopFront('books',-2.8,1.6);placeNPC('neko',{skin:'#f1cdb0',hair:'#6b6560',style:'short',shirt:'#7a8a6a',sleeves:'long',bottom:'pants',bottomCol:'#4a4038',glasses:true,bend:0.1},x,z,yaw,'stand','古書うみねこの店主',['古い写真集をめくると、この町は昔からあまり変わらないんだ。']);}
 { placeNPC('sota',{skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78},-72,SHORE+13,Math.PI*0.85,'stand','ソウタくん',['波が高い日はサーフィンの人がいっぱい来るんだ。']);}
-{ placeNPC('fisher',{skin:'#d9a987',hair:'#2b2520',style:'short',hat:'straw',shirt:'#5a7a8a',sleeves:'long',bottom:'pants',bottomCol:'#4a4a4a',y:PIER.y+0.02},-79.8,PIER.z1-3.2,0,'sit','釣りのおじさん',['ここで釣れるのは、だいたいあじかサバだな。','島の灯台、夜になると光るんだ。']);
+{ placeNPC('fisher',{skin:'#d9a987',hair:'#2b2520',style:'short',hat:'straw',shirt:'#5a7a8a',sleeves:'long',bottom:'pants',bottomCol:'#4a4a4a',y:PIER.y+0.02},-79.8,PIER.z1-3.2,0,'sit','釣りのおじさん',['ここで釣れるのは、だいたいあじかサバだな。','島の灯台、昔は夜になると光ったんだがなあ。']);
+  // Mio: the girl in white who stands at the end of the pier, only in the evening
+  placeNPC('mio',{skin:'#f3dcc8',hair:'#1c1a1a',style:'bob',shirt:'#f7f6f1',bottom:'skirt',bottomCol:'#f7f6f1',socks:'#f7f6f1',shoe:'#e8e4dc',scale:0.93,y:PIER.y+0.02},-81.3,PIER.z1-1.4,0,'stand','ミオ',['……海、きれいだね。','灯台、今日も光らないね。']);
   const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.015,2.6,5),tm('#3a2a1e'));rod.position.set(-79.6,PIER.y+1.4,PIER.z1-1.9);rod.rotation.x=0.9;world.add(rod);}
 { placeNPC('lady1',{skin:'#f1cdb0',hair:'#3a2a1e',style:'bob',shirt:'#e8c9b8',bottom:'skirt',bottomCol:'#6b7a8a'},5.6,30,-Math.PI/2+0.4,'stand','',['今日はいい風ねえ。']);
   placeNPC('lady2',{skin:'#efc9aa',hair:'#1c1a1a',style:'bun',shirt:'#cfe0d2',sleeves:'long',bottom:'pants',bottomCol:'#5a4a3a'},5.6,31.1,-Math.PI/2-0.6,'stand','',['商店街のコロッケ、食べた？']);

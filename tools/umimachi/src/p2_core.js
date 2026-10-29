@@ -257,8 +257,14 @@ for(let gx=-190;gx<=190;gx+=8.5)for(let gz=-176;gz<=COAST_Z-12;gz+=8.5){ // hous
   if(freeBox(b,0.6))finish(b);
 }
 
-/* facades drawn on canvas: every face is white so the instance colour tints it */
-function win(g,x,y,w,h,o){o=o||{};g.fillStyle='#f7f4ee';g.fillRect(x-3,y-3,w+6,h+6);
+/* facades drawn on canvas: every face is white so the instance colour tints it. Each window drawn is also noted, so a second
+   canvas can light some of them for the night (the emissive map that the story's clock turns up after dark). */
+let WINLOG=null;const NIGHT_MATS=[];
+function litTex(w,h,rects,seed){const r=mulberry(seed);return canvasTex(w,h,(g)=>{g.fillStyle='#000';g.fillRect(0,0,w,h);
+  for(const [x,y,ww,hh] of rects){if(r()>0.62)continue;const gr=g.createLinearGradient(x,y,x,y+hh);gr.addColorStop(0,'#ffd99a');gr.addColorStop(1,'#e8a85a');g.fillStyle=gr;g.fillRect(x,y,ww,hh);}});}
+function nightMat(tex,opt){const m=tmap(tex,Object.assign({emissive:'#ffffff',emissiveMap:tex.lit,emissiveIntensity:0},opt||{}));NIGHT_MATS.push(m);return m;}
+function logged(w,h,seed,draw){WINLOG=[];const t=canvasTex(w,h,draw);t.lit=litTex(w,h,WINLOG,seed);WINLOG=null;return t;}
+function win(g,x,y,w,h,o){o=o||{};if(WINLOG)WINLOG.push([x,y,w,h]);g.fillStyle='#f7f4ee';g.fillRect(x-3,y-3,w+6,h+6);
   const gr=g.createLinearGradient(x,y,x+w,y+h);gr.addColorStop(0,'#5f7b8c');gr.addColorStop(1,'#3d5260');g.fillStyle=gr;g.fillRect(x,y,w,h);
   g.fillStyle='rgba(255,255,255,.28)';g.beginPath();g.moveTo(x+w*0.15,y+h);g.lineTo(x+w*0.45,y);g.lineTo(x+w*0.6,y);g.lineTo(x+w*0.3,y+h);g.fill();
   if(o.curtain){g.fillStyle=o.curtain;g.fillRect(x,y,w*0.32,h);g.fillRect(x+w*0.7,y,w*0.3,h);}
@@ -270,12 +276,12 @@ function slider(g,x,y,w,h){g.fillStyle='#8b6a4c';g.fillRect(x,y,w,h);for(let k=0
   g.fillStyle='rgba(139,106,76,.95)';for(let j=1;j<5;j++)g.fillRect(xx,y+4+j*(h-8)/5,w/2-6,2);g.fillRect(xx+(w/2-6)/2-1,y+4,2,h-8);}}
 const CURT=['#e8c9b8','#cfe0d2','#f2e2a8','#d6dcef','#f0d0d8','#ffffff'];
 function facadeTex(kind,txt,seed){const fl=kind==='house1'?1:kind==='apt3'||kind==='shop3'?3:2;const r=mulberry(seed||kind.length*31);
-  return canvasTex(256,128*fl,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
+  return logged(256,128*fl,seed||7,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
     g.fillStyle='rgba(0,0,0,.05)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1);
     const shopFloor=kind.startsWith('shop');
     for(let f=0;f<fl;f++){const y0=h-(f+1)*128;
       if(f===0&&shopFloor){g.fillStyle='#3a4552';g.fillRect(10,y0+34,w-20,94);
-        g.fillStyle='rgba(255,236,196,.55)';for(let x=18;x<w-30;x+=44){g.fillRect(x,y0+46,34,40);}
+        g.fillStyle='rgba(255,236,196,.55)';for(let x=18;x<w-30;x+=44){g.fillRect(x,y0+46,34,40);if(kind!=='shopD')WINLOG.push([x,y0+46,34,40],[x,y0+46,34,40]);}
         g.fillStyle='rgba(255,255,255,.18)';g.beginPath();g.moveTo(40,y0+128);g.lineTo(90,y0+34);g.lineTo(110,y0+34);g.lineTo(60,y0+128);g.fill();
         const colors=['#c8372d','#2f6b8a','#4f8a3a','#e8a23a','#6b4a8a','#2e3036'];g.fillStyle=colors[Math.floor(r()*colors.length)];g.fillRect(6,y0+4,w-12,28);
         g.fillStyle='#fffaf0';g.font='bold 22px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(txt||'',w/2,y0+19);
@@ -290,15 +296,15 @@ function facadeTex(kind,txt,seed){const fl=kind==='house1'?1:kind==='apt3'||kind
       }
       g.fillStyle='rgba(0,0,0,.07)';g.fillRect(0,y0,w,3);}
     g.fillStyle='rgba(0,0,0,.08)';g.fillRect(0,h-6,w,6);});}
-function sideTex(fl){return canvasTex(128,128*fl,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.fillStyle='rgba(0,0,0,.05)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1);
+function sideTex(fl){return logged(128,128*fl,fl*13,(g,w,h)=>{g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.fillStyle='rgba(0,0,0,.05)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1);
   for(let f=0;f<fl;f++){const y0=h-(f+1)*128;win(g,44,y0+36,40,34,{});g.fillStyle='rgba(0,0,0,.07)';g.fillRect(0,y0,w,3);}});}
-const SIDE={1:tmap(sideTex(1)),2:tmap(sideTex(2)),3:tmap(sideTex(3))};
+const SIDE={1:nightMat(sideTex(1)),2:nightMat(sideTex(2)),3:nightMat(sideTex(3))};
 const roofTop=tm('#8f8b84'),under=tm('#6d6a64');
 const SHOP_TXT={shopA:['クリーニング','たばこ','美容室 ルナ','米・酒','田中電器'],shopB:['金物 マルニ','ふとん店','時計・メガネ','文房具'],shopC:['和菓子 つる屋','写真館','薬 ミナト'],shopD:['ガレージ'],shop3:['ホテル みさき','歯科クリニック','不動産']};
 const WALLS=['#f6f2ea','#f1e7d6','#efe2cf','#e9ede8','#f2dfd2','#e3e8ee','#f4ecd0','#e8e0d4','#dfe6dc','#f0e6e0'];
 const variantMat={};
 function matFor(b){let key=b.kind,txt='';if(SHOP_TXT[b.kind]){const list=SHOP_TXT[b.kind];txt=list[Math.floor(hash(b.cx*7,b.cz*3)*list.length)];key+='|'+txt;}
-  if(!variantMat[key]){const fl=b.floors,f=tmap(facadeTex(b.kind,txt,key.length*97+(txt.charCodeAt(0)||0)));variantMat[key]={mats:[SIDE[fl],SIDE[fl],roofTop,under,f,SIDE[fl]],list:[]};}
+  if(!variantMat[key]){const fl=b.floors,f=nightMat(facadeTex(b.kind,txt,key.length*97+(txt.charCodeAt(0)||0)));variantMat[key]={mats:[SIDE[fl],SIDE[fl],roofTop,under,f,SIDE[fl]],list:[]};}
   return variantMat[key];}
 const edges=[];
 function boxEdges(cx,y0,cz,yaw,wx,hh,dz){const X=[Math.cos(yaw),-Math.sin(yaw)],Z=[Math.sin(yaw),Math.cos(yaw)],P=[];
