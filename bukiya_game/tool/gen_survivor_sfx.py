@@ -201,6 +201,53 @@ def extra():
          * env(int(RATE * 0.4), 0.002, 0.18)]), 0.5)
 
 
+def extra2():
+    """大群の警告と、ボス戦の檻の音"""
+    # 大群の警告：低く鳴り響く角笛（2回）
+    def horn(sec):
+        x = t(sec)
+        f = 147 * (1 + 0.02 * np.sin(2 * np.pi * 5 * x))
+        tone_ = tone(f, sec, "square") * 0.5 + tone(f * 2, sec, "tri") * 0.4
+        return lowpass(tone_, 0.2) * env(int(RATE * sec), 0.06, sec * 0.6)
+    write("horn", seq([horn(0.45), np.zeros(int(RATE * 0.08)), horn(0.75)]), 0.7)
+
+    # 檻が閉じる：金属がぶつかる音
+    sec = 0.6
+    clang = sum(tone(f, sec) * a for f, a in [(220, 0.6), (587, 0.4), (1244, 0.3), (2093, 0.2)])
+    write("cage", (clang * env(int(RATE * sec), 0.001, 0.15)
+                   + lowpass(noise(sec), 0.2) * env(int(RATE * sec), 0.001, 0.03)), 0.6)
+
+
+def extra3():
+    """ボスの大技の音"""
+    # 怒り：うなりが高まる咆哮
+    sec = 0.9
+    x = t(sec)
+    f = np.geomspace(90, 180, len(x)) * (1 + 0.06 * np.sin(2 * np.pi * 9 * x))
+    write("roar", (tone(f, sec, "square") * 0.45 + tone(f * 1.5, sec, "tri") * 0.3
+                   + lowpass(noise(sec), 0.1) * 0.7)
+          * env(int(RATE * sec), 0.05, 0.4), 0.7)
+
+    # 投石：重い風切り音
+    sec = 0.3
+    n = noise(sec)
+    y = np.zeros_like(n)
+    acc = 0.0
+    sweep = np.linspace(0.05, 0.3, len(n))
+    for i, v in enumerate(n):
+        acc += sweep[i] * (v - acc)
+        y[i] = acc
+    write("toss", y * env(len(y), 0.01, 0.1), 0.6)
+
+    # スライム弾：ぷるっとした「ビチャ」
+    sec = 0.25
+    write("splat", (tone(np.geomspace(500, 160, int(RATE * sec)), sec) * 0.6
+                    + lowpass(noise(sec), 0.3) * 0.4)
+          * env(int(RATE * sec), 0.003, 0.08), 0.5)
+
+
 if __name__ == "__main__":
     main()
     extra()
+    extra2()
+    extra3()

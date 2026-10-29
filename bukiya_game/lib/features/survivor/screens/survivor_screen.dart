@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../domain/run_result.dart';
 import '../domain/run_simulation.dart';
 import '../domain/skills.dart';
+import '../domain/stage.dart';
 import '../data/profile_store.dart';
 import '../domain/profile.dart';
 import '../domain/shop.dart';
@@ -273,6 +274,9 @@ class _HudTickerState extends State<_HudTicker> {
           : (g.closesAt == null ? -1 : (g.closesAt! - s.time).ceil()),
       s.boss == null ? null : (s.boss!.hp / s.boss!.maxHp * 100).ceil(),
       widget.fx.bossWarning > 0,
+      widget.fx.waveWarning > 0,
+      s.boss?.enraged,
+      widget.fx.bossEnraged > 0,
     );
   }
 
@@ -432,6 +436,43 @@ class _Hud extends StatelessWidget {
                       fontWeight: FontWeight.w800)),
             ),
           ),
+        if (fx.bossEnraged > 0 && boss != null && fx.bossWarning <= 0)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xCC3D1214),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFF6B3D)),
+              ),
+              child: Text('${_bossName(boss.kind)}が怒り狂った！',
+                  style: const TextStyle(
+                      color: Color(0xFFFFA07A),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
+        if (fx.waveWarning > 0)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xCC3D2A08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFFB13D)),
+              ),
+              child: Text(
+                  fx.waveType == WaveType.ring
+                      ? '大群に囲まれる！ 突破口を探せ'
+                      : '大群が突っ込んでくる！',
+                  style: const TextStyle(
+                      color: Color(0xFFFFC66B),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
         if (gate != null)
           Center(
             child: Container(
@@ -471,7 +512,8 @@ class _BossBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(_bossName(boss.kind),
+        Text(
+            boss.enraged ? '${_bossName(boss.kind)}（怒り）' : _bossName(boss.kind),
             textAlign: TextAlign.center,
             style: const TextStyle(
                 fontSize: 12,
@@ -486,15 +528,30 @@ class _BossBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(5),
             border: Border.all(color: const Color(0xFF1A1A1A)),
           ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: (boss.hp / boss.maxHp).clamp(0.0, 1.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFE5484D),
-                borderRadius: BorderRadius.circular(5),
+          child: Stack(
+            children: [
+              FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: (boss.hp / boss.maxHp).clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: boss.enraged
+                        ? const Color(0xFFFF6B3D)
+                        : const Color(0xFFE5484D),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                ),
               ),
-            ),
+              // 半分の目印：ここを切ると怒る
+              if (!boss.enraged)
+                const Align(
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                      width: 2,
+                      height: double.infinity,
+                      child: ColoredBox(color: Color(0xCCFFFFFF))),
+                ),
+            ],
           ),
         ),
       ],

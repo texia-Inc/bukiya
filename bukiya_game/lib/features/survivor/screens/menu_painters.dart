@@ -78,6 +78,22 @@ class StageArtPainter extends CustomPainter {
             w * 0.05);
       }
       _deadTree(canvas, Offset(w * 0.2, h * 0.5), w * 0.12);
+    } else if (stage.id == 'canyon') {
+      // 左右にそびえる崖と、真ん中の細い谷道
+      for (final side in [-1.0, 1.0]) {
+        final x = w * 0.5 + side * w * 0.36;
+        final cliff = Path()
+          ..moveTo(x - side * w * 0.08, h * 0.82)
+          ..lineTo(x - side * w * 0.1, h * 0.38)
+          ..lineTo(x - side * w * 0.02, h * 0.18)
+          ..lineTo(x + side * w * 0.08, h * 0.26)
+          ..lineTo(x + side * w * 0.1, h * 0.82)
+          ..close();
+        canvas.drawPath(cliff, Paint()..color = const Color(0xFF8A6E48));
+        canvas.drawPath(cliff, _outline(3));
+        canvas.drawLine(Offset(x, h * 0.3),
+            Offset(x - side * w * 0.03, h * 0.55), _outline(2));
+      }
     } else {
       for (final p in [
         Offset(w * 0.18, h * 0.5),

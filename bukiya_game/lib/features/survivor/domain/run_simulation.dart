@@ -6,6 +6,7 @@ import 'skills.dart';
 import 'stage.dart';
 
 part 'sim_bosses.dart';
+part 'sim_field.dart';
 part 'sim_weapons.dart';
 
 /// ラン1回分のゲームルール。描画や入力から切り離してテストできるようにしている。
@@ -46,8 +47,8 @@ const Map<EnemyKind, EnemyStats> enemyStats = {
       hp: 18, speed: 92, damage: 7, radius: 11, xp: 2, materialChance: 0.08),
   EnemyKind.ogre: EnemyStats(
       hp: 650,
-      speed: 75,
-      damage: 20,
+      speed: 60,
+      damage: 16,
       radius: 26,
       xp: 0,
       materialChance: 0,
@@ -55,7 +56,7 @@ const Map<EnemyKind, EnemyStats> enemyStats = {
   EnemyKind.kingSlime: EnemyStats(
       hp: 1300,
       speed: 55,
-      damage: 16,
+      damage: 14,
       radius: 32,
       xp: 0,
       materialChance: 0,
@@ -73,6 +74,9 @@ class Enemy {
   double kby = 0;
   bool dead = false;
 
+  /// 檻ができたときに中にいたか（中の敵は外へ、外の敵は中へ入れない）
+  bool inArena = false;
+
   // ---- ボスの行動 ----
   BossState bossState = BossState.walk;
   double stateTime = 0;
@@ -87,6 +91,17 @@ class Enemy {
   double toX = 0;
   double toY = 0;
   bool split = false;
+
+  /// 今の大技と、これまでに繰り出した数（順番に回す）
+  BossAttack attack = BossAttack.charge;
+  int attackCount = 0;
+
+  /// 連続で繰り出す大技の残り回数と、全部の回数
+  int repeatsLeft = 0;
+  int repeatsTotal = 0;
+
+  /// 体力が半分を切ると怒る
+  bool enraged = false;
 
   Enemy(this.kind, this.x, this.y, this.hp) : maxHp = hp;
 
@@ -180,7 +195,16 @@ enum RunEventType {
   evolve,
   gateOpen,
   bossSpawn,
+  arenaClose,
+  arenaOpen,
+  waveWarning,
+  waveStart,
   bossSlam,
+  bossSmash,
+  bossThrow,
+  bossSpray,
+  bossSummon,
+  bossEnrage,
   bossDefeated,
   returned,
   died,
@@ -265,8 +289,15 @@ class RunSimulation {
   final List<Blast> blasts = [];
   final List<Pickup> pickups = [];
   final List<Particle> particles = [];
+  final List<BossShot> bossShots = [];
   SwordSwing? swing;
   ReturnGate? gate;
+
+  /// ボス戦の檻（ボスがいないときは null）
+  Arena? arena;
+  int _nextWave = 0;
+  bool _waveWarned = false;
+  _Swarm? _swarm;
   bool horde = false;
 
   /// 描画側が毎フレーム取り出して空にする。取り出されなくても溜まり続けないよう上限を設ける
@@ -348,14 +379,18 @@ class RunSimulation {
     time += dt;
 
     _movePlayer(dt);
+    _clampPlayer();
     _updateGate();
     if (phase != RunPhase.playing) return;
     _spawnEnemies(dt);
+    _updateWaves(dt);
     _spawnBosses();
     _moveEnemies(dt);
     _updateBosses(dt);
+    _updateBossShots(dt);
     if (phase != RunPhase.playing) return;
     _separateEnemies();
+    _clampEnemies();
     _contactDamage(dt);
     if (phase != RunPhase.playing) return;
     _updateSword(dt);
@@ -366,10 +401,20 @@ class RunSimulation {
     _updatePickups(dt);
     _updateParticles(dt);
     enemies.removeWhere((e) => e.dead);
-    enemies.addAll(_spawnQueue);
-    _spawnQueue.clear();
+    _flushSpawnQueue();
+    _openArenaIfCleared();
 
     if (_pendingLevelUps > 0) _openLevelUp();
+  }
+
+  /// 処理中に生まれた敵を加える。檻があれば、檻の中で生まれた敵は中の敵になる
+  void _flushSpawnQueue() {
+    final a = arena;
+    for (final e in _spawnQueue) {
+      if (a != null) e.inArena = a.contains(e.x, e.y);
+      enemies.add(e);
+    }
+    _spawnQueue.clear();
   }
 
   void chooseSkill(SkillId id) {
@@ -472,27 +517,34 @@ class RunSimulation {
 
   void _openGateNear({required double? closesAt}) {
     final a = rng.nextDouble() * 2 * pi;
-    gate = ReturnGate(px + cos(a) * 170, py + sin(a) * 170, closesAt);
+    var gx = px + cos(a) * 170, gy = py + sin(a) * 170;
+    // 通路や檻の中に置く
+    final c = stage.corridorHalfWidth;
+    if (c != null) gx = gx.clamp(-c + 40, c - 40);
+    final ar = arena;
+    if (ar != null) {
+      gx = gx.clamp(ar.left + 40, ar.right - 40);
+      gy = gy.clamp(ar.top + 40, ar.bottom - 40);
+    }
+    gate = ReturnGate(gx, gy, closesAt);
     _emit(RunEvent(RunEventType.gateOpen, gate!.x, gate!.y));
   }
 
   void _spawnEnemies(double dt) {
-    // ボス戦の間は雑魚を減らして一騎打ちにする
-    final rate =
-        (1.4 + time / 40) * (horde ? 2.5 : 1) * (boss != null ? 0.35 : 1);
+    // ボス戦（檻の中）の間は雑魚が湧かない
+    final rate = (1.4 + time / 40) *
+        (horde ? 2.5 : 1) *
+        (arena != null ? 0 : 1) *
+        // 細い通路では同じ数でも混み合うので減らす
+        (stage.corridorHalfWidth != null ? 0.6 : 1);
     _spawnAcc += rate * dt;
     while (_spawnAcc >= 1) {
       _spawnAcc -= 1;
       if (enemies.length >= config.maxEnemies) continue;
-      final a = rng.nextDouble() * 2 * pi;
+      final (x, y) = _spawnPoint();
       final kind = _pickEnemyKind();
       final hpScale = (1 + time / 150) * stage.hpScale;
-      enemies.add(Enemy(
-        kind,
-        px + cos(a) * spawnDistance,
-        py + sin(a) * spawnDistance,
-        enemyStats[kind]!.hp * hpScale,
-      ));
+      enemies.add(Enemy(kind, x, y, enemyStats[kind]!.hp * hpScale));
     }
   }
 
@@ -527,11 +579,11 @@ class RunSimulation {
       final decay = pow(0.001, dt).toDouble();
       e.kbx *= decay;
       e.kby *= decay;
-      // 遠く離れた敵はプレイヤーの近くに出し直す
-      if (d > spawnDistance * 1.6) {
-        final a = rng.nextDouble() * 2 * pi;
-        e.x = px + cos(a) * spawnDistance;
-        e.y = py + sin(a) * spawnDistance;
+      // 遠く離れた敵はプレイヤーの近くに出し直す（檻の中の敵はそのまま）
+      if (d > spawnDistance * 1.6 && !e.inArena) {
+        final (x, y) = _spawnPoint();
+        e.x = x;
+        e.y = y;
       }
     }
   }
@@ -578,6 +630,13 @@ class RunSimulation {
       final dx = e.x - px, dy = e.y - py;
       if (dx * dx + dy * dy < r * r) {
         _hurtPlayer(e.stats.damage);
+        if (e.isBoss) {
+          // ボスに触れたら弾き飛ばされる（壁際で押しつけられ続けないように）
+          final d = max(1.0, sqrt(dx * dx + dy * dy));
+          px -= dx / d * 70;
+          py -= dy / d * 70;
+          _clampPlayer();
+        }
         return;
       }
     }
@@ -728,11 +787,13 @@ class RunSimulation {
   void debugKill(Enemy e, CarriedWeapon weapon) =>
       _damage(e, e.hp + 1, weapon, knockFromX: e.x, knockFromY: e.y);
 
+  /// テスト用：ボスなしで檻を閉じる
+  void debugCloseArena() => _closeArena();
+
   /// テスト用：敵にダメージを与える（分裂などで生まれた敵もすぐ加える）
   void debugHit(Enemy e, double amount, CarriedWeapon weapon) {
     _damage(e, amount, weapon, knockFromX: e.x, knockFromY: e.y);
-    enemies.addAll(_spawnQueue);
-    _spawnQueue.clear();
+    _flushSpawnQueue();
   }
 
   /// テスト用：敵を直接置く
