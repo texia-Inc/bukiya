@@ -320,7 +320,7 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
 const CATS=[];
 const MIKE={x:-56.6,z:-158.4};
 { const m=makeCat({calico:true});m.g.position.set(MIKE.x,G(MIKE.x,MIKE.z)+0.7,MIKE.z);m.g.rotation.y=0.6;world.add(m.g);CATS.push(m);MIKE.cat=m;
-  for(const [x,z,col,sl] of [[11.5,-15.8,'#3a3a3a',true],[66,205.3,'#e8913a',true],[-114,SHORE+12.6,'#f2f2ee',false],[118.6,90,'#9a8a7a',true]]){
+  for(const [x,z,col,sl] of [[11.5,-15.8,'#3a3a3a',true],[66,205.3,'#e8913a',true],[-108.5,SHORE+11,'#f2f2ee',false],[118.6,90,'#9a8a7a',true]]){
     const c=makeCat({col,sleep:sl});c.g.position.set(x,(x===66?G(65,206)+0.85:G(x,z)),z);c.g.rotation.y=rnd()*6;world.add(c.g);CATS.push(c);}}
 
 /* passers-by: simple instanced folk walking their routes */

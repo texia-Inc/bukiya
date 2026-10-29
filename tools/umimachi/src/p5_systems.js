@@ -387,8 +387,17 @@ function stepPlayer(dt){
       if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else{P.foot=false;P.carry='deck';P.kickT=-1;P.kickCD=0.3;}
       $('bFoot').textContent=P.foot?'乗る':'降りる';}}
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
+  // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns
+  // smoothly to face it; a small push walks, a full push runs. On the board the stick still steers like the keys.
+  if(onFoot&&stick.on&&!busy&&!ST.run){const m=Math.hypot(stick.x,stick.y);I.turn=0;I.back=false;I.fwd=false;
+    if(m>0.25){const cy=footCamYaw,want=cy-Math.atan2(stick.x,-stick.y);let d=want-P.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));
+      P.yaw+=clamp(d,-7*dt,7*dt);I.fwd=true;I.mag=clamp((m-0.25)/0.55,0.35,1);}
+    // the camera swings round behind her only slowly, so "right on the screen" stays put long enough to walk there
+    // (and only while she walks roughly away from it — walking sideways or back, the camera holds its direction)
+    let dc=P.yaw-footCamYaw;dc=Math.atan2(Math.sin(dc),Math.cos(dc));footCamYaw+=dc*Math.min(1,dt*(P.v>0.5?1.2:0)*Math.pow(Math.max(0,Math.cos(dc)),4));}
+  else footCamYaw=P.yaw;
   let a=onFoot?0:-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
-  if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?7.5*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
+  if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?7.5*(I.mag||1)*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
     P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?1.6:still?5:6));kickQ=false;P.kickT=-1;
     if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr&&!player.backBusy)P.tr={type:'stow',t:0,dur:0.4};
     if(P.foot&&P.carry==='back'&&player.backBusy&&!P.tr)P.carry='hand';}
@@ -445,12 +454,12 @@ function act(o){if(!o)return;
   else if(o.kind==='gacha')openGacha();}
 
 /* ---------- camera ---------- */
-const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false;
+const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0;
 const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
   if(Math.abs(x)>195)for(const e of HILL_TREES){if(Math.abs(e.x-x)<e.s*1.1&&Math.abs(e.z-z)<e.s*1.1&&y<e.y+e.s*2.7&&Math.hypot(e.x-x,e.z-z)<e.s*1.05)return true;}return false;}
 function updateCamera(dt){
-  const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
+  const cyaw=P.foot&&stick.on?footCamYaw:P.yaw,F=new THREE.Vector3(Math.sin(cyaw),0,Math.cos(cyaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
   else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
