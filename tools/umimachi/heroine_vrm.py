@@ -40,6 +40,35 @@ for o in bpy.data.objects:
 bpy.context.view_layer.objects.active = ARM
 bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
+# lightly closed hands: curl the fingers in pose mode and make that the rest pose (the game never moves the fingers).
+# In the T-pose the fingers point along +x (left hand) with the palm down: they curl about y, the thumb folds under the palm.
+from mathutils import Quaternion
+CURL = {'Index': (0.7, 0.85, 0.55), 'Middle': (0.8, 0.95, 0.6), 'Ring': (0.85, 1.0, 0.6), 'Little': (0.9, 1.05, 0.6),
+        'Thumb': (0.3, 0.35, 0.3)}
+THUMB_IN = 0.55     # the thumb also swings across towards the index finger
+bpy.context.view_layer.objects.active = ARM
+bpy.ops.object.mode_set(mode='POSE')
+for S, sx in (('L', 1), ('R', -1)):
+    for f, angs in CURL.items():
+        axis, sgn = (Vector((1, sx, 0)).normalized(), 1) if f == 'Thumb' else (Vector((0, 1, 0)), sx)
+        for i, a in enumerate(angs):
+            pb = ARM.pose.bones.get('J_Bip_%s_%s%d' % (S, f, i + 1))
+            if pb:
+                r = pb.bone.matrix_local.to_quaternion()
+                pb.rotation_mode = 'QUATERNION'
+                q = Quaternion(axis, a * sgn)
+                if f == 'Thumb' and i == 0:
+                    q = Quaternion((0, 0, 1), THUMB_IN * sx) @ q
+                pb.rotation_quaternion = r.inverted() @ q @ r
+bpy.ops.object.mode_set(mode='OBJECT')
+bpy.context.view_layer.update()
+mod = next(m for m in BODY.modifiers if m.type == 'ARMATURE')
+bpy.context.view_layer.objects.active = BODY
+bpy.ops.object.modifier_apply(modifier=mod.name)
+BODY.modifiers.new('Armature', 'ARMATURE').object = ARM
+bpy.context.view_layer.objects.active = ARM
+bpy.ops.object.mode_set(mode='POSE'); bpy.ops.pose.armature_apply(); bpy.ops.object.mode_set(mode='OBJECT')
+
 def catmull(pts, n):
     P = [pts[0] * 2 - pts[1]] + pts + [pts[-1] * 2 - pts[-2]]
     segs = len(pts) - 1
