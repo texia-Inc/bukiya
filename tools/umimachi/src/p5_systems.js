@@ -265,6 +265,45 @@ function placeName(){const x=P.x,z=P.z;
 
 /* ---------- player ---------- */
 const player=window.HEROINE_GLTF?makeSkaterVRM(HEROINE_GLTF):makeSkater();world.add(player.g);
+if(player.vrm)applyOutfit(player,SAVE.outfit);
+// the closet: one row per slot with its items and colour sets; changes show on the heroine at once and are saved
+function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{});
+  for(const S of WARDROBE){const [id,ci]=cur[S.slot];const it=findItem(S.slot,id);const items=S.items.filter(I=>ownsItem(SAVE,S.slot,I));const row=document.createElement('div');row.className='cslot';
+    const lab=document.createElement('b');lab.textContent=S.label;row.appendChild(lab);const col=document.createElement('div');row.appendChild(col);
+    if(items.length>1){const r=document.createElement('div');r.className='row';for(const I of items){const b=document.createElement('button');b.className='chip'+(I.id===it.id?' on':'');b.textContent=I.name;
+        b.onclick=()=>{const k=(I.colors||[[]]).findIndex((c,ci)=>ownsKey(SAVE,S.slot+':'+I.id+':'+ci));setOutfit(S.slot,I.id,Math.max(0,k));};r.appendChild(b);}col.appendChild(r);}
+    if(it.colors&&it.colors.length>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';
+      it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
+        b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
+    box.appendChild(row);}}
+function setOutfit(slot,id,ci){SAVE.outfit=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{});SAVE.outfit[slot]=[id,ci];save();applyOutfit(player,SAVE.outfit);renderCloset();}
+function openCloset(){if(!player.vrm){toast('この端末では着がえられない（主人公のモデルを読み込めなかった）');return;}renderCloset();openModal('closet');}
+$('closetBtn').addEventListener('click',openCloset);
+// the gacha at Maruya: rarity first, then an even pick among that rarity's prizes; duplicates turn into kakera
+const RCOL={N:'#6f9fd0',R:'#d977a3',SR:'#e8b030'},RNAME={N:'ノーマル',R:'レア',SR:'スーパーレア'};
+function swatchHTML(c){const a=c&&c[0]||'#7a4a30',b=c&&c[1]||a;return `<span class="sw" style="display:inline-block;background:linear-gradient(135deg,${a} 55%,${b} 55%)"></span>`;}
+function gachaInfo(){SAVE.owned=SAVE.owned||{};const have=PRIZES.filter(p=>SAVE.owned[p.key]).length;
+  $('gachaInfo').innerHTML=`さいふ <b>${SAVE.money}</b>円 ・ かけら <b>${SAVE.kakera||0}</b> ・ コレクション <b>${have}</b>/${PRIZES.length}<br><small>出る確率　スーパーレア${RATES.SR*100}%・レア${RATES.R*100}%・ノーマル${RATES.N*100}%</small>`;
+  $('gachaOne').disabled=SAVE.money<100;$('gachaFive').disabled=SAVE.money<500;}
+function renderGachaShop(){const box=$('gachaShop');box.innerHTML='';
+  const sets=document.createElement('div');sets.className='grp';sets.innerHTML='<b>セット</b><br>'+COSTUME_SETS.map(S=>{const got=S.keys.filter(k=>{const [sl,id]=k.split(':');const it=findItem(sl,id);return it&&ownsItem(SAVE,sl,it);}).length;
+    return `<span class="it${got===S.keys.length?' have':''}">${S.icon} ${S.name} ${got}/${S.keys.length}</span>`;}).join('');box.appendChild(sets);
+  for(const r of ['SR','R','N']){const g=document.createElement('div');g.className='grp';g.innerHTML=`<b>${RNAME[r]}</b>（交換 かけら${KAKERA_COST[r]}）<br>`;
+    for(const p of PRIZES.filter(p=>p.r===r)){const have=!!SAVE.owned[p.key],sp=document.createElement('span');sp.className='it'+(have?' have':'');sp.innerHTML=swatchHTML(p.col)+(have?p.name:'？？？');
+      if(!have){const b=document.createElement('button');b.textContent='交換';b.disabled=(SAVE.kakera||0)<KAKERA_COST[r];b.onclick=()=>{SAVE.kakera-=KAKERA_COST[r];SAVE.owned[p.key]=1;save();showPrizes([{p,isNew:true}]);renderGachaShop();gachaInfo();};sp.appendChild(b);}
+      g.appendChild(sp);}box.appendChild(g);}}
+function showPrizes(res){const st=$('gachaStage');st.innerHTML='';
+  res.forEach(({p,isNew},i)=>{const cap=document.createElement('div');cap.className='cap';cap.style.setProperty('--c',RCOL[p.r]);cap.style.animationDelay=(i*0.12)+'s,'+(0.5+i*0.12)+'s';st.appendChild(cap);});
+  setTimeout(()=>{st.innerHTML='';res.forEach(({p,isNew,dup},i)=>{const d=document.createElement('div');d.className='prize';d.style.animationDelay=(i*0.08)+'s';
+      d.innerHTML=`<span class="rr r-${p.r}">${RNAME[p.r]}</span><div class="nm">${p.name}</div>${swatchHTML(p.col)}${isNew?'<span class="nw">NEW</span>':`<div><small>ダブり → かけら+${KAKERA_DUP[p.r]}</small></div>`}`;
+      if(player.vrm){const b=document.createElement('button');b.className='btn ghost';b.textContent='着てみる';b.onclick=()=>{setOutfit(p.slot,p.id,p.ci);toast(p.name+' を着てみた');};d.appendChild(b);}
+      st.appendChild(d);});},1300);}
+function pull(n){if(SAVE.money<100*n)return;SAVE.money-=100*n;SAVE.owned=SAVE.owned||{};const res=[];
+  for(let i=0;i<n;i++){const p=drawPrize();const isNew=!SAVE.owned[p.key];if(isNew)SAVE.owned[p.key]=1;else SAVE.kakera=(SAVE.kakera||0)+KAKERA_DUP[p.r];res.push({p,isNew});}
+  save();renderHUD();showPrizes(res);gachaInfo();renderGachaShop();}
+function openGacha(){$('gachaStage').innerHTML='<div style="font-size:42px">🎰</div>';gachaInfo();renderGachaShop();openModal('gacha');}
+$('gachaOne').addEventListener('click',()=>pull(1));$('gachaFive').addEventListener('click',()=>pull(5));$('gachaClose').addEventListener('click',closeModal);$('closetClose').addEventListener('click',closeModal);
+$('closetReset').addEventListener('click',()=>{SAVE.outfit=JSON.parse(JSON.stringify(DEFAULT_OUTFIT));save();applyOutfit(player,SAVE.outfit);renderCloset();});
 const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0,foot:false,tr:null,carry:'deck'};P.y=G(P.x,P.z);
 const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
@@ -272,7 +311,7 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(state!=='play')return;
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
-  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;});
+  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;});
 const stick={on:false,id:null,x:0,y:0};
@@ -310,7 +349,8 @@ function stepPlayer(dt){
   let a=onFoot?0:-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
   if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?7.5*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
     P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?1.6:still?5:6));kickQ=false;P.kickT=-1;
-    if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr)P.tr={type:'stow',t:0,dur:0.4};}
+    if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr&&!player.backBusy)P.tr={type:'stow',t:0,dur:0.4};
+    if(P.foot&&P.carry==='back'&&player.backBusy&&!P.tr)P.carry='hand';}
   // each kick: the back foot plants, shoves, and the board surges forward; holding the key keeps kicking
   P.kickCD-=dt;if(P.kickT>=0){P.kickT+=dt/0.48;if(P.kickT>=1)P.kickT=-1;}
   if(!onFoot&&(kickQ||I.fwd)&&!P.air&&!busy&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.42;P.kicked=false;}kickQ=false;
@@ -347,6 +387,7 @@ function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}
+  const gp=SHOPS.dagashi.gacha;if(gp){const d=Math.hypot(P.x-gp.x,P.z-gp.z);if(d<1.9)add(d-0.2,{kind:'gacha',label:'まわす　カプセルトイ（1回100円）',verb:'まわす'});}
   const cd=Math.hypot(P.x-MIKE.x,P.z-MIKE.z);if(cd<2.6)add(cd,{kind:'cat',label:'なでる　三毛猫',verb:'なでる'});
   for(const p of SPOTS){const d=Math.hypot(P.x-p.x,P.z-p.z);if(d<7&&!best)add(d+5,{kind:'spot',p,label:`写真を撮る　${p.name}`,verb:'撮る'});}
   return best;}
@@ -354,7 +395,8 @@ function act(o){if(!o)return;
   if(o.kind==='npc')talk(o.n);else if(o.kind==='shop')openShop(o.id);
   else if(o.kind==='post'){const q=QBY('letter'),st=stepOf(q);say('ポスト',st.text,()=>{addItem('letter',-1);advance(q);});}
   else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
-  else if(o.kind==='spot')photoReq=true;}
+  else if(o.kind==='spot')photoReq=true;
+  else if(o.kind==='gacha')openGacha();}
 
 /* ---------- camera ---------- */
 const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false;
@@ -366,6 +408,8 @@ function updateCamera(dt){
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
+  else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
+    want=p.clone().addScaledVector(fw,3.3).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),0.7);want.y+=1.05;look=p.clone();look.y+=0.05;rate=4;}
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;

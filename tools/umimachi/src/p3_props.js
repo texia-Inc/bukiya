@@ -86,6 +86,10 @@ function aBoard(b,u,v,lines){const m=tmap(chalk(lines),{side:THREE.DoubleSide});
     const dm=M(new THREE.SphereGeometry(0.2,14,10,0,TAU,0,Math.PI/2),tm('#dff1fa',{transparent:true,opacity:0.7}));dm.position.y=0.6;g.add(dm);
     for(let j=0;j<5;j++){const c=new THREE.Mesh(new THREE.SphereGeometry(0.045,8,6),tm(pick(['#e2584a','#f2c230','#4f9a5a','#f0a0b8','#ffffff'])));c.position.set((j-2)*0.06,0.66,(j%2)*0.05);g.add(c);}
 addAt(B,g,-W/2+0.6+k*0.5,0,1.0);}
+  B.gacha=B.local(-W/2+1.1,0,1.0);   // the capsule machines are the gacha
+  { const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.42),tmap(canvasTex(256,84,(c,w,h)=>{c.fillStyle='#f2c230';c.fillRect(0,0,w,h);c.fillStyle='#c8372d';c.fillRect(0,h-12,w,12);
+      c.fillStyle='#3a2416';c.font=signFont(34,true);c.textAlign='center';c.textBaseline='middle';c.fillText('ガチャ 100円',w/2,h/2-4);})));
+    const pole=M(new THREE.BoxGeometry(0.05,1.25,0.05),tm('#7a5638'),0.01);addAt(B,pole,-W/2+1.1,0.62,1.32);addAt(B,sg,-W/2+1.1,1.32,1.34);}
   const bench=benchMesh('#c8372d');addAt(B,bench,W/2-1.8,0,1.2);
   const ice=M(new THREE.BoxGeometry(1.0,0.75,0.6),tm('#f2f2ee'),0.015);addAt(B,ice,0.4,0.38,1.0);}
 { const B=SHOPS.yaoya,W=along(B);for(let k=0;k<4;k++){const g=new THREE.Group();const cr=M(new THREE.BoxGeometry(0.7,0.25,0.5),tm('#b98f6a'),0.012);cr.position.y=0.62;cr.rotation.x=-0.35;g.add(cr);
