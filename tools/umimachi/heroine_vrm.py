@@ -1,69 +1,44 @@
-# Turns the pixiv VRM sample (VRM1_Constraint_Twist_Sample, modification and redistribution allowed) into the Umimachi heroine
-# with a wardrobe: the body keeps its plain skin, and every garment is its own part named W_<part> so the game can show, hide and
-# tint them (see the WARDROBE table in the game). Garments that tint are exported white; the game multiplies in the colour.
-#   hair: long hair -> high ponytail, shorter side locks (colour is changed in the game)
-#   W_tops (the sample's T-shirt), W_sleeves / W_socks / W_sockband / W_kneesocks / W_tights (thin shells copied from the skin),
-#   W_strip / W_zip (shirt and zip showing through an open hoodie), W_hood, W_bow_*, W_shorts, W_skirt, W_shoes, W_clip_*,
-#   W_glasses_*, W_scrunchie, W_pack_* (backpack, straps, bunny charm)
+# Turns the VRoid Studio model of Nagi (design/nagi.vrm, made in VRoid Studio: summer school uniform, high ponytail) into the
+# Umimachi heroine with a wardrobe: the body keeps its plain skin, and every garment is its own part named W_<part> so the game
+# can show, hide and tint them (see the WARDROBE table in the game). Garments that tint are exported white or light grey; the game
+# multiplies in the colour.
+#   The model is scaled to the size of the pixiv VRM sample the game was first built on (same VRoid skeleton, ~3.5% taller), so
+#   every position below is in that sample's space and the game's rig and leg IK fit unchanged.
+#   hair: VRoid's ponytail is re-weighted onto a bone chain Tail0-3 that the game swings
+#   from VRoid: W_tops (shirt), W_tie (ribbon), W_skirt (pleated skirt), W_shoes (loafers)
+#   made here: W_sleeves / W_socks / W_sockband / W_kneesocks / W_tights / W_shorts (thin shells copied from the skin),
+#   W_strip / W_zip (shirt and zip showing through an open hoodie), W_hood, W_bow_*, W_clip_*, W_glasses_*, W_scrunchie,
+#   W_pack_* (backpack, straps, bunny charm) and the gacha costume pieces
 # Blender works z-up with the model facing -y.
-# Usage: Blender -b --python heroine_vrm.py -- in.glb out.glb   (or a Python with `pip install bpy`)
-import bpy, bmesh, math, sys, os
+# Usage: Blender -b --python heroine_vrm.py -- nagi.vrm(renamed .glb) heroine.glb   (or a Python with `pip install bpy`)
+import bpy, bmesh, math, sys, os, re
 import numpy as np
 from mathutils import Vector
 
-args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['a.glb', 'heroine.glb']
+args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else ['nagi.glb', 'heroine.glb']
 SRC, OUT = args[0], args[1]
 
 for o in list(bpy.data.objects):
     bpy.data.objects.remove(o)
 bpy.ops.import_scene.gltf(filepath=SRC)
-ARM = bpy.data.objects['Root']
+ARM = bpy.data.objects['Armature']
 BODY, FACE, HAIR = bpy.data.objects['Body'], bpy.data.objects['Face'], bpy.data.objects['Hair']
-for n in ('Icosphere',):
-    if n in bpy.data.objects:
-        bpy.data.objects.remove(bpy.data.objects[n])
+for o in list(bpy.data.objects):
+    if o.type == 'MESH' and o.parent is None:      # VRoid's stray icosphere
+        bpy.data.objects.remove(o)
 
-def ss(a, b, x):
-    t = max(0.0, min(1.0, (x - a) / (b - a)))
-    return t * t * (3 - 2 * t)
+# VRoid names materials like 'N00_000_00_Body_00_SKIN (Instance)'; the game matches 'Body_00_SKIN', 'Hair_00_HAIR', 'Face_...'
+for m in bpy.data.materials:
+    m.name = re.sub(r'^N\d+_\d+(_\d+)?_| \(Instance\)$', '', m.name)
 
-def dominant(ob):
-    names = {g.index: g.name for g in ob.vertex_groups}
-    out = []
-    for v in ob.data.vertices:
-        out.append(names[max(v.groups, key=lambda g: g.weight).group] if v.groups else '')
-    return out
-
-# ---------------------------------------------------------------- hair
-dom = dominant(HAIR)
-chain = [int(n.rsplit('_', 1)[1]) if n.startswith('J_Sec_Hair') else 0 for n in dom]
-bm = bmesh.new(); bm.from_mesh(HAIR.data); bm.verts.ensure_lookup_table()
-# the long back and side curtain (chains 5-10) goes: it becomes the ponytail
-kill = [bm.verts[i] for i, c in enumerate(chain) if 5 <= c <= 10]
-# side locks (chains 11, 12) stop at the jaw instead of the chest
-roots = {}
-for b in ARM.data.bones:
-    if b.name in ('J_Sec_Hair1_11', 'J_Sec_Hair1_12'):
-        roots[int(b.name[-2:])] = b.head_local.copy()
-dl = bm.verts.layers.deform.active
-names = {g.name: g.index for g in HAIR.vertex_groups}
-side_ids = {names[n] for n in names if n.startswith('J_Sec_Hair') and n[-2:] in ('11', '12')}
-for v in bm.verts:
-    w = sum(wt for gi, wt in v[dl].items() if gi in side_ids)
-    if w > 0.01:
-        k = 11 if v.co.x < 0 else 12
-        r = roots[k]
-        d = v.co - r
-        if d.z < 0:
-            f = 1 - 0.5 * w
-            v.co = Vector((r.x + d.x * (0.75 + 0.25 * f), r.y + d.y * f, r.z + d.z * f))
-bmesh.ops.delete(bm, geom=kill, context='VERTS')
-bm.to_mesh(HAIR.data); bm.free()
-
-# ---------------------------------------------------------------- ponytail with its own bones
-HEAD = ARM.data.bones['J_Bip_C_Head']
-TIE = Vector((0.0, 0.112, 1.548))
-PATH = [TIE, Vector((0, 0.17, 1.565)), Vector((0, 0.215, 1.49)), Vector((0, 0.215, 1.36)), Vector((0, 0.185, 1.2))]
+# scale to the sample's size (its head bone sat at 1.3863)
+K = ARM.data.bones['J_Bip_C_Head'].head_local.z / 1.3863
+ARM.scale = (1 / K,) * 3
+bpy.ops.object.select_all(action='DESELECT')
+for o in bpy.data.objects:
+    o.select_set(True)
+bpy.context.view_layer.objects.active = ARM
+bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
 def catmull(pts, n):
     P = [pts[0] * 2 - pts[1]] + pts + [pts[-1] * 2 - pts[-2]]
@@ -76,6 +51,23 @@ def catmull(pts, n):
         out.append(0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (-p0 + 3 * p1 - 3 * p2 + p3) * u ** 3))
     return out
 
+# ---------------------------------------------------------------- ponytail: VRoid's strands 03-05 (J_Sec_Hair<depth>_<strand>) hang from the
+# tie; the game does not simulate the VRM spring bones, so their weights move onto a chain Tail0-3 along strand 03 that it swings
+def strand(s):
+    return [ARM.data.bones[n] for n in ('J_Sec_Hair%d_%s' % (d, s) for d in range(1, 10)) if n in ARM.data.bones]
+main = strand('03')
+spine = [b.head_local.copy() for b in main] + [main[-1].tail_local.copy()]
+TIE = spine[0]
+acc = [0.0]
+for i in range(1, len(spine)):
+    acc.append(acc[-1] + (spine[i] - spine[i - 1]).length)
+def along(t):
+    d = t * acc[-1]
+    i = max(k for k in range(len(acc) - 1) if acc[k] <= d) if d < acc[-1] else len(acc) - 2
+    f = (d - acc[i]) / max(1e-6, acc[i + 1] - acc[i])
+    return spine[i].lerp(spine[i + 1], min(1.0, f))
+PATH = [along(i / 4) for i in range(5)]
+
 bpy.context.view_layer.objects.active = ARM
 bpy.ops.object.mode_set(mode='EDIT')
 eb = ARM.data.edit_bones
@@ -87,75 +79,35 @@ for i in range(4):
     par = b; TAIL_BONES.append(b.name)
 bpy.ops.object.mode_set(mode='OBJECT')
 
-N = 40
-axis = catmull(PATH, N)
-seglen = [0]
-for i in range(1, N):
-    seglen.append(seglen[-1] + (axis[i] - axis[i - 1]).length)
-L = seglen[-1]
-
-def radius(s):
-    return (0.026 + 0.03 * math.sin(math.pi * min(1, s * 1.25)) ** 0.7) * (1 - ss(0.7, 1.0, s) * 0.85)
-
-bm = bmesh.new()
-uvl = bm.loops.layers.uv.new('UVMap')
-dfl = bm.verts.layers.deform.new()
-pt = bpy.data.objects.new('Ponytail', bpy.data.meshes.new('Ponytail'))
-bpy.context.collection.objects.link(pt)
-vg = [pt.vertex_groups.new(name=n) for n in TAIL_BONES]
-vgh = pt.vertex_groups.new(name='J_Bip_C_Head')
-STR = 14
-RING = 6
-for k in range(STR + 1):
-    core = k == STR
-    a0 = 2 * math.pi * k / STR
-    u0 = (k % 4) * 0.25
-    rings = []
-    for i in range(N):
-        s = seglen[i] / L
-        P = axis[i]
-        T = (axis[min(i + 1, N - 1)] - axis[max(i - 1, 0)]).normalized()
-        side = Vector((1, 0, 0))
-        nrm = T.cross(side).normalized()
-        a = a0 + 1.1 * s + 0.15 * math.sin(k * 1.7)
-        rr = radius(s) * (0 if core else 0.62) * (1 + 0.6 * ss(0.75, 1, s) * (0.5 + 0.5 * math.sin(k * 2.3)))
-        C = P + (side * math.cos(a) + nrm * math.sin(a)) * rr
-        outward = (C - P).normalized() if not core else nrm
-        B = T.cross(outward).normalized()
-        w = radius(s) * (1.0 if core else 0.55) * (1 - 0.92 * ss(0.55 + 0.1 * math.sin(k), 1.0, s))
-        th = w * 0.35
-        ring = []
-        for j in range(RING):
-            ang = 2 * math.pi * j / RING
-            v = bm.verts.new(C + B * math.cos(ang) * w + outward * math.sin(ang) * th)
-            seg = min(3.999, s * 4)
-            bi = int(seg); f = seg - bi
-            # blend each segment into the next so the bend is smooth
-            if f < 0.5 and bi > 0:
-                v[dfl][bi] = 0.5 + f; v[dfl][bi - 1] = 0.5 - f
-            elif f >= 0.5 and bi < 3:
-                v[dfl][bi] = 1.5 - f; v[dfl][bi + 1] = f - 0.5
-            else:
-                v[dfl][bi] = 1.0
-            ring.append(v)
-        rings.append((ring, s))
-    for i in range(N - 1):
-        ra, sa = rings[i]; rb, sb = rings[i + 1]
-        for j in range(RING):
-            f = bm.faces.new((ra[j], ra[(j + 1) % RING], rb[(j + 1) % RING], rb[j]))
-            for l, (jj, s) in zip(f.loops, ((j, sa), (j + 1, sa), (j + 1, sb), (j, sb))):
-                l[uvl].uv = (u0 + 0.22 * (jj / RING), 0.98 - 0.94 * s)
-bm.to_mesh(pt.data); bm.free()
-pt.data.materials.append(HAIR.data.materials[0])
-pt.parent = ARM
-m = pt.modifiers.new('Armature', 'ARMATURE'); m.object = ARM
-for p in pt.data.polygons:
-    p.use_smooth = True
+PONY = {g.index for g in HAIR.vertex_groups if g.name.startswith('J_Sec_Hair') and g.name[-2:] in ('03', '04', '05')}
+TG = [HAIR.vertex_groups.new(name=n) for n in TAIL_BONES]
+top, bottom = TIE.z, min(b.tail_local.z for s in ('03', '04', '05') for b in strand(s)[-1:])
+for v in HAIR.data.vertices:
+    w = sum(g.weight for g in v.groups if g.group in PONY)
+    if w <= 0:
+        continue
+    for gi in [g.group for g in v.groups if g.group in PONY]:
+        HAIR.vertex_groups[gi].remove([v.index])
+    # how far down the tail the vertex hangs picks the segment; neighbouring segments blend
+    seg = min(3.999, max(0.0, (top - v.co.z) / (top - bottom)) * 4)
+    bi = int(seg); f = seg - bi
+    if f < 0.5 and bi > 0:
+        TG[bi].add([v.index], w * (0.5 + f), 'ADD'); TG[bi - 1].add([v.index], w * (0.5 - f), 'ADD')
+    elif f >= 0.5 and bi < 3:
+        TG[bi].add([v.index], w * (1.5 - f), 'ADD'); TG[bi + 1].add([v.index], w * (f - 0.5), 'ADD')
+    else:
+        TG[bi].add([v.index], w, 'ADD')
 
 # ---------------------------------------------------------------- helpers for rigid accessories (weighted 100% to one bone)
 def mat(name, col, rough=0.8):
     m = bpy.data.materials.new(name); m.use_nodes = True
-    b = m.node_tree.nodes['Principled BSDF']; b.inputs['Base Color'].default_value = (*col, 1); b.inputs['Roughness'].default_value = rough
+    nt = m.node_tree
+    b = next((n for n in nt.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+    if b is None:      # Blender 5 starts new materials without nodes
+        b = nt.nodes.new('ShaderNodeBsdfPrincipled')
+        out = next((n for n in nt.nodes if n.type == 'OUTPUT_MATERIAL'), None) or nt.nodes.new('ShaderNodeOutputMaterial')
+        nt.links.new(b.outputs['BSDF'], out.inputs['Surface'])
+    b.inputs['Base Color'].default_value = (*col, 1); b.inputs['Roughness'].default_value = rough
     return m
 
 def srgb(h):
@@ -187,21 +139,28 @@ STRAP = mat('Cloth_Strap', srgb('#1c1c20'))
 BUNNY = mat('Cloth_Bunny', srgb('#f7a6bd'))
 DARK = mat('Cloth_Pocket', srgb('#2e2e33'))
 
-# scrunchie at the tie
+# scrunchie round the ponytail where it leaves the crown: sized from the hair that hangs on Tail0
+t0 = HAIR.vertex_groups['Tail0'].index
+PT = np.array([v.co[:] for v in HAIR.data.vertices if any(g.group == t0 and g.weight > 0.3 for g in v.groups)])
+def tail_slice(z):
+    s = PT[(PT[:, 2] > z - 0.012) & (PT[:, 2] < z + 0.012)]
+    c = s.mean(0)
+    return Vector(c), float(np.percentile(np.linalg.norm((s - c)[:, :2], axis=1), 85))
+RING_C, RING_R = tail_slice(TIE.z + 0.015)
 bm = bmesh.new()
 for i in range(18):
     a = 2 * math.pi * i / 18
     for j in range(8):
         b = 2 * math.pi * j / 8
-        r = 0.034 + 0.016 * math.cos(b) * (1 + 0.15 * math.sin(a * 5))
+        r = RING_R + 0.004 + 0.016 * math.cos(b) * (1 + 0.15 * math.sin(a * 5))
         bm.verts.new((r * math.cos(a), r * math.sin(a), 0.016 * math.sin(b)))
 bm.verts.ensure_lookup_table()
 for i in range(18):
     for j in range(8):
         q = [bm.verts[((i + di) % 18) * 8 + (j + dj) % 8] for di, dj in ((0, 0), (1, 0), (1, 1), (0, 1))]
         bm.faces.new(q)
-d = (PATH[1] - PATH[0]).normalized()
-xform(bm, rot=(math.pi / 2 - math.atan2(d.z, d.y), 0, 0), loc=TIE + d * 0.012)
+d = (tail_slice(TIE.z - 0.06)[0] - RING_C).normalized()
+xform(bm, rot=(math.pi / 2 - math.atan2(d.z, d.y), 0, 0), loc=RING_C)
 accessory('W_scrunchie', bm, 'J_Bip_C_Head', SCRUNCH)
 
 # pink X clip on the left of the bangs
@@ -260,43 +219,6 @@ for s in (-1, 1):
     xform(bm, scale=(0.009, 0.007, 0.024), rot=(0, s * 0.25, 0), loc=(0.12 + s * 0.014, 0.2, 1.025))
     accessory('W_pack_bunnyear%d' % (s + 1), bm, 'J_Bip_C_UpperChest', BUNNY)
 
-# plaid pleated skirt around the hips (light greys, so the game's tint gives the colour)
-W, Hh = 256, 128
-pl = np.full((Hh, W, 3), 0.86, np.float32)
-xs, ys = np.arange(W), np.arange(Hh)
-pl[:, (xs % 32) < 14] = 0.68
-pl[(ys % 32) < 14, :] *= 0.82
-pl[:, ((xs % 32) == 8) | ((xs % 32) == 9)] = 1.0
-pl[((ys % 32) == 8) | ((ys % 32) == 9), :] = 1.0
-pl[:, (xs % 64) == 24] = 0.5
-plaid_img = bpy.data.images.new('Skirt_Plaid_Tex', W, Hh)
-plaid_img.pixels[:] = np.concatenate([pl, np.ones((Hh, W, 1), np.float32)], -1)[::-1].ravel()
-plaid_img.pack()
-PLAID = bpy.data.materials.new('Cloth_Skirt'); PLAID.use_nodes = True
-tn = PLAID.node_tree.nodes.new('ShaderNodeTexImage'); tn.image = plaid_img
-PLAID.node_tree.links.new(tn.outputs['Color'], PLAID.node_tree.nodes['Principled BSDF'].inputs['Base Color'])
-bm = bmesh.new(); uv = bm.loops.layers.uv.new('UVMap')
-NS, NR = 56, 6
-top, bot = 0.975, 0.755
-rows = []
-for r in range(NR + 1):
-    t = r / NR
-    z = top + (bot - top) * t
-    ring = []
-    for i in range(NS):
-        a = 2 * math.pi * i / NS
-        pleat = (0.011 if i % 2 else -0.004) * t
-        R = 0.15 + 0.075 * t ** 0.9 + pleat
-        ring.append(bm.verts.new((R * math.sin(a), 0.012 + R * math.cos(a) * 0.86, z)))
-    rows.append(ring)
-for r in range(NR):
-    for i in range(NS):
-        f = bm.faces.new((rows[r][i], rows[r][(i + 1) % NS], rows[r + 1][(i + 1) % NS], rows[r + 1][i]))
-        for l, (ii, rr) in zip(f.loops, ((i, r), (i + 1, r), (i + 1, r + 1), (i, r + 1))):
-            l[uv].uv = (ii / NS * 5, (1 - rr / NR) * 0.6)
-bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=0.004)
-accessory('W_skirt', bm, 'J_Bip_C_Hips', PLAID)
-
 # ---------------------------------------------------------------- texture painting by 3D position (rasterise each triangle in UV space)
 def paint(ob, matname, rule):
     me = ob.data
@@ -348,13 +270,21 @@ def lum(p):
 
 # ---------------------------------------------------------------- garments as parts
 def split_material(ob, matname, name):
-    """move the faces using one material into their own object (same weights, same armature)"""
+    """move the faces using the materials named matname... into their own object (same weights, same armature)"""
     dup = ob.copy(); dup.data = ob.data.copy(); dup.name = name; bpy.context.collection.objects.link(dup)
-    mi = [i for i, m in enumerate(dup.data.materials) if m and m.name.startswith(matname)][0]
+    mis = {i for i, m in enumerate(dup.data.materials) if m and m.name.startswith(matname)}
     for o, keep in ((dup, True), (ob, False)):
         bm = bmesh.new(); bm.from_mesh(o.data)
-        bmesh.ops.delete(bm, geom=[f for f in bm.faces if (f.material_index == mi) != keep], context='FACES')
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if (f.material_index in mis) != keep], context='FACES')
         bm.to_mesh(o.data); bm.free()
+    # drop the material slots the part no longer uses
+    for o in (dup, ob):
+        used = {p.material_index for p in o.data.polygons}
+        for i in reversed(range(len(o.data.materials))):
+            if i not in used:
+                o.active_material_index = i
+                bpy.context.view_layer.objects.active = o
+                bpy.ops.object.material_slot_remove()
     return dup
 
 def shell(ob, pred, name, offset, material, mat_index=None):
@@ -371,15 +301,29 @@ def shell(ob, pred, name, offset, material, mat_index=None):
         p.material_index = 0; p.use_smooth = True
     return dup
 
+# VRoid's textures are up to 2048px: halve them before painting (the slim-down at the end sets the final sizes)
+for im in bpy.data.images:
+    if max(im.size) > 1024:
+        im.scale(im.size[0] // 2, im.size[1] // 2)
+
 TOPS = split_material(BODY, 'Tops_01', 'W_tops')
-SHORTS = split_material(BODY, 'Bottoms_01', 'W_shorts')
+TIE_PART = split_material(BODY, 'Accessory_Tie', 'W_tie')
+SKIRT = split_material(BODY, 'Bottoms_01', 'W_skirt')
 SHOES = split_material(BODY, 'Shoes_01', 'W_shoes')
 skin_i = [i for i, m in enumerate(BODY.data.materials) if m and m.name.startswith('Body_00')][0]
+
+# VRoid paints the knee socks into the skin texture: paint them over with the skin of the thighs (socks are W_ parts here)
+thigh = []
+paint(BODY, 'Body_00', lambda x, y, z, p: thigh.append(p[:3].copy()) if 0.6 < z < 0.72 else None)
+SKIN = np.median(np.array(thigh), 0)
+paint(BODY, 'Body_00', lambda x, y, z, p: SKIN if z < 0.5 and np.abs(p[:3] - SKIN).sum() > 0.1 else None)
+
+shell(BODY, lambda c: 0.7 < c.z < 0.99 and abs(c.x) < 0.2, 'W_shorts', 0.0035, mat('Bottoms_Shorts', WHITE), skin_i)
 shell(BODY, lambda c: c.z > 1.18 and 0.12 < abs(c.x) < 0.515, 'W_sleeves', 0.0055, mat('Cloth_Sleeves', WHITE), skin_i)
-shell(BODY, lambda c: 0.02 < c.z < 0.33 and abs(c.x) < 0.16, 'W_socks', 0.0032, mat('Cloth_Socks', WHITE), skin_i)
+shell(BODY, lambda c: 0.075 < c.z < 0.33 and abs(c.x) < 0.16, 'W_socks', 0.0032, mat('Cloth_Socks', WHITE), skin_i)
 shell(BODY, lambda c: 0.296 < c.z < 0.316 and abs(c.x) < 0.16, 'W_sockband', 0.0046, mat('Cloth_SockBand', WHITE), skin_i)
-shell(BODY, lambda c: 0.02 < c.z < 0.47 and abs(c.x) < 0.16, 'W_kneesocks', 0.0032, mat('Cloth_KneeSocks', WHITE), skin_i)
-shell(BODY, lambda c: 0.02 < c.z < 0.9 and abs(c.x) < 0.2, 'W_tights', 0.0022, mat('Cloth_Tights', WHITE), skin_i)
+shell(BODY, lambda c: 0.075 < c.z < 0.47 and abs(c.x) < 0.16, 'W_kneesocks', 0.0032, mat('Cloth_KneeSocks', WHITE), skin_i)
+shell(BODY, lambda c: 0.075 < c.z < 0.9 and abs(c.x) < 0.2, 'W_tights', 0.0022, mat('Cloth_Tights', WHITE), skin_i)
 # an open hoodie shows the shirt and a zip down the front
 shell(TOPS, lambda c: c.y < -0.03 and 0.95 < c.z < 1.285 and abs(c.x) < 0.042, 'W_strip', 0.0022, mat('Cloth_Strip', WHITE))
 shell(TOPS, lambda c: c.y < -0.03 and 0.95 < c.z < 1.285 and 0.042 <= abs(c.x) < 0.05, 'W_zip', 0.0026, mat('Cloth_Zip', WHITE))
@@ -729,19 +673,15 @@ def recolor(matname, fn):
                     px[..., :3] = fn(px[..., :3]); im.pixels[:] = px.ravel(); im.update()
                     return
 
-def shorts(c):
-    l = c.mean(-1, keepdims=True)
-    return np.repeat(np.clip(0.72 + 1.6 * l, 0, 1), 3, -1)
+def light_grey(c):
+    # keep the pattern (plaid, stripes) as light greys so the game's tint gives the colour
+    l = 0.3 * c[..., 0] + 0.59 * c[..., 1] + 0.11 * c[..., 2]
+    lo, hi = np.percentile(l, 2), np.percentile(l, 98)
+    g = np.clip(0.55 + 0.45 * (l - lo) / max(1e-3, hi - lo), 0, 1)
+    return np.repeat(g[..., None], 3, -1)
 
-def iris(c):
-    # warm the brown iris towards amber and lift it
-    r, g, b = c[..., 0:1], c[..., 1:2], c[..., 2:3]
-    l = 0.3 * r + 0.59 * g + 0.11 * b
-    amber = np.concatenate([l * 2.3, l * 1.35, l * 0.35], -1)
-    return np.clip(0.35 * c + 0.75 * amber, 0, 1)
-
-recolor('Bottoms_01', shorts)
-recolor('EyeIris_00', iris)
+recolor('Bottoms_01', light_grey)
+recolor('Accessory_Tie', light_grey)
 
 # ---------------------------------------------------------------- slim down: drop unused shape keys, normal/specular maps, shrink textures
 KEEP = ('Basis', 'Fcl_EYE_Close', 'Fcl_ALL_Joy', 'Fcl_ALL_Fun', 'Fcl_EYE_Joy', 'Fcl_MTH_A', 'Fcl_MTH_Fun', 'Fcl_MTH_Joy', 'Fcl_ALL_Surprised')
@@ -749,23 +689,39 @@ FACE.active_shape_key_index = 0
 for kb in list(FACE.data.shape_keys.key_blocks):
     if not any(kb.name.endswith(k) for k in KEEP):
         FACE.shape_key_remove(kb)
+# keep only the base colour texture of each material (VRoid also exports normal, emission and MToon maps the game does not use)
+LIMIT = {'Body_00': 1024, 'Tops_01': 1024, 'Face_00': 1024, 'Hair_00': 512, 'HairBack_00': 512, 'Bottoms_01': 512}
+size = {}
 for m in bpy.data.materials:
     if not m.use_nodes:
         continue
+    bsdf = next((n for n in m.node_tree.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+    # everything that feeds the base colour (VRoid routes the texture through mix nodes)
+    base, todo = set(), [l.from_node for l in m.node_tree.links if bsdf and l.to_node == bsdf and l.to_socket.name == 'Base Color']
+    while todo:
+        n = todo.pop()
+        if n not in base:
+            base.add(n); todo += [l.from_node for l in m.node_tree.links if l.to_node == n]
     for n in list(m.node_tree.nodes):
-        if n.type == 'TEX_IMAGE' and n.image and n.image.name.endswith(('nml', 'spe', 'outline')):
+        if n.type == 'TEX_IMAGE' and bsdf and n not in base:     # VRoid's materials come in unlit (no BSDF): their one texture stays
             m.node_tree.nodes.remove(n)
         elif n.type == 'NORMAL_MAP':
             m.node_tree.nodes.remove(n)
-LIMIT = {'Body_00': 1024, 'Tops_01': 1024, 'Face_00': 1024, 'HairBack_00': 512, 'Hair_00': 512, 'Bottoms_01': 256, 'Shoes_01': 256}
+        elif n.type == 'TEX_IMAGE' and n.image:
+            lim = next((v for k, v in LIMIT.items() if m.name.startswith(k)), 256)
+            size[n.image.name] = max(size.get(n.image.name, 0), lim)
 for im in bpy.data.images:
-    if im.size[0] == 0:
+    if im.size[0] == 0 or im.name not in size:
         continue
-    lim = LIMIT.get(im.name, 512)
     w, h = im.size
-    s = min(1.0, lim / max(w, h))
+    s = min(1.0, size[im.name] / max(w, h))
     if s < 1:
         im.scale(max(1, int(w * s)), max(1, int(h * s)))
+
+# a part with two materials becomes a group of meshes in three.js named after the mesh data: name it after the part
+for o in bpy.data.objects:
+    if o.type == 'MESH' and o.name.startswith('W_'):
+        o.data.name = o.name
 
 bpy.ops.export_scene.gltf(filepath=OUT, export_format='GLB', use_selection=False, export_skins=True, export_morph=True,
                           export_morph_normal=False, export_animations=False, export_image_format='AUTO', export_yup=True,
