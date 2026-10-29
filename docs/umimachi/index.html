@@ -122,6 +122,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   <div id="pad" hidden>
     <button class="pb" id="bJump">ジャンプ</button>
     <button class="pb" id="bAct">話す</button>
+    <button class="pb" id="bFoot">降りる</button>
     <button class="pb main kick" id="bKick">ける</button>
   </div>
 </div>
@@ -141,8 +142,9 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>A D / ← →</dt><dd>曲がる</dd>
       <dt>E</dt><dd>話す・お店に入る・会話を進める</dd>
       <dt>Space</dt><dd>ジャンプ</dd>
+      <dt>F</dt><dd>スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
       <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
-      <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」</dd>
+      <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
     </dl>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="startBtn">散歩に出かける</button><button class="btn ghost" id="resetBtn" hidden>はじめからにする</button></div>
     <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：pixiv Inc.「VRM1_Constraint_Twist_Sample」を改変（VRM Public License 1.0）</p>
@@ -4817,7 +4819,7 @@ function animHeroine(h,dt,s){
   h.tail.forEach((seg,k)=>{seg.rotation.x=seg.userData.rx+(k?h.tailV*0.6+s.v*0.025*(k===1?1:0.5):0)+Math.sin(h.t*3+k)*0.03;seg.rotation.z=sw*(k+1)*0.6+turn*0.18*k;});
   h.charm.rotation.z=Math.sin(h.t*4.2)*0.25+turn*0.3;h.charm.rotation.x=Math.sin(h.t*3.1)*0.15-acc*0.01;
 }
-function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;
+function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;
   let crouch=s.brake?0.2:s.v>6?0.55:0.28;if(s.air)crouch=0.8;P.c+=(crouch-P.c)*Math.min(1,6*dt);
   P.st+=(clamp(s.turn,-1,1)-P.st)*Math.min(1,5*dt);P.push+=((s.push?1:0)-P.push)*Math.min(1,6*dt);
   // stance (LEAD = the leg on the nose, +1 = left foot forward, facing the right of the board seen from behind): riding, the body
@@ -4947,6 +4949,65 @@ function updateFolk(dt,px,pz,init){
   for(const key in folkMesh)folkMesh[key].instanceMatrix.needsUpdate=true;
 }
 
+/* ---------- on foot: stepping off and standing the board on its tail, carrying it across the back, running, and hopping back on ---------- */
+const ANK_G=0.095;
+const _bq=new THREE.Quaternion(),_bq2=new THREE.Quaternion(),_bm=new THREE.Matrix4(),_bp=new THREE.Vector3(),_bs=new THREE.Vector3();
+// the board stood up on its tail at her left (lead) side, nose in her hand
+function boardUpright(out){const th=-Math.PI/2;out.q.setFromEuler(new THREE.Euler(th,-0.35,0,'YXZ'));out.p.set(0.3,0,0.14).sub(new THREE.Vector3(0,0.03,-0.42).applyQuaternion(out.q));out.p.y=Math.max(out.p.y,0);return out;}
+// strapped across the back over the backpack: long side horizontal, wheels out
+const BACK_Q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI/2).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),Math.PI/2));
+function boardOnBack(h,out){h.root.updateMatrixWorld(true);_bm.copy(h.root.matrixWorld).invert().multiply(h.torso.matrixWorld);
+  const m=new THREE.Matrix4().compose(new THREE.Vector3(0,0.15,-0.34),BACK_Q,new THREE.Vector3(1,1,1));_bm.multiply(m);_bm.decompose(out.p,out.q,_bs);return out;}
+function setBoard(h,p,q){h.board.position.copy(p);h.board.quaternion.copy(q);}
+function poseRunner(h,dt,s){const P=h.pose;h.t+=dt;const tr=s.tr,v=s.v||0,run=clamp(v/5,0,1);
+  P.ph=(P.ph||0)+dt*(v>0.15?3.2+v*1.25:0);const ph=P.ph;
+  const LEAD=1;
+  // body: upright, leaning into the run, a small bob and counter-twist
+  let hipY=0.93-0.035*run+Math.abs(Math.sin(ph))*0.03*run,yaw=Math.sin(ph)*0.12*run,lean=0.05+0.22*run;
+  let feet={};
+  for(const L of h.legs){const phi=ph+(L.sx>0?0:Math.PI),stride=(0.06+0.2*run)*clamp(v/1.2,0,1),lift=(0.04+0.16*run)*clamp(v/1.2,0,1);
+    feet[L.sx]={x:L.sx*0.1,y:ANK_G+lift*Math.max(0,Math.cos(phi)),z:stride*Math.sin(phi)};}
+  if(s.air){for(const k in feet){feet[k].y+=0.18;feet[k].z*=0.5;}hipY-=0.05;lean+=0.1;}
+  let hold=0,boardP=null;
+  if(tr&&tr.type==='off'){   // step off the back, press the tail, catch the nose
+    const t=tr.t,sk=1-smooth(clamp(t/0.6,0,1));yaw=lerp(yaw,-1.25,sk);hipY=lerp(hipY,0.975,sk);lean=lerp(lean,0.1,sk);
+    const fb=smooth(clamp(t/0.3,0,1)),ff=smooth(clamp((t-0.35)/0.3,0,1));
+    const deckF={x:0.01*-1,y:ANKLE_Y,z:0.22},deckB={x:0.01*-1,y:ANKLE_Y,z:-0.24};
+    const gB=feet[-1],gF=feet[1];
+    feet[-1]={x:lerp(deckB.x,gB.x,fb),y:lerp(deckB.y,gB.y,fb)+Math.sin(Math.PI*fb)*0.1,z:lerp(deckB.z,gB.z-0.05,fb)};
+    feet[1]={x:lerp(deckF.x,gF.x,ff),y:lerp(deckF.y,gF.y,ff)+Math.sin(Math.PI*ff)*0.12,z:lerp(deckF.z,gF.z,ff)};
+    const a=smooth(clamp((t-0.12)/0.45,0,1)),q=new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI/2*a,-0.35*a,0,'YXZ'));
+    const tail=new THREE.Vector3(0,0.03,-0.42).lerp(new THREE.Vector3(0.3,0,0.14),a);
+    boardP={p:tail.sub(new THREE.Vector3(0,0.03,-0.42).applyQuaternion(q)),q};hold=smooth(clamp((t-0.5)/0.3,0,1));}
+  // pose the rig
+  h.hips.position.set(0,hipY,0);h.hips.rotation.set(0,yaw,0);
+  h.torso.rotation.set(lean,-yaw*0.6,0);h.head.rotation.order='YXZ';h.head.rotation.set(-lean*0.6,-yaw*0.4,0);
+  for(const a of h.arms){const phi=ph+(a.sx>0?Math.PI:0),sw=Math.sin(phi)*(0.15+0.75*run)*clamp(v/1.2,0,1);
+    a.sh.rotation.set(-sw*0.8,0,a.sx*(0.2+0.12*run));a.el.rotation.x=-(0.3+0.85*run)-Math.max(0,-sw)*0.4;}
+  const hy=h.hips.position.y-0.07,cy=Math.cos(yaw),sy=Math.sin(yaw);
+  for(const L of h.legs){const f=feet[L.sx];solveLeg(L,L.sx*0.09*cy,hy,-L.sx*0.09*sy,f.x,f.y,f.z);L.ft.rotation.y=0;}
+  h.root.updateMatrixWorld(true);
+  // the board
+  const up=boardUpright({p:new THREE.Vector3(),q:new THREE.Quaternion()});
+  if(boardP){setBoard(h,boardP.p,boardP.q);}
+  else if(tr&&tr.type==='stow'){const t=smooth(tr.t),bk=boardOnBack(h,{p:new THREE.Vector3(),q:new THREE.Quaternion()});
+    const p=up.p.clone().lerp(bk.p,t);p.y+=Math.sin(Math.PI*t)*0.35;setBoard(h,p,up.q.clone().slerp(bk.q,t));hold=1-smooth(clamp(tr.t*1.6,0,1));}
+  else if(tr&&tr.type==='on'){const t=tr.t,a=smooth(clamp(t/0.5,0,1)),from=s.carry==='hand'?up:boardOnBack(h,{p:new THREE.Vector3(),q:new THREE.Quaternion()});
+    const p=from.p.clone().lerp(new THREE.Vector3(0,0,0.02),a);p.y+=Math.sin(Math.PI*a)*0.25;setBoard(h,p,from.q.clone().slerp(_bq.identity(),a));
+    // hop on: feet from the ground onto the deck, hips turn side-on
+    const b=smooth(clamp((t-0.45)/0.55,0,1));for(const L of h.legs){const f=feet[L.sx],front=L.sx===LEAD;
+      const tx=0.01*-1,tz=front?0.22:-0.24;_v.set(lerp(f.x,tx,b),lerp(f.y,ANKLE_Y,b)+Math.sin(Math.PI*b)*0.15,lerp(f.z,tz,b));
+      solveLeg(L,L.sx*0.09*cy,hy,-L.sx*0.09*sy,_v.x,_v.y,_v.z);}
+    h.hips.rotation.y=lerp(yaw,-1.25,b);hold=s.carry==='hand'?1-a:0;}
+  else if(s.carry==='hand')setBoard(h,up.p,up.q),hold=1;
+  else{const bk=boardOnBack(h,{p:new THREE.Vector3(),q:new THREE.Quaternion()});setBoard(h,bk.p,bk.q);}
+  // the left hand on the nose
+  h.hold=hold>0.01?{sx:LEAD,w:hold,T:h.board.localToWorld(new THREE.Vector3(0.0,0.06,0.4))}:null;
+  for(const w of h.wheels)w.rotation.x+=0;
+  if(h.faceM)animHeroine(h,dt,{v:Math.min(v,4),turn:s.turn||0,air:s.air});
+  if(h.vrm)driveVRM(h,dt,{v:Math.min(v,3),turn:s.turn||0,air:s.air,vy:s.vy});
+}
+
 /* ---------- the heroine model: the pixiv VRM sample reworked in Blender (tools/umimachi/heroine_vrm.py), driven by the skater rig ----------
    The procedural skater still computes the pose (and carries the board); its body is hidden and the model's bones follow it:
    torso, neck and head copy the rig's rotations, the arms swing to the rig's elbow and hand positions, and the legs are solved
@@ -5018,14 +5079,15 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   for(const A of h.arms){const M=V.arms[A.sx>0?1:-1];   // rig side +x is the model's left
     A.sh.getWorldPosition(_a);A.el.getWorldPosition(_b);A.el.localToWorld(_c.set(0,-0.25,0));toModel(V,_a);toModel(V,_b);toModel(V,_c);
     const up=M.up,lo=M.lo,gr=h.pose.gr||0;
-    if(gr>0.01&&A.sx!==1){   // the back hand reaches for the toe edge of the deck
+    const hold=h.hold&&h.hold.sx===A.sx?h.hold:null;
+    if((gr>0.01&&A.sx!==1)||hold){   // the back hand reaches for the toe edge of the deck in a grab; on foot, the left hand holds the nose
       const S0=up.getWorldPosition(new THREE.Vector3());toModel(V,S0);
       const E0=S0.clone().addScaledVector(_d.copy(_b).sub(_a).normalize(),M.l1),H0=E0.clone().addScaledVector(_d.copy(_c).sub(_b).normalize(),M.l2);
-      const T=h.board.localToWorld(new THREE.Vector3(-0.1,0.16,-0.02));toModel(V,T);
+      const w=hold?hold.w:gr,T=hold?hold.T.clone():h.board.localToWorld(new THREE.Vector3(-0.1,0.16,-0.02));toModel(V,T);
       const dd=Math.min(S0.distanceTo(T),M.l1+M.l2-1e-3),dir=T.clone().sub(S0).normalize(),aa=(M.l1*M.l1-M.l2*M.l2+dd*dd)/(2*dd),hh=Math.sqrt(Math.max(0,M.l1*M.l1-aa*aa));
       const pole=E0.clone().sub(S0);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
       const E1=S0.clone().addScaledVector(dir,aa).addScaledVector(pole,hh),H1=S0.clone().addScaledVector(dir,dd);
-      const E=E0.lerp(E1,gr),Hh=H0.lerp(H1,gr);_a.copy(S0);_b.copy(E);_c.copy(Hh);}
+      const E=E0.lerp(E1,w),Hh=H0.lerp(H1,w);_a.copy(S0);_b.copy(E);_c.copy(Hh);}
     swingTo(V,up,'J_Bip_'+M.n+'_UpperArm',M.dUp,_d.copy(_b).sub(_a));
     const sw=swingTo(V,lo,'J_Bip_'+M.n+'_LowerArm',M.dLo,_d.copy(_c).sub(_b));
     _q3.copy(sw).multiply(R['J_Bip_'+M.n+'_Hand'].q);setModelQ(V,M.hand,_q3);}
@@ -5321,14 +5383,14 @@ function placeName(){const x=P.x,z=P.z;
 
 /* ---------- player ---------- */
 const player=window.HEROINE_GLTF?makeSkaterVRM(HEROINE_GLTF):makeSkater();world.add(player.g);
-const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0};P.y=G(P.x,P.z);
-const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false;
+const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0,foot:false,tr:null,carry:'deck'};P.y=G(P.x,P.z);
+const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false;
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
   if(e.code==='Space')jumpQ=true;if((e.code==='KeyW'||e.code==='ArrowUp')&&!e.repeat)kickQ=true;if(e.code==='KeyE'||e.code==='Enter'){if(DLG)nextLine();else if(!modal)actQ=true;}
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
-  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;});
+  if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;});
 const stick={on:false,id:null,x:0,y:0};
@@ -5338,6 +5400,7 @@ const stick={on:false,id:null,x:0,y:0};
   el.addEventListener('pointermove',e=>{if(stick.on&&e.pointerId===stick.id)set(e);});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,()=>{stick.on=false;stick.x=stick.y=0;kn.style.transform='';});
   $('bJump').addEventListener('pointerdown',e=>{e.preventDefault();jumpQ=true;});
+  $('bFoot').addEventListener('pointerdown',e=>{e.preventDefault();footQ=true;});
   const kb=$('bKick');kb.addEventListener('pointerdown',e=>{e.preventDefault();kickQ=true;kickHold=true;kb.classList.add('on');try{kb.setPointerCapture(e.pointerId);}catch(_){}});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])kb.addEventListener(ev,()=>{kickHold=false;kb.classList.remove('on');});
   kb.addEventListener('contextmenu',e=>e.preventDefault());
@@ -5356,16 +5419,25 @@ function stepPlayer(dt){
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   const g1=G(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=G(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
-  let a=-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
+  // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
+  if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
+  if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
+      if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else{P.foot=false;P.carry='deck';P.kickT=-1;P.kickCD=0.3;}
+      $('bFoot').textContent=P.foot?'乗る':'降りる';}}
+  const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
+  let a=onFoot?0:-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
+  if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?5.2*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
+    P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?2.6:still?5:7));kickQ=false;P.kickT=-1;
+    if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr)P.tr={type:'stow',t:0,dur:0.4};}
   // each kick: the back foot plants, shoves, and the board surges forward; holding the key keeps kicking
   P.kickCD-=dt;if(P.kickT>=0){P.kickT+=dt/0.48;if(P.kickT>=1)P.kickT=-1;}
-  if((kickQ||I.fwd)&&!P.air&&!busy&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.42;P.kicked=false;}kickQ=false;
+  if(!onFoot&&(kickQ||I.fwd)&&!P.air&&!busy&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.42;P.kicked=false;}kickQ=false;
   if(P.kickT>0.35&&!P.kicked){P.kicked=true;P.v=Math.min(P.v+1.3+3.3*Math.max(0,1-P.v/13),13.5);}
   P.push=P.kickT>=0;
-  P.brake=I.back;if(I.back&&!P.air)a-=P.v>0.2?4.2:0;
+  P.brake=I.back&&!onFoot;if(I.back&&!P.air&&!onFoot)a-=P.v>0.2?4.2:0;
   P.v=clamp(P.v+a*dt,0,16);if(Math.abs(P.v)<0.04&&!I.fwd)P.v=0;
   P.turn+=(I.turn-P.turn)*Math.min(1,8*dt);
-  P.yaw-=P.turn*(2.3-Math.min(1.1,P.v*0.1))*dt;
+  P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
   const nx=P.x+F[0]*P.v*dt,nz=P.z+F[1]*P.v*dt,R=0.3;
   let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
   const c=ok&&hits(nx,nz,R,P.y);
@@ -5374,13 +5446,16 @@ function stepPlayer(dt){
   else if(ok){P.x=nx;P.z=nz;}
   P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
-  if(jumpQ&&!P.air&&!busy){P.vy=7.6;P.air=true;}jumpQ=false;
+  if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;}jumpQ=false;
   if(!P.air&&P.y-gy>0.3){P.air=true;P.vy=0;}
   if(P.air){P.vy-=13.5*dt;P.y+=P.vy*dt;if(P.y<=gy){if(P.vy<-9)P.bump=0.25;P.y=gy;P.air=false;P.vy=0;}}else P.y+=(gy-P.y)*Math.min(1,18*dt);
   player.g.position.set(P.x,P.y,P.z);
   const pitch=P.air?-P.vy*0.03:Math.atan(-slope);
-  player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(pitch*0.8,0,clamp(P.turn*P.v*0.03,-0.25,0.25));
-  poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy});
+  player.g.rotation.set(0,P.yaw,0);
+  if(onFoot){player.root.rotation.set(0,0,0);poseRunner(player,dt,{v:P.v,turn:P.turn,air:P.air,vy:P.vy,tr:P.tr,carry:P.carry});}
+  else{player.root.rotation.set(pitch*0.8,0,clamp(P.turn*P.v*0.03,-0.25,0.25));
+    if(P.tr&&P.tr.type==='stow')P.tr=null;
+    poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy});}
 }
 
 /* ---------- interaction ---------- */
