@@ -42,7 +42,7 @@ function burst(p,col){const n=140,pos=new Float32Array(n*3),vel=[];const r=mulbe
 function fireworks(sec){FEST.fwUntil=clock+sec;FEST.fwT=0;}
 const FW_COL=['#ff5a4a','#ffd24a','#7ad8ff','#b78cff','#7dff9a','#ffffff','#ff9ad0'];
 function updateFestival(dt){const fest=SAVE.flags.fest_day;
-  FEST.lanterns.visible=fest||qs('fest_lantern').state===2;const st=fest||qs('fest_yatai').state===2;
+  FEST.lanterns.visible=!URA.on&&(fest||qs('fest_lantern').state===2);const st=!URA.on&&(fest||qs('fest_yatai').state===2);
   if(FEST.stalls.visible!==st){FEST.stalls.visible=st;for(const g of FEST.stalls.children)g.userData.box.on=st;}
   if(clock<FEST.fwUntil){FEST.fwT-=dt;if(FEST.fwT<=0){FEST.fwT=0.35+Math.random()*0.7;
       burst(new THREE.Vector3(-150+Math.random()*230,80+Math.random()*60,440+Math.random()*90),pick(FW_COL));}}
