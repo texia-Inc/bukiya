@@ -20,6 +20,8 @@
 }
 [hidden]{display:none!important}
 html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--ink);font-family:var(--round)}
+/* holding a finger on the screen must not start a text selection or the long-press menu */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
 .hud{position:fixed;inset:0;pointer-events:none;user-select:none;-webkit-user-select:none}
 .card{background:var(--card);border-radius:14px;box-shadow:0 3px 0 var(--shade),0 8px 22px rgba(20,60,90,.12)}
