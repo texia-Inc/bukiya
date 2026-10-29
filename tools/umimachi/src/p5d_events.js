@@ -25,7 +25,7 @@ function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id
     const todo=[];
     if(!f.saw_van)todo.push('海岸通りを走る黒いバンを見に行く');
     else if(!seen('master_van'))todo.push('しおさいのマスターに、黒いバンのことを聞く');
-    if(!f.met_mochi)todo.push('浜辺の西の流木のあたりにいる白い猫に会う');
+    if(!f.met_mochi)todo.push('浜辺の西、干してあるボートのそばの白い猫に会う');
     if(d===3&&(f.saw_van||f.heard_og)&&!seen('d3_baker'))todo.push('こむぎ堂の主人に話す');
     if(QUESTS.some(available))todo.push('町の「！」の人を手伝う');
     const rest='ばあちゃんに話すと夕方まで休める。夕方は桟橋へ';
@@ -112,9 +112,9 @@ const EVENTS=[
     ['say','master','黒いバン？ ああ、オーシャンゲートって会社の車だよ。','島のあたりに、大きなリゾートを建てたいんだそうだ。','あの電波塔も、あそこの会社が建てたものさ。'],
     ['say','nagi','ふうん……。'],
     ['set','heard_og']]},
-  {id:'d2_mochi',on:{near:[-114,SHORE+12.6,3.2]},when:{minDay:2},script:[
-    ['cam',[-111.2,G(-114,SHORE+12.6)+1.5,SHORE+10],[-114,G(-114,SHORE+12.6)+0.4,SHORE+12.6],2.5],
-    ['say','','浜の流木のかげで、白い猫が丸くなっている。首輪の小さな札に「おもち」と書いてある。'],
+  {id:'d2_mochi',on:{near:[-108.5,SHORE+11,3.2]},when:{minDay:2},script:[
+    ['cam',[-105.6,G(-108.5,SHORE+11)+1.5,SHORE+8.4],[-108.5,G(-108.5,SHORE+11)+0.4,SHORE+11],2.5],
+    ['say','','浜に干してあるボートのそばで、白い猫が丸くなっている。首輪の小さな札に「おもち」と書いてある。'],
     ['ask','nagi','（どうする？）',[
       ['そっとなでる',[['say','','おもちは目を細めて、ナギの手に頭をこすりつけた。'],['add','bond_mochi']]],
       ['見ているだけにする',[['say','','おもちは片目だけ開けて、またすぐに閉じた。']]]]],
