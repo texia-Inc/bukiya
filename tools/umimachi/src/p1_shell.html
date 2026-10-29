@@ -107,6 +107,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .pb.kick{grid-column:2;grid-row:1/3;width:92px;height:92px;font-size:17px}
 .pb.kick.on{transform:scale(.94);background:#f7c06a}
 .pb{appearance:none;border:0;width:66px;height:66px;border-radius:50%;font-family:var(--round);font-weight:900;font-size:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 0 var(--shade);touch-action:none}
+.pb.shoot{grid-column:1/3;width:auto;height:58px;border-radius:29px;background:#d6453d;color:#fff;box-shadow:0 3px 0 #8e2a24;font-size:16px}
+.pb.shoot.on{transform:scale(.96)}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
   padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 24px);background:linear-gradient(180deg,rgba(255,250,240,0) 35%,rgba(255,250,240,.9) 78%)}
@@ -144,6 +146,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
     <button class="pb" id="bAct">話す</button>
     <button class="pb" id="bFoot">降りる</button>
     <button class="pb main kick" id="bKick">ける</button>
+    <button class="pb shoot" id="bShoot" hidden>撃つ</button>
   </div>
 </div>
 <div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><span class="nx">▼</span></div>
@@ -174,6 +177,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>C</dt><dd>着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
       <dt>F</dt><dd>スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
       <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
+      <dt>J ・ クリック</dt><dd>撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
       <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
     </dl>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="startBtn">散歩に出かける</button><button class="btn ghost" id="resetBtn" hidden>はじめからにする</button></div>

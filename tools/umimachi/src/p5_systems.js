@@ -167,7 +167,8 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
+  if(DRONE.active)droneHUD(tr);
+  else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
   else tr.hidden=true;renderBag();}
@@ -204,6 +205,7 @@ function talk(n){talkNpc=n;
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
   for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
+  if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}
   if(n.id==='maru'){say(n.name,n.idle,()=>openShop('dagashi'));return;}
   say(n.name||'町の人',[pick(n.idle.length?n.idle:['いい天気ですね。'])]);}
@@ -313,7 +315,7 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
   if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
-window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
 const stick={on:false,id:null,x:0,y:0};
 { const el=$('stick'),kn=$('knob');const set=(e)=>{const r=el.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const L=Math.hypot(dx,dy),m=r.width/2-10;if(L>m){dx*=m/L;dy*=m/L;}
     stick.x=dx/m;stick.y=dy/m;kn.style.transform=`translate(${dx}px,${dy}px)`;};
@@ -325,7 +327,11 @@ const stick={on:false,id:null,x:0,y:0};
   const kb=$('bKick');kb.addEventListener('pointerdown',e=>{e.preventDefault();kickQ=true;kickHold=true;kb.classList.add('on');try{kb.setPointerCapture(e.pointerId);}catch(_){}});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])kb.addEventListener(ev,()=>{kickHold=false;kb.classList.remove('on');});
   kb.addEventListener('contextmenu',e=>e.preventDefault());
-  $('bAct').addEventListener('pointerdown',e=>{e.preventDefault();if(DLG)nextLine();else if(!modal)actQ=true;});}
+  $('bAct').addEventListener('pointerdown',e=>{e.preventDefault();if(DLG)nextLine();else if(!modal)actQ=true;});
+  const sb=$('bShoot');sb.addEventListener('pointerdown',e=>{e.preventDefault();FIRE.touch=true;sb.classList.add('on');try{sb.setPointerCapture(e.pointerId);}catch(_){}});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])sb.addEventListener(ev,()=>{FIRE.touch=false;sb.classList.remove('on');});}
+// the mouse fires the pistols in the drone fight (left button on the 3D view)
+canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;
@@ -413,6 +419,8 @@ function updateCamera(dt){
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
+    // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
+    const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
     for(let t=1;t>0.25&&blocked(want.x,want.y,want.z);t-=0.1){want=p.clone().addScaledVector(F,-back*t);want.y+=up;}
     want.y=Math.max(want.y,G(want.x,want.z)+0.6);}
   if(!camInit){camPos.copy(want);camLook.copy(look);camInit=true;}
@@ -436,7 +444,7 @@ function updateMarkers(){const calm=!!(DLG||modal);for(const q of QUESTS){const 
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(state==='play'){if(talkNpc&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    stepPlayer(dt);near=DLG||modal?null:findNear();if(actQ&&near)act(near);actQ=false;
+    updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
@@ -446,7 +454,8 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 $('startBtn').addEventListener('click',()=>{state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderHUD();canvas.focus();
-  toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');});
+  toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
+  if(location.hash==='#drones')startDrones();});   // test entry: index.html#drones starts the drone fight at once
 $('resetBtn').addEventListener('click',()=>{SAVE=JSON.parse(JSON.stringify(S0));save();$('resetBtn').hidden=true;toast('はじめからにした');renderHUD();});
 if(Object.keys(SAVE.qs).length||SAVE.money!==S0.money){$('resetBtn').hidden=false;$('startBtn').textContent='散歩のつづきへ';}
 updateFolk(0,P.x,P.z,true);

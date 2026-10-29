@@ -112,6 +112,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .pb.kick{grid-column:2;grid-row:1/3;width:92px;height:92px;font-size:17px}
 .pb.kick.on{transform:scale(.94);background:#f7c06a}
 .pb{appearance:none;border:0;width:66px;height:66px;border-radius:50%;font-family:var(--round);font-weight:900;font-size:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 0 var(--shade);touch-action:none}
+.pb.shoot{grid-column:1/3;width:auto;height:58px;border-radius:29px;background:#d6453d;color:#fff;box-shadow:0 3px 0 #8e2a24;font-size:16px}
+.pb.shoot.on{transform:scale(.96)}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
   padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 24px);background:linear-gradient(180deg,rgba(255,250,240,0) 35%,rgba(255,250,240,.9) 78%)}
@@ -151,6 +153,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
     <button class="pb" id="bAct">話す</button>
     <button class="pb" id="bFoot">降りる</button>
     <button class="pb main kick" id="bKick">ける</button>
+    <button class="pb shoot" id="bShoot" hidden>撃つ</button>
   </div>
 </div>
 <div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><span class="nx">▼</span></div>
@@ -181,6 +184,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
       <dt>C</dt><dd>着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
       <dt>F</dt><dd>スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
       <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
+      <dt>J ・ クリック</dt><dd>撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
       <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
     </dl>
     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="startBtn">散歩に出かける</button><button class="btn ghost" id="resetBtn" hidden>はじめからにする</button></div>
@@ -5072,7 +5076,7 @@ function makeSkaterVRM(gl){
   h.root.traverse(o=>{if(o.isMesh){let p=o,onBoard=false;while(p){if(p===h.board){onBoard=true;break;}p=p.parent;}if(!onBoard)o.visible=false;}});
   const model=gl.scene;model.scale.setScalar(1/0.96);h.root.add(model);
   const B={};model.traverse(o=>{if(o.isBone)B[o.name]=o;});
-  const morphs=[],parts=[],hair=[];
+  const morphs=[],parts=[],hair=[],guns=[];
   model.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.frustumCulled=false;
     const src=o.material,name=src.name||'',face=FACE_MATS.test(name);
     if(src.map){src.map.encoding=THREE.LinearEncoding;src.map.needsUpdate=true;}
@@ -5083,6 +5087,7 @@ function makeSkaterVRM(gl){
     // wardrobe parts (W_*) can be shown, hidden and tinted; white parts take the tint, coloured ones keep their colour
     if(/^W_/.test(o.name))parts.push({name:o.name,mesh:o,base:o.material.color.clone(),map0:o.material.map,tintable:o.material.color.r>0.98&&o.material.color.g>0.98&&o.material.color.b>0.98});
     if(/^Hair/.test(name)&&o.material.map){o.userData.map0=o.material.map;hair.push(o);}
+    if(/^Gun_/.test(o.name)){guns.push(o);o.visible=false;}   // the pistols, out only in the drone fight
     const olw=/HAIR|Hair/.test(name)?0.0022:/Body_00|Tops|Bottoms|Shoes|Cloth_(Skirt|Pack|Hood|Sleeves|Socks|KneeSocks)/.test(name)?0.0026:0;
     if(olw&&o.isSkinnedMesh&&!src.transparent){const ol=new THREE.SkinnedMesh(o.geometry,olSkinned(olw,!!o.morphTargetInfluences));ol.bind(o.skeleton,o.bindMatrix);ol.frustumCulled=false;
       if(o.morphTargetInfluences)ol.morphTargetInfluences=o.morphTargetInfluences;o.parent.add(ol);o.userData.ol=ol;ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);}});
@@ -5107,7 +5112,14 @@ function makeSkaterVRM(gl){
       if(B[n]&&B[src])cons.push({aim:true,b:B[n],n,src:B[src],d:dirRest(n,src)});
     for(const [n,src,w] of [['J_Roll_'+S+'_UpperArm','J_Bip_'+S+'_UpperArm',0.5],['J_Roll_'+S+'_Elbow','J_Bip_'+S+'_LowerArm',0.5],['J_Roll_'+S+'_LowerArm','J_Bip_'+S+'_Hand',0.5],['J_Roll_'+S+'_Hand','J_Bip_'+S+'_Hand',1]])
       if(B[n]&&B[src])cons.push({aim:false,b:B[n],n,src:B[src],sn:src,w});}
-  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,ctail,cons,parts,hair,expr:{},t:0};
+  // the muzzles, as points on the hand bones: the middle of the front face of each slide (the barrel runs along the arm, +x on the left)
+  const muzzle={};
+  for(const [S,sx] of [['L',1],['R',-1]]){const g=guns.find(o=>o.name==='Gun_'+S);if(!g)continue;
+    const pos=g.geometry.attributes.position,pts=[];let far=-1e9;
+    for(let i=0;i<pos.count;i++){const w=g.localToWorld(new THREE.Vector3().fromBufferAttribute(pos,i)),x=w.clone().applyMatrix4(inv).x*sx;pts.push([x,w]);far=Math.max(far,x);}
+    const tip=new THREE.Vector3();let n=0;for(const [x,w] of pts)if(x>far-0.004){tip.add(w);n++;}tip.multiplyScalar(1/n);
+    const hand=B['J_Bip_'+S+'_Hand'],m=new THREE.Object3D();hand.add(m);m.position.copy(hand.worldToLocal(tip));muzzle[sx]=m;}
+  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,ctail,cons,parts,hair,guns,muzzle,expr:{},t:0};
   return h;}
 const _q1=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_q3=new THREE.Quaternion(),_mq=new THREE.Quaternion(),_a=new THREE.Vector3(),_b=new THREE.Vector3(),_c=new THREE.Vector3(),_d=new THREE.Vector3();
 // give bone b the model-space rotation q (model space = the model root's frame)
@@ -5156,6 +5168,19 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
     swingTo(V,M.up,'J_Bip_'+M.n+'_UpperLeg',M.dUp,knee.clone().sub(_a));
     swingTo(V,M.lo,'J_Bip_'+M.n+'_LowerLeg',M.dLo,tgt.clone().sub(knee));
     setModelQ(V,M.ft,mul(nodeQ(V,L.ft,new THREE.Quaternion()),'J_Bip_'+M.n+'_Foot'));}
+  // aiming the pistols (h.aim: world targets per side, h.aimW: 0-1): each arm straight at its target, rolled so the gun stands
+  // upright and cants a little inward. The gun's top faces the model's front in the T-pose.
+  for(const g of V.guns)g.visible=!!h.gunsOut;
+  const aw=h.aimW||0;
+  if(aw>0.001&&h.aim)for(const sx of [1,-1]){const M=V.arms[sx],T=h.aim[sx];if(!T)continue;
+    const S0=toModel(V,M.up.getWorldPosition(new THREE.Vector3())),dir=toModel(V,T.clone()).sub(S0).normalize();
+    const sUp=new THREE.Quaternion().setFromUnitVectors(M.dUp,dir),sLo=new THREE.Quaternion().setFromUnitVectors(M.dLo,dir);
+    const top=new THREE.Vector3(0,0,1).applyQuaternion(sLo),want=new THREE.Vector3(-sx*0.35,1,0);
+    top.addScaledVector(dir,-top.dot(dir)).normalize();want.addScaledVector(dir,-want.dot(dir)).normalize();
+    const roll=new THREE.Quaternion().setFromUnitVectors(top,want),bones=[M.up,M.lo,M.hand];
+    const tgt=[[sUp,'UpperArm'],[sLo,'LowerArm'],[sLo,'Hand']].map(([s,n])=>roll.clone().multiply(s).multiply(R['J_Bip_'+M.n+'_'+n].q));
+    const cur=bones.map(b=>nodeQ(V,b,new THREE.Quaternion()));
+    bones.forEach((b,k)=>setModelQ(V,b,cur[k].slerp(tgt[k],aw)));}
   for(const C of V.cons){if(C.aim){C.b.getWorldPosition(_a);C.src.getWorldPosition(_b);toModel(V,_a);toModel(V,_b);swingTo(V,C.b,C.n,C.d,_b.sub(_a));}
     else{_q1.copy(R[C.sn].local).invert().multiply(C.src.quaternion);_q2.identity().slerp(_q1,C.w);C.b.quaternion.copy(R[C.n].local).multiply(_q2);C.b.updateMatrixWorld(true);}}
   // ponytail: sways with speed, turns and jumps
@@ -5177,20 +5202,23 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
    An outfit picks one item per slot and one colour set for it. An item lists the parts it shows and how each is coloured:
    0 / 1 = the item's first / second colour, '#rrggbb' = a fixed colour, 'dark0' = recolour the dark parts of the texture with
    the first colour. Parts exported white are tinted; parts with their own colour (the bunny charm, straps) keep it.
-   W_tops is the school shirt of the VRoid model, so the hoodie and T-shirts are that shirt in another colour or pattern.
+   The garments come from VRoid (tools/umimachi/heroine_vrm.py imports them): W_tops is the school shirt, W_hoodie and W_tee are
+   white so any colour or pattern goes on them. An item can list slots it covers (the yukata): those show nothing while it is worn.
    Colours are only ever appended to an item: saves and owned prizes refer to them by index.
    To add clothes: add a part in the Blender script, then an item here. ---------- */
 const CAMO={forest:['#5b6b3a','#3e4a2a','#8a7d52','#2a2a22'],desert:['#c9b07a','#a88a5a','#e0cfa0','#7a6448'],pink:['#f2a6c0','#d97a9e','#fbd6e2','#a85678'],urban:['#9aa0a8','#6a7078','#c8ccd2','#3a3e44']};
 const WARDROBE=[
   {slot:'tops',label:'トップス',items:[
     {id:'uniform',name:'制服シャツ',parts:{W_tops:0},colors:[['#ffffff'],['#dde8f5'],['#f6efe0']]},
-    {id:'hoodie',name:'パーカー',parts:{W_tops:0,W_sleeves:0,W_hood:0,W_strip:1,W_zip:'#a4a6b0'},
+    {id:'hoodie',name:'パーカー',parts:{W_hoodie:0},
       colors:[['#33395e','#f6f5f1'],['#ece6dc','#3a3d52'],['#e48a9a','#ffffff'],['#5d8a64','#f6f5f1'],['#2b2b30','#f2d36b'],['#8fb8e0','#ffffff']]},
-    {id:'camo',name:'迷彩パーカー',parts:{W_tops:{pat:'camo'},W_sleeves:{pat:'camo'},W_hood:{pat:'camo'},W_strip:'#2b2b2b',W_zip:'#a4a6b0'},
+    {id:'camo',name:'迷彩パーカー',parts:{W_hoodie:{pat:'camo'}},
       colors:[CAMO.forest,CAMO.desert,CAMO.pink,CAMO.urban]},
-    {id:'tee',name:'Tシャツ',parts:{W_tops:0},colors:[['#f6f5f1'],['#9cc3e6'],['#f2c9c4'],['#f5e07a'],['#b8d8a8'],['#2b2b30']]},
-    {id:'tee_dots',name:'水玉Tシャツ',parts:{W_tops:{pat:'dots'}},colors:[['#f6f5f1','#e05a6a'],['#2b2b30','#f6f5f1'],['#9cc3e6','#ffffff']]},
-    {id:'tee_stars',name:'星柄Tシャツ',parts:{W_tops:{pat:'stars'}},colors:[['#2d3a6a','#f5d86a'],['#f6f5f1','#e88fa8'],['#2b2b30','#9ad8f0']]}]},
+    {id:'tee',name:'Tシャツ',parts:{W_tee:0},colors:[['#f6f5f1'],['#9cc3e6'],['#f2c9c4'],['#f5e07a'],['#b8d8a8'],['#2b2b30']]},
+    {id:'tee_dots',name:'水玉Tシャツ',parts:{W_tee:{pat:'dots'}},colors:[['#f6f5f1','#e05a6a'],['#2b2b30','#f6f5f1'],['#9cc3e6','#ffffff']]},
+    {id:'tee_stars',name:'星柄Tシャツ',parts:{W_tee:{pat:'stars'}},colors:[['#2d3a6a','#f5d86a'],['#f6f5f1','#e88fa8'],['#2b2b30','#9ad8f0']]},
+    // the yukata reaches the ankles and comes with geta: while it is worn the other slots it covers show nothing
+    {id:'yukata',name:'浴衣',parts:{W_yukata:'#ffffff',W_geta:'#ffffff'},covers:['neck','bottoms','legs','shoes'],colors:[['#ffffff']]}]},
   {slot:'neck',label:'えり元',items:[
     {id:'ribbon',name:'制服リボン',parts:{W_tie:0},colors:[['#8fb8e0'],['#c8323a'],['#2d3a6a'],['#3f7a5a']]},
     {id:'bow',name:'リボン',parts:{W_bow:0},colors:[['#c8323a'],['#2d4f9a'],['#f0879c'],['#2b2b30']]},
@@ -5276,7 +5304,8 @@ function findItem(slot,id){const S=WARDROBE.find(s=>s.slot===slot);return S&&(S.
 function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Object.assign({},DEFAULT_OUTFIT,outfit||{});
   h.backBusy=['cape','batwings','angelwings'].includes((outfit.back||[])[0]);   // then the board is carried in the hand, not on the back
   const show={};   // part name -> colour spec
-  for(const S of WARDROBE){const [id,ci]=outfit[S.slot]||[];const it=findItem(S.slot,id);if(!it)continue;const cs=(it.colors&&it.colors[ci||0])||(it.colors&&it.colors[0])||[];
+  const covered=new Set();for(const S of WARDROBE){const it=findItem(S.slot,(outfit[S.slot]||[])[0]);if(it&&it.covers)it.covers.forEach(c=>covered.add(c));}
+  for(const S of WARDROBE){if(covered.has(S.slot))continue;const [id,ci]=outfit[S.slot]||[];const it=findItem(S.slot,id);if(!it)continue;const cs=(it.colors&&it.colors[ci||0])||(it.colors&&it.colors[0])||[];
     for(const k in it.parts){const v=it.parts[k];show[k]=typeof v==='number'?cs[v]:v==='dark0'?{dark:cs[0]}:v&&v.pat?{pat:v.pat,cols:cs}:v;}
     if(it.hair)for(const m of V.hair){m.material.map=cs[0]?recolorTex(m.userData.map0,cs[0],'hair'):m.userData.map0;m.material.needsUpdate=true;}}
   for(const P of V.parts){const key=Object.keys(show).filter(k=>P.name===k||P.name.startsWith(k+'_')).sort((a,b)=>b.length-a.length)[0];const on=!!key;
@@ -5290,7 +5319,7 @@ function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Objec
     if(m.vertexColors!==was||m.map!==wasMap)m.needsUpdate=true;}}
 
 /* ---------- gacha: every item and colour (except "none") is a prize; you start with the everyday outfit ---------- */
-const RARITY={camo:'R',tee_dots:'R',tee_stars:'R',choker:'R',dogtag:'R',sailor:'R',zigzag:'R',cargo:'R',kneestripe:'R',witchtights:'R',
+const RARITY={yukata:'SR',camo:'R',tee_dots:'R',tee_stars:'R',choker:'R',dogtag:'R',sailor:'R',zigzag:'R',cargo:'R',kneestripe:'R',witchtights:'R',
   glasses:'R',sunglasses:'R',beret:'R',marine:'R',pumpkin:'R',hair:'R',
   witchhat:'SR',cape:'SR',catears:'SR',cattail:'SR',paws:'SR',horns:'SR',batwings:'SR',deviltail:'SR',halo:'SR',angelwings:'SR'};
 const RATES={N:0.7,R:0.25,SR:0.05},KAKERA_DUP={N:1,R:3,SR:10},KAKERA_COST={N:5,R:15,SR:40};
@@ -5309,6 +5338,102 @@ const PRIZES=prizeList();
 function ownsKey(save,key){return STARTER.has(key)||!!(save.owned&&save.owned[key]);}
 function ownsItem(save,slot,it){return it.id==='none'||(it.colors||[[]]).some((c,ci)=>ownsKey(save,slot+':'+it.id+':'+ci));}
 function drawPrize(){const x=Math.random();const r=x<RATES.SR?'SR':x<RATES.SR+RATES.R?'R':'N';const pool=PRIZES.filter(p=>p.r===r);return pool[Math.floor(Math.random()*pool.length)];}
+
+/* ---------- drone fight: Oceangate's surveillance drones over the town, shot down with the pair of pistols the baker (an old
+   agent) lends. Only in this event do the pistols come out: the arms aim at the nearest drones in front and the shots alternate
+   left and right. Drones circle ahead of you, take three hits, fall and burst on the ground. ---------- */
+const DRONE={active:false,total:12,spawned:0,killed:0,spawnT:0,list:[],fx:[],fireT:0,side:1,t:0,hint:false};
+const FIRE={mouse:false,touch:false};
+const DRONE_TALK=['…おや、来たか。ちょっと耳を貸してくれ。','このところ、町の上を黒いドローンが飛び回ってる。オーシャンゲート社の監視ドローンだ。',
+  '昔の仕事道具を貸してやる。…ああ、パン屋の前は別の仕事をしてたのさ。','スケボーに乗ったまま、クリックか J キーで撃てる。全部で12機、撃ち落としてくれ。'];
+const DM={body:tm('#2a2d33'),arm:tm('#40444c'),stripe:tm('#e0662a'),cam:tm('#15171a'),
+  rotor:new THREE.MeshBasicMaterial({color:'#b8c0c8',transparent:true,opacity:0.4,depthWrite:false}),
+  eye:new THREE.MeshBasicMaterial({color:'#ff3b30'}),flash:new THREE.MeshBasicMaterial({color:'#ffffff'})};
+function makeDrone(){const g=new THREE.Group(),rotors=[];
+  const M=(geo,mat,ol,p)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;if(ol)outline(m,ol);if(p)m.position.set(...p);g.add(m);return m;};
+  const body=M(new THREE.BoxGeometry(0.46,0.15,0.4),DM.body,0.018);
+  M(new THREE.BoxGeometry(0.47,0.03,0.1),DM.stripe,0,[0,0.08,0]);
+  M(new THREE.SphereGeometry(0.085,14,10),DM.cam,0.012,[0,-0.06,0.17]);
+  const eye=M(new THREE.SphereGeometry(0.04,10,8),DM.eye,0,[0,-0.06,0.245]);
+  for(const [x,z] of [[1,1],[1,-1],[-1,1],[-1,-1]]){
+    const arm=M(new THREE.BoxGeometry(0.05,0.035,0.42),DM.arm,0.01,[x*0.2,0.03,z*0.17]);arm.rotation.y=Math.atan2(x,z);
+    M(new THREE.CylinderGeometry(0.035,0.035,0.06,10),DM.arm,0.01,[x*0.36,0.07,z*0.3]);
+    rotors.push(M(new THREE.CylinderGeometry(0.17,0.17,0.008,18),DM.rotor,0,[x*0.36,0.105,z*0.3]));}
+  g.scale.setScalar(1.25);scene.add(g);return{g,body,eye,rotors};}
+function startDrones(){Object.assign(DRONE,{active:true,spawned:0,killed:0,spawnT:0.6,t:0,hint:false});
+  toast(hasTouch?'ドローンが来た！「撃つ」ボタンで撃ち落とせ':'ドローンが来た！ クリックか J キーで撃ち落とせ',true);renderHUD();}
+function spawnDrone(){const a=(rnd()*2-1)*0.9,r=13+rnd()*9,h=3.2+rnd()*3,d=makeDrone();
+  const ang=P.yaw+a;d.g.position.set(P.x+Math.sin(ang)*(r+28),G(P.x,P.z)+h+7,P.z+Math.cos(ang)*(r+28));
+  Object.assign(d,{hp:3,off:{a,r,h},ph:rnd()*TAU,v:new THREE.Vector3(),dead:false,vy:0,spin:new THREE.Vector3(),hitT:0});DRONE.list.push(d);DRONE.spawned++;}
+// the drones the pistols can reach: alive, within range, and in front of you
+function droneTargets(){const out=[];for(const d of DRONE.list){if(d.dead)continue;const dx=d.g.position.x-P.x,dz=d.g.position.z-P.z,dist=Math.hypot(dx,dz);
+    let da=Math.atan2(dx,dz)-P.yaw;da=Math.atan2(Math.sin(da),Math.cos(da));if(dist<48&&Math.abs(da)<1.35)out.push([dist,d]);}
+  return out.sort((a,b)=>a[0]-b[0]).map(x=>x[1]);}
+function muzzleOf(sx){const V=player.vrm;if(V&&V.muzzle[sx])return V.muzzle[sx].getWorldPosition(new THREE.Vector3());
+  return player.g.localToWorld(new THREE.Vector3(sx*0.25,1.25,0.55));}
+// effects: tracers, muzzle flashes, sparks, smoke puffs, fireballs and shell casings, each fading out on its own clock
+const FXG={box:new THREE.BoxGeometry(1,1,1),ball:new THREE.SphereGeometry(1,12,8),shell:new THREE.CylinderGeometry(0.006,0.006,0.022,6)};
+const FLASH_TEX=canvasTex(64,64,(c,w,h)=>{const g=c.createRadialGradient(32,32,2,32,32,30);g.addColorStop(0,'rgba(255,255,230,1)');g.addColorStop(0.35,'rgba(255,214,110,.9)');g.addColorStop(1,'rgba(255,140,40,0)');
+  c.fillStyle=g;c.beginPath();for(let k=0;k<16;k++){const a=k/16*TAU,r=k%2?12:31;c.lineTo(32+Math.cos(a)*r,32+Math.sin(a)*r);}c.closePath();c.fill();});
+function fx(o,life,upd){scene.add(o);DRONE.fx.push({o,t:0,life,upd});return o;}
+function tracer(a,b){const m=new THREE.Mesh(FXG.box,new THREE.MeshBasicMaterial({color:'#fff0a8',transparent:true,opacity:0.95,depthWrite:false}));
+  m.position.copy(a).add(b).multiplyScalar(0.5);m.lookAt(b);m.scale.set(0.035,0.035,a.distanceTo(b));fx(m,0.09,(f,k)=>{m.material.opacity=0.95*(1-k);});}
+function flash(p){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:FLASH_TEX,transparent:true,depthWrite:false}));s.position.copy(p);s.scale.setScalar(0.42);s.material.rotation=rnd()*TAU;
+  fx(s,0.06,(f,k)=>{s.material.opacity=1-k;});}
+function sparks(p,n,col,speed,size){for(let i=0;i<n;i++){const m=new THREE.Mesh(FXG.box,new THREE.MeshBasicMaterial({color:col,transparent:true}));m.position.copy(p);m.scale.setScalar(size);
+    const v=new THREE.Vector3(rnd()-0.5,rnd()*0.8,rnd()-0.5).normalize().multiplyScalar(speed*(0.4+rnd()));
+    fx(m,0.35+rnd()*0.3,(f,k,dt)=>{v.y-=9.8*dt;m.position.addScaledVector(v,dt);m.material.opacity=1-k;});}}
+function boom(p){const b=new THREE.Mesh(FXG.ball,new THREE.MeshBasicMaterial({color:'#ffb347',transparent:true,depthWrite:false}));b.position.copy(p);
+  fx(b,0.55,(f,k)=>{b.scale.setScalar(0.3+2.1*Math.sqrt(k));b.material.opacity=1-k;b.material.color.setHSL(0.08-0.06*k,1,0.6-0.25*k);});
+  for(let i=0;i<5;i++){const s=new THREE.Mesh(FXG.ball,new THREE.MeshBasicMaterial({color:'#5a5552',transparent:true,depthWrite:false}));s.position.copy(p).add(new THREE.Vector3(rnd()-0.5,rnd()*0.4,rnd()-0.5));
+    fx(s,1.4+rnd(),(f,k,dt)=>{s.position.y+=dt*1.2;s.scale.setScalar(0.25+1.1*k);s.material.opacity=0.7*(1-k);});}
+  sparks(p,14,'#ffcf6a',7,0.07);sparks(p,8,'#2a2d33',5,0.09);}
+function shell(sx){const V=player.vrm,h=V?V.arms[sx].hand.getWorldPosition(new THREE.Vector3()):muzzleOf(sx);const m=new THREE.Mesh(FXG.shell,tm('#d4a84a'));m.position.copy(h);m.position.y+=0.05;
+  const side=new THREE.Vector3(Math.cos(P.yaw),0,-Math.sin(P.yaw)).multiplyScalar(sx*1.6),v=side.add(new THREE.Vector3(0,2.2,0)),sp=new THREE.Vector3(rnd()*20,rnd()*20,rnd()*20);
+  fx(m,0.9,(f,k,dt)=>{v.y-=9.8*dt;m.position.addScaledVector(v,dt);m.rotation.x+=sp.x*dt;m.rotation.y+=sp.y*dt;const gy=G(m.position.x,m.position.z)+0.01;if(m.position.y<gy){m.position.y=gy;v.multiplyScalar(0.3);v.y=Math.abs(v.y);}});}
+function shoot(sx,d){const a=muzzleOf(sx);let b;
+  if(d){b=d.g.position.clone().add(new THREE.Vector3(rnd()-0.5,rnd()-0.5,rnd()-0.5).multiplyScalar(0.3));
+    if(rnd()<0.82){damage(d,b);}else b.add(b.clone().sub(a).normalize().multiplyScalar(12));}
+  else b=a.clone().add(new THREE.Vector3(Math.sin(P.yaw),0.02,Math.cos(P.yaw)).multiplyScalar(40));
+  tracer(a,b);flash(a);shell(sx);}
+function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,6,'#fff3c0',4,0.04);
+  if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);DRONE.killed++;SAVE.money+=50;
+    sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();if(DRONE.killed>=DRONE.total)finishDrones();}}
+function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;save();renderHUD();
+  toast('ドローンを全部撃ち落とした！ お礼 +1000円',true);setTimeout(()=>toast('こむぎ堂の主人「いい腕だ。…このことは、町のみんなには内緒だぞ」'),1800);}
+function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal);
+  // spawning: four at a time until all twelve have come
+  if(DRONE.active){DRONE.spawnT-=dt;const alive=DRONE.list.filter(d=>!d.dead).length;
+    if(DRONE.spawned<DRONE.total&&alive<4&&DRONE.spawnT<=0){spawnDrone();DRONE.spawnT=1.6;}}
+  for(const d of DRONE.list.slice()){const p=d.g.position;
+    if(d.dead){d.vy-=12*dt;p.y+=d.vy*dt;d.g.rotation.x+=d.spin.x*dt;d.g.rotation.y+=d.spin.y*dt;d.g.rotation.z+=d.spin.z*dt;
+      if(rnd()<dt*30)sparks(p,1,'#4a4644',1,0.08);
+      if(p.y<=G(p.x,p.z)+0.25){boom(p.clone());scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
+    // each drone keeps a spot ahead of you that drifts slowly, and turns its camera on you
+    const ang=P.yaw+d.off.a+Math.sin(DRONE.t*0.35+d.ph)*0.45,r=d.off.r+Math.sin(DRONE.t*0.5+d.ph*2)*3;
+    const want=new THREE.Vector3(P.x+Math.sin(ang)*r,0,P.z+Math.cos(ang)*r);want.y=G(want.x,want.z)+d.off.h+Math.sin(DRONE.t*1.3+d.ph)*0.5;
+    if(p.distanceTo(want)>90)p.copy(want).add(new THREE.Vector3(0,8,0));
+    const acc=want.sub(p).multiplyScalar(2.2).sub(d.v.clone().multiplyScalar(1.6));d.v.addScaledVector(acc,dt);if(d.v.length()>14)d.v.setLength(14);p.addScaledVector(d.v,dt);
+    d.g.lookAt(P.x,P.y+1.2,P.z);d.g.rotateX(clamp(d.v.length()*0.02,0,0.25));
+    for(const ro of d.rotors)ro.rotation.y+=dt*40;
+    d.hitT-=dt;d.eye.material=d.hitT>0?DM.flash:DM.eye;}
+  // the pistols: out for the whole fight, raised when there is something to shoot at or the trigger is held
+  const firing=DRONE.active&&!busy&&(FIRE.mouse||FIRE.touch||!!keys.KeyJ);
+  const canAim=!(P.foot&&P.carry==='hand')&&!(P.tr&&P.tr.type!=='stow');
+  if(DRONE.active&&firing&&!canAim&&!DRONE.hint){DRONE.hint=true;toast('板を手に持っていると撃てない。走り出すと背中に背負う');}
+  const T=DRONE.active?droneTargets():[];
+  player.gunsOut=DRONE.active;
+  const want=DRONE.active&&canAim&&!busy&&(T.length||firing)?1:0;player.aimW=(player.aimW||0)+(want-(player.aimW||0))*Math.min(1,dt*10);
+  const ahead=new THREE.Vector3(P.x+Math.sin(P.yaw)*30,P.y+1.4,P.z+Math.cos(P.yaw)*30);
+  player.aim={1:T[0]?T[0].g.position:ahead,'-1':(T[1]||T[0])?(T[1]||T[0]).g.position:ahead};
+  DRONE.fireT-=dt;
+  if(firing&&canAim&&player.aimW>0.7&&DRONE.fireT<=0){DRONE.fireT=0.11;const sx=DRONE.side;DRONE.side=-sx;shoot(sx,sx===1?T[0]:(T[1]||T[0]));}
+  for(const f of DRONE.fx.slice()){f.t+=dt;const k=Math.min(1,f.t/f.life);f.upd(f,k,dt);if(k>=1){scene.remove(f.o);if(f.o.material&&f.o.material!==DM.flash&&f.o.geometry!==FXG.shell)f.o.material.dispose();DRONE.fx.splice(DRONE.fx.indexOf(f),1);}}
+  $('bShoot').hidden=!(DRONE.active&&hasTouch);}
+// the tracker shows the fight while it is on
+function droneHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='ドローン迎撃';const s=document.createElement('span');s.className='step';
+  s.textContent=hasTouch?'「撃つ」ボタンで撃つ。近いドローンを自動でねらう':'クリックか J キーで撃つ。近いドローンを自動でねらう';
+  const m=document.createElement('span');m.className='meter';m.textContent=`撃ち落とした ${DRONE.killed} / ${DRONE.total}`;tr.append(b,s,m);}
 
 /* ---------- the tram and its level crossings ---------- */
 const tramTex=canvasTex(512,128,(g,w,h)=>{g.fillStyle='#efe6c8';g.fillRect(0,0,w,h);g.fillStyle='#2f7d4f';g.fillRect(0,h*0.58,w,h*0.42);g.fillStyle='#f2c230';g.fillRect(0,h*0.56,w,4);
@@ -5478,7 +5603,8 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
+  if(DRONE.active)droneHUD(tr);
+  else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
   else tr.hidden=true;renderBag();}
@@ -5515,6 +5641,7 @@ function talk(n){talkNpc=n;
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
   for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
+  if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}
   if(n.id==='maru'){say(n.name,n.idle,()=>openShop('dagashi'));return;}
   say(n.name||'町の人',[pick(n.idle.length?n.idle:['いい天気ですね。'])]);}
@@ -5624,7 +5751,7 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
   if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
-window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
 const stick={on:false,id:null,x:0,y:0};
 { const el=$('stick'),kn=$('knob');const set=(e)=>{const r=el.getBoundingClientRect();let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const L=Math.hypot(dx,dy),m=r.width/2-10;if(L>m){dx*=m/L;dy*=m/L;}
     stick.x=dx/m;stick.y=dy/m;kn.style.transform=`translate(${dx}px,${dy}px)`;};
@@ -5636,7 +5763,11 @@ const stick={on:false,id:null,x:0,y:0};
   const kb=$('bKick');kb.addEventListener('pointerdown',e=>{e.preventDefault();kickQ=true;kickHold=true;kb.classList.add('on');try{kb.setPointerCapture(e.pointerId);}catch(_){}});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])kb.addEventListener(ev,()=>{kickHold=false;kb.classList.remove('on');});
   kb.addEventListener('contextmenu',e=>e.preventDefault());
-  $('bAct').addEventListener('pointerdown',e=>{e.preventDefault();if(DLG)nextLine();else if(!modal)actQ=true;});}
+  $('bAct').addEventListener('pointerdown',e=>{e.preventDefault();if(DLG)nextLine();else if(!modal)actQ=true;});
+  const sb=$('bShoot');sb.addEventListener('pointerdown',e=>{e.preventDefault();FIRE.touch=true;sb.classList.add('on');try{sb.setPointerCapture(e.pointerId);}catch(_){}});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])sb.addEventListener(ev,()=>{FIRE.touch=false;sb.classList.remove('on');});}
+// the mouse fires the pistols in the drone fight (left button on the 3D view)
+canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;
@@ -5724,6 +5855,8 @@ function updateCamera(dt){
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
+    // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
+    const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
     for(let t=1;t>0.25&&blocked(want.x,want.y,want.z);t-=0.1){want=p.clone().addScaledVector(F,-back*t);want.y+=up;}
     want.y=Math.max(want.y,G(want.x,want.z)+0.6);}
   if(!camInit){camPos.copy(want);camLook.copy(look);camInit=true;}
@@ -5747,7 +5880,7 @@ function updateMarkers(){const calm=!!(DLG||modal);for(const q of QUESTS){const 
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(state==='play'){if(talkNpc&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
-    stepPlayer(dt);near=DLG||modal?null:findNear();if(actQ&&near)act(near);actQ=false;
+    updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));$('bAct').textContent=near.verb;}else{pr.hidden=true;$('bAct').textContent='話す';}
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
@@ -5757,7 +5890,8 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 $('startBtn').addEventListener('click',()=>{state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderHUD();canvas.focus();
-  toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');});
+  toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
+  if(location.hash==='#drones')startDrones();});   // test entry: index.html#drones starts the drone fight at once
 $('resetBtn').addEventListener('click',()=>{SAVE=JSON.parse(JSON.stringify(S0));save();$('resetBtn').hidden=true;toast('はじめからにした');renderHUD();});
 if(Object.keys(SAVE.qs).length||SAVE.money!==S0.money){$('resetBtn').hidden=false;$('startBtn').textContent='散歩のつづきへ';}
 updateFolk(0,P.x,P.z,true);
