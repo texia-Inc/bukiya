@@ -85,6 +85,8 @@ for(let k=0;k<9;k++){const dir=k%2?-1:1,taxi=k===2||k===5,type=taxi?'sedan':['ke
 for(const [x,z,yaw,col] of [[80,201.5,Math.PI/2,'#f2c230'],[93.6,60,0,'#f2f2ee'],[-123.8,120,Math.PI,'#2e5fa8'],[60,92.2,Math.PI/2,'#d23b33'],[-60,172.2,-Math.PI/2,'#5aa36b']]){
   const g=makeCar(col,col==='#f2c230');g.position.set(x,G(x,z)+0.02,z);g.rotation.y=yaw;const c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),hl=g.userData.len/2+0.1,hw=g.userData.w/2;
   collide(x-(hw*c+hl*s),x+(hw*c+hl*s),z-(hw*s+hl*c),z+(hw*s+hl*c),'car',G(x,z)+(g.userData.type==='van'?1.9:g.userData.type==='kei'?1.58:g.userData.type==='truck'?0.95:1.38));}
+// the black van of Oceangate: no logo, windows you cannot see through; it keeps going round the coast road
+CARS.push({g:makeCar('#18191c',false,'van'),dir:-1,x:-30,z:COAST_Z+2.2,v:6,v0:5.5,van:true});const VAN=CARS[CARS.length-1];
 CARS.forEach(c=>{c.box=collide(0,0,0,0,'car');});
 function updateCars(dt){for(const c of CARS){let gap=1e9;for(const o of CARS){if(o===c||o.dir!==c.dir)continue;let d=(o.x-c.x)*c.dir;if(d<0)d+=520;if(d<gap)gap=d;}
     const pd=(P.x-c.x)*c.dir;if(Math.abs(P.z-c.z)<2.2&&pd>0&&pd<9)gap=Math.min(gap,pd);
@@ -119,9 +121,9 @@ const MENUS={
 const SPOTS=[{id:'lookout',name:'見晴らし台',x:0,z:-209},{id:'torii',name:'神社の鳥居',x:-60,z:-119.5},{id:'crossing',name:'海が見える踏切',x:3,z:TRAM_Z-7},{id:'station',name:'うみまち駅',x:62,z:TRAM_Z-1.5},{id:'pier',name:'桟橋の先',x:-80,z:PIER.z1-4}];
 const QUESTS=[
   {id:'melon',title:'メロンパンをふたつ',giver:'tome',
-   start:['あら、スケボーのお嬢ちゃん。いい風だねえ。','商店街の「こむぎ堂」のメロンパンが食べたくてね。でも、この坂を下りるのがしんどくて…','ふたつ買ってきてくれるかい？ お代はあとでちゃんと渡すからね。'],
+   start:['ナギ、今日もいい風だねえ。','商店街の「こむぎ堂」のメロンパンが食べたくてね。でも、この坂を下りるのがしんどくて…','ふたつ買ってきてくれるかい？ お代はあとでちゃんと渡すからね。'],
    steps:[{type:'have',item:'melon',n:2,at:'bakery',hint:'しおかぜ商店街の「こむぎ堂」でメロンパンを2つ買う'},
-          {type:'deliver',to:'tome',item:'melon',n:2,hint:'神社の鳥居のそば、トメさんに届ける',text:['まあまあ、まだあったかいねえ。','ありがとうね。パン代と、これはお駄賃。坂の上の景色も、ゆっくり見ておいき。']}],
+          {type:'deliver',to:'tome',item:'melon',n:2,hint:'神社の鳥居のそば、トメばあちゃんに届ける',text:['まあまあ、まだあったかいねえ。','ありがとうね。パン代と、これはお駄賃。','夕方になったら、桟橋の先へ行ってごらん。海に沈む夕日がきれいだよ。','暗くなったら、ばあちゃんのところへ帰っておいで。いっしょに家に帰ろうね。']}],
    reward:500,wait:['こむぎ堂は、坂を下りた商店街にあるよ。']},
   {id:'flower',title:'花束のおとどけ',giver:'hana',
    start:['ちょうどよかった！ 喫茶しおさいのマスターから、お店に飾る花束を頼まれてて。','でも今、手がはなせないの。届けてくれる？ 商店街の向かいの方よ。'],give:['bouquet',1],
@@ -151,7 +153,7 @@ function invN(id){return SAVE.inv[id]||0;}
 function addItem(id,n){SAVE.inv[id]=invN(id)+n;if(SAVE.inv[id]<=0)delete SAVE.inv[id];renderBag();}
 function stepOf(q){const s=qs(q.id);return s.state===1?q.steps[s.step]:null;}
 function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2);}
-function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
+function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;SAVE.flags['bond_'+q.giver]=(SAVE.flags['bond_'+q.giver]||0)+1;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
     if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}
     if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=nx?nx.id:null;}}
   autoSteps();save();renderHUD();}
@@ -394,7 +396,7 @@ function stepPlayer(dt){
 /* ---------- interaction ---------- */
 let near=null;
 function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
-  for(const id in NPCS){const n=NPCS[id];const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d,{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
+  for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d,{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}
@@ -439,7 +441,7 @@ function updateCamera(dt){
 
 /* ---------- loop ---------- */
 let state='title',clock=0,last=performance.now();
-function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-n.x,P.z-n.z);n.h.g.visible=d<110;if(!n.h.g.visible)continue;
+function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-n.x,P.z-n.z),here=present(n);n.box.on=here;n.h.g.visible=d<110&&here;if(!n.h.g.visible)continue;
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
     poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
@@ -464,7 +466,10 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
   state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
-  const hr=/#hour=([\d.]+)/.exec(location.hash);if(hr)SAVE.hour=SAVE.cap=+hr[1];   // test entry: index.html#hour=20 sets the clock
+  // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning (they combine with &)
+  const hr=/hour=([\d.]+)/.exec(location.hash),at=/at=(-?[\d.]+),(-?[\d.]+)/.exec(location.hash),dy=/day=(\d+)/.exec(location.hash);
+  if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS)if(/^d(\d)_/.test(e.id)&&+e.id[1]<SAVE.day)SAVE.seen[e.id]=1;}
+  if(hr)SAVE.hour=SAVE.cap=+hr[1];if(at){P.x=+at[1];P.z=+at[2];P.y=G(P.x,P.z);P.yaw=0;}
   if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once
 // the title lists the save slots: continue, start, or erase (a second press confirms)
 function renderSlots(){const box=$('slots');box.innerHTML='';

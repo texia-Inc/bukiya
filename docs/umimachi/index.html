@@ -4949,11 +4949,13 @@ function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))
 /* townsfolk and the people you run errands for */
 const NPCS={};
 function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
-  const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
+  const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;n.box=collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
+// someone who is only there at certain times has n.show(); hidden people neither stand in the way nor talk
+const present=n=>!n.show||n.show();
 function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.yaw];}
 { const B=SHRINE;const bench=benchMesh();bench.position.set(-50.5,G(-50.5,-125.6),-125.6);world.add(bench);collide(-51.3,-49.7,-125.9,-125.3,'prop',G(-50.5,-125.6)+0.5);
   placeNPC('tome',{skin:'#efc9aa',hair:'#d9d6d0',style:'grey',shirt:'#8a6a8a',sleeves:'long',bottom:'long',bottomCol:'#5a5a6a',shoe:'#4a3a2e',bend:0.32,cane:true,y:G(-50.5,-125.6)},
-    -50.5,-125.55,0,'sit','トメさん',['この坂からの海がいちばん好きでねえ。','神社の鳥居の向こう、夕方はきれいだよ。']);}
+    -50.5,-125.55,0,'sit','トメばあちゃん',['この坂からの海がいちばん好きでねえ。','神社の鳥居の向こう、夕方はきれいだよ。']);}
 { const [x,z,yaw]=shopFront('flower',1.6,1.7);placeNPC('hana',{skin:'#f3d0b5',hair:'#3a2a1e',style:'pony',shirt:'#f2e8d6',bottom:'pants',bottomCol:'#3b4a66',apron:'#3f8a4f'},x,z,yaw,'stand','はなもりの花江さん',['今日はひまわりが入ったのよ。','お花は朝いちばんがいちばん元気。']);}
 { const [x,z,yaw]=shopFront('cafe',3.4,1.4);placeNPC('master',{skin:'#e6bb95',hair:'#2b2520',style:'short',shirt:'#f7f7f3',sleeves:'long',vest:'#3a2a20',bottom:'pants',bottomCol:'#2b2520',mustache:true},x,z,yaw,'stand','しおさいのマスター',['うちのナポリタンは昔ながらの味さ。','海の色が変わると、コーヒーの味も変わる気がするよ。']);}
 { const [x,z,yaw]=shopFront('bakery',2.2,1.5);placeNPC('baker',{skin:'#f1cdb0',hair:'#2a1d15',style:'short',shirt:'#fbfbf8',sleeves:'long',bottom:'pants',bottomCol:'#e9e2d4',apron:'#c8722e',hat:'chef'},x,z,yaw,'stand','こむぎ堂の主人',['いらっしゃい！ メロンパン、焼きたてだよ。']);}
@@ -4962,7 +4964,9 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
 { const [x,z,yaw]=shopFront('fish',2.6,1.9);placeNPC('okami',{skin:'#e9bf9b',hair:'#2b2520',style:'bun',shirt:'#f2f2ee',sleeves:'long',bottom:'pants',bottomCol:'#24466e',apron:'#2e5fa8',scarf:'#f2c230'},x,z,yaw,'stand','魚松のおかみさん',['今朝はあじがよく揚がったよ！']);}
 { const [x,z,yaw]=shopFront('books',-2.8,1.6);placeNPC('neko',{skin:'#f1cdb0',hair:'#6b6560',style:'short',shirt:'#7a8a6a',sleeves:'long',bottom:'pants',bottomCol:'#4a4038',glasses:true,bend:0.1},x,z,yaw,'stand','古書うみねこの店主',['古い写真集をめくると、この町は昔からあまり変わらないんだ。']);}
 { placeNPC('sota',{skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78},-72,SHORE+13,Math.PI*0.85,'stand','ソウタくん',['波が高い日はサーフィンの人がいっぱい来るんだ。']);}
-{ placeNPC('fisher',{skin:'#d9a987',hair:'#2b2520',style:'short',hat:'straw',shirt:'#5a7a8a',sleeves:'long',bottom:'pants',bottomCol:'#4a4a4a',y:PIER.y+0.02},-79.8,PIER.z1-3.2,0,'sit','釣りのおじさん',['ここで釣れるのは、だいたいあじかサバだな。','島の灯台、夜になると光るんだ。']);
+{ placeNPC('fisher',{skin:'#d9a987',hair:'#2b2520',style:'short',hat:'straw',shirt:'#5a7a8a',sleeves:'long',bottom:'pants',bottomCol:'#4a4a4a',y:PIER.y+0.02},-79.8,PIER.z1-3.2,0,'sit','釣りのおじさん',['ここで釣れるのは、だいたいあじかサバだな。','島の灯台、昔は夜になると光ったんだがなあ。']);
+  // Mio: the girl in white who stands at the end of the pier, only in the evening
+  placeNPC('mio',{skin:'#f3dcc8',hair:'#1c1a1a',style:'bob',shirt:'#f7f6f1',bottom:'skirt',bottomCol:'#f7f6f1',socks:'#f7f6f1',shoe:'#e8e4dc',scale:0.93,y:PIER.y+0.02},-81.3,PIER.z1-1.4,0,'stand','ミオ',['……海、きれいだね。','灯台、今日も光らないね。']);
   const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.015,2.6,5),tm('#3a2a1e'));rod.position.set(-79.6,PIER.y+1.4,PIER.z1-1.9);rod.rotation.x=0.9;world.add(rod);}
 { placeNPC('lady1',{skin:'#f1cdb0',hair:'#3a2a1e',style:'bob',shirt:'#e8c9b8',bottom:'skirt',bottomCol:'#6b7a8a'},5.6,30,-Math.PI/2+0.4,'stand','',['今日はいい風ねえ。']);
   placeNPC('lady2',{skin:'#efc9aa',hair:'#1c1a1a',style:'bun',shirt:'#cfe0d2',sleeves:'long',bottom:'pants',bottomCol:'#5a4a3a'},5.6,31.1,-Math.PI/2-0.6,'stand','',['商店街のコロッケ、食べた？']);
@@ -5533,7 +5537,7 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   dome.material.color.copy(LC[0]);scene.background.copy(LC[1]);scene.fog.color.copy(LC[1]);hemi.color.copy(LC[2]);hemi.groundColor.copy(LC[3]);hemi.intensity=v(4);
   sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
-  NIGHT.house.visible=NIGHT.beam.visible=on;NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.16*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.16*g;NIGHT.beam.rotation.y=clock*0.6;
   NIGHT.mast.visible=on&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 /* running events */
@@ -5554,6 +5558,7 @@ const ready=e=>!(e.once!==false&&SAVE.seen[e.id])&&cond(e.when);
 function findEvent(kind,arg){return EVENTS.find(e=>{const o=e.on||{};
   if(kind==='talk')return o.talk===arg&&ready(e);
   if(kind==='near')return o.near&&Math.hypot(P.x-o.near[0],P.z-o.near[1])<o.near[2]&&ready(e);
+  if(kind==='night')return o.night&&ready(e);
   if(kind==='auto')return!e.on&&ready(e);return false;});}
 const whoName=w=>w==='nagi'?'ナギ':NPCS[w]?NPCS[w].name||'町の人':w;
 const sleepP=s=>new Promise(r=>setTimeout(r,s*1000));
@@ -5572,13 +5577,15 @@ function setCam(a){if(a[0]==='off'){ST.cam=null;document.body.classList.remove('
   document.body.classList.add('cine');
   if(a[0]==='npc'){const n=NPCS[a[1]],m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     ST.cam={pos:m.clone().addScaledVector(side,a[2]||3.4).setY(m.y+1.5),look:m.clone().setY(m.y+1.15),rate:3};return;}
+  if(a[0]==='over'){const n=NPCS[a[1]],d=new THREE.Vector3(P.x-n.x,0,P.z-n.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);   // over Nagi's shoulder, looking at someone
+    ST.cam={pos:new THREE.Vector3(P.x,P.y+1.65,P.z).addScaledVector(d,2.4).addScaledVector(side,0.9),look:new THREE.Vector3(n.x,n.h.g.position.y+1.05,n.z),rate:3};return;}
   const v=x=>new THREE.Vector3(...x);ST.cam={pos:v(a[0]),look:v(a[1]),rate:a[2]||2};if(a[3]==='cut')camInit=false;}
 async function steps(list){for(const s of list||[])if(await step(s)==='stop')return'stop';}
 async function step(s){const [op,...a]=s;switch(op){
   case 'say':await sayP(a[0],a.slice(1));break;                         // ['say', who, line, line…]  who: an NPC id, 'nagi', '' for narration, or any name
-  case 'ask':{const i=await askP(a[0],a[1],a[2].map(o=>o[0]));            // ['ask', who, question, [[label, [steps…]], …]]
-    if(a[3])SAVE.flags[a[3]]=i+1;                                       //   an optional 4th item names a flag that records the answer (1, 2, …)
-    return steps(a[2][i][1]);}
+  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
+    if(a[3])SAVE.flags[a[3]]=a[2].indexOf(opts[i])+1;                    //   an optional 4th item names a flag that records the answer (1, 2, … in the written order)
+    return steps(opts[i][1]);}
   case 'set':SAVE.flags[a[0]]=a[1]===undefined?1:a[1];break;           // ['set', flag, value]
   case 'add':SAVE.flags[a[0]]=flag(a[0])+(a[1]==null?1:a[1]);break;    // ['add', flag, n]  e.g. friendship points
   case 'if':return steps(cond(a[0])?a[1]:a[2]);                         // ['if', condition, [then…], [else…]]  condition as in `when`
@@ -5586,14 +5593,15 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'cap':SAVE.cap=a[0];break;                                       // ['cap', hour]  how far the clock may run on its own today
   case 'day':await nextDay(a[0]);break;                                 // ['day', hour?]  fade out, next morning
   case 'fade':await fadeP(a[0]==='out');break;                          // ['fade', 'out'|'in']
-  case 'cam':setCam(a);break;                                           // ['cam', [x,y,z], [lookX,lookY,lookZ], rate?, 'cut'?] / ['cam','npc',id] / ['cam','off']
+  case 'cam':setCam(a);break;                                           // ['cam', [x,y,z], [lookX,lookY,lookZ], rate?, 'cut'?] / ['cam','npc',id] (from the side) / ['cam','over',id] (over Nagi's shoulder) / ['cam','off']
   case 'wait':await sleepP(a[0]);break;                                 // ['wait', seconds]
   case 'warp':P.x=a[0];P.z=a[1];if(a[2]!=null)P.yaw=a[2];P.v=0;P.vy=0;P.air=false;P.y=G(P.x,P.z);camInit=false;break;   // ['warp', x, z, yaw?]
   case 'money':SAVE.money+=a[0];toast(`${a[0]>0?'+':''}${a[0]}円`,true);renderHUD();break;
   case 'item':addItem(a[0],a[1]==null?1:a[1]);toast(`${ITEMS[a[0]].name}をもらった`);break;
   case 'quest':accept(QBY(a[0]));break;                                 // ['quest', id]  take on an errand
   case 'toast':toast(a[0],a[1]);break;
-  case 'call':await a[0]();break;                                       // ['call', fn]  anything the data cannot say
+  case 'call':await a[0]();break;
+  case 'night':{const e=findEvent('night');if(e){SAVE.seen[e.id]=1;return steps(e.script);}break;}   // ['night']  the first ready event marked on:{night:true}                                       // ['call', fn]  anything the data cannot say
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
@@ -5611,8 +5619,19 @@ function updateStory(dt){const tw=ST.tween;
   const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}
 
 /* ---------- the events of the story, as data for the engine in p5c_story.js ----------
-   {id, on:{talk:npcId} | on:{near:[x,z,radius]} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
-   when: day, minDay, phase ('morning'|'day'|'evening'|'night', or a list), hour:[from,to], flags:{k:v}, min:{k:n}, seen, unseen, quest:{id:state}, test:fn */
+   {id, on:{talk:npcId} | on:{near:[x,z,radius]} | on:{night:true} | no on (starts as soon as `when` holds), when:{…}, mark:true (a "!" over the person), once:false, script:[steps]}
+   when: day, minDay, phase ('morning'|'day'|'evening'|'night', or a list), hour:[from,to], flags:{k:v}, min:{k:n}, seen, unseen, quest:{id:state}, test:fn
+   The first ready event in this list wins, so the specific ones come before the everyday ones at the end.
+
+   Common route, days 1–3: the errands introduce the town, and three odd things show up a little at a time —
+   the radio mast that blinks and hums at night, Mio who is on the pier only in the evening, and the black van.
+   On the third night Nagi chooses: follow Omochi the cat to the west tunnel (horror), follow the van to the port (Oceangate),
+   or go to sleep (the easy-going summer). Flags kept on the way: bond_<npc> (errands and kind answers), met_mio, met_mochi,
+   saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
+const HOME=[-50.5,-122.6,Math.PI];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
+const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
+NPCS.mio.show=()=>phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
+const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
 const EVENTS=[
   // a check of every kind of step; only index.html#storytest starts it
   {id:'storytest',once:false,when:{test:()=>location.hash==='#storytest'&&!SAVE.flags.storytest_done},script:[
@@ -5620,11 +5639,147 @@ const EVENTS=[
     ['say','','夏休み。うみまち線の終点、坂の町。'],
     ['time',18.4,3],
     ['say','nagi','うわあ、海がオレンジ色だ…'],
-    ['ask','nagi','これからどうしよう？',[['もう少しここにいる',[['add','test_stay'],['time',20.5,3],['say','nagi','島の灯台が光りはじめた。']]],['先に進む',[['say','nagi','よし、行こう。']]]],'test_choice'],
+    ['ask','nagi','これからどうしよう？',[['もう少しここにいる',[['add','test_stay'],['time',20.5,3],['say','nagi','島の灯台は、真っ暗なままだ。']]],['先に進む',[['say','nagi','よし、行こう。']]]],'test_choice'],
     ['if',{flags:{test_choice:1}},[['say','','（ここにいることにした）']],[['say','','（先に進むことにした）']]],
     ['cam','off'],
     ['set','storytest_done'],
     ['toast','テストの出来事が終わった',true]]},
+
+  /* ----- day 1: arriving ----- */
+  {id:'d1_open',when:{day:1,quest:{melon:0},test:()=>location.hash!=='#storytest'},script:[
+    ['cam',[0,G(0,-209)+5,-213],[0,6,90],1.5,'cut'],
+    ['say','','夏休み。','汐見ナギは うみまち線の終点で電車を降りて、坂の上から海を見下ろした。','この町には、ばあちゃん――トメばあちゃんが住んでいる。'],
+    ['say','nagi','ひさしぶりだな、この坂。','ばあちゃん、神社の鳥居のそばで待ってるって言ってたっけ。'],
+    ['cam','off'],
+    ['toast','坂を下って、神社の鳥居のそばへ']]},
+  {id:'d1_tome',on:{talk:'tome'},mark:true,when:{day:1,quest:{melon:0}},script:[
+    ['say','tome','おや、ナギ！ まあまあ、大きくなって。','電車、長かったろう。お母さんは元気かい？'],
+    ['say','nagi','うん、元気。夏休みのあいだ、よろしくね、ばあちゃん。'],
+    ['say','tome','ゆっくりしておいき。この町は何もないけど、海と坂だけはたくさんあるからね。','そうだ、さっそくだけど、ひとつ頼まれてくれるかい。','商店街の「こむぎ堂」のメロンパンが食べたくてね。ふたつ買ってきておくれ。'],
+    ['quest','melon']]},
+  {id:'d1_dusk',when:{day:1,quest:{melon:2}},script:[
+    ['wait',1.2],['toast','日が傾いてきた'],['cap',18.9],['time',16.6,5],
+    ['say','nagi','…もう夕方か。桟橋の夕日、見に行ってみようかな。']]},
+  {id:'d1_mio',on:{near:[-80,PIER.z1-5,7]},when:{day:1,phase:'evening'},script:[
+    ['cam','over','mio'],
+    ['say','','桟橋の先に、白いワンピースの女の子がひとり、海を見て立っている。'],
+    ['say','mio','……今日も、灯台は光らないのかな。'],
+    ['ask','nagi','（声をかけてみる？）',[
+      ['こんにちは！',[['say','mio','……あなた、この町の子じゃないね。','風のにおいが、ちがうもの。'],['add','bond_mio']]],
+      ['そっとしておく',[['say','','女の子は、島の方をじっと見つめている。']]]]],
+    ['set','met_mio'],['fade','out'],['call',leaveMio],['wait',0.4],['fade','in'],
+    ['say','','強い風が吹いて、目をつぶった。','目を開けると、女の子はもういなかった。'],
+    ['say','nagi','……え？ いま、そこにいたよね？']]},
+  {id:'fisher_mio',on:{talk:'fisher'},when:{seen:'d1_mio'},script:[
+    ['say','fisher','女の子？ いや、今日は誰も来とらんぞ。','この桟橋の先にいたのは、おれとカモメだけだ。']]},
+  {id:'d1_night',on:{night:true},when:{day:1},script:[
+    ['cam',...nightView,1,'cut'],['fade','in'],
+    ['say','','その夜。ばあちゃんの家の窓から、町の灯りが見えた。'],
+    ['say','','ジジ……ジジジ……','西の山の電波塔が、赤く点滅している。耳の奥で、ラジオの雑音のような音がする。'],
+    ['say','nagi','……なんだろう、あの音。'],
+    ['set','saw_tower'],['wait',0.6],['fade','out']]},
+
+  /* ----- day 2: the town and its people ----- */
+  {id:'d2_morning',when:{day:2},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう、ナギ。よく眠れたかい？'],
+    ['ask','nagi','（ゆうべのことを話す？）',[
+      ['電波塔が光って、変な音がしてた',[['say','tome','……あの塔かい。','昔はなかったんだよ。会社が建ててから、なんだか町を見張られてるようで好かんねえ。']]],
+      ['ぐっすり眠れた！',[['say','tome','そりゃあよかった。海の町はよく眠れるんだよ。']]]]],
+    ['if',{flags:{met_mio:1}},[['ask','nagi','（桟橋の女の子のことを聞く？）',[
+      ['白いワンピースの子、知ってる？',[['say','tome','白いワンピース……？','……いいや。この町の子は、みんな日焼けしてるからねえ。'],['say','','ばあちゃんは、少しだけ遠くを見るような目をした。']]],
+      ['やめておく',[]]]]]],
+    ['say','tome','今日は町の人の手伝いをしておやり。困ってる人は、手を振ってるからすぐわかるよ。'],
+    ['cam','off'],['toast','町の人の「！」を探して、おつかいをしよう']]},
+  {id:'d2_van',when:{minDay:2,test:()=>Math.hypot(P.x-VAN.x,P.z-VAN.z)<11},script:[
+    ['say','nagi','……また黒いバンだ。','窓が真っ黒で、中がぜんぜん見えない。会社の名前も書いてない。'],
+    ['set','saw_van']]},
+  {id:'master_van',on:{talk:'master'},when:{flags:{saw_van:1}},script:[
+    ['say','master','黒いバン？ ああ、オーシャンゲートって会社の車だよ。','島のあたりに、大きなリゾートを建てたいんだそうだ。','あの電波塔も、あそこの会社が建てたものさ。'],
+    ['say','nagi','ふうん……。'],
+    ['set','heard_og']]},
+  {id:'d2_mochi',on:{near:[-114,SHORE+12.6,3.2]},when:{minDay:2},script:[
+    ['cam',[-111.2,G(-114,SHORE+12.6)+1.5,SHORE+10],[-114,G(-114,SHORE+12.6)+0.4,SHORE+12.6],2.5],
+    ['say','','浜の流木のかげで、白い猫が丸くなっている。首輪の小さな札に「おもち」と書いてある。'],
+    ['ask','nagi','（どうする？）',[
+      ['そっとなでる',[['say','','おもちは目を細めて、ナギの手に頭をこすりつけた。'],['add','bond_mochi']]],
+      ['見ているだけにする',[['say','','おもちは片目だけ開けて、またすぐに閉じた。']]]]],
+    ['say','','……と思ったら、おもちは急に顔を上げ、西のトンネルの方をじっと見つめた。'],
+    ['say','nagi','どうしたの？ なにかいるの？'],
+    ['set','met_mochi']]},
+  {id:'d2_mio',on:{near:[-80,PIER.z1-5,7]},when:{day:2,phase:'evening'},script:[
+    ['cam','over','mio'],
+    ['if',{seen:'d1_mio'},[['say','mio','……また来たんだ。']],[['say','','桟橋の先に、白いワンピースの女の子が立っている。'],['say','mio','……あなた、この町の子じゃないね。']]],
+    ['say','nagi','わたし、ナギ。夏休みのあいだ、ばあちゃんの家にいるんだ。','あなたは？'],
+    ['say','mio','ミオ。……ずっと前から、ここにいるの。'],
+    ['say','mio','ねえ、知ってる？ 30年前の夏の夜、あの灯台の灯りが消えたの。','それから、この町の時間は、少しだけずれてる。'],
+    ['ask','nagi','（なんて答える？）',[
+      ['それって、どういう意味？',[['say','mio','……まだ、言えない。']]],
+      ['また明日も来るね',[['say','mio','……うん。待ってる。'],['add','bond_mio']]]]],
+    ['set','met_mio'],['fade','out'],['call',leaveMio],['wait',0.4],['fade','in'],
+    ['say','','また風が吹いて、ミオの姿は消えていた。']]},
+  {id:'d2_night',on:{night:true},when:{day:2},script:[
+    ['cam',...nightView,1,'cut'],['fade','in'],
+    ['say','','夕ごはんのあと、ばあちゃんがお茶をいれながら話してくれた。'],
+    ['say','tome','あの島の灯台はね、30年前の夏に消えたきり、一度も光ってないんだよ。','あの夜は、町の子がひとり、いなくなってねえ。町じゅうで探したけど、とうとう見つからなかった。'],
+    ['if',{flags:{met_mio:1}},[['say','nagi','（30年前……ミオが言ってたのと同じだ）']]],
+    ['say','tome','ナギのお母さんも、あのころはこの町の子だったんだよ。','……さあ、もうお休み。'],
+    ['set','heard_lighthouse'],['wait',0.6],['fade','out']]},
+
+  /* ----- day 3: the town is a little restless ----- */
+  {id:'d3_morning',when:{day:3},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう。今日は浜でソウタたちが、ナギを探してたよ。','あの子たち、すっかりナギのスケボーにあこがれちゃってねえ。'],
+    ['cam','off'],['toast','浜辺のソウタくんに会いに行こう']]},
+  {id:'d3_sota',on:{talk:'sota'},mark:true,when:{day:3},script:[
+    ['say','sota','おねえちゃん！ 待ってたんだ！','あのね、夏祭りの日に、桟橋でスケボー大会があるんだよ。おねえちゃんも出てよ！'],
+    ['ask','nagi','（大会に出る？）',[
+      ['出る！',[['say','sota','やったー！ みんなに言っとく！'],['set','promise_contest'],['add','bond_sota']]],
+      ['考えとくね',[['say','sota','えー。出てくれたら、ぜったい盛り上がるのになあ。']]]]],
+    ['say','sota','あとね、最近、黒いバンのおじさんが浜で写真を撮ってるんだ。','灯台の方ばっかり。なんか、こわいよね。'],
+    ['set','saw_van']]},
+  {id:'d3_baker',on:{talk:'baker'},when:{minDay:3,test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og},script:[
+    ['say','baker','……ナギちゃん、だったな。黒いバンを見たか。','オーシャンゲートの黒崎って男が、この前うちにパンを買いに来た。','ああいう目をした男は、昔の仕事でよく見た。……あいつらには近づくなよ。'],
+    ['say','nagi','昔の仕事……？'],
+    ['say','baker','おっと、しゃべりすぎた。メロンパン、焼きたてだよ。'],
+    ['set','heard_kurosaki']]},
+  {id:'d3_mio',on:{near:[-80,PIER.z1-5,7]},when:{day:3,phase:'evening'},script:[
+    ['cam','over','mio'],
+    ['say','mio','ナギ。……今夜、また電波塔が鳴るよ。','そのとき、町のどこかで「扉」が開くの。'],
+    ['say','nagi','扉？'],
+    ['say','mio','行くか、行かないかは、ナギが決めて。','……でも、どこへ行っても、最後はきっとあの灯台につながってる。'],
+    ['set','mio_warn'],['set','met_mio'],['fade','out'],['call',leaveMio],['wait',0.4],['fade','in'],
+    ['say','','ミオの立っていた場所に、古いビー玉がひとつ転がっていた。']]},
+  {id:'d3_night',on:{night:true},when:{day:3},script:[
+    ['cam',...nightView,1,'cut'],['fade','in'],
+    ['say','','その夜。眠れずに、窓の外を見ていた。'],
+    ['say','','ジジジジ……！','電波塔が、いつもより強く赤く光っている。'],
+    ['say','','坂の下を、ライトを消した黒いバンが、港の方へすべるように走っていく。'],
+    ['if',{flags:{met_mochi:1}},[['say','','庭の塀の上を、白い影が走った。おもちだ。西のトンネルの方へ駆けていく。']],
+      [['say','','庭の塀の上を、白い猫が走った。西のトンネルの方へ駆けていく。']]],
+    ['if',{flags:{mio_warn:1}},[['say','nagi','（ミオが言ってた「扉」って、これのこと……？）']]],
+    ['ask','nagi','どうする？',[
+      ['おもちを追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:1}}],
+      ['白い猫を追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:0}}],
+      ['黒いバンを追って、港へ',[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
+      ['外の物音を確かめに、坂の下へ',[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
+      ['……そのまま寝る',[['set','route',3]]]]],
+    ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。夜のトンネルの奥から、冷たい風が吹いてくる……。'],['toast','ホラールート「トンネルの向こう」は準備中。いまは次の朝になる',true]]],
+    ['if',{flags:{route:2}},[['say','','ナギはスケボーをかかえて、坂を下りはじめた。港の倉庫街に、小さな灯りがともっている……。'],['toast','悪の組織ルート「シーサイド・コンスピラシー」は準備中。いまは次の朝になる',true]]],
+    ['if',{flags:{route:3}},[['say','nagi','……明日、ばあちゃんに聞いてみよう。','おやすみなさい。']]],
+    ['wait',0.6],['fade','out']]},
+
+  /* ----- every day ----- */
+  // from the second day on, the afternoon turns to evening on its own once the clock reaches the day's cap
+  {id:'dusk',once:false,when:{minDay:2,test:()=>SAVE.cap<18&&SAVE.hour>=SAVE.cap-0.02},script:[
+    ['toast','日が傾いてきた'],['cap',18.9],['time',16.6,5]]},
+  {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day},script:[
+    ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]},
+  // grandma takes you home in the evening: the night's event, then the next morning
+  {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[
+    ['ask','tome','そろそろ、家に帰ろうか？',[
+      ['うん、帰る',[['fade','out'],['cam','off'],['time',21.5,0],['warp',...HOME],['night'],['cam','off'],['warp',...HOME],['day']]],
+      ['もう少し遊んでくる',[['say','tome','暗くなる前に、帰っておいでね。']]]]]]},
 ];
 
 /* ---------- the tram and its level crossings ---------- */
@@ -5713,6 +5868,8 @@ for(let k=0;k<9;k++){const dir=k%2?-1:1,taxi=k===2||k===5,type=taxi?'sedan':['ke
 for(const [x,z,yaw,col] of [[80,201.5,Math.PI/2,'#f2c230'],[93.6,60,0,'#f2f2ee'],[-123.8,120,Math.PI,'#2e5fa8'],[60,92.2,Math.PI/2,'#d23b33'],[-60,172.2,-Math.PI/2,'#5aa36b']]){
   const g=makeCar(col,col==='#f2c230');g.position.set(x,G(x,z)+0.02,z);g.rotation.y=yaw;const c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),hl=g.userData.len/2+0.1,hw=g.userData.w/2;
   collide(x-(hw*c+hl*s),x+(hw*c+hl*s),z-(hw*s+hl*c),z+(hw*s+hl*c),'car',G(x,z)+(g.userData.type==='van'?1.9:g.userData.type==='kei'?1.58:g.userData.type==='truck'?0.95:1.38));}
+// the black van of Oceangate: no logo, windows you cannot see through; it keeps going round the coast road
+CARS.push({g:makeCar('#18191c',false,'van'),dir:-1,x:-30,z:COAST_Z+2.2,v:6,v0:5.5,van:true});const VAN=CARS[CARS.length-1];
 CARS.forEach(c=>{c.box=collide(0,0,0,0,'car');});
 function updateCars(dt){for(const c of CARS){let gap=1e9;for(const o of CARS){if(o===c||o.dir!==c.dir)continue;let d=(o.x-c.x)*c.dir;if(d<0)d+=520;if(d<gap)gap=d;}
     const pd=(P.x-c.x)*c.dir;if(Math.abs(P.z-c.z)<2.2&&pd>0&&pd<9)gap=Math.min(gap,pd);
@@ -5747,9 +5904,9 @@ const MENUS={
 const SPOTS=[{id:'lookout',name:'見晴らし台',x:0,z:-209},{id:'torii',name:'神社の鳥居',x:-60,z:-119.5},{id:'crossing',name:'海が見える踏切',x:3,z:TRAM_Z-7},{id:'station',name:'うみまち駅',x:62,z:TRAM_Z-1.5},{id:'pier',name:'桟橋の先',x:-80,z:PIER.z1-4}];
 const QUESTS=[
   {id:'melon',title:'メロンパンをふたつ',giver:'tome',
-   start:['あら、スケボーのお嬢ちゃん。いい風だねえ。','商店街の「こむぎ堂」のメロンパンが食べたくてね。でも、この坂を下りるのがしんどくて…','ふたつ買ってきてくれるかい？ お代はあとでちゃんと渡すからね。'],
+   start:['ナギ、今日もいい風だねえ。','商店街の「こむぎ堂」のメロンパンが食べたくてね。でも、この坂を下りるのがしんどくて…','ふたつ買ってきてくれるかい？ お代はあとでちゃんと渡すからね。'],
    steps:[{type:'have',item:'melon',n:2,at:'bakery',hint:'しおかぜ商店街の「こむぎ堂」でメロンパンを2つ買う'},
-          {type:'deliver',to:'tome',item:'melon',n:2,hint:'神社の鳥居のそば、トメさんに届ける',text:['まあまあ、まだあったかいねえ。','ありがとうね。パン代と、これはお駄賃。坂の上の景色も、ゆっくり見ておいき。']}],
+          {type:'deliver',to:'tome',item:'melon',n:2,hint:'神社の鳥居のそば、トメばあちゃんに届ける',text:['まあまあ、まだあったかいねえ。','ありがとうね。パン代と、これはお駄賃。','夕方になったら、桟橋の先へ行ってごらん。海に沈む夕日がきれいだよ。','暗くなったら、ばあちゃんのところへ帰っておいで。いっしょに家に帰ろうね。']}],
    reward:500,wait:['こむぎ堂は、坂を下りた商店街にあるよ。']},
   {id:'flower',title:'花束のおとどけ',giver:'hana',
    start:['ちょうどよかった！ 喫茶しおさいのマスターから、お店に飾る花束を頼まれてて。','でも今、手がはなせないの。届けてくれる？ 商店街の向かいの方よ。'],give:['bouquet',1],
@@ -5779,7 +5936,7 @@ function invN(id){return SAVE.inv[id]||0;}
 function addItem(id,n){SAVE.inv[id]=invN(id)+n;if(SAVE.inv[id]<=0)delete SAVE.inv[id];renderBag();}
 function stepOf(q){const s=qs(q.id);return s.state===1?q.steps[s.step]:null;}
 function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2);}
-function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
+function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;SAVE.flags['bond_'+q.giver]=(SAVE.flags['bond_'+q.giver]||0)+1;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
     if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}
     if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=nx?nx.id:null;}}
   autoSteps();save();renderHUD();}
@@ -6022,7 +6179,7 @@ function stepPlayer(dt){
 /* ---------- interaction ---------- */
 let near=null;
 function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
-  for(const id in NPCS){const n=NPCS[id];const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d,{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
+  for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d,{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
   for(const v of VEND){const d=Math.hypot(P.x-v.x,P.z-v.z);if(d<1.6)add(d,{kind:'shop',id:'vend',label:'買う　自動販売機',verb:'買う'});}
   const lq=QBY('letter'),ls=stepOf(lq);if(ls&&ls.type==='post'){const d=Math.hypot(P.x-POSTBOX.x,P.z-POSTBOX.z);if(d<2.2)add(d,{kind:'post',label:'手紙を入れる　ポスト',verb:'入れる'});}
@@ -6067,7 +6224,7 @@ function updateCamera(dt){
 
 /* ---------- loop ---------- */
 let state='title',clock=0,last=performance.now();
-function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-n.x,P.z-n.z);n.h.g.visible=d<110;if(!n.h.g.visible)continue;
+function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-n.x,P.z-n.z),here=present(n);n.box.on=here;n.h.g.visible=d<110&&here;if(!n.h.g.visible)continue;
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
     poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
@@ -6092,7 +6249,10 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
   state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
-  const hr=/#hour=([\d.]+)/.exec(location.hash);if(hr)SAVE.hour=SAVE.cap=+hr[1];   // test entry: index.html#hour=20 sets the clock
+  // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning (they combine with &)
+  const hr=/hour=([\d.]+)/.exec(location.hash),at=/at=(-?[\d.]+),(-?[\d.]+)/.exec(location.hash),dy=/day=(\d+)/.exec(location.hash);
+  if(dy){SAVE.day=+dy[1];SAVE.hour=DAY_START;SAVE.cap=DAY_CAP;SAVE.qs.melon=SAVE.qs.melon||{state:2,step:1};for(const e of EVENTS)if(/^d(\d)_/.test(e.id)&&+e.id[1]<SAVE.day)SAVE.seen[e.id]=1;}
+  if(hr)SAVE.hour=SAVE.cap=+hr[1];if(at){P.x=+at[1];P.z=+at[2];P.y=G(P.x,P.z);P.yaw=0;}
   if(location.hash==='#drones')startDrones();}   // test entry: index.html#drones starts the drone fight at once
 // the title lists the save slots: continue, start, or erase (a second press confirms)
 function renderSlots(){const box=$('slots');box.innerHTML='';

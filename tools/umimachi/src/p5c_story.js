@@ -33,7 +33,7 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   dome.material.color.copy(LC[0]);scene.background.copy(LC[1]);scene.fog.color.copy(LC[1]);hemi.color.copy(LC[2]);hemi.groundColor.copy(LC[3]);hemi.intensity=v(4);
   sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
-  NIGHT.house.visible=NIGHT.beam.visible=on;NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.16*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.16*g;NIGHT.beam.rotation.y=clock*0.6;
   NIGHT.mast.visible=on&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 /* running events */
@@ -54,6 +54,7 @@ const ready=e=>!(e.once!==false&&SAVE.seen[e.id])&&cond(e.when);
 function findEvent(kind,arg){return EVENTS.find(e=>{const o=e.on||{};
   if(kind==='talk')return o.talk===arg&&ready(e);
   if(kind==='near')return o.near&&Math.hypot(P.x-o.near[0],P.z-o.near[1])<o.near[2]&&ready(e);
+  if(kind==='night')return o.night&&ready(e);
   if(kind==='auto')return!e.on&&ready(e);return false;});}
 const whoName=w=>w==='nagi'?'ナギ':NPCS[w]?NPCS[w].name||'町の人':w;
 const sleepP=s=>new Promise(r=>setTimeout(r,s*1000));
@@ -72,13 +73,15 @@ function setCam(a){if(a[0]==='off'){ST.cam=null;document.body.classList.remove('
   document.body.classList.add('cine');
   if(a[0]==='npc'){const n=NPCS[a[1]],m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     ST.cam={pos:m.clone().addScaledVector(side,a[2]||3.4).setY(m.y+1.5),look:m.clone().setY(m.y+1.15),rate:3};return;}
+  if(a[0]==='over'){const n=NPCS[a[1]],d=new THREE.Vector3(P.x-n.x,0,P.z-n.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);   // over Nagi's shoulder, looking at someone
+    ST.cam={pos:new THREE.Vector3(P.x,P.y+1.65,P.z).addScaledVector(d,2.4).addScaledVector(side,0.9),look:new THREE.Vector3(n.x,n.h.g.position.y+1.05,n.z),rate:3};return;}
   const v=x=>new THREE.Vector3(...x);ST.cam={pos:v(a[0]),look:v(a[1]),rate:a[2]||2};if(a[3]==='cut')camInit=false;}
 async function steps(list){for(const s of list||[])if(await step(s)==='stop')return'stop';}
 async function step(s){const [op,...a]=s;switch(op){
   case 'say':await sayP(a[0],a.slice(1));break;                         // ['say', who, line, line…]  who: an NPC id, 'nagi', '' for narration, or any name
-  case 'ask':{const i=await askP(a[0],a[1],a[2].map(o=>o[0]));            // ['ask', who, question, [[label, [steps…]], …]]
-    if(a[3])SAVE.flags[a[3]]=i+1;                                       //   an optional 4th item names a flag that records the answer (1, 2, …)
-    return steps(a[2][i][1]);}
+  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
+    if(a[3])SAVE.flags[a[3]]=a[2].indexOf(opts[i])+1;                    //   an optional 4th item names a flag that records the answer (1, 2, … in the written order)
+    return steps(opts[i][1]);}
   case 'set':SAVE.flags[a[0]]=a[1]===undefined?1:a[1];break;           // ['set', flag, value]
   case 'add':SAVE.flags[a[0]]=flag(a[0])+(a[1]==null?1:a[1]);break;    // ['add', flag, n]  e.g. friendship points
   case 'if':return steps(cond(a[0])?a[1]:a[2]);                         // ['if', condition, [then…], [else…]]  condition as in `when`
@@ -86,14 +89,15 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'cap':SAVE.cap=a[0];break;                                       // ['cap', hour]  how far the clock may run on its own today
   case 'day':await nextDay(a[0]);break;                                 // ['day', hour?]  fade out, next morning
   case 'fade':await fadeP(a[0]==='out');break;                          // ['fade', 'out'|'in']
-  case 'cam':setCam(a);break;                                           // ['cam', [x,y,z], [lookX,lookY,lookZ], rate?, 'cut'?] / ['cam','npc',id] / ['cam','off']
+  case 'cam':setCam(a);break;                                           // ['cam', [x,y,z], [lookX,lookY,lookZ], rate?, 'cut'?] / ['cam','npc',id] (from the side) / ['cam','over',id] (over Nagi's shoulder) / ['cam','off']
   case 'wait':await sleepP(a[0]);break;                                 // ['wait', seconds]
   case 'warp':P.x=a[0];P.z=a[1];if(a[2]!=null)P.yaw=a[2];P.v=0;P.vy=0;P.air=false;P.y=G(P.x,P.z);camInit=false;break;   // ['warp', x, z, yaw?]
   case 'money':SAVE.money+=a[0];toast(`${a[0]>0?'+':''}${a[0]}円`,true);renderHUD();break;
   case 'item':addItem(a[0],a[1]==null?1:a[1]);toast(`${ITEMS[a[0]].name}をもらった`);break;
   case 'quest':accept(QBY(a[0]));break;                                 // ['quest', id]  take on an errand
   case 'toast':toast(a[0],a[1]);break;
-  case 'call':await a[0]();break;                                       // ['call', fn]  anything the data cannot say
+  case 'call':await a[0]();break;
+  case 'night':{const e=findEvent('night');if(e){SAVE.seen[e.id]=1;return steps(e.script);}break;}   // ['night']  the first ready event marked on:{night:true}                                       // ['call', fn]  anything the data cannot say
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
