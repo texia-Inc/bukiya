@@ -11,6 +11,24 @@
    saw_tower, saw_van, heard_og, heard_kurosaki, heard_lighthouse, promise_contest, mio_warn, route (1 horror, 2 Oceangate, 3 easy). */
 const HOME=[-49.2,-123.6,-2.55];                    // where Nagi stands in the morning: in front of grandma's bench by the shrine
 const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
+// today's aim, shown in the tracker when no errand is being followed: the next step of the story in a line
+function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
+  const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
+  if(f.in_ura)return null;
+  if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
+  if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
+  if(d===1){if(!SAVE.qs.melon)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
+    if(!seen('d1_mio'))return eve?'夕方の桟橋の先へ行ってみる':'ひと休みしたら、夕方の桟橋へ';return home;}
+  if(d<=3){if(d===3&&!seen('d3_sota'))return '浜辺のソウタくんに会いに行く';
+    if(eve||night)return seen('d'+d+'_mio')?home:'夕方の桟橋の先へ。それから'+home;
+    return '町の「！」の人を手伝う。夕方（15時半ごろ）になったら桟橋へ。ばあちゃんに話すと夕方まで休める';}
+  if(f.route===3&&!f.ending_calm){if(d<6)return '夏祭りの準備：「！」の人を手伝う。ソウタくんと大会の練習もできる。夕方は'+home;
+    return f.contest_done?null:'浜辺のソウタくんに話して、スケボー大会に出る';}
+  if(f.route===2&&!f.ending_org){if(!seen('o4_baker'))return 'こむぎ堂の主人に、ゆうべのことを話す';
+    const todo=[];if(!f.drones_cleared)todo.push('こむぎ堂の主人に話してドローン迎撃');if(qs('og_evidence').state<2)todo.push('ソウタくんの探偵団の聞き込み');
+    if(todo.length)return todo.join('、')+(d>=5?'':'。夕方は'+home);return d>=5?'こむぎ堂の主人に話して、黒いバンを追う':'あしたの夜が勝負。夕方は'+home;}
+  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
+  return eve||night?home:null;}
 const endingsSeen=()=>['ending_calm','ending_horror','ending_org'].filter(k=>SAVE.flags[k]).length;
 // back to the third evening: the route and what happened on it are undone; endings, friendships and finished errands stay
 function rewindTo3(){SAVE.day=3;SAVE.hour=18.2;SAVE.cap=18.9;SAVE.flags.mio_left=3;
@@ -379,6 +397,11 @@ const EVENTS=[
     ['toast','日が傾いてきた'],['cap',18.9],['time',16.6,5]]},
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]},
+  // in the daytime from the second day, grandma lets you rest until the evening
+  {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
+    ['ask','tome','どうする？ ちょっと休んでいくかい？',[
+      ['夕方まで、ひと休みする',[['fade','out'],['time',16.6,0],['cap',18.9],['wait',0.4],['fade','in'],['toast','夕方になった'],['say','tome','よく休めたかい。夕方の海は、きれいだよ。']]],
+      ['まだ町を回る',[['say','tome','気をつけて行っておいで。']]]]]]},
   // grandma takes you home in the evening: the night's event, then the next morning
   {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[
     ['ask','tome','そろそろ、家に帰ろうか？',[

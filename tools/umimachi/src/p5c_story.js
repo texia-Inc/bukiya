@@ -113,12 +113,17 @@ async function step(s){const [op,...a]=s;switch(op){
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
   SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
-function renderClock(){$('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]}`;}
+function renderClock(){const h=((SAVE.hour%24)+24)%24,hh=Math.floor(h),mm=Math.floor((h-hh)*6)*10;
+  $('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]} ${hh}:${String(mm).padStart(2,'0')}`;}
+// what to do next, when no errand is being followed: the tracker shows today's aim (storyGoal in p5d_events.js)
+function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.hidden=true;return;}tr.hidden=false;tr.innerHTML='';
+  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour);if(ph!==ST.phase){ST.phase=ph;renderClock();}
+  applyLight(SAVE.hour);updateUra(dt);const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
+  if(ph!==ST.phase){ST.phase=ph;renderHUD();}if(tm!==ST.tm){ST.tm=tm;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
     m.visible=!calm&&!URA.on&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
