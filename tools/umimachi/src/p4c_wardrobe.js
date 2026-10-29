@@ -3,20 +3,23 @@
    An outfit picks one item per slot and one colour set for it. An item lists the parts it shows and how each is coloured:
    0 / 1 = the item's first / second colour, '#rrggbb' = a fixed colour, 'dark0' = recolour the dark parts of the texture with
    the first colour. Parts exported white are tinted; parts with their own colour (the bunny charm, straps) keep it.
-   W_tops is the school shirt of the VRoid model, so the hoodie and T-shirts are that shirt in another colour or pattern.
+   The garments come from VRoid (tools/umimachi/heroine_vrm.py imports them): W_tops is the school shirt, W_hoodie and W_tee are
+   white so any colour or pattern goes on them. An item can list slots it covers (the yukata): those show nothing while it is worn.
    Colours are only ever appended to an item: saves and owned prizes refer to them by index.
    To add clothes: add a part in the Blender script, then an item here. ---------- */
 const CAMO={forest:['#5b6b3a','#3e4a2a','#8a7d52','#2a2a22'],desert:['#c9b07a','#a88a5a','#e0cfa0','#7a6448'],pink:['#f2a6c0','#d97a9e','#fbd6e2','#a85678'],urban:['#9aa0a8','#6a7078','#c8ccd2','#3a3e44']};
 const WARDROBE=[
   {slot:'tops',label:'トップス',items:[
     {id:'uniform',name:'制服シャツ',parts:{W_tops:0},colors:[['#ffffff'],['#dde8f5'],['#f6efe0']]},
-    {id:'hoodie',name:'パーカー',parts:{W_tops:0,W_sleeves:0,W_hood:0,W_strip:1,W_zip:'#a4a6b0'},
+    {id:'hoodie',name:'パーカー',parts:{W_hoodie:0},
       colors:[['#33395e','#f6f5f1'],['#ece6dc','#3a3d52'],['#e48a9a','#ffffff'],['#5d8a64','#f6f5f1'],['#2b2b30','#f2d36b'],['#8fb8e0','#ffffff']]},
-    {id:'camo',name:'迷彩パーカー',parts:{W_tops:{pat:'camo'},W_sleeves:{pat:'camo'},W_hood:{pat:'camo'},W_strip:'#2b2b2b',W_zip:'#a4a6b0'},
+    {id:'camo',name:'迷彩パーカー',parts:{W_hoodie:{pat:'camo'}},
       colors:[CAMO.forest,CAMO.desert,CAMO.pink,CAMO.urban]},
-    {id:'tee',name:'Tシャツ',parts:{W_tops:0},colors:[['#f6f5f1'],['#9cc3e6'],['#f2c9c4'],['#f5e07a'],['#b8d8a8'],['#2b2b30']]},
-    {id:'tee_dots',name:'水玉Tシャツ',parts:{W_tops:{pat:'dots'}},colors:[['#f6f5f1','#e05a6a'],['#2b2b30','#f6f5f1'],['#9cc3e6','#ffffff']]},
-    {id:'tee_stars',name:'星柄Tシャツ',parts:{W_tops:{pat:'stars'}},colors:[['#2d3a6a','#f5d86a'],['#f6f5f1','#e88fa8'],['#2b2b30','#9ad8f0']]}]},
+    {id:'tee',name:'Tシャツ',parts:{W_tee:0},colors:[['#f6f5f1'],['#9cc3e6'],['#f2c9c4'],['#f5e07a'],['#b8d8a8'],['#2b2b30']]},
+    {id:'tee_dots',name:'水玉Tシャツ',parts:{W_tee:{pat:'dots'}},colors:[['#f6f5f1','#e05a6a'],['#2b2b30','#f6f5f1'],['#9cc3e6','#ffffff']]},
+    {id:'tee_stars',name:'星柄Tシャツ',parts:{W_tee:{pat:'stars'}},colors:[['#2d3a6a','#f5d86a'],['#f6f5f1','#e88fa8'],['#2b2b30','#9ad8f0']]},
+    // the yukata reaches the ankles and comes with geta: while it is worn the other slots it covers show nothing
+    {id:'yukata',name:'浴衣',parts:{W_yukata:'#ffffff',W_geta:'#ffffff'},covers:['neck','bottoms','legs','shoes'],colors:[['#ffffff']]}]},
   {slot:'neck',label:'えり元',items:[
     {id:'ribbon',name:'制服リボン',parts:{W_tie:0},colors:[['#8fb8e0'],['#c8323a'],['#2d3a6a'],['#3f7a5a']]},
     {id:'bow',name:'リボン',parts:{W_bow:0},colors:[['#c8323a'],['#2d4f9a'],['#f0879c'],['#2b2b30']]},
@@ -102,7 +105,8 @@ function findItem(slot,id){const S=WARDROBE.find(s=>s.slot===slot);return S&&(S.
 function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Object.assign({},DEFAULT_OUTFIT,outfit||{});
   h.backBusy=['cape','batwings','angelwings'].includes((outfit.back||[])[0]);   // then the board is carried in the hand, not on the back
   const show={};   // part name -> colour spec
-  for(const S of WARDROBE){const [id,ci]=outfit[S.slot]||[];const it=findItem(S.slot,id);if(!it)continue;const cs=(it.colors&&it.colors[ci||0])||(it.colors&&it.colors[0])||[];
+  const covered=new Set();for(const S of WARDROBE){const it=findItem(S.slot,(outfit[S.slot]||[])[0]);if(it&&it.covers)it.covers.forEach(c=>covered.add(c));}
+  for(const S of WARDROBE){if(covered.has(S.slot))continue;const [id,ci]=outfit[S.slot]||[];const it=findItem(S.slot,id);if(!it)continue;const cs=(it.colors&&it.colors[ci||0])||(it.colors&&it.colors[0])||[];
     for(const k in it.parts){const v=it.parts[k];show[k]=typeof v==='number'?cs[v]:v==='dark0'?{dark:cs[0]}:v&&v.pat?{pat:v.pat,cols:cs}:v;}
     if(it.hair)for(const m of V.hair){m.material.map=cs[0]?recolorTex(m.userData.map0,cs[0],'hair'):m.userData.map0;m.material.needsUpdate=true;}}
   for(const P of V.parts){const key=Object.keys(show).filter(k=>P.name===k||P.name.startsWith(k+'_')).sort((a,b)=>b.length-a.length)[0];const on=!!key;
@@ -116,7 +120,7 @@ function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Objec
     if(m.vertexColors!==was||m.map!==wasMap)m.needsUpdate=true;}}
 
 /* ---------- gacha: every item and colour (except "none") is a prize; you start with the everyday outfit ---------- */
-const RARITY={camo:'R',tee_dots:'R',tee_stars:'R',choker:'R',dogtag:'R',sailor:'R',zigzag:'R',cargo:'R',kneestripe:'R',witchtights:'R',
+const RARITY={yukata:'SR',camo:'R',tee_dots:'R',tee_stars:'R',choker:'R',dogtag:'R',sailor:'R',zigzag:'R',cargo:'R',kneestripe:'R',witchtights:'R',
   glasses:'R',sunglasses:'R',beret:'R',marine:'R',pumpkin:'R',hair:'R',
   witchhat:'SR',cape:'SR',catears:'SR',cattail:'SR',paws:'SR',horns:'SR',batwings:'SR',deviltail:'SR',halo:'SR',angelwings:'SR'};
 const RATES={N:0.7,R:0.25,SR:0.05},KAKERA_DUP={N:1,R:3,SR:10},KAKERA_COST={N:5,R:15,SR:40};

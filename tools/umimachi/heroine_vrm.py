@@ -5,12 +5,13 @@
 #   The model is scaled to the size of the pixiv VRM sample the game was first built on (same VRoid skeleton, ~3.5% taller), so
 #   every position below is in that sample's space and the game's rig and leg IK fit unchanged.
 #   hair: VRoid's ponytail is re-weighted onto a bone chain Tail0-3 that the game swings
-#   from VRoid: W_tops (shirt), W_tie (ribbon), W_skirt (pleated skirt), W_shoes (loafers)
-#   made here: W_sleeves / W_socks / W_sockband / W_kneesocks / W_tights / W_shorts (thin shells copied from the skin),
-#   W_strip / W_zip (shirt and zip showing through an open hoodie), W_hood, W_bow_*, W_clip_*, W_glasses_*, W_scrunchie,
-#   W_pack_* (backpack, straps, bunny charm) and the gacha costume pieces
+#   from VRoid: W_tops (shirt), W_tie (ribbon), W_skirt (pleated skirt), W_shoes (sneakers); and from the same model exported
+#   in other VRoid outfits (design/outfits/nagi_<name>.vrm, same body): W_hoodie, W_tee, W_yukata, W_geta
+#   made here: W_socks / W_sockband / W_kneesocks / W_tights / W_shorts (thin shells copied from the skin),
+#   W_bow_*, W_clip_*, W_glasses_*, W_scrunchie, W_pack_* (backpack, straps, bunny charm) and the gacha costume pieces
 # Blender works z-up with the model facing -y.
-# Usage: Blender -b --python heroine_vrm.py -- nagi.vrm(renamed .glb) heroine.glb   (or a Python with `pip install bpy`)
+# Usage: Blender -b --python heroine_vrm.py -- nagi.vrm heroine.glb [outfits folder]   (or a Python with `pip install bpy`)
+#   (the glTF importer reads .vrm files once they are named .glb: the script copies them)
 import bpy, bmesh, math, sys, os, re
 import numpy as np
 from mathutils import Vector
@@ -20,7 +21,13 @@ SRC, OUT = args[0], args[1]
 
 for o in list(bpy.data.objects):
     bpy.data.objects.remove(o)
-bpy.ops.import_scene.gltf(filepath=SRC)
+def as_glb(path, name):
+    """the glTF importer takes a .vrm once it is called .glb"""
+    if not path.endswith('.vrm'):
+        return path
+    import shutil, tempfile
+    return shutil.copy(path, os.path.join(tempfile.mkdtemp(), name + '.glb'))
+bpy.ops.import_scene.gltf(filepath=as_glb(SRC, 'nagi'))
 ARM = bpy.data.objects['Armature']
 BODY, FACE, HAIR = bpy.data.objects['Body'], bpy.data.objects['Face'], bpy.data.objects['Hair']
 for o in list(bpy.data.objects):
@@ -161,7 +168,6 @@ def xform(bm, scale=(1, 1, 1), rot=None, loc=(0, 0, 0)):
 WHITE = (1.0, 1.0, 1.0)
 PINK = mat('Cloth_Clip', WHITE)
 SCRUNCH = mat('Cloth_Scrunchie', WHITE)
-NAVY = mat('Cloth_Hood', WHITE)
 RED = mat('Cloth_Bow', WHITE)
 BLACK = mat('Cloth_Pack', WHITE)
 STRAP = mat('Cloth_Strap', srgb('#1c1c20'))
@@ -209,20 +215,6 @@ for s in (-1, 1):
     accessory('W_bow_t%d' % (s + 1), bm, 'J_Bip_C_UpperChest', RED, smooth=False)
 bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=6, radius=0.011); xform(bm, loc=(0, -0.092, 1.262))
 accessory('W_bow_k', bm, 'J_Bip_C_UpperChest', RED)
-
-# hood lying on the shoulders behind the neck
-bm = bmesh.new()
-for i in range(13):
-    a = math.pi * (0.1 + 0.8 * i / 12)          # half ring around the back of the neck
-    for j in range(8):
-        b = 2 * math.pi * j / 8
-        R = 0.105 + 0.03 * math.cos(b)
-        bm.verts.new((R * math.cos(a), 0.035 + R * math.sin(a) * 0.95, 1.33 + 0.028 * math.sin(b) + 0.02 * math.sin(a)))
-bm.verts.ensure_lookup_table()
-for i in range(12):
-    for j in range(8):
-        bm.faces.new([bm.verts[(i + di) * 8 + (j + dj) % 8] for di, dj in ((0, 0), (1, 0), (1, 1), (0, 1))])
-accessory('W_hood', bm, 'J_Bip_C_UpperChest', NAVY)
 
 # backpack with a bunny charm, straps over the shoulders
 bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0); bmesh.ops.bevel(bm, geom=bm.edges[:], offset=0.02, segments=2, affect='EDGES')
@@ -353,16 +345,120 @@ paint(BODY, 'Body_00', lambda x, y, z, p: SKIN if z < 0.5 and np.abs(p[:3] - SKI
 
 shell(BODY, lambda c: 0.67 < c.z < 1.02 and abs(c.x) < 0.2, 'W_shorts', 0.0035, mat('Bottoms_Shorts', WHITE), skin_i,
       cut=[((0, 0, 0.99), (0, 0, 1)), ((0, 0, 0.7), (0, 0, -1))])
-shell(BODY, lambda c: c.z > 1.18 and 0.12 < abs(c.x) < 0.545, 'W_sleeves', 0.0055, mat('Cloth_Sleeves', WHITE), skin_i,
-      cut=[((0.515, 0, 0), (1, 0, 0)), ((-0.515, 0, 0), (-1, 0, 0))])
 shell(BODY, lambda c: 0.075 < c.z < 0.36 and abs(c.x) < 0.16, 'W_socks', 0.0032, mat('Cloth_Socks', WHITE), skin_i, cut=[((0, 0, 0.33), (0, 0, 1))])
 shell(BODY, lambda c: 0.27 < c.z < 0.34 and abs(c.x) < 0.16, 'W_sockband', 0.0046, mat('Cloth_SockBand', WHITE), skin_i,
       cut=[((0, 0, 0.316), (0, 0, 1)), ((0, 0, 0.296), (0, 0, -1))])
 shell(BODY, lambda c: 0.075 < c.z < 0.5 and abs(c.x) < 0.16, 'W_kneesocks', 0.0032, mat('Cloth_KneeSocks', WHITE), skin_i, cut=[((0, 0, 0.47), (0, 0, 1))])
 shell(BODY, lambda c: 0.075 < c.z < 0.93 and abs(c.x) < 0.2, 'W_tights', 0.0022, mat('Cloth_Tights', WHITE), skin_i, cut=[((0, 0, 0.9), (0, 0, 1))])
-# an open hoodie shows the shirt and a zip down the front
-shell(TOPS, lambda c: c.y < -0.03 and 0.95 < c.z < 1.285 and abs(c.x) < 0.042, 'W_strip', 0.0022, mat('Cloth_Strip', WHITE))
-shell(TOPS, lambda c: c.y < -0.03 and 0.95 < c.z < 1.285 and 0.042 <= abs(c.x) < 0.05, 'W_zip', 0.0026, mat('Cloth_Zip', WHITE))
+
+# ---------------------------------------------------------------- garments from the same model exported in other VRoid outfits
+def import_outfit(path, tag, picks):
+    """picks: {material name after VRoid's prefix (e.g. 'Tops_01'): part name}. Only those garments are kept; they go onto the
+    main armature (the body is the same). Their own swing bones (hood, cords, hems) are not in it: those weights move to the
+    nearest ancestor that is."""
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=as_glb(path, tag))
+    new = [o for o in bpy.data.objects if o not in before]
+    arm2 = next(o for o in new if o.type == 'ARMATURE')
+    body2 = next(o for o in new if o.type == 'MESH' and o.name.startswith('Body'))
+    for o in new:
+        if o.type == 'MESH':
+            for m in o.data.materials:
+                if m and m.name.startswith('N'):
+                    m.name = tag + '_' + re.sub(r'^N\d+_\d+(_\d+)?_| \(Instance\)$', '', m.name)
+    arm2.scale = (1 / (arm2.data.bones['J_Bip_C_Head'].head_local.z / 1.3863),) * 3
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in new:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = arm2
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    parts = []
+    for key, name in picks.items():
+        ob = split_material(body2, tag + '_' + key, name)
+        for g in list(ob.vertex_groups):
+            if g.name in ARM.data.bones:
+                continue
+            b = arm2.data.bones.get(g.name)
+            while b and b.name not in ARM.data.bones:
+                b = b.parent
+            to = ob.vertex_groups.get(b.name) or ob.vertex_groups.new(name=b.name)
+            for v in ob.data.vertices:
+                for vg in v.groups:
+                    if vg.group == g.index:
+                        to.add([v.index], vg.weight, 'ADD')
+            ob.vertex_groups.remove(g)
+        ob.parent = ARM
+        for m in ob.modifiers:
+            if m.type == 'ARMATURE':
+                m.object = ARM
+        parts.append(ob)
+    for o in new:
+        bpy.data.objects.remove(o)
+    return parts
+
+OUTFITS = args[2] if len(args) > 2 else os.path.join(os.path.dirname(os.path.abspath(SRC)), 'outfits')
+import_outfit(os.path.join(OUTFITS, 'nagi_hoodie.vrm'), 'Hoodie', {'Tops_01': 'W_hoodie'})
+import_outfit(os.path.join(OUTFITS, 'nagi_tee.vrm'), 'Tee', {'Tops_01': 'W_tee'})
+import_outfit(os.path.join(OUTFITS, 'nagi_yukata.vrm'), 'Yukata', {'Tops_01': 'W_yukata', 'Shoes_01': 'W_geta'})
+
+def fit_over(part, unders, top, margin=0.006):
+    """push the hem of a loose top out over the skirts below it, so the pleats do not poke through. Each vertex below `top`
+    is moved out from the body's axis until it is `margin` outside the outermost garment in that direction (blending in
+    over the last 4cm below `top`)."""
+    from mathutils.bvhtree import BVHTree
+    dg = bpy.context.evaluated_depsgraph_get()
+    trees = [BVHTree.FromObject(bpy.data.objects[n], dg) for n in unders]
+    me = part.data
+    for v in me.vertices:
+        if v.co.z >= top:
+            continue
+        h = Vector((v.co.x, v.co.y - 0.012, 0))
+        if h.length < 1e-4:
+            continue
+        d = h.normalized()
+        need = 0.0
+        for t in trees:
+            hit = t.ray_cast(Vector((0, 0.012, v.co.z)) + d * 0.6, -d)
+            if hit[0] is not None:
+                need = max(need, Vector((hit[0].x, hit[0].y - 0.012, 0)).length + margin)
+        if need > h.length:
+            k = ss_ramp(top - v.co.z, 0.0, 0.04)
+            v.co += d * (need - h.length) * k
+
+def leg_follow(part, top, band=0.12, amount=1.0):
+    """a long hem hangs from the hips only, so a bent knee pokes through it: below `top` its weights move `amount` of the way to
+    the legs' weights at that height, the left and right leg blended by how far left or right the point is, faded in over
+    `band`. Both depend only on the point's height and side, so the overlapping front panels move together and do not part."""
+    from mathutils.kdtree import KDTree
+    names = {g.index: g.name for g in BODY.vertex_groups}
+    sides = {}
+    for S in ('L', 'R'):
+        legs = {'J_Bip_%s_%s' % (S, b) for b in ('UpperLeg', 'LowerLeg', 'Foot', 'ToeBase')}
+        vs = [v for v in BODY.data.vertices if v.groups and names[max(v.groups, key=lambda g: g.weight).group] in legs]
+        kd = KDTree(len(vs))
+        for i, v in enumerate(vs):
+            kd.insert(v.co, i)
+        kd.balance()
+        sides[S] = (kd, [{names[g.group]: g.weight for g in v.groups} for v in vs])
+    for v in part.data.vertices:
+        t = amount * ss_ramp(top - v.co.z, 0.0, band)
+        if t <= 0:
+            continue
+        hits = {S: kd.find(Vector((sx * 0.077, 0.0, v.co.z))) for (S, (kd, _)), sx in zip(sides.items(), (1, -1))}
+        a = ss_ramp(v.co.x, -0.08, 0.08)          # left leg (+x) share
+        want = {}
+        for S, f in (('L', a), ('R', 1 - a)):
+            for n, w in sides[S][1][hits[S][1]].items():
+                want[n] = want.get(n, 0.0) + f * w
+        old = {part.vertex_groups[g.group].name: g.weight for g in v.groups}
+        for n in set(old) | set(want):
+            w = (1 - t) * old.get(n, 0.0) + t * want.get(n, 0.0)
+            g = part.vertex_groups.get(n) or part.vertex_groups.new(name=n)
+            g.add([v.index], w, 'REPLACE') if w > 1e-4 else g.remove([v.index])
+
+def ss_ramp(x, a, b):
+    t = max(0.0, min(1.0, (x - a) / (b - a)))
+    return t * t * (3 - 2 * t)
 # round glasses
 GL = mat('Cloth_Glasses', WHITE)
 for s_ in (-1, 1):
@@ -699,6 +795,12 @@ for sx, nm in ((1, 'L'), (-1, 'R')):
     xform(bm, scale=(0.03, 0.07, 0.075), loc=(sx * 0.135, -0.005, 0.79))
     rigid('W_cargo_pocket%s' % nm, bm, 'J_Bip_%s_UpperLeg' % nm, M_('CargoPocket'))
 
+# the hoodie and the T-shirt hang over any of the skirts
+for name in ('W_hoodie', 'W_tee'):
+    fit_over(bpy.data.objects[name], ('W_skirt', 'W_skirtzig', 'W_shorts'), top=1.06)
+# the yukata's hem follows the legs so the bent front knee stays inside it
+leg_follow(bpy.data.objects['W_yukata'], top=0.82)
+
 def recolor(matname, fn):
     for m in bpy.data.materials:
         if m.name.startswith(matname) and m.use_nodes:
@@ -726,7 +828,8 @@ for kb in list(FACE.data.shape_keys.key_blocks):
     if not any(kb.name.endswith(k) for k in KEEP):
         FACE.shape_key_remove(kb)
 # keep only the base colour texture of each material (VRoid also exports normal, emission and MToon maps the game does not use)
-LIMIT = {'Body_00': 1024, 'Tops_01': 1024, 'Face_00': 1024, 'Hair_00': 512, 'HairBack_00': 512, 'Bottoms_01': 512}
+LIMIT = {'Body_00': 1024, 'Tops_01': 1024, 'Face_00': 1024, 'Hair_00': 512, 'HairBack_00': 512, 'Bottoms_01': 512,
+         'Hoodie_': 512, 'Tee_': 512, 'Yukata_Tops': 1024, 'Yukata_': 512}
 size = {}
 for m in bpy.data.materials:
     if not m.use_nodes:
