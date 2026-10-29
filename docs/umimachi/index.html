@@ -114,6 +114,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
 .pb{appearance:none;border:0;width:66px;height:66px;border-radius:50%;font-family:var(--round);font-weight:900;font-size:13px;background:var(--card);color:var(--ink);box-shadow:0 3px 0 var(--shade);touch-action:none}
 .pb.shoot{grid-column:1/3;width:auto;height:58px;border-radius:29px;background:#d6453d;color:#fff;box-shadow:0 3px 0 #8e2a24;font-size:16px}
 .pb.shoot.on{transform:scale(.96)}
+#hurt{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 140px 50px rgba(214,40,32,.75)}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
 #title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
   padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 24px);background:linear-gradient(180deg,rgba(255,250,240,0) 35%,rgba(255,250,240,.9) 78%)}
@@ -146,6 +147,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--in
   </div>
   <div id="bag"></div>
   <div id="prompt" class="card" hidden></div>
+  <div id="hurt"></div>
   <div id="toast"></div>
   <div id="stick" hidden><div id="knob"></div></div>
   <div id="pad" hidden>
@@ -5341,14 +5343,20 @@ function drawPrize(){const x=Math.random();const r=x<RATES.SR?'SR':x<RATES.SR+RA
 
 /* ---------- drone fight: Oceangate's surveillance drones over the town, shot down with the pair of pistols the baker (an old
    agent) lends. Only in this event do the pistols come out: the arms aim at the nearest drones in front and the shots alternate
-   left and right. Drones circle ahead of you, take three hits, fall and burst on the ground. ---------- */
-const DRONE={active:false,total:12,spawned:0,killed:0,spawnT:0,list:[],fx:[],fireT:0,side:1,t:0,hint:false};
+   left and right. Drones circle ahead of you, take three hits, fall and burst on the ground. They shoot back: the eye glows and a
+   red line points at you for a moment, then a slow red bolt flies where you are heading. Five hits and the drones pull out;
+   talking to the baker again starts over. ---------- */
+const DRONE={active:false,total:12,spawned:0,killed:0,spawnT:0,list:[],fx:[],bolts:[],fireT:0,side:1,t:0,hint:false,
+  hp:5,maxHp:5,invT:0,hurt:0,volleyT:0,lost:false,dodgeHint:false,last:null,pv:new THREE.Vector3()};
 const FIRE={mouse:false,touch:false};
 const DRONE_TALK=['…おや、来たか。ちょっと耳を貸してくれ。','このところ、町の上を黒いドローンが飛び回ってる。オーシャンゲート社の監視ドローンだ。',
-  '昔の仕事道具を貸してやる。…ああ、パン屋の前は別の仕事をしてたのさ。','スケボーに乗ったまま、クリックか J キーで撃てる。全部で12機、撃ち落としてくれ。'];
+  '昔の仕事道具を貸してやる。…ああ、パン屋の前は別の仕事をしてたのさ。','スケボーに乗ったまま、クリックか J キーで撃てる。全部で12機、撃ち落としてくれ。','気をつけろ、向こうも撃ってくる。目が赤く光ったら、曲がってよけるんだ。'];
+const DRONE_RETRY=['…派手にやられたな。ケガはないか？','もう一度行くか。止まっていると当たる。走りながら、曲がってよけるんだ。'];
 const DM={body:tm('#2a2d33'),arm:tm('#40444c'),stripe:tm('#e0662a'),cam:tm('#15171a'),
   rotor:new THREE.MeshBasicMaterial({color:'#b8c0c8',transparent:true,opacity:0.4,depthWrite:false}),
-  eye:new THREE.MeshBasicMaterial({color:'#ff3b30'}),flash:new THREE.MeshBasicMaterial({color:'#ffffff'})};
+  eye:new THREE.MeshBasicMaterial({color:'#ff3b30'}),hot:new THREE.MeshBasicMaterial({color:'#ffc2b8'}),flash:new THREE.MeshBasicMaterial({color:'#ffffff'}),
+  bolt:new THREE.MeshBasicMaterial({color:'#ff4a3a'}),core:new THREE.MeshBasicMaterial({color:'#fff1ec'}),
+  laser:new THREE.MeshBasicMaterial({color:'#ff3b30',transparent:true,opacity:0.35,depthWrite:false})};
 function makeDrone(){const g=new THREE.Group(),rotors=[];
   const M=(geo,mat,ol,p)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;if(ol)outline(m,ol);if(p)m.position.set(...p);g.add(m);return m;};
   const body=M(new THREE.BoxGeometry(0.46,0.15,0.4),DM.body,0.018);
@@ -5360,11 +5368,12 @@ function makeDrone(){const g=new THREE.Group(),rotors=[];
     M(new THREE.CylinderGeometry(0.035,0.035,0.06,10),DM.arm,0.01,[x*0.36,0.07,z*0.3]);
     rotors.push(M(new THREE.CylinderGeometry(0.17,0.17,0.008,18),DM.rotor,0,[x*0.36,0.105,z*0.3]));}
   g.scale.setScalar(1.25);scene.add(g);return{g,body,eye,rotors};}
-function startDrones(){Object.assign(DRONE,{active:true,spawned:0,killed:0,spawnT:0.6,t:0,hint:false});
+function startDrones(){for(const d of DRONE.list){scene.remove(d.g);dropLaser(d);}for(const b of DRONE.bolts)scene.remove(b.m);DRONE.list.length=0;DRONE.bolts.length=0;
+  Object.assign(DRONE,{active:true,spawned:0,killed:0,spawnT:0.6,t:0,hint:false,hp:DRONE.maxHp,invT:0,hurt:0,volleyT:1.5,lost:false});
   toast(hasTouch?'ドローンが来た！「撃つ」ボタンで撃ち落とせ':'ドローンが来た！ クリックか J キーで撃ち落とせ',true);renderHUD();}
 function spawnDrone(){const a=(rnd()*2-1)*0.9,r=13+rnd()*9,h=3.2+rnd()*3,d=makeDrone();
   const ang=P.yaw+a;d.g.position.set(P.x+Math.sin(ang)*(r+28),G(P.x,P.z)+h+7,P.z+Math.cos(ang)*(r+28));
-  Object.assign(d,{hp:3,off:{a,r,h},ph:rnd()*TAU,v:new THREE.Vector3(),dead:false,vy:0,spin:new THREE.Vector3(),hitT:0});DRONE.list.push(d);DRONE.spawned++;}
+  Object.assign(d,{hp:3,off:{a,r,h},ph:rnd()*TAU,v:new THREE.Vector3(),dead:false,vy:0,spin:new THREE.Vector3(),hitT:0,fireT:2.5+rnd()*2,charge:0,laser:null});DRONE.list.push(d);DRONE.spawned++;}
 // the drones the pistols can reach: alive, within range, and in front of you
 function droneTargets(){const out=[];for(const d of DRONE.list){if(d.dead)continue;const dx=d.g.position.x-P.x,dz=d.g.position.z-P.z,dist=Math.hypot(dx,dz);
     let da=Math.atan2(dx,dz)-P.yaw;da=Math.atan2(Math.sin(da),Math.cos(da));if(dist<48&&Math.abs(da)<1.35)out.push([dist,d]);}
@@ -5396,12 +5405,28 @@ function shoot(sx,d){const a=muzzleOf(sx);let b;
     if(rnd()<0.82){damage(d,b);}else b.add(b.clone().sub(a).normalize().multiplyScalar(12));}
   else b=a.clone().add(new THREE.Vector3(Math.sin(P.yaw),0.02,Math.cos(P.yaw)).multiplyScalar(40));
   tracer(a,b);flash(a);shell(sx);}
+// return fire: a short aim with a red line, then a bolt led toward where you are going
+const CHARGE=0.7,BOLT_V=16;
+function chest(){return new THREE.Vector3(P.x,P.y+1.05,P.z);}
+function dropLaser(d){if(d.laser){scene.remove(d.laser);d.laser=null;}d.eye.scale.setScalar(1);}
+function droneShot(d){dropLaser(d);const a=d.eye.getWorldPosition(new THREE.Vector3()),c=chest(),t=a.distanceTo(c)/BOLT_V;
+  const aim=c.addScaledVector(DRONE.pv,t*0.9).add(new THREE.Vector3(rnd()-0.5,(rnd()-0.5)*0.5,rnd()-0.5).multiplyScalar(0.7));
+  const m=new THREE.Group(),glow=new THREE.Mesh(FXG.ball,DM.bolt),core=new THREE.Mesh(FXG.ball,DM.core);glow.scale.set(0.12,0.12,0.42);core.scale.set(0.05,0.05,0.24);m.add(glow,core);
+  m.position.copy(a);m.lookAt(aim);scene.add(m);DRONE.bolts.push({m,v:aim.sub(a).setLength(BOLT_V),life:4});sparks(a,4,'#ff6a50',2,0.04);}
+function hurtPlayer(p){DRONE.hp--;DRONE.invT=1.2;DRONE.hurt=1;P.bump=Math.max(P.bump,0.5);P.v*=0.6;sparks(p,10,'#ff5a40',4,0.05);renderHUD();
+  if(DRONE.hp<=0){loseDrones();return;}
+  if(!DRONE.dodgeHint){DRONE.dodgeHint=true;toast('当たった！ 走りながら曲がると、よけやすい');}}
+function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.list)dropLaser(d);renderHUD();
+  toast('やられた… ドローンが引き上げていく',true);setTimeout(()=>toast('こむぎ堂の主人にもう一度話しかけると、やり直せる'),1800);}
 function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,6,'#fff3c0',4,0.04);
   if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);DRONE.killed++;SAVE.money+=50;
     sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();if(DRONE.killed>=DRONE.total)finishDrones();}}
 function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;save();renderHUD();
   toast('ドローンを全部撃ち落とした！ お礼 +1000円',true);setTimeout(()=>toast('こむぎ堂の主人「いい腕だ。…このことは、町のみんなには内緒だぞ」'),1800);}
-function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal);
+function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
+  // how you are moving, for the drones to lead their shots
+  if(DRONE.last&&dt>0)DRONE.pv.lerp(me.clone().sub(DRONE.last).divideScalar(dt),Math.min(1,dt*6));DRONE.last=me.clone();
+  DRONE.invT-=dt;DRONE.volleyT-=dt;DRONE.hurt=Math.max(0,DRONE.hurt-dt*1.6);
   // spawning: four at a time until all twelve have come
   if(DRONE.active){DRONE.spawnT-=dt;const alive=DRONE.list.filter(d=>!d.dead).length;
     if(DRONE.spawned<DRONE.total&&alive<4&&DRONE.spawnT<=0){spawnDrone();DRONE.spawnT=1.6;}}
@@ -5409,6 +5434,9 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal);
     if(d.dead){d.vy-=12*dt;p.y+=d.vy*dt;d.g.rotation.x+=d.spin.x*dt;d.g.rotation.y+=d.spin.y*dt;d.g.rotation.z+=d.spin.z*dt;
       if(rnd()<dt*30)sparks(p,1,'#4a4644',1,0.08);
       if(p.y<=G(p.x,p.z)+0.25){boom(p.clone());scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
+    // after a lost fight the rest climb away and go
+    if(!DRONE.active){d.v.y+=7*dt;p.addScaledVector(d.v,dt);for(const ro of d.rotors)ro.rotation.y+=dt*40;
+      if(p.y>G(p.x,p.z)+40){scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
     // each drone keeps a spot ahead of you that drifts slowly, and turns its camera on you
     const ang=P.yaw+d.off.a+Math.sin(DRONE.t*0.35+d.ph)*0.45,r=d.off.r+Math.sin(DRONE.t*0.5+d.ph*2)*3;
     const want=new THREE.Vector3(P.x+Math.sin(ang)*r,0,P.z+Math.cos(ang)*r);want.y=G(want.x,want.z)+d.off.h+Math.sin(DRONE.t*1.3+d.ph)*0.5;
@@ -5416,7 +5444,22 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal);
     const acc=want.sub(p).multiplyScalar(2.2).sub(d.v.clone().multiplyScalar(1.6));d.v.addScaledVector(acc,dt);if(d.v.length()>14)d.v.setLength(14);p.addScaledVector(d.v,dt);
     d.g.lookAt(P.x,P.y+1.2,P.z);d.g.rotateX(clamp(d.v.length()*0.02,0,0.25));
     for(const ro of d.rotors)ro.rotation.y+=dt*40;
-    d.hitT-=dt;d.eye.material=d.hitT>0?DM.flash:DM.eye;}
+    // aiming and firing back, one drone at a time so the shots come in a rhythm you can dodge
+    d.fireT-=dt;
+    if(!busy&&!d.charge&&d.fireT<=0&&DRONE.volleyT<=0&&p.distanceTo(me)<36){d.charge=CHARGE;DRONE.volleyT=0.9;
+      d.laser=new THREE.Mesh(FXG.box,DM.laser);scene.add(d.laser);}
+    if(d.charge>0){d.charge-=dt;const k=1-d.charge/CHARGE,e=d.eye.getWorldPosition(new THREE.Vector3());d.eye.scale.setScalar(1+1.6*k);
+      d.laser.position.copy(e).add(me).multiplyScalar(0.5);d.laser.lookAt(me);d.laser.scale.set(0.02,0.02,e.distanceTo(me));
+      if(d.charge<=0){d.charge=0;if(busy)dropLaser(d);else droneShot(d);d.fireT=2.6+rnd()*2.2;}}
+    d.hitT-=dt;d.eye.material=d.hitT>0?DM.flash:d.charge>0&&(DRONE.t*16|0)%2?DM.hot:DM.eye;}
+  // the bolts: hit you, the ground, or run out
+  for(const b of DRONE.bolts.slice()){const m=b.m,p=m.position;let gone=false;b.life-=dt;
+    if(!busy)p.addScaledVector(b.v,dt);
+    if(DRONE.active&&!busy&&DRONE.invT<=0&&p.distanceTo(me)<0.5){hurtPlayer(p.clone());gone=true;}
+    else if(p.y<G(p.x,p.z)+0.05){sparks(p,5,'#ff7a5a',3,0.04);gone=true;}
+    else if(b.life<=0)gone=true;
+    if(gone){scene.remove(m);DRONE.bolts.splice(DRONE.bolts.indexOf(b),1);}}
+  $('hurt').style.opacity=Math.max(DRONE.hurt,DRONE.active&&DRONE.hp===1?0.3+0.1*Math.sin(DRONE.t*5):0);
   // the pistols: out for the whole fight, raised when there is something to shoot at or the trigger is held
   const firing=DRONE.active&&!busy&&(FIRE.mouse||FIRE.touch||!!keys.KeyJ);
   const canAim=!(P.foot&&P.carry==='hand')&&!(P.tr&&P.tr.type!=='stow');
@@ -5432,8 +5475,9 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal);
   $('bShoot').hidden=!(DRONE.active&&hasTouch);}
 // the tracker shows the fight while it is on
 function droneHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='ドローン迎撃';const s=document.createElement('span');s.className='step';
-  s.textContent=hasTouch?'「撃つ」ボタンで撃つ。近いドローンを自動でねらう':'クリックか J キーで撃つ。近いドローンを自動でねらう';
-  const m=document.createElement('span');m.className='meter';m.textContent=`撃ち落とした ${DRONE.killed} / ${DRONE.total}`;tr.append(b,s,m);}
+  s.textContent=(hasTouch?'「撃つ」ボタンで撃つ。':'クリックか J キーで撃つ。')+'近いドローンを自動でねらう。赤い光は曲がってよける';
+  const m=document.createElement('span');m.className='meter';
+  m.textContent=`撃ち落とした ${DRONE.killed} / ${DRONE.total}　${'♥'.repeat(Math.max(0,DRONE.hp))}${'♡'.repeat(DRONE.maxHp-Math.max(0,DRONE.hp))}`;tr.append(b,s,m);}
 
 /* ---------- the tram and its level crossings ---------- */
 const tramTex=canvasTex(512,128,(g,w,h)=>{g.fillStyle='#efe6c8';g.fillRect(0,0,w,h);g.fillStyle='#2f7d4f';g.fillRect(0,h*0.58,w,h*0.42);g.fillStyle='#f2c230';g.fillRect(0,h*0.56,w,4);
@@ -5641,7 +5685,7 @@ function talk(n){talkNpc=n;
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
   for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
-  if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE_TALK,startDrones);return;}
+  if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}
   if(n.id==='maru'){say(n.name,n.idle,()=>openShop('dagashi'));return;}
   say(n.name||'町の人',[pick(n.idle.length?n.idle:['いい天気ですね。'])]);}
