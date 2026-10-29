@@ -13,7 +13,7 @@ function makeSkaterVRM(gl){
   h.root.traverse(o=>{if(o.isMesh){let p=o,onBoard=false;while(p){if(p===h.board){onBoard=true;break;}p=p.parent;}if(!onBoard)o.visible=false;}});
   const model=gl.scene;model.scale.setScalar(1/0.96);h.root.add(model);
   const B={};model.traverse(o=>{if(o.isBone)B[o.name]=o;});
-  const morphs=[],parts=[],hair=[];
+  const morphs=[],parts=[],hair=[],guns=[];
   model.traverse(o=>{if(!o.isMesh)return;o.castShadow=true;o.frustumCulled=false;
     const src=o.material,name=src.name||'',face=FACE_MATS.test(name);
     if(src.map){src.map.encoding=THREE.LinearEncoding;src.map.needsUpdate=true;}
@@ -24,6 +24,7 @@ function makeSkaterVRM(gl){
     // wardrobe parts (W_*) can be shown, hidden and tinted; white parts take the tint, coloured ones keep their colour
     if(/^W_/.test(o.name))parts.push({name:o.name,mesh:o,base:o.material.color.clone(),map0:o.material.map,tintable:o.material.color.r>0.98&&o.material.color.g>0.98&&o.material.color.b>0.98});
     if(/^Hair/.test(name)&&o.material.map){o.userData.map0=o.material.map;hair.push(o);}
+    if(/^Gun_/.test(o.name)){guns.push(o);o.visible=false;}   // the pistols, out only in the drone fight
     const olw=/HAIR|Hair/.test(name)?0.0022:/Body_00|Tops|Bottoms|Shoes|Cloth_(Skirt|Pack|Hood|Sleeves|Socks|KneeSocks)/.test(name)?0.0026:0;
     if(olw&&o.isSkinnedMesh&&!src.transparent){const ol=new THREE.SkinnedMesh(o.geometry,olSkinned(olw,!!o.morphTargetInfluences));ol.bind(o.skeleton,o.bindMatrix);ol.frustumCulled=false;
       if(o.morphTargetInfluences)ol.morphTargetInfluences=o.morphTargetInfluences;o.parent.add(ol);o.userData.ol=ol;ol.position.copy(o.position);ol.quaternion.copy(o.quaternion);ol.scale.copy(o.scale);}});
@@ -48,7 +49,14 @@ function makeSkaterVRM(gl){
       if(B[n]&&B[src])cons.push({aim:true,b:B[n],n,src:B[src],d:dirRest(n,src)});
     for(const [n,src,w] of [['J_Roll_'+S+'_UpperArm','J_Bip_'+S+'_UpperArm',0.5],['J_Roll_'+S+'_Elbow','J_Bip_'+S+'_LowerArm',0.5],['J_Roll_'+S+'_LowerArm','J_Bip_'+S+'_Hand',0.5],['J_Roll_'+S+'_Hand','J_Bip_'+S+'_Hand',1]])
       if(B[n]&&B[src])cons.push({aim:false,b:B[n],n,src:B[src],sn:src,w});}
-  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,ctail,cons,parts,hair,expr:{},t:0};
+  // the muzzles, as points on the hand bones: the middle of the front face of each slide (the barrel runs along the arm, +x on the left)
+  const muzzle={};
+  for(const [S,sx] of [['L',1],['R',-1]]){const g=guns.find(o=>o.name==='Gun_'+S);if(!g)continue;
+    const pos=g.geometry.attributes.position,pts=[];let far=-1e9;
+    for(let i=0;i<pos.count;i++){const w=g.localToWorld(new THREE.Vector3().fromBufferAttribute(pos,i)),x=w.clone().applyMatrix4(inv).x*sx;pts.push([x,w]);far=Math.max(far,x);}
+    const tip=new THREE.Vector3();let n=0;for(const [x,w] of pts)if(x>far-0.004){tip.add(w);n++;}tip.multiplyScalar(1/n);
+    const hand=B['J_Bip_'+S+'_Hand'],m=new THREE.Object3D();hand.add(m);m.position.copy(hand.worldToLocal(tip));muzzle[sx]=m;}
+  h.vrm={model,B,rest,legs,arms,hipDrop,morphs,tail,ctail,cons,parts,hair,guns,muzzle,expr:{},t:0};
   return h;}
 const _q1=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_q3=new THREE.Quaternion(),_mq=new THREE.Quaternion(),_a=new THREE.Vector3(),_b=new THREE.Vector3(),_c=new THREE.Vector3(),_d=new THREE.Vector3();
 // give bone b the model-space rotation q (model space = the model root's frame)
@@ -97,6 +105,19 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
     swingTo(V,M.up,'J_Bip_'+M.n+'_UpperLeg',M.dUp,knee.clone().sub(_a));
     swingTo(V,M.lo,'J_Bip_'+M.n+'_LowerLeg',M.dLo,tgt.clone().sub(knee));
     setModelQ(V,M.ft,mul(nodeQ(V,L.ft,new THREE.Quaternion()),'J_Bip_'+M.n+'_Foot'));}
+  // aiming the pistols (h.aim: world targets per side, h.aimW: 0-1): each arm straight at its target, rolled so the gun stands
+  // upright and cants a little inward. The gun's top faces the model's front in the T-pose.
+  for(const g of V.guns)g.visible=!!h.gunsOut;
+  const aw=h.aimW||0;
+  if(aw>0.001&&h.aim)for(const sx of [1,-1]){const M=V.arms[sx],T=h.aim[sx];if(!T)continue;
+    const S0=toModel(V,M.up.getWorldPosition(new THREE.Vector3())),dir=toModel(V,T.clone()).sub(S0).normalize();
+    const sUp=new THREE.Quaternion().setFromUnitVectors(M.dUp,dir),sLo=new THREE.Quaternion().setFromUnitVectors(M.dLo,dir);
+    const top=new THREE.Vector3(0,0,1).applyQuaternion(sLo),want=new THREE.Vector3(-sx*0.35,1,0);
+    top.addScaledVector(dir,-top.dot(dir)).normalize();want.addScaledVector(dir,-want.dot(dir)).normalize();
+    const roll=new THREE.Quaternion().setFromUnitVectors(top,want),bones=[M.up,M.lo,M.hand];
+    const tgt=[[sUp,'UpperArm'],[sLo,'LowerArm'],[sLo,'Hand']].map(([s,n])=>roll.clone().multiply(s).multiply(R['J_Bip_'+M.n+'_'+n].q));
+    const cur=bones.map(b=>nodeQ(V,b,new THREE.Quaternion()));
+    bones.forEach((b,k)=>setModelQ(V,b,cur[k].slerp(tgt[k],aw)));}
   for(const C of V.cons){if(C.aim){C.b.getWorldPosition(_a);C.src.getWorldPosition(_b);toModel(V,_a);toModel(V,_b);swingTo(V,C.b,C.n,C.d,_b.sub(_a));}
     else{_q1.copy(R[C.sn].local).invert().multiply(C.src.quaternion);_q2.identity().slerp(_q1,C.w);C.b.quaternion.copy(R[C.n].local).multiply(_q2);C.b.updateMatrixWorld(true);}}
   // ponytail: sways with speed, turns and jumps

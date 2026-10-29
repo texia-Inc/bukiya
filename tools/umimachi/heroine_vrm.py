@@ -240,6 +240,41 @@ for s in (-1, 1):
     xform(bm, scale=(0.009, 0.007, 0.024), rot=(0, s * 0.25, 0), loc=(0.12 + s * 0.014, 0.2, 1.025))
     accessory('W_pack_bunnyear%d' % (s + 1), bm, 'J_Bip_C_UpperChest', BUNNY)
 
+# ---------------------------------------------------------------- a pair of pistols gripped in the lightly closed hands (Gun_L*, Gun_R*;
+# the game shows them only in the drone fight). Built in the gun's own frame: barrel along +x, top +z, the middle of the grip at the origin.
+from mathutils import Matrix, Euler
+def add_box(bm, size, loc, rot=(0, 0, 0), bevel=0.0025):
+    M = Matrix.Translation(loc) @ Euler(rot).to_matrix().to_4x4() @ Matrix.Diagonal((*size, 1))
+    vs = bmesh.ops.create_cube(bm, size=1.0, matrix=M)['verts']
+    if bevel:
+        bmesh.ops.bevel(bm, geom=list({e for v in vs for e in v.link_edges}), offset=bevel, segments=1, affect='EDGES')
+
+def pistol_parts():
+    body, grip = bmesh.new(), bmesh.new()
+    add_box(body, (0.19, 0.026, 0.034), (0.065, 0, 0.08))            # slide
+    add_box(body, (0.12, 0.024, 0.016), (0.04, 0, 0.055))            # frame under the slide
+    add_box(body, (0.006, 0.014, 0.008), (0.157, 0, 0.1), bevel=0)   # front sight
+    add_box(body, (0.008, 0.02, 0.008), (-0.024, 0, 0.1), bevel=0)   # rear sight
+    add_box(body, (0.05, 0.008, 0.006), (0.045, 0, 0.022), bevel=0)  # trigger guard
+    add_box(body, (0.006, 0.008, 0.026), (0.07, 0, 0.035), bevel=0)
+    add_box(body, (0.006, 0.006, 0.02), (0.035, 0, 0.035), (0, -0.3, 0), bevel=0)   # trigger
+    add_box(grip, (0.032, 0.028, 0.1), (0, 0, 0), (0, 0.25, 0))      # grip, raked back
+    add_box(grip, (0.038, 0.03, 0.008), (-0.013, 0, -0.051), (0, 0.25, 0))   # magazine base
+    return body, grip
+
+# the grip sits in the fist: the middle of the curled fingers. The barrel runs along the forearm, and the gun's top faces the
+# index finger side (the front of the T-pose), so the grip runs down through the fist towards the little finger.
+GUN_METAL, GUN_GRIP = mat('Gun_Metal', srgb('#2b2d31'), 0.4), mat('Gun_Grip', srgb('#3a342f'))
+gnames = {g.index: g.name for g in BODY.vertex_groups}
+for S, sx in (('L', 1), ('R', -1)):
+    fingers = {'J_Bip_%s_%s%d' % (S, f, i) for f in ('Index', 'Middle', 'Ring', 'Little') for i in (1, 2, 3)}
+    pts = [v.co for v in BODY.data.vertices if v.groups and gnames[max(v.groups, key=lambda g: g.weight).group] in fingers]
+    C = sum(pts, Vector()) / len(pts)
+    R = Matrix((Vector((sx, 0, 0)), Vector((0, 0, sx)), Vector((0, -1, 0)))).transposed()   # columns: barrel, gun's left, gun's top (-y)
+    for bm, name, m_ in zip(pistol_parts(), ('Gun_%s' % S, 'Gun_%s_grip' % S), (GUN_METAL, GUN_GRIP)):
+        bmesh.ops.transform(bm, matrix=Matrix.Translation(C) @ R.to_4x4(), verts=bm.verts)
+        accessory(name, bm, 'J_Bip_%s_Hand' % S, m_, smooth=False)
+
 # ---------------------------------------------------------------- texture painting by 3D position (rasterise each triangle in UV space)
 def paint(ob, matname, rule):
     me = ob.data
