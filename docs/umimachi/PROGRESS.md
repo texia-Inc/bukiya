@@ -229,14 +229,17 @@
 | `tools/umimachi/src/p5_systems.js` | 踏切・車、おつかい、お店、操作、カメラ、着がえ画面、ガチャ画面 |
 | `tools/umimachi/heroine_vrm.py` | 主人公モデルと服の部品を作る Blender スクリプト |
 | `tools/umimachi/README.md` | ビルドとモデル生成の手順 |
+| `tools/umimachi/app/` | iPhone アプリ（Capacitor）。Bundle ID `com.umimachi.app`。手順は `app/README.md` |
 
 ## 開発の手順
 1. `tools/umimachi/src/` のファイルを編集する
 2. `cd tools/umimachi/src && python3 build.py` で `docs/umimachi/index.html` を作り直す（1ファイル版 `umimachi_single.html` も作られる。コミット対象外）
 3. 手元で遊ぶ：`cd docs/umimachi && python3 -m http.server` → http://localhost:8000
-4. 服の部品を変えたとき：`cd tools/umimachi && Blender -b --python heroine_vrm.py -- design/nagi.vrm ../../docs/umimachi/heroine.glb`
+4. iPhone アプリ：`cd tools/umimachi/app && npm run sync && npm run open`（three.js とフォントもアプリの中に入れる）
+5. 服の部品を変えたとき：`cd tools/umimachi && Blender -b --python heroine_vrm.py -- design/nagi.vrm ../../docs/umimachi/heroine.glb`
 
 ## わかっている課題
+- iPhone アプリはシミュレーターで起動とタイトル画面だけ確認。実機でのプレイ、音、セーブが消えないかは未確認
 - マントや羽を着て走ったときの、板の持ち方の見た目は未確認
 - 帽子と髪の重なりは正面のみ確認（横・後ろは未確認）
 - 所持金・おつかいの報酬とガチャの値段のバランスは未調整
