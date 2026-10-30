@@ -607,7 +607,7 @@ function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q o
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
-  WIND.t.value=clock;updateGrass();updateStory(dt);
+  WIND.t.value=clock;updateGrass();updateWindLines(dt);updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;
