@@ -22,10 +22,10 @@ const WARDROBE=[
     {id:'yukata',name:'浴衣',parts:{W_yukata:'#ffffff',W_geta:'#ffffff'},covers:['neck','bottoms','legs','shoes'],colors:[['#ffffff']]}]},
   {slot:'neck',label:'えり元',items:[
     {id:'ribbon',name:'制服リボン',parts:{W_tie:0},colors:[['#8fb8e0'],['#c8323a'],['#2d3a6a'],['#3f7a5a']]},
-    {id:'bow',name:'リボン',parts:{W_bow:0},colors:[['#c8323a'],['#2d4f9a'],['#f0879c'],['#2b2b30']]},
+    {id:'bow',name:'リボン',parts:{},extra:'bow',colors:[['#c8323a'],['#2d4f9a'],['#f0879c'],['#2b2b30']]},
     {id:'choker',name:'鈴のチョーカー',parts:{W_choker:0},colors:[['#2b2b30'],['#c8323a'],['#7a5a8f']]},
     {id:'dogtag',name:'ドッグタグ',parts:{},extra:'dogtag',colors:[['#9aa1ab']]},
-    {id:'sailor',name:'セーラーえり',parts:{W_sailorcollar:0,W_sailorcollar_line:1,W_bow:2},colors:[['#2d3a6a','#f6f5f1','#c8323a'],['#f6f5f1','#2d3a6a','#2d3a6a'],['#2b2b30','#f6f5f1','#e05a6a']]},
+    {id:'sailor',name:'セーラーえり',parts:{W_sailorcollar:0,W_sailorcollar_line:1},extra:'bow',extraCol:2,colors:[['#2d3a6a','#f6f5f1','#c8323a'],['#f6f5f1','#2d3a6a','#2d3a6a'],['#2b2b30','#f6f5f1','#e05a6a']]},
     {id:'none',name:'なし',parts:{}}]},
   {slot:'bottoms',label:'ボトムス',items:[
     {id:'skirt',name:'チェックスカート',parts:{W_skirt:0,W_shorts:'#2c2f44'},colors:[['#6f7488'],['#b0484f'],['#4d7a5f'],['#9a8a6a'],['#c98aa0'],['#3b4a78']]},
@@ -59,7 +59,7 @@ const WARDROBE=[
     {id:'scrunchie',name:'シュシュ',parts:{W_scrunchie:0},colors:[['#d8455a'],['#f6f5f1'],['#33395e'],['#f5c84a'],['#7cc39a'],['#9cc3e6']]}]},
   {slot:'back',label:'せなか',items:[
     {id:'pack',name:'リュック',parts:{W_pack:0},colors:[['#232327'],['#c9a36a'],['#ece6dc'],['#7a5a8f'],['#d86a7c']]},
-    {id:'cape',name:'マント',parts:{W_cape:0},colors:[['#2b2433'],['#4a2a6a'],['#8a1f2a']]},
+    {id:'cape',name:'マント',parts:{},extra:'cape',colors:[['#2b2433'],['#4a2a6a'],['#8a1f2a']]},
     {id:'batwings',name:'コウモリの羽',parts:{W_batwings:0},colors:[['#2b2433'],['#4a2a6a'],['#8a1f2a']]},
     {id:'angelwings',name:'天使の羽',parts:{W_angelwings:0},colors:[['#ffffff'],['#f2d8e4']]},
     {id:'none',name:'なし',parts:{}}]},
@@ -111,7 +111,7 @@ function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Objec
   const covered=new Set();for(const S of WARDROBE){const it=findItem(S.slot,(outfit[S.slot]||[])[0]);if(it&&it.covers)it.covers.forEach(c=>covered.add(c));}
   for(const S of WARDROBE){if(covered.has(S.slot))continue;const [id,ci]=outfit[S.slot]||[];const it=findItem(S.slot,id);if(!it)continue;const cs=(it.colors&&it.colors[ci||0])||(it.colors&&it.colors[0])||[];
     for(const k in it.parts){const v=it.parts[k];show[k]=typeof v==='number'?cs[v]:v==='dark0'?{dark:cs[0]}:v==='upper0'?{upper:cs[0]}:v&&v.pat?{pat:v.pat,cols:cs}:v;}
-    if(it.extra)extras[it.extra]=cs;
+    if(it.extra)extras[it.extra]=it.extraCol?[cs[it.extraCol]]:cs;
     if(it.hair)for(const m of V.hair){m.material.map=cs[0]?recolorTex(m.userData.map0,cs[0],'hair'):m.userData.map0;m.material.needsUpdate=true;}}
   for(const P of V.parts){const key=Object.keys(show).filter(k=>P.name===k||P.name.startsWith(k+'_')).sort((a,b)=>b.length-a.length)[0];const on=!!key;
     P.mesh.visible=on;if(P.mesh.userData.ol)P.mesh.userData.ol.visible=on;if(!on)continue;const spec=show[key];
@@ -123,15 +123,20 @@ function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Objec
       else if(typeof spec==='string'&&P.tintable)m.color.set(spec);
       else if(P.tintable)m.color.copy(P.base);}
     if(m.vertexColors!==was||m.map!==wasMap)m.needsUpdate=true;}
-  wearExtras(h,extras);legsUnder(V,covered.has('bottoms'));}
-// under the yukata the legs are not drawn between the ankles and the hips: on the board her knees bend and spread wider than
-// the cloth can follow, and the skin came through it. The body's outline goes too, or the hidden legs would still be drawn in outline
-function legsUnder(V,on){if(!V.body){V.model.traverse(o=>{if(o.isSkinnedMesh&&o.name==='Body_(merged)')V.body=o;});if(!V.body)return;
-    const m=V.body.material,u={value:0};m.userData.hide=u;
+  // the legs under the yukata (ankles to hips), or the thighs under a skirt (from the shorts' hem up)
+  wearExtras(h,extras);legsUnder(V,covered.has('bottoms')?[0.15,0.88]:show.W_skirt||show.W_skirtzig?[0.705,0.88]:null);}
+// legs under the yukata or a skirt are not drawn: on the board her knees bend and spread wider than the cloth can follow,
+// and the skin came through it. The body's outline gets its own material that leaves out the same part
+function legsUnder(V,range){if(!V.body){V.model.traverse(o=>{if(o.isSkinnedMesh&&o.name==='Body_(merged)')V.body=o;});if(!V.body)return;
+    const m=V.body.material,u={value:new THREE.Vector2(9,9)};m.userData.hide=u;
     m.onBeforeCompile=sh=>{sh.uniforms.uHide=u;sh.vertexShader='varying float vBy;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBy=position.y;');
-      sh.fragmentShader='uniform float uHide;\nvarying float vBy;\n'+sh.fragmentShader.replace('void main() {','void main() {\nif(uHide>0.5&&vBy>0.15&&vBy<0.88)discard;');};
-    m.customProgramCacheKey=()=>'bodylegs';m.needsUpdate=true;}
-  V.body.material.userData.hide.value=on?1:0;if(V.body.userData.ol)V.body.userData.ol.visible=!on;}
+      sh.fragmentShader='uniform vec2 uHide;\nvarying float vBy;\n'+sh.fragmentShader.replace('void main() {','void main() {\nif(vBy>uHide.x&&vBy<uHide.y)discard;');};
+    m.customProgramCacheKey=()=>'bodylegs';m.needsUpdate=true;
+    const ol=V.body.userData.ol;if(ol){const om=new THREE.MeshBasicMaterial({color:'#2d241d',side:THREE.BackSide,skinning:true,morphTargets:!!V.body.morphTargetInfluences});
+      om.onBeforeCompile=sh=>{sh.uniforms.uHide=u;sh.vertexShader='varying float vBy;\n'+sh.vertexShader.replace('#include <begin_vertex>','vec3 transformed = position + normal * 0.0026;\nvBy=position.y;');
+        sh.fragmentShader='uniform vec2 uHide;\nvarying float vBy;\n'+sh.fragmentShader.replace('void main() {','void main() {\nif(vBy>uHide.x&&vBy<uHide.y)discard;');};
+      om.customProgramCacheKey=()=>'olbodylegs';ol.material=om;}}
+  V.body.material.userData.hide.value.set(range?range[0]:9,range?range[1]:9);}
 
 /* extras: garments built here rather than in the model, fixed to a bone: the big cat-paw mittens and the dog tags on their chain.
    Each is made in the model's own axes (+z forward, +x her left) at rest and carried by the bone from then on */
@@ -156,6 +161,35 @@ const EXTRAS={
     for(const [dx,dy,dz,rz] of [[0.007,0,0.003,0.12],[-0.008,-0.012,-0.001,-0.18]]){const t=new THREE.Mesh(new THREE.BoxGeometry(0.044,0.07,0.005),tm2);outline(t,0.003);
       t.position.set(dx,1.208-0.037+dy-top.y,0.153+dz-top.z);t.rotation.set(-0.12,0,rz);t.castShadow=true;g.add(t);}
     return{objs:[g],tint(cs){metal.color.set(cs[0]);}};}};
+// the bow at the collar: two loops, the knot, and two tails with notched ends
+EXTRAS.bow=V=>{const mat=new THREE.MeshToonMaterial({color:'#c8323a',gradientMap:GRAD,side:THREE.DoubleSide}),c=new THREE.Vector3(0,1.263,0.098),g=onBone(V,'J_Bip_C_UpperChest',c);
+  const A=(m,x,y,z)=>{m.position.set(x,y,z);m.castShadow=true;outline(m,0.0016);g.add(m);return m;};
+  // each wing is drawn on its own side (not mirrored by a negative scale, which would turn its outline inside out)
+  const wingGeo=sd=>{const w=new THREE.Shape();w.moveTo(0,0.007);w.quadraticCurveTo(sd*0.026,0.036,sd*0.046,0.022);w.quadraticCurveTo(sd*0.054,0,sd*0.046,-0.022);w.quadraticCurveTo(sd*0.026,-0.036,0,-0.007);w.closePath();
+    return new THREE.ExtrudeGeometry(w,{depth:0.006,bevelEnabled:true,bevelThickness:0.004,bevelSize:0.003,bevelSegments:3,curveSegments:10});};
+  for(const sd of [-1,1]){const l=A(new THREE.Mesh(wingGeo(sd),mat),0,0.002,-0.006);l.rotation.set(0,sd*0.3,sd*0.12);
+    const sh=new THREE.Shape();sh.moveTo(-0.009,0);sh.lineTo(0.009,0);sh.lineTo(0.011,-0.058);sh.lineTo(0,-0.05);sh.lineTo(-0.011,-0.058);sh.closePath();
+    const t=A(new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:0.003,bevelEnabled:false}),mat),sd*0.005,-0.004,-0.004);t.rotation.set(-0.15,0,sd*0.38);}
+  A(new THREE.Mesh(new THREE.SphereGeometry(0.012,10,8),mat),0,0,0.002).scale.set(1,1.15,0.8);
+  return{objs:[g],tint(cs){mat.color.set(cs[0]);}};};
+// the cape: a cloth hung from the shoulders down to the knees, lined in another colour, with a standing collar and a clasp.
+// It hangs from a point behind the neck and keeps hanging down whichever way she leans; with speed and in the air it streams back
+EXTRAS.cape=V=>{const out=new THREE.MeshToonMaterial({color:'#2b2433',gradientMap:GRAD,side:THREE.FrontSide}),lin=new THREE.MeshToonMaterial({color:'#8a1f2a',gradientMap:GRAD,side:THREE.BackSide});
+  const top=new THREE.Vector3(0,1.36,-0.05),pivot=onBone(V,'J_Bip_C_UpperChest',top),hang=new THREE.Group();pivot.add(hang);
+  const geo=new THREE.CylinderGeometry(1,1,1,28,10,true,Math.PI/2-0.45,Math.PI+0.9),p=geo.attributes.position;
+  for(let i=0;i<p.count;i++){const t=0.5-p.getY(i),a=Math.atan2(p.getX(i),p.getZ(i)),fold=1+0.07*Math.sin(a*7)*t;   // t: 0 at the shoulders, 1 at the hem
+    const rx=(0.17+0.2*t)*fold,rz=(0.12+0.19*t)*fold;p.setXYZ(i,Math.sin(a)*rx,-t*0.74+Math.sin(a*7)*0.012*t,Math.cos(a)*rz+0.05);}
+  geo.computeVertexNormals();
+  for(const m of [out,lin]){const c=new THREE.Mesh(geo,m);c.castShadow=true;hang.add(c);}outline(hang.children[0],0.003);
+  const col=new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.085,0.07,20,1,true,Math.PI/2-0.2,Math.PI+0.4),lin);col.position.set(0,0.03,0.035);hang.add(col);
+  const cl=new THREE.Mesh(new THREE.SphereGeometry(0.011,10,8),tm('#d4a24a'));outline(cl,0.0015);pivot.add(cl);cl.position.set(0,-0.045,0.135);
+  const cord=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(-0.13,-0.025,0.07),new THREE.Vector3(-0.05,-0.042,0.125),new THREE.Vector3(0,-0.045,0.135),new THREE.Vector3(0.05,-0.042,0.125),new THREE.Vector3(0.13,-0.025,0.07)]),20,0.0035,5,false),tm('#d4a24a'));pivot.add(cord);
+  const _p=new THREE.Quaternion(),_w=new THREE.Quaternion(),_f=new THREE.Vector3(),_r=V.rest.J_Bip_C_Hips.q.clone().invert();let sw=0;   // _r: from the hip bone's axes back to the model's
+  return{objs:[pivot],tint(cs){out.color.set(cs[0]);lin.color.set(cs[0].toLowerCase()==='#8a1f2a'?'#2b2433':'#8a1f2a');},
+    update(dt,s){const hip=V.B.J_Bip_C_Hips;hip.getWorldQuaternion(_w).multiply(_r);_f.set(0,0,1).applyQuaternion(_w);const yaw=Math.atan2(_f.x,_f.z);
+      const want=clamp((s.v||0)*0.05+(s.air?0.35:0),0,0.85)+Math.sin(V.t*3.1)*0.03*(0.3+Math.min(1,(s.v||0)/6));sw+=(want-sw)*Math.min(1,dt*4);
+      pivot.parent.getWorldQuaternion(_p).invert();_w.setFromEuler(new THREE.Euler(sw,yaw,0,'YXZ'));hang.quaternion.copy(_p.multiply(_w));
+      hang.quaternion.premultiply(pivot.quaternion.clone().invert());}};};
 function wearExtras(h,want){const V=h.vrm;V.extras=V.extras||{};
   for(const k in EXTRAS){let e=V.extras[k];if(want[k]&&!e)e=V.extras[k]=EXTRAS[k](V);if(!e)continue;for(const o of e.objs)o.visible=!!want[k];if(want[k])e.tint(want[k]);}}
 
