@@ -137,10 +137,10 @@ function pickSeat(T,k,s,near){const taken=T.cars[k].userData.car.folk.filter(f=>
   const free=TRAM_SEATS.filter(x=>!taken.some(t=>Math.abs(t-x)<0.6));free.sort((a,b)=>Math.abs(a-near)-Math.abs(b-near));return free[0];}
 function boardTram(o){const T=o.T,s=T.seatS();
   Object.assign(RIDE,{on:true,train:T,car:o.k,s,x:pickSeat(T,o.k,s,o.dx),look:0});if(T===INKT){T.mode='depart';T.wait=4;}P.foot=true;P.carry='hand';P.tr=null;P.v=0;P.air=false;P.grind=null;
-  document.body.classList.add('riding');camInit=false;tramTurnFade();
+  document.body.classList.add('riding');releaseInputs();camInit=false;tramTurnFade();
   toast(hasTouch?'うみまち線に乗った（スティックで まわりを見る）':'うみまち線に乗った（A / D で まわりを見る）');}
 function alightTram(){const T=RIDE.train,dx=RIDE.x<0?-4:4;const p=tramDoor(T,RIDE.car,dx,2.6);
-  RIDE.on=false;document.body.classList.remove('riding');P.x=p.x;P.z=p.z;P.y=groundAt(P.x,P.z,G(P.x,P.z)+1);if(AREA==='inaka')P.y=Math.max(P.y,0.34);P.yaw=Math.PI;P.v=0;camInit=false;tramTurnFade();
+  RIDE.on=false;document.body.classList.remove('riding');releaseInputs();P.x=p.x;P.z=p.z;P.y=groundAt(P.x,P.z,G(P.x,P.z)+1);if(AREA==='inaka')P.y=Math.max(P.y,0.34);P.yaw=Math.PI;P.v=0;camInit=false;tramTurnFade();
   if(SAVE.money>=100){SAVE.money-=100;toast(`${T.at.name}で降りた（運賃 -100円）`);renderHUD();save();}else toast('運転士さん「今日はいいよ。またどうぞ」');}
 // on board: she sits on the long seat on the sea side, the board stood up at her side
 function rideStep(dt){jumpQ=kickQ=footQ=trickQ=false;const g=RIDE.train.cars[RIDE.car];

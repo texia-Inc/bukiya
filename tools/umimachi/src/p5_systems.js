@@ -328,6 +328,9 @@ $('gachaOne').addEventListener('click',()=>pull(1));$('gachaFive').addEventListe
 $('closetReset').addEventListener('click',()=>{SAVE.outfit=JSON.parse(JSON.stringify(DEFAULT_OUTFIT));save();applyOutfit(player,SAVE.outfit);renderCloset();});
 const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:false,bump:0,kickT:-1,kickCD:0,foot:false,tr:null,carry:'deck'};P.y=G(P.x,P.z);
 const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false,trickQ=false;
+// let go of every held key and button: when the window loses focus, and when a button is hidden under a finger (getting on the
+// tram hides 「ける」, and a hidden button never hears the finger lift, so she would walk on by herself afterwards)
+function releaseInputs(){for(const k in keys)keys[k]=false;kickHold=false;$('bKick').classList.remove('on');}
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
@@ -350,6 +353,7 @@ const stick={on:false,id:null,x:0,y:0};
   $('bTrick').addEventListener('pointerdown',e=>{e.preventDefault();trickQ=true;});
   const kb=$('bKick');kb.addEventListener('pointerdown',e=>{e.preventDefault();kickQ=true;kickHold=true;kb.classList.add('on');try{kb.setPointerCapture(e.pointerId);}catch(_){}});
   for(const ev of ['pointerup','pointercancel','lostpointercapture'])kb.addEventListener(ev,()=>{kickHold=false;kb.classList.remove('on');});
+  window.addEventListener('blur',releaseInputs);
   kb.addEventListener('contextmenu',e=>e.preventDefault());
   $('bAct').addEventListener('pointerdown',e=>{e.preventDefault();if(DLG)nextLine();else if(!modal)actQ=true;});
   const sb=$('bShoot');sb.addEventListener('pointerdown',e=>{e.preventDefault();FIRE.touch=true;sb.classList.add('on');try{sb.setPointerCapture(e.pointerId);}catch(_){}});
