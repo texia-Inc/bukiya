@@ -61,16 +61,23 @@ def pose(rots):
     bpy.context.view_layer.objects.active = ARM
     bpy.ops.object.mode_set(mode='POSE'); bpy.ops.pose.armature_apply(); bpy.ops.object.mode_set(mode='OBJECT')
 
-# 1) arms down from the T-pose (the left arm points +x, the right -x), hands lightly closed
-rots = {'J_Bip_L_UpperArm': Quaternion((0, 1, 0), 1.2), 'J_Bip_R_UpperArm': Quaternion((0, 1, 0), -1.2)}
+# hands clasped behind the back: the upper arms hang down and swing back, the elbows bend so the forearms cross behind the
+# waist (each pass is made the rest pose before the next, so its axes are the armature's)
+UP_DOWN, UP_BACK, FORE_IN, FORE_BACK, HAND = 1.3, 0.24, 1.25, -0.12, 0.35
+# 1) arms down from the T-pose (the left arm points +x, the right -x) and back (back is +y), hands lightly closed
+rots = {'J_Bip_L_UpperArm': Quaternion((1, 0, 0), UP_BACK) @ Quaternion((0, 1, 0), UP_DOWN),
+        'J_Bip_R_UpperArm': Quaternion((1, 0, 0), UP_BACK) @ Quaternion((0, 1, 0), -UP_DOWN)}
 CURL = {'Index': (0.5, 0.6, 0.4), 'Middle': (0.55, 0.65, 0.45), 'Ring': (0.6, 0.7, 0.45), 'Little': (0.65, 0.75, 0.45)}
 for S, sx in (('L', 1), ('R', -1)):
     for f, angs in CURL.items():
         for i, a in enumerate(angs):
             rots['J_Bip_%s_%s%d' % (S, f, i + 1)] = Quaternion((0, 1, 0), a * sx)
 pose(rots)
-# 2) a little bend at the elbows, the forearms coming forward (now that the arms hang down, forward is -y: about x)
-pose({'J_Bip_L_LowerArm': Quaternion((1, 0, 0), -0.18), 'J_Bip_R_LowerArm': Quaternion((1, 0, 0), -0.18)})
+# 2) the forearms turn in towards the middle of the back (about y) and a little further back (about x)
+pose({'J_Bip_L_LowerArm': Quaternion((1, 0, 0), FORE_BACK) @ Quaternion((0, 1, 0), FORE_IN),
+      'J_Bip_R_LowerArm': Quaternion((1, 0, 0), FORE_BACK) @ Quaternion((0, 1, 0), -FORE_IN)})
+# 3) the hands follow on round so one rests in the other
+pose({'J_Bip_L_Hand': Quaternion((0, 1, 0), HAND), 'J_Bip_R_Hand': Quaternion((0, 1, 0), -HAND)})
 
 # keep only the base colour texture, and keep it small
 for m in bpy.data.materials:
