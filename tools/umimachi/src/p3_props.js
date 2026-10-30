@@ -304,15 +304,7 @@ const BEACHHOUSE={x:40,z:SHORE+10};
   const lamp=new THREE.Group();lamp.add(M(new THREE.CylinderGeometry(0.07,0.07,3,8),tm('#f2f2ee'),0.01).translateY(1.5));lamp.add(M(new THREE.CylinderGeometry(0.25,0.25,0.5,10),tm('#d23a2c'),0.015).translateY(3.2));
   lamp.position.set(PIER.x0+0.6,PIER.y,PIER.z1-0.8);world.add(lamp);
 }
-{ // the island with its lighthouse, the cape to the west, mountains behind
-  const isl=new THREE.Group();isl.position.set(180,SEA_Y,760);world.add(isl);
-  const rk=tm('#9a8a70'),gr=tm('#4f8a4a');
-  const a=new THREE.Mesh(new THREE.SphereGeometry(1,24,12),rk);a.scale.set(120,22,64);isl.add(a);
-  const b=new THREE.Mesh(new THREE.SphereGeometry(1,24,12),gr);b.scale.set(100,34,52);b.position.set(-10,6,-4);isl.add(b);
-  const c=new THREE.Mesh(new THREE.SphereGeometry(1,20,10),gr);c.scale.set(50,48,40);c.position.set(18,4,0);isl.add(c);
-  const lh=new THREE.Group();lh.position.set(18,48,0);isl.add(lh);
-  lh.add(M(new THREE.CylinderGeometry(2.2,3,22,16),tm('#f4f2ec'),0.15).translateY(11));lh.add(M(new THREE.CylinderGeometry(2.6,2.6,1,16),tm('#3a3d44')).translateY(22.5));
-  lh.add(new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,3,12),new THREE.MeshBasicMaterial({color:'#fff3c4'})).translateY(24.5));lh.add(M(new THREE.ConeGeometry(2,2.4,12),tm('#d23a2c')).translateY(27.2));
+{ // the cape to the west and east, mountains behind (the island with its lighthouse is p5m_shima.js)
   const cape=[[-760,420,260,70,180],[-620,560,220,50,140],[-900,300,240,90,200],[700,520,260,60,170],[860,380,220,80,200]];
   for(const [x,z,sx,sy,sz] of cape){const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,12),tm('#4f8a4a'));m.scale.set(sx,sy,sz);m.position.set(x,SEA_Y-8,z);world.add(m);}
   for(let k=0;k<9;k++){const m=new THREE.Mesh(new THREE.ConeGeometry(1,1,10),tm(pick(['#5a8f6a','#6a9a78','#4f8460'])));const s=180+rnd()*200;m.scale.set(s,90+rnd()*90,s);m.position.set(-900+k*230+rnd()*80,40,-560-rnd()*300);world.add(m);}

@@ -44,7 +44,7 @@ function tintUnlit(){_tint.copy(sun.color).multiplyScalar(sun.intensity*0.6);_tc
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy();   // events during which the board is yours
+const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait;   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -114,7 +114,10 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
   case 'vanchase':await vanChaseP();break;
   case 'lights':await lightsP(a[0]);break;                               // ['lights', {pts:[{name,x,z}…], limit}]  gather the five lights before time runs out
-  case 'credits':await creditsP();break;                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
+  case 'credits':await creditsP();break;
+  case 'drones':await dronesP(a[0]);break;                               // ['drones', {total, boss, title}]  a drone fight in the story: on until it is won
+  case 'boat':await boatP(a[0]);break;                                   // ['boat', 'island'|'town']  the fisherman's boat across the bay
+  case 'lamp':await lampP();break;                                       // ['lamp']  free until Nagi climbs the lighthouse and lights the lamp                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
@@ -133,5 +136,5 @@ function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);upd
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
     m.visible=!calm&&!URA.on&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
-  if(calm||DRONE.active||RIDE.on)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
+  if(calm||DRONE.active||RIDE.on||BOAT.on)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
   const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}

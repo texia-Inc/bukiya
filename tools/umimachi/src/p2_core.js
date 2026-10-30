@@ -96,7 +96,9 @@ function inDeckView(x,z){for(const d of RIDGE_DECKS){if(Math.sign(x)!==Math.sign
   if(dx<-6||ax<190)continue;if(Math.abs(z-d.z)<12+dx*0.6)return true;}return false;}
 const HILL_TREES=[];   // hill trees, so the camera can keep out of them
 function onPier(x,z){return x>PIER.x0&&x<PIER.x1&&z>PIER.z0&&z<PIER.z1;}
-function G(x,z){if(x>INK_X-600)return inkG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
+// the island out at sea (p5m_shima.js) has heights of its own once it is built
+const ISL_Z0=640;let ISL_ON=false;
+function G(x,z){if(x>INK_X-600)return inkG(x,z);if(z>ISL_Z0&&ISL_ON)return islG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
 
 const world=new THREE.Group();scene.add(world);
 const COLL=[];   // axis-aligned boxes the board bumps into: {x0,x1,z0,z1,on}
