@@ -36,10 +36,10 @@ function hiss(dur,type,f,vol,q,f2,at){const S=SND;if(!S.ctx||!S.on)return;const 
 function bell(f,vol,at){for(const [k,v] of [[1,1],[2.76,0.45],[5.4,0.25]])tone(f*k,1.1/k+0.2,'sine',vol*v,null,at);}
 const att=(d,r)=>clamp(1-d/r,0,1)**2;
 const sfx={
-  kick:()=>hiss(0.13,'lowpass',900,0.22),
-  pop:()=>{tone(170,0.08,'triangle',0.32,90);hiss(0.05,'highpass',2600,0.22);},
-  land:h=>{hiss(0.14,'lowpass',520,0.18+h*0.25);tone(110,0.1,'sine',0.25+h*0.2,55);hiss(0.04,'bandpass',1800,0.15,3,null,0.02);},
-  clack:()=>{hiss(0.06,'bandpass',1800,0.28,3);tone(240,0.05,'square',0.06);},
+  kick:()=>hiss(0.13,'lowpass',900,0.12),
+  pop:()=>{tone(170,0.08,'triangle',0.18,90);hiss(0.05,'highpass',2600,0.12);},
+  land:h=>{hiss(0.14,'lowpass',520,0.1+h*0.14);tone(110,0.1,'sine',0.14+h*0.11,55);hiss(0.04,'bandpass',1800,0.08,3,null,0.02);},
+  clack:()=>{hiss(0.06,'bandpass',1800,0.15,3);tone(240,0.05,'square',0.035);},
   whoosh:()=>hiss(0.35,'bandpass',500,0.2,1.5,2600),
   step:()=>hiss(0.05,'lowpass',650,0.07),
   bump:()=>{tone(90,0.14,'sine',0.35,45);hiss(0.12,'lowpass',700,0.25);},
@@ -67,9 +67,9 @@ const sfx={
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&AREA==='town';
   // the board and the wind
-  set(L.roll.g.gain,board&&!P.air&&!P.grind?clamp(P.v/11,0,1)*0.32*(sand?1.3:1):0);set(L.roll.fl.frequency,sand?260+P.v*30:320+P.v*95);
+  set(L.roll.g.gain,board&&!P.air&&!P.grind?clamp(P.v/11,0,1)*0.15*(sand?1.3:1):0);set(L.roll.fl.frequency,sand?260+P.v*30:320+P.v*95);
   set(L.wind.g.gain,play&&!ride?clamp((P.v-5)/10,0,1)**2*0.22+(P.air?clamp(-P.vy/14,0,1)*0.15:0):0);
-  set(L.grind.g.gain,play&&P.grind?0.2:0);
+  set(L.grind.g.gain,play&&P.grind?0.11:0);
   // footsteps
   if(play&&P.foot&&!ride&&!P.air&&P.v>0.6){S.dist.step=(S.dist.step||0)+P.v*dt;if(S.dist.step>(P.v>4?1.1:0.75)){S.dist.step=0;sfx.step();}}
   // moments: pop, landing, kick, on and off the board, a trick, a bump
