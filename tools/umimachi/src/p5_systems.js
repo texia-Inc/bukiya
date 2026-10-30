@@ -170,7 +170,7 @@ function stepOf(q){const s=qs(q.id);return s.state===1?q.steps[s.step]:null;}
 function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2)&&(!q.when||cond(q.when));}
 function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;SAVE.flags['bond_'+q.giver]=(SAVE.flags['bond_'+q.giver]||0)+1;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
     if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}if(q.done)q.done();
-    if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=nx?nx.id:null;}}
+    if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=storyGoal()||!nx?null:nx.id;}}   // back to today's aim when the story has one
   autoSteps();save();renderHUD();}
 function autoSteps(){for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='have'&&invN(st.item)>=st.n){qs(q.id).step++;toast(`${ITEMS[st.item].name}がそろった。次は「${q.steps[qs(q.id).step].hint}」`);}
   if(st&&st.type==='photos'&&SPOTS.every(p=>SAVE.spots.includes(p.id))){qs(q.id).step++;toast('5か所すべて撮れた！');}}}
@@ -183,21 +183,27 @@ function targetOf(q){const st=stepOf(q);if(!st)return null;
   return null;}
 
 /* ---------- HUD ---------- */
-function toast(t,gold){const d=document.createElement('div');d.className='tst card'+(gold?' gold':'');d.textContent=t;const T=$('toast');T.appendChild(d);while(T.children.length>3)T.firstChild.remove();setTimeout(()=>d.remove(),2900);}
+function toast(t,gold){t=devText(t);const d=document.createElement('div');d.className='tst card'+(gold?' gold':'');d.textContent=t;const T=$('toast');T.appendChild(d);while(T.children.length>3)T.firstChild.remove();setTimeout(()=>d.remove(),2900);}
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
-function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
+function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
+  if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
   if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
     // the other errands under it, each with its number (the same as on the map); tap one to follow it instead
     const act=activeQuests(),k0=act.indexOf(q);b.prepend(Object.assign(document.createElement('i'),{className:'qn',textContent:k0+1}));b.querySelector('.qn').style.background=QCOL[k0%QCOL.length];
-    if(act.length>1){const box=document.createElement('div');box.className='others';
+    const goal=!ST.run&&storyGoal();
+    if(act.length>1||goal){const box=document.createElement('div');box.className='others';
+      if(goal){const r=document.createElement('button');r.className='oq';const n=Object.assign(document.createElement('i'),{className:'qn',textContent:'★'});n.style.background='var(--sun)';r.append(n,document.createTextNode('今日のめあて'));
+        r.title=goal;r.onclick=e=>{e.stopPropagation();SAVE.tracked=null;save();renderHUD();};box.appendChild(r);}
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
+// the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
+const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);
 const activeQuests=()=>QUESTS.filter(q=>qs(q.id).state===1),QCOL=['#e2584a','#3a7bd5','#2e9a5a','#a070d0','#e8a23a','#d0508a'];
 function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){const s=qs(q.id);if(s.state===0&&!available(q))continue;
   const d=document.createElement('div');d.className='q'+(SAVE.tracked===q.id?' on':'');const st=document.createElement('span');
@@ -222,7 +228,8 @@ function openShop(key){shopCam=key;const m=MENUS[key];$('shopName').textContent=
 // dialog
 let DLG=null;
 // phones: lines written with keys in mind name the on-screen buttons instead
-function devText(s){return hasTouch&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン'):s;}
+function devText(s){return(('ontouchstart' in window)||navigator.maxTouchPoints>0)&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン')
+  .replace('L でライト','「ライト」ボタンでライト').replace('W で蹴って','「ける」で蹴って').replace('A D で曲がる','スティックで曲がる'):s;}
 function say(who,lines,done){DLG={who,lines:lines.map(devText),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
 function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;if(!ST.run)talkNpc=null;if(d)d();}
 $('dialog').addEventListener('click',nextLine);
@@ -234,7 +241,7 @@ function talk(n){talkNpc=n;
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
   const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
   for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='deliver'&&st.to===n.id){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}}
-  for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
+  for(const q of STORY_FIRST){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
   if(n.id==='baker'&&!DRONE.active&&SAVE.flags.route===2&&SAVE.seen.o4_baker&&!SAVE.flags.drones_cleared){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}
@@ -433,7 +440,9 @@ function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
-function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
+function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
+// the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
+function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=f?'スケボー':'歩く';if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
 function stepPlayer(dt){
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
   if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
@@ -448,7 +457,8 @@ function stepPlayer(dt){
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
       if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else rideNow();
-      $('bFoot').textContent=P.foot?'乗る':'降りる';}}
+      padLabels();}}
+  padLabels();
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns
   // smoothly to face it; a small push walks, a full push runs. On the board the stick still steers like the keys.
@@ -571,7 +581,7 @@ function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q o
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
-  updateStory(dt);
+  WIND.t.value=clock;updateGrass();updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;

@@ -224,7 +224,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
     <button class="pb" id="bJump">ジャンプ</button>
     <button class="pb" id="bTrick" hidden>技</button>
     <button class="pb" id="bAct">話す</button>
-    <button class="pb" id="bFoot">降りる</button>
+    <button class="pb" id="bFoot">歩く</button>
     <button class="pb main kick" id="bKick">ける</button>
     <button class="pb shoot" id="bShoot" hidden>撃つ</button>
   </div>
@@ -270,11 +270,11 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
       <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
       <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
       <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
-      <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる</dd>
+      <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
       <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
       <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
       <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
-      <dt class="tc">降りる</dt><dd class="tc">スケボーを降りて歩く。もう一度押すと乗る</dd>
+      <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
       <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
     </dl>
     <div id="slots" role="list" aria-label="セーブデータ"></div>
@@ -4019,8 +4019,10 @@ dome.material.map.wrapS=THREE.RepeatWrapping;
 const SEA_Y=-1.2,HILL=0.115,COAST_Z=240,SHORE=247,TRAM_Z=212,CUT_X=232;
 // the tram line and the coast road run through level cuttings into the hills on both sides
 function cutting(x,z){return Math.abs(x)<CUT_X+2&&(Math.abs(z-TRAM_Z)<6.6||(z>232.4&&z<SHORE+0.5));}
-// the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map
-function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7);}
+// the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map.
+// Past the shore they run on as headlands that sink into the sea, so from the water or the island the land does not end in a cut
+function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));
+  return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7*(1-smooth(clamp((z-SHORE)/(130+(ax-200)*0.25),0,1))));}
 function H(x,z){let y=z<COAST_Z?(COAST_Z-z)*HILL:z<SHORE?0:-(z-SHORE)*0.035;const ax=Math.abs(x);if(ax>200&&!cutting(x,z))y+=hillY(ax,z);return y;}
 // the country at the end of the tram line lies far to the east (p5k_inaka.js); its heights come from a baked grid
 const INK_X=3000;
@@ -4058,9 +4060,9 @@ const C3=c=>new THREE.Color(c);
 
 /* ground: gardens and hills, sand, sea floor */
 {
-  const X0=-340,X1=340,Z0=-260,Z1=440,S=4,nx=(X1-X0)/S+1,nz=(Z1-Z0)/S+1;
+  const X0=-560,X1=560,Z0=-460,Z1=472,S=4,nx=(X1-X0)/S+1,nz=(Z1-Z0)/S+1;
   grid(nz,nx,(r,c)=>{const x=X0+c*S,z=Z0+r*S,y=H(x,z),n=vnoise(x/14,z/14),n2=vnoise(x/40+9,z/40);let col;
-    if(z>SHORE-1&&Math.abs(x)>203&&y>SEA_Y+0.6){const k=0.8+n*0.3;col=[0.52*k,0.48*k,0.42*k];}
+    if(z>SHORE-1&&Math.abs(x)>203&&y>SEA_Y+0.6){const k=0.8+n*0.3;col=y>7+n*5?[0.3*k,0.44*k,0.25*k]:[0.52*k,0.48*k,0.42*k];}   // headlands: green on top, rock near the water
     else if(z>SHORE-1){const wet=clamp((y-SEA_Y)/0.6,0,1);col=y<SEA_Y?[0.62,0.7,0.62]:[lerp(0.78,0.93,wet),lerp(0.72,0.86,wet),lerp(0.55,0.66,wet)];}
     else if(z>COAST_Z-6){col=[0.7,0.68,0.62];}
     else{const k=0.8+n*0.3;col=n2>0.62?[0.3*k,0.45*k,0.24*k]:[0.42*k,0.55*k,0.33*k];if(Math.abs(x)>200||z<-170)col=[0.26*k,0.42*k,0.22*k];}
@@ -4309,6 +4311,84 @@ inst(new THREE.CylinderGeometry(0.2,0.15,0.36,10).translate(0,0.18,0),tm('#a5603
 inst(new THREE.SphereGeometry(0.3,10,8).translate(0,0.55,0),tm('#4f8a3a'),pots,(e,d)=>{d.position.set(...e.p);d.scale.set(1,0.9+hash(e.p[0]*9,e.p[2])*0.5,1);});
 for(const w of walls){const yaw=w.yaw,c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),hx=(w.w/2)*c+0.08*s,hz=(w.w/2)*s+0.08*c;collide(w.p[0]-hx,w.p[0]+hx,w.p[2]-hz,w.p[2]+hz,'wall',w.p[1]+0.55);}
 
+/* ---------- trees and grass: canopies with some shape to them, the wind that sways them, and grass round where you are.
+   WIND.t is the clock the shaders share (set every frame in p5_systems.js). Gusts are bands that roll across the town from
+   the sea; where one passes, the grass bends further and catches the light, so bright waves seem to run over it. ---------- */
+const WIND={t:{value:0}};
+const WIND_GLSL=`uniform float uWindT;
+float gust(vec2 p){return 0.5+0.5*sin(dot(p,vec2(0.045,0.07))-uWindT*1.15)*sin(dot(p,vec2(-0.021,0.033))-uWindT*0.53+1.7);}`;
+// leaves: the whole crown leans and shivers, more at the top, each tree on its own beat (its place sets the phase)
+function windify(mat,amp){mat.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;
+  sh.vertexShader=WIND_GLSL+'\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+#ifdef USE_INSTANCING
+  vec2 wp=instanceMatrix[3].xz;float ph=dot(wp,vec2(0.37,0.23));float g=gust(wp);
+  float k=max(transformed.y+0.6,0.0)*${amp.toFixed(3)};
+  transformed.x+=k*(sin(uWindT*1.6+ph)*0.6+g*0.9);transformed.z+=k*(sin(uWindT*1.23+ph*1.7)*0.45+g*0.4);
+  transformed+=normal*sin(uWindT*7.0+ph*3.0+transformed.y*4.0)*0.012;
+#endif`);};mat.customProgramCacheKey=()=>'wind'+amp;return mat;}
+// a broadleaf crown: a few lumpy balls run together, darker underneath and brighter on top
+function canopyGeo(seed){const r=mulberry(seed),parts=[[0,0,0,1],[0.55,0.25,0.2,0.7],[-0.5,0.2,-0.25,0.68],[0.1,0.55,-0.45,0.6],[-0.15,-0.3,0.5,0.62]];
+  const pos=[],col=[];for(const [ox,oy,oz,s] of parts){const g=new THREE.IcosahedronGeometry(s,1),p=g.attributes.position;
+    for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),n=0.82+0.3*vnoise(x*2.3+seed,z*2.3+y*1.7);pos.push(ox+x*n,oy+y*n*0.9,oz+z*n);}}
+  for(let i=0;i<pos.length;i+=9){const cy=(pos[i+1]+pos[i+4]+pos[i+7])/3,k=clamp(0.62+(cy+0.9)*0.3,0.6,1.12)*(0.94+r()*0.1);for(let j=0;j<3;j++)col.push(k,k,k*0.96);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  geo.computeVertexNormals();return geo;}
+// a cedar or pine: tiers of drooping cones on a base at y=0, one unit tall
+function cedarGeo(){const pos=[],col=[];const tiers=[[0.0,0.5,1],[0.28,0.42,0.78],[0.52,0.34,0.56],[0.72,0.28,0.36]];
+  for(const [y0,h,rad] of tiers){const g=new THREE.ConeGeometry(rad,h,8,1,true).toNonIndexed(),p=g.attributes.position;
+    for(let i=0;i<p.count;i++){const y=p.getY(i)+h/2+y0,top=p.getY(i)>0;pos.push(p.getX(i)*(top?1:1.04),y-(top?0:0.04),p.getZ(i)*(top?1:1.04));const k=top?1.05:0.7+y0*0.3;col.push(k,k,k);}}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  geo.computeVertexNormals();return geo;}
+const CANOPY=[canopyGeo(3),canopyGeo(11)],CEDAR=cedarGeo();
+const LEAF=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true}),0.05);
+const NEEDLE=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.035);
+
+/* grass: clumps of blades in 16 m squares, made when you come near and dropped when you are far away.
+   Only on open ground: not on streets, lots, the tram line, the shore, the cuttings or the paved places */
+const GRASS={chunks:new Map(),S:16,mesh:null,on:true};
+function grassOK(x,z){if(x>INK_X-600)return false;
+  if(z>ISL_Z0&&ISL_ON){const y=G(x,z);return y>SEA_Y+1.6&&Math.hypot(x-198,z-760)>9;}
+  const y=H(x,z);if(z>SHORE-1)return Math.abs(x)>205&&y>7;if(z>COAST_Z-6.5||cutting(x,z))return false;
+  const b={x0:x-0.6,x1:x+0.6,z0:z-0.6,z1:z+0.6};
+  for(const S of STREETS)if(overlaps(b,streetBox(S,0.6),0))return false;
+  if(Math.abs(z-TRAM_Z)<4.5&&Math.abs(x)<TRAM_X1+30)return false;
+  for(const r of RES)if(overlaps(b,r,1))return false;for(const o of BLD)if(overlaps(b,o,0.8))return false;
+  for(const c of COLL)if(c.tag!=='tree'&&overlaps(b,c,0.4))return false;
+  for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<9)return false;return true;}
+// one clump: three bent blades, dark at the root and light at the tip (the tip height is kept in the colour's alpha slot via uv.y)
+const GRASS_GEO=(()=>{const pos=[],uv=[],idx=[];let v=0;
+  for(const [a,lean,h,o] of [[0,0.06,1,0],[1.3,0.1,0.8,0.09],[2.6,0.05,0.92,0.07],[3.9,0.12,0.72,0.1],[5.2,0.08,0.86,0.06]]){const cx=Math.cos(a),sx=Math.sin(a),ox=Math.cos(a+1.3)*o,oz=Math.sin(a+1.3)*o;
+    for(let s=0;s<=2;s++){const t=s/2,w=0.06*(1-t*0.8),bend=lean*t*t;
+      for(const side of [-1,1]){pos.push(ox+cx*w*side+bend*Math.cos(a+1.3),t*h*0.32,oz+sx*w*side+bend*Math.sin(a+1.3));uv.push(side>0?1:0,t);}}
+    for(let s=0;s<2;s++){const b=v+s*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}v+=6;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;})();
+const GRASS_MAT=(()=>{const m=new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,side:THREE.DoubleSide});   // toon: the same light as the ground, and three.js hands it cameraPosition (Lambert does not get it)
+  m.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;sh.uniforms.uFar={value:GRASS.R||40};GRASS.uFar=sh.uniforms.uFar;
+    sh.vertexShader=WIND_GLSL+'\nuniform float uFar;varying float vTip;varying float vGlow;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  vec2 wp=instanceMatrix[3].xz;float t=uv.y;vTip=t;float g=gust(wp);vGlow=smoothstep(0.62,0.95,g);
+  float fd=1.0-smoothstep(uFar*0.72,uFar,distance(wp,cameraPosition.xz));transformed.y*=fd;
+  float ph=dot(wp,vec2(1.7,1.3));float bendA=(0.02+g*0.12)*t*t;
+  transformed.x+=bendA*0.9+sin(uWindT*2.4+ph)*0.035*t;transformed.z+=bendA*0.5+cos(uWindT*1.9+ph)*0.03*t;transformed.y-=bendA*0.12;`);
+    sh.fragmentShader='varying float vTip;varying float vGlow;\n'+sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );',
+      'vec4 diffuseColor = vec4( diffuse*mix(0.62,1.1,vTip), opacity );')
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=diffuseColor.rgb*vec3(0.42,0.46,0.24)*vGlow*vTip;');};
+  m.customProgramCacheKey=()=>'grass';return m;})();
+const GRASS_COLS=['#5f9c46','#6ea951','#558f42','#7bb15a','#4f8a3f'].map(c=>new THREE.Color(c));
+function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+cz*104729)&0x7fffffff),list=[];
+  const cells=new Map(),ok=(x,z)=>{const k=Math.floor(x/2)+','+Math.floor(z/2);if(!cells.has(k))cells.set(k,grassOK(Math.floor(x/2)*2+1,Math.floor(z/2)*2+1));return cells.get(k);};
+  for(let n=0;n<GRASS.per;n++){const x=x0+r()*S,z=z0+r()*S;if(!ok(x,z))continue;const y=G(x,z);if(y<SEA_Y+0.3)continue;list.push({x,y,z,s:0.75+r()*0.55,a:r()*TAU,c:GRASS_COLS[Math.floor(r()*5)]});}
+  if(!list.length)return null;const im=new THREE.InstancedMesh(GRASS_GEO,GRASS_MAT,list.length),d=new THREE.Object3D();
+  list.forEach((e,i)=>{d.position.set(e.x,e.y-0.03,e.z);d.scale.set(e.s,e.s*(0.75+0.45*vnoise(e.x/9,e.z/9)),e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,e.c);});
+  im.frustumCulled=false;im.matrixAutoUpdate=false;scene.add(im);return im;}
+// keep the squares round the player made, a couple per frame, and let go of the far ones
+function updateGrass(){if(!GRASS.per){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
+  const S=GRASS.S,R=GRASS.R,px=P.x,pz=P.z,on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&px<INK_X-600,c0x=Math.floor((px-R)/S),c1x=Math.floor((px+R)/S),c0z=Math.floor((pz-R)/S),c1z=Math.floor((pz+R)/S);
+  let made=0;for(const [k,c] of GRASS.chunks){const dx=Math.max(0,Math.abs((c.cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((c.cz+0.5)*S-pz)-S/2),d=Math.hypot(dx,dz);
+    if(c.m)c.m.visible=on&&d<R;if(d>R+S*2){if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.delete(k);}}
+  if(!on)return;for(let cx=c0x;cx<=c1x;cx++)for(let cz=c0z;cz<=c1z;cz++){const k=cx+','+cz;if(GRASS.chunks.has(k))continue;
+    const dx=Math.max(0,Math.abs((cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((cz+0.5)*S-pz)-S/2);if(Math.hypot(dx,dz)>R)continue;
+    if(made++>=2)return;GRASS.chunks.set(k,{cx,cz,m:grassChunk(cx,cz)});}}
+
 /* ---------- the named shops ---------- */
 function signFont(px,bold){return `${bold?900:700} ${px}px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif`;}
 function bread(g,x,y,s,type){g.save();g.translate(x,y);
@@ -4460,14 +4540,14 @@ function pineLayers(list){inst(new THREE.CylinderGeometry(0.18,0.3,1,7).translat
 pineLayers(PINES);
 // forest on the hills around the town
 const TREES=[];for(let n=0;n<900;n++){const x=-330+rnd()*660,z=-258+rnd()*430;if(!(z<-182||Math.abs(x)>202))continue;if(x>-82&&x<-38&&z>-180&&z<-122)continue;if(Math.abs(x)<34&&z>-236)continue;if(inDeckView(x,z))continue;TREES.push({x,z,s:2.2+rnd()*2.6,col:C3(pick(['#3f7a45','#4f8a4a','#356a3c','#5a9450']))});}
-inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),TREES,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*0.9,e.z);d.scale.set(e.s,e.s*1.15,e.s);},{cast:false});
+for(const k of [0,1])inst(CANOPY[k],LEAF,TREES.filter((e,i)=>i%2===k),(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*0.95,e.z);d.scale.set(e.s*0.8,e.s*0.92,e.s*0.8);d.rotation.y=e.x;},{cast:false});
 // far mountains round the back and the sides of the town: the land the town sits in, so from the sea or the lighthouse
 // the hills do not just stop. Hazy blue-green and far enough for the fog to soften them
 { const r=mulberry(4242),ML=[];
   for(let k=0;k<46;k++){const a=-Math.PI-0.42+(Math.PI+0.84)*(k+r()*0.6)/46,R=560+r()*260,s=150+r()*110;
     ML.push({x:Math.cos(a)*R*1.15,z:-60+Math.sin(a)*R,s,h:(80+r()*120)*(Math.abs(Math.cos(a))>0.8?0.8:1),y:r()*6,col:C3(['#6f8f86','#7a9a8e','#68867f','#809e94'][k%4])});}
   for(let k=0;k<26;k++){const a=-Math.PI-0.3+(Math.PI+0.6)*(k+0.5)/26,R=380+r()*60;ML.push({x:Math.cos(a)*R*1.1,z:-60+Math.sin(a)*R*0.9,s:90+r()*50,h:45+r()*40,y:r()*6,col:C3(['#4f7a5a','#5a8562','#486f52'][k%3])});}
-  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4,e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
+  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4+Math.max(0,H(clamp(e.x,-560,560),clamp(e.z,-460,472))),e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
 // vending machines (two of them are open for business)
 const vendTex=canvasTex(64,128,(g,w,h)=>{g.fillStyle='#f4f4f0';g.fillRect(0,0,w,h);g.fillStyle='#cfe7f2';g.fillRect(5,8,w-10,62);
   for(let r=0;r<3;r++)for(let c=0;c<5;c++){g.fillStyle=pick(['#3a7bd5','#e2584a','#4f9a5a','#f2c230','#8a5a3a','#ffffff']);g.fillRect(8+c*10.4,12+r*20,7,14);g.fillStyle='#e2584a';g.fillRect(9+c*10.4,28+r*20,5,2);}
@@ -4627,7 +4707,7 @@ const SHRINE={x:-60,z:-124.6};
   // the grove keeps clear of the stalls along the approach, the plaque rack and the sacred tree
   const big=[];for(let k=0;k<14;k++){const a=rnd()*TAU,r=7+rnd()*10;big.push({x:x+Math.cos(a)*r,z:-150+Math.sin(a)*14,s:3+rnd()*2});}
   const grove=big.filter(t=>Math.abs(t.x-x)>8.6&&Math.hypot(t.x-(x+7.4),t.z-(hz+1))>3.5&&Math.hypot(t.x-(x-8.2),t.z-(hz+2))>4);
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#2f5d3a'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s,e.s*1.4,e.s);},{cast:true});
+  for(const k of [0,1])inst(CANOPY[k],LEAF,grove.filter((e,i)=>i%2===k).map(e=>({...e,col:C3(k?'#35663f':'#2f5d3a')})),(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s*0.82,e.s*1.2,e.s*0.82);d.rotation.y=e.x;},{cast:true});
   inst(new THREE.CylinderGeometry(0.25,0.35,1,7).translate(0,0.5,0),tm('#5a4232'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z),e.z);d.scale.set(1,e.s*1.2,1);});
 }
 const LOOKOUT={x:0,z:-212};
@@ -4844,9 +4924,8 @@ const BEACHHOUSE={x:40,z:SHORE+10};
   for(const e of woods){const r=0.12*e.s;collide(e.x-r,e.x+r,e.z-r,e.z+r,'tree');HILL_TREES.push(e);}
   const broad=woods.filter(e=>!e.cedar),ced=woods.filter(e=>e.cedar);
   inst(new THREE.CylinderGeometry(0.16,0.26,1,6).translate(0,0.5,0),tm('#6b4a36'),woods.map(e=>({...e,col:null})),(e,d)=>{d.position.set(e.x,e.y-0.3,e.z);d.scale.set(e.s*0.5,e.s*1.2,e.s*0.5);});
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),broad,(e,d)=>{d.position.set(e.x,e.y+e.s*1.35,e.z);d.scale.set(e.s,e.s*0.82,e.s);d.rotation.set(e.lean,e.s*3,0);},{cast:true});
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),broad.map(e=>({...e,col:e.col.clone().multiplyScalar(1.12)})),(e,d)=>{d.position.set(e.x+e.s*0.45,e.y+e.s*1.75,e.z-e.s*0.2);d.scale.setScalar(e.s*0.62);});
-  inst(new THREE.ConeGeometry(1,1,7).translate(0,0.5,0),tm('#ffffff'),ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(e.x,e.y+e.s*0.5,e.z);d.scale.set(e.s*0.75,e.s*2.6,e.s*0.75);d.rotation.z=e.lean*0.5;},{cast:true});
+  for(const k of [0,1])inst(CANOPY[k],LEAF,broad.filter((e,i)=>i%2===k),(e,d)=>{d.position.set(e.x,e.y+e.s*1.45,e.z);d.scale.set(e.s*0.85,e.s*0.78,e.s*0.85);d.rotation.set(e.lean,e.s*3,0);},{cast:true});
+  inst(CEDAR,NEEDLE,ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(e.x,e.y+e.s*0.45,e.z);d.scale.set(e.s*0.85,e.s*2.7,e.s*0.85);d.rotation.set(0,e.s*5,e.lean*0.5);},{cast:true});
   const mx=-285,mz=-40,my=H(mx,mz),mast=new THREE.Group();mast.position.set(mx,my,mz);world.add(mast);
   for(let k=0;k<8;k++){const s=new THREE.Mesh(new THREE.CylinderGeometry(1.2-k*0.13,1.33-k*0.13,5,6,1,true),tm(k%2?'#f2f2ee':'#d8452f',{side:THREE.DoubleSide}));s.position.y=2.5+k*5;mast.add(s);}
   mast.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6),new THREE.MeshBasicMaterial({color:'#ff4030'})).translateY(41));
@@ -5935,7 +6014,8 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   dome.material.color.copy(LC[0]);scene.background.copy(LC[1]);scene.fog.color.copy(LC[1]);hemi.color.copy(LC[2]);hemi.groundColor.copy(LC[3]);hemi.intensity=v(4);
   sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
-  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty years
+  NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
   NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 // the unlit face takes the colour and strength of the light around it (sun and sky), so it does not glow at dusk or at night
@@ -5988,7 +6068,7 @@ function setCam(a){if(a[0]==='off'){ST.cam=null;document.body.classList.remove('
 async function steps(list){for(const s of list||[])if(await step(s)==='stop')return'stop';}
 async function step(s){const [op,...a]=s;switch(op){
   case 'say':await sayP(a[0],a.slice(1));break;                         // ['say', who, line, line…]  who: an NPC id, 'nagi', '' for narration, or any name
-  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
+  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>typeof o[0]==='function'?o[0]():o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
     if(a[3])SAVE.flags[a[3]]=a[2].indexOf(opts[i])+1;                    //   an optional 4th item names a flag that records the answer (1, 2, … in the written order)
     return steps(opts[i][1]);}
   case 'set':SAVE.flags[a[0]]=a[1]===undefined?1:a[1];break;           // ['set', flag, value]
@@ -6028,7 +6108,12 @@ function renderClock(){const h=((SAVE.hour%24)+24)%24,hh=Math.floor(h),mm=Math.f
   $('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]} ${hh}:${String(mm).padStart(2,'0')}`;}
 // what to do next, when no errand is being followed: the tracker shows today's aim (storyGoal in p5d_events.js)
 function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.hidden=true;return;}tr.hidden=false;tr.innerHTML='';
-  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);}
+  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);
+  // the errands in hand under it, with their numbers; tap one to follow it
+  const act=activeQuests();if(!act.length)return;const box=document.createElement('div');box.className='others';
+  act.slice(0,4).forEach((o,k)=>{const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
+    r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});
+  if(act.length>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${act.length-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
@@ -6148,7 +6233,7 @@ function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
   if(!RACE.mark){RACE.mark=marker(MK.target);RACE.mark.scale.set(1.6,1.6,1);}
   RACE.mark.visible=true;RACE.mark.position.set(g[0],G(g[0],g[1])+3.2+Math.sin(clock*3)*0.12,g[1]);
   tr.hidden=false;
-  if(!RACE.on){RACE.count-=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール。W で蹴って、A D で曲がる</span><span class="meter">${RACE.count>0.2?Math.ceil(RACE.count-0.2):'スタート！'}</span>`;
+  if(!RACE.on){RACE.count-=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">${devText('桟橋の先がゴール。W で蹴って、A D で曲がる')}</span><span class="meter">${RACE.count>0.2?Math.ceil(RACE.count-0.2):'スタート！'}</span>`;
     if(RACE.count<=0.2){RACE.on=true;toast('スタート！',true);}return;}
   RACE.t+=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール</span><span class="meter">${RACE.t.toFixed(1)} 秒</span>`;
   const done=Math.hypot(P.x-g[0],P.z-g[1])<g[2],over=RACE.t>RACE.limit;
@@ -6199,7 +6284,8 @@ function updateCrowd(dt){const on=festOn()&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+
   for(const S of YATAI)if(S.g.visible!==false&&Math.hypot(P.x-S.fx,P.z-S.fz)<60)poseHuman(S.k,'stand',dt,{look:Math.hypot(P.x-S.fx,P.z-S.fz)<6?player.g.position:null});}
 
 /* buying at the stalls: food is eaten on the spot; the goldfish pool and the cork guns open a little game */
-function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand emptylet best=null;
+function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand empty
+  let best=null;
   for(const S of YATAI){const d=Math.hypot(P.x-S.fx,P.z-S.fz);if(d<2.3&&(!best||d<best.d))best={kind:'yatai',S,d,label:`${S.game?'あそぶ':'買う'}　${S.name}（${S.price}円）`,verb:S.game?'あそぶ':'買う'};}
   return best;}
 const FOODS=['kakigori','yakisoba','ringo','takoyaki'];
@@ -6415,7 +6501,7 @@ function vanChaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;VAN.scr
 const ogBusy=()=>!!(OG.run||OG.van);
 function ogHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
   if(OG.run){b.textContent='逃げろ！';s.textContent=OG.run.o.hint;const g=OG.run.o.to;m.textContent=`のこり ${Math.round(Math.hypot(P.x-g[0],P.z-g[1]))} m`;}
-  else{b.textContent='黒いバンを止めろ！';s.textContent='W で蹴って追いつく。バンのうしろにぴったりつけたら勝ち';const d=Math.max(0,Math.round(Math.hypot(P.x-VAN.x,P.z-VAN.z)-2.6));
+  else{b.textContent='黒いバンを止めろ！';s.textContent=devText('W で蹴って追いつく。バンのうしろにぴったりつけたら勝ち');const d=Math.max(0,Math.round(Math.hypot(P.x-VAN.x,P.z-VAN.z)-2.6));
     m.textContent=`バンまで ${d} m　ねばり ${'■'.repeat(Math.round(OG.van.near/0.5))}${'□'.repeat(Math.max(0,5-Math.round(OG.van.near/0.5)))}`;}
   tr.append(b,s,m);}
 // the end of the van chase: a camera beside the stopped van
@@ -6427,7 +6513,7 @@ function updateOG(dt){
   if(SAVE.flags.ending_org&&!OG.van){VAN.scripted=true;VAN.g.visible=false;VAN.box.on=false;}   // the van was taken away
   if(OG.run){const R=OG.run,o=R.o;R.t+=dt;const v=Math.min(8.4,6.2+R.t*0.08);
     for(const h of OG.men){const p=h.g.position,dx=P.x-p.x,dz=P.z-p.z,d=Math.hypot(dx,dz);p.x+=dx/d*v*dt;p.z+=dz/d*v*dt;p.y=G(p.x,p.z);h.g.rotation.y=Math.atan2(dx,dz);poseHuman(h,'walk',dt,{rate:13});
-      if(d<1.3){$('fade').style.opacity=1;setTimeout(()=>{$('fade').style.opacity=0;},500);toast('つかまった……！ もう一度',true);ogPlace();break;}}
+      if(d<1.3){$('fade').style.opacity=1;setTimeout(()=>{$('fade').style.opacity=0;},500);toast('つかまった……！ もう一度',true);R.t=0;ogPlace();break;}}
     OG.mark.visible=true;OG.mark.position.set(o.to[0],G(o.to[0],o.to[1])+3.2+Math.sin(clock*3)*0.12,o.to[1]);ogHUD($('tracker'));
     if(Math.hypot(P.x-o.to[0],P.z-o.to[1])<o.to[2]){OG.run=null;OG.mark.visible=false;for(const h of OG.men)h.g.visible=false;R.res();}}
   if(OG.van){const C=OG.van;C.t+=dt;VAN.v=Math.min(12.2,9+C.t*0.25);VAN.x-=VAN.v*dt;
@@ -6530,9 +6616,10 @@ const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
+  if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
   if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
-  if(d===1){if(!SAVE.qs.melon)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
+  if(d===1){if(qs('melon').state===0)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
     if(!seen('d1_mio'))return eve?'夕方の桟橋の先へ行ってみる':'ひと休みしたら、夕方の桟橋へ';return home;}
   if(d<=3){if(d===3&&!seen('d3_sota'))return '浜辺のソウタくんに会いに行く';
     if(eve||night)return seen('d'+d+'_mio')?home:'夕方の桟橋の先へ。それから'+home;
@@ -6550,7 +6637,7 @@ function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id
   if(f.route===2&&!f.ending_org){if(!seen('o4_baker'))return 'こむぎ堂の主人に、ゆうべのことを話す';
     const todo=[];if(!f.drones_cleared)todo.push('こむぎ堂の主人に話してドローン迎撃');if(qs('og_evidence').state<2)todo.push('ソウタくんの探偵団の聞き込み');
     if(todo.length)return todo.join('、')+(d>=5?'':'。夕方は'+home);return d>=5?'こむぎ堂の主人に話して、黒いバンを追う':'あしたの夜が勝負。夕方は'+home;}
-  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
+  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':night?home+'。あしたの夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
   return eve||night?home:null;}
 const endingsSeen=()=>['ending_calm','ending_horror','ending_org'].filter(k=>SAVE.flags[k]).length;
 // back to the third evening: the route and what happened on it are undone; endings, friendships and finished errands stay
@@ -6561,6 +6648,13 @@ function rewindTo3(){SAVE.day=3;SAVE.hour=18.2;SAVE.cap=18.9;SAVE.flags.mio_left
   if(URA.on)uraExit();renderClock();save();}
 NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
+// a choice on the third night, marked once that way has been followed to its ending
+const wayLabel=(l,k)=>()=>l+(SAVE.flags[k]?'（見た）':'');
+// when it gets dark: where to go now (usually home to grandma)
+function darkHint(){const f=SAVE.flags;if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
+  if(f.route===3&&SAVE.day===6&&!f.contest_done)return '暗くなってきた。浜辺のソウタくんが、大会で待っている';
+  if(f.route===2&&!f.ending_org&&SAVE.day>=5&&f.drones_cleared&&qs('og_evidence').state===2)return '暗くなってきた。こむぎ堂の主人に話して、黒いバンを追おう';
+  return '暗くなってきた。トメばあちゃんのところへ帰ろう';}
 const EVENTS=[
   // a check of every kind of step; only index.html#storytest starts it
   {id:'storytest',once:false,when:{test:()=>location.hash==='#storytest'&&!SAVE.flags.storytest_done},script:[
@@ -6667,7 +6761,7 @@ const EVENTS=[
       ['考えとくね',[['say','sota','えー。出てくれたら、ぜったい盛り上がるのになあ。']]]]],
     ['say','sota','あとね、最近、黒いバンのおじさんが浜で写真を撮ってるんだ。','灯台の方ばっかり。なんか、こわいよね。'],
     ['set','saw_van']]},
-  {id:'d3_baker',on:{talk:'baker'},when:{minDay:3,test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og},script:[
+  {id:'d3_baker',on:{talk:'baker'},when:{minDay:3,flags:{route:0},test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og},script:[
     ['say','baker','……ナギちゃん、だったな。黒いバンを見たか。','オーシャンゲートの黒崎って男が、この前うちにパンを買いに来た。','ああいう目をした男は、昔の仕事でよく見た。……あいつらには近づくなよ。'],
     ['say','nagi','昔の仕事……？'],
     ['say','baker','おっと、しゃべりすぎた。メロンパン、焼きたてだよ。'],
@@ -6688,11 +6782,11 @@ const EVENTS=[
       [['say','','庭の塀の上を、白い猫が走った。西のトンネルの方へ駆けていく。']]],
     ['if',{flags:{mio_warn:1}},[['say','nagi','（ミオが言ってた「扉」って、これのこと……？）']]],
     ['ask','nagi','どうする？',[
-      ['おもちを追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:1}}],
-      ['白い猫を追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:0}}],
-      ['黒いバンを追って、港へ',[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
-      ['外の物音を確かめに、坂の下へ',[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
-      ['……そのまま寝る',[['set','route',3]]]]],
+      [wayLabel('おもちを追って、西のトンネルへ','ending_horror'),[['set','route',1]],{flags:{met_mochi:1}}],
+      [wayLabel('白い猫を追って、西のトンネルへ','ending_horror'),[['set','route',1]],{flags:{met_mochi:0}}],
+      [wayLabel('黒いバンを追って、港へ','ending_org'),[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
+      [wayLabel('外の物音を確かめに、坂の下へ','ending_org'),[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
+      [wayLabel('……そのまま寝る','ending_calm'),[['set','route',3]]]]],
     ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。','海岸通りを西へ。トンネルの入り口で、白い猫がこちらをふり返り、闇の中へ消えた。'],
       ['say','nagi','待って、おもち……！'],['fade','out'],['ura',true],['time',23.3,0],['cam','off'],['warp',...URA_START],
       ['cam',[URA_START[0]+9,G(URA_START[0],URA_START[1])+3,URA_START[1]-4],[URA_START[0]-2,G(URA_START[0],URA_START[1])+1.2,URA_START[1]],1.2,'cut'],['fade','in'],
@@ -6746,7 +6840,7 @@ const EVENTS=[
     ['cam','npc','tome',3.4],
     ['say','tome','さあ、今日は夏祭りだよ！','スケボー大会は夕方からだって。ソウタが浜で待ってるよ。'],
     ['cam','off'],['toast','浜辺のソウタくんに話しかけると、スケボー大会が始まる']]},
-  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{day:6,flags:{route:3,contest_done:0}},script:[
+  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{minDay:6,flags:{route:3,contest_done:0}},script:[
     ['say','sota','おねえちゃん！ いよいよ大会だよ！','コースは見晴らし台から桟橋の先まで。町の人もみんな見に来てるんだ！'],
     ['if',{flags:{promise_contest:0}},[['ask','nagi','（大会に出る？）',[['出る！',[]],['もう少しあとで',[['say','sota','えー！ 待ってるからね！'],['stop']]]]]]],
     ['fade','out'],['time',17.3,0],['warp',3,-196,0],
@@ -6945,12 +7039,18 @@ const EVENTS=[
   // after the true ending the evening runs on into the night (until grandma takes you home), to see the lighthouse
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
-    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]]]},
+    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['call',()=>toast(darkHint())]]]]},
   // in the daytime from the second day, grandma lets you rest until the evening
   {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
     ['ask','tome','どうする？ ちょっと休んでいくかい？',[
       ['夕方まで、ひと休みする',[['fade','out'],['time',16.6,0],['cap',18.9],['wait',0.4],['fade','in'],['toast','夕方になった'],['say','tome','よく休めたかい。夕方の海は、きれいだよ。']]],
       ['まだ町を回る',[['say','tome','気をつけて行っておいで。']]]]]]},
+  // the festival day does not end before the contest
+  {id:'home_fest',on:{talk:'tome'},once:false,when:{day:6,phase:['evening','night'],flags:{route:3,contest_done:0}},script:[
+    ['say','tome','まだ帰るには早いよ。スケボー大会は、これからだろう？','ソウタが浜で待ってるよ。']]},
+  // pointers once an ending is seen: Mio can take you back; with all three, grandma has something to say
+  {id:'rewind_hint',when:{test:()=>endingsSeen()===1&&!ST.run},script:[['wait',1.5],['toast','夕方、桟橋の先のミオに話すと、3日目の夜に戻って、ちがう道を選べる',true]]},
+  {id:'true_hint',when:{test:()=>endingsSeen()>=3&&!SAVE.flags.true_key&&!SAVE.flags.ending_true},script:[['wait',1.5],['toast','三つの道を見終えた。トメばあちゃんが、何か話したそうにしている',true]]},
   // grandma takes you home in the evening: the night's event, then the next morning
   {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[
     ['ask','tome','そろそろ、家に帰ろうか？',[
@@ -7637,7 +7737,7 @@ const islPathD=(u,w)=>{let best=1e9;for(let i=1;i<ISL_PATH.length;i++){const [ax
     for(let k=0;k<400&&trees.length<70;k++){const u=-95+R()*190,w=-40+R()*80,h=islH(u,w);
       if(h<SEA_Y+2.5||islPathD(u,w)<3.5||Math.hypot(u-18,w)<14||(u>-60&&u<-48&&w<-18))continue;if(trees.some(t=>Math.hypot(t.u-u,t.w-w)<4))continue;
       trees.push({u,w,x:ISL.x+u,z:ISL.z+w,y:h,s:0.8+R()*0.6,col:new THREE.Color(['#3f7a4e','#4a8656','#386f47'][trees.length%3])});}
-    inst(new THREE.ConeGeometry(1.6,4.6,8),itm('#ffffff'),trees,(e,d)=>{d.position.set(e.x,e.y+2.6*e.s+1,e.z);d.scale.setScalar(e.s);},{cast:true});
+    inst(CEDAR,NEEDLE,trees,(e,d)=>{d.position.set(e.x,e.y+0.4*e.s+0.9,e.z);d.scale.set(1.75*e.s,5*e.s,1.75*e.s);d.rotation.y=e.u;},{cast:true});
     inst(new THREE.CylinderGeometry(0.16,0.22,1.6,6),itm('#6b4a36'),trees,(e,d)=>{d.position.set(e.x,e.y+0.7*e.s,e.z);d.scale.setScalar(e.s);});
     for(const t of trees)collide(t.x-0.35,t.x+0.35,t.z-0.35,t.z+0.35,'tree');
     const bx=LH.x-7,bz=LH.z-7,b=new THREE.Group();b.position.set(bx,islG(bx,bz),bz);b.rotation.y=Math.PI;world.add(b);
@@ -8022,7 +8122,7 @@ function stepOf(q){const s=qs(q.id);return s.state===1?q.steps[s.step]:null;}
 function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2)&&(!q.when||cond(q.when));}
 function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;SAVE.flags['bond_'+q.giver]=(SAVE.flags['bond_'+q.giver]||0)+1;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
     if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}if(q.done)q.done();
-    if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=nx?nx.id:null;}}
+    if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=storyGoal()||!nx?null:nx.id;}}   // back to today's aim when the story has one
   autoSteps();save();renderHUD();}
 function autoSteps(){for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='have'&&invN(st.item)>=st.n){qs(q.id).step++;toast(`${ITEMS[st.item].name}がそろった。次は「${q.steps[qs(q.id).step].hint}」`);}
   if(st&&st.type==='photos'&&SPOTS.every(p=>SAVE.spots.includes(p.id))){qs(q.id).step++;toast('5か所すべて撮れた！');}}}
@@ -8035,21 +8135,27 @@ function targetOf(q){const st=stepOf(q);if(!st)return null;
   return null;}
 
 /* ---------- HUD ---------- */
-function toast(t,gold){const d=document.createElement('div');d.className='tst card'+(gold?' gold':'');d.textContent=t;const T=$('toast');T.appendChild(d);while(T.children.length>3)T.firstChild.remove();setTimeout(()=>d.remove(),2900);}
+function toast(t,gold){t=devText(t);const d=document.createElement('div');d.className='tst card'+(gold?' gold':'');d.textContent=t;const T=$('toast');T.appendChild(d);while(T.children.length>3)T.firstChild.remove();setTimeout(()=>d.remove(),2900);}
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
-function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
+function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
+  if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
   if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
     // the other errands under it, each with its number (the same as on the map); tap one to follow it instead
     const act=activeQuests(),k0=act.indexOf(q);b.prepend(Object.assign(document.createElement('i'),{className:'qn',textContent:k0+1}));b.querySelector('.qn').style.background=QCOL[k0%QCOL.length];
-    if(act.length>1){const box=document.createElement('div');box.className='others';
+    const goal=!ST.run&&storyGoal();
+    if(act.length>1||goal){const box=document.createElement('div');box.className='others';
+      if(goal){const r=document.createElement('button');r.className='oq';const n=Object.assign(document.createElement('i'),{className:'qn',textContent:'★'});n.style.background='var(--sun)';r.append(n,document.createTextNode('今日のめあて'));
+        r.title=goal;r.onclick=e=>{e.stopPropagation();SAVE.tracked=null;save();renderHUD();};box.appendChild(r);}
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
+// the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
+const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);
 const activeQuests=()=>QUESTS.filter(q=>qs(q.id).state===1),QCOL=['#e2584a','#3a7bd5','#2e9a5a','#a070d0','#e8a23a','#d0508a'];
 function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){const s=qs(q.id);if(s.state===0&&!available(q))continue;
   const d=document.createElement('div');d.className='q'+(SAVE.tracked===q.id?' on':'');const st=document.createElement('span');
@@ -8074,7 +8180,8 @@ function openShop(key){shopCam=key;const m=MENUS[key];$('shopName').textContent=
 // dialog
 let DLG=null;
 // phones: lines written with keys in mind name the on-screen buttons instead
-function devText(s){return hasTouch&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン'):s;}
+function devText(s){return(('ontouchstart' in window)||navigator.maxTouchPoints>0)&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン')
+  .replace('L でライト','「ライト」ボタンでライト').replace('W で蹴って','「ける」で蹴って').replace('A D で曲がる','スティックで曲がる'):s;}
 function say(who,lines,done){DLG={who,lines:lines.map(devText),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
 function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;if(!ST.run)talkNpc=null;if(d)d();}
 $('dialog').addEventListener('click',nextLine);
@@ -8086,7 +8193,7 @@ function talk(n){talkNpc=n;
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
   const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
   for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='deliver'&&st.to===n.id){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}}
-  for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
+  for(const q of STORY_FIRST){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
   if(n.id==='baker'&&!DRONE.active&&SAVE.flags.route===2&&SAVE.seen.o4_baker&&!SAVE.flags.drones_cleared){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}
@@ -8285,7 +8392,9 @@ function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
-function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
+function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
+// the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
+function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=f?'スケボー':'歩く';if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
 function stepPlayer(dt){
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
   if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
@@ -8300,7 +8409,8 @@ function stepPlayer(dt){
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
       if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else rideNow();
-      $('bFoot').textContent=P.foot?'乗る':'降りる';}}
+      padLabels();}}
+  padLabels();
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns
   // smoothly to face it; a small push walks, a full push runs. On the board the stick still steers like the keys.
@@ -8423,7 +8533,7 @@ function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q o
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
-  updateStory(dt);
+  WIND.t.value=clock;updateGrass();updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;

@@ -33,7 +33,8 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   dome.material.color.copy(LC[0]);scene.background.copy(LC[1]);scene.fog.color.copy(LC[1]);hemi.color.copy(LC[2]);hemi.groundColor.copy(LC[3]);hemi.intensity=v(4);
   sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
-  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty years
+  NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
   NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 // the unlit face takes the colour and strength of the light around it (sun and sky), so it does not glow at dusk or at night
@@ -86,7 +87,7 @@ function setCam(a){if(a[0]==='off'){ST.cam=null;document.body.classList.remove('
 async function steps(list){for(const s of list||[])if(await step(s)==='stop')return'stop';}
 async function step(s){const [op,...a]=s;switch(op){
   case 'say':await sayP(a[0],a.slice(1));break;                         // ['say', who, line, line…]  who: an NPC id, 'nagi', '' for narration, or any name
-  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
+  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>typeof o[0]==='function'?o[0]():o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
     if(a[3])SAVE.flags[a[3]]=a[2].indexOf(opts[i])+1;                    //   an optional 4th item names a flag that records the answer (1, 2, … in the written order)
     return steps(opts[i][1]);}
   case 'set':SAVE.flags[a[0]]=a[1]===undefined?1:a[1];break;           // ['set', flag, value]
@@ -126,7 +127,12 @@ function renderClock(){const h=((SAVE.hour%24)+24)%24,hh=Math.floor(h),mm=Math.f
   $('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]} ${hh}:${String(mm).padStart(2,'0')}`;}
 // what to do next, when no errand is being followed: the tracker shows today's aim (storyGoal in p5d_events.js)
 function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.hidden=true;return;}tr.hidden=false;tr.innerHTML='';
-  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);}
+  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);
+  // the errands in hand under it, with their numbers; tap one to follow it
+  const act=activeQuests();if(!act.length)return;const box=document.createElement('div');box.className='others';
+  act.slice(0,4).forEach((o,k)=>{const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
+    r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});
+  if(act.length>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${act.length-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
