@@ -1,0 +1,11 @@
+{
+  "appId": "com.umimachi.app",
+  "appName": "海街スケート",
+  "webDir": "www",
+  "backgroundColor": "#cfe8f5",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#cfe8f5"
+  }
+}
