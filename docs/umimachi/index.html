@@ -4502,8 +4502,8 @@ const STATION={x0:46,x1:84,z0:203.2,z1:208.8};
   const b=benchMesh();b.position.set(65,y+0.85,205);world.add(b);
   collide(46,84,203.2,208.8,'plat');
 }
-// ramps up to the platform at both ends
-STATION.ramp=[{x0:40,x1:46},{x0:84,x1:90}];
+// a step up to the platform at both ends
+{ const y=G(65,206);for(const [x0,x1] of [[42,46],[84,88]]){const m=M(new THREE.BoxGeometry(x1-x0,0.43,5.6),tm('#c9c2b4'),0.02);m.position.set((x0+x1)/2,y+0.215,206);m.receiveShadow=true;world.add(m);collide(x0,x1,203.2,208.8,'step',y+0.43);}}
 
 /* ---------- the beach ---------- */
 { // sea wall with openings, steps down to the sand
@@ -6518,9 +6518,9 @@ const RIDE={on:false,train:TRAM,car:0,s:-1,x:0,look:0};
 const canRide=()=>!URA.on&&!DRONE.active&&!ST.run&&state==='play';
 const tramOpen=T=>T.at&&T.door>0.8&&T.wait>1.2;
 // the door on the platform side (north of the rails) of a car, in the world, and a point on the platform in front of it
-function tramDoor(T,k,dx,out){const g=T.cars[k],s=T.platS();return g.localToWorld(new THREE.Vector3(dx,0,s*(1.3+(out||0))));}
-function tramNear(){const T=AREA==='inaka'?INKT:TRAM;if(!tramOpen(T)||!canRide())return null;let best=null,bd=3;
-  for(let k=0;k<2;k++)for(const dx of [-4,4]){const p=tramDoor(T,k,dx,0.8),d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best={kind:'tram',T,k,dx,d,label:'乗る　うみまち線',verb:'乗る'};}}
+function tramDoor(T,k,dx,out,side){const g=T.cars[k],s=side||T.platS();return g.localToWorld(new THREE.Vector3(dx,0,s*(1.3+(out||0))));}
+function tramNear(){const T=AREA==='inaka'?INKT:TRAM;if(!tramOpen(T)||!canRide())return null;let best=null,bd=3.6;   // the doors open on both sides
+  for(let k=0;k<2;k++)for(const dx of [-4,4])for(const sd of [-1,1]){const p=tramDoor(T,k,dx,0.8,sd),d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best={kind:'tram',T,k,dx,d,label:'乗る　うみまち線',verb:'乗る'};}}
   return best;}
 function rideNear(){const T=RIDE.train;return tramOpen(T)?{kind:'alight',label:`降りる　${T.at.name}`,verb:'降りる'}:null;}
 // the free seat on that side of the car nearest to x
@@ -6949,6 +6949,7 @@ const XINGS=STREETS.filter(S=>S.ax==='z'&&S.a<TRAM_Z&&S.b>TRAM_Z).map(S=>({S,x:S
 function updateTram(dt){
   const T=TRAM;tramMove(dt);
   const xs=T.cars.map(g=>g.position.x);T.box.x0=Math.min(...xs)-6;T.box.x1=Math.max(...xs)+6;
+  if(!RIDE.on&&AREA==='town'&&P.x>T.box.x0-0.3&&P.x<T.box.x1+0.3&&Math.abs(P.z-TRAM_Z)<1.7){P.z=TRAM_Z+(P.z<TRAM_Z?-1.75:1.75);if(T.v>0.5)P.bump=0.4;}   // on the rails as it comes: pushed to the side
   for(const X of XINGS){const d=Math.min(Math.abs(T.box.x0-X.x),Math.abs(T.box.x1-X.x));const inside=X.x>T.box.x0-2&&X.x<T.box.x1+2;
     const near=inside||d<55&&((T.dir>0&&T.box.x1<X.x)||(T.dir<0&&T.box.x0>X.x))&&T.v>0.3;X.down+=((near?1:0)-X.down)*Math.min(1,dt*1.6);X.box.on=X.down>0.5;
     for(const gt of X.gates){gt.pivot.rotation.z=gt.sd*(1-X.down)*-1.45;const on=X.down>0.1&&Math.floor(clock*3)%2===0;gt.lamps[0].material.color.set(X.down>0.1&&on?'#ff3a24':'#3a0d0a');gt.lamps[1].material.color.set(X.down>0.1&&!on?'#ff3a24':'#3a0d0a');}}
@@ -7340,7 +7341,7 @@ function stepPlayer(dt){
   P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
   const nx=P.x+F[0]*P.v*dt,nz=P.z+F[1]*P.v*dt,R=0.3;
   let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
-  const c=ok&&hits(nx,nz,R,P.y);
+  const c=ok&&!hits(P.x,P.z,R,P.y)&&hits(nx,nz,R,P.y);   // already inside something (a tram stopping on her, a gate coming down): she can always get out
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
