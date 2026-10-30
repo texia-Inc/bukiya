@@ -135,4 +135,5 @@ function driveVRM(h,dt,s){const V=h.vrm,B=V.B,R=V.rest;V.t+=dt;
   if(s.talk&&Math.floor(h.t*7)%2)want.Fcl_MTH_A=0.5;
   for(const m of V.morphs){const D=m.morphTargetDictionary;for(const key in D){const short=key.replace(/^.*\./,'');const target=want[short]||0;const i=D[key];
       const cur=m.morphTargetInfluences[i];m.morphTargetInfluences[i]=short==='Fcl_EYE_Close'?target:cur+(target-cur)*Math.min(1,dt*10);}}
+  if(V.extras)for(const k in V.extras){const e=V.extras[k];if(e.update&&e.objs[0].visible)e.update(dt,s||{});}   // the cape hangs and streams back
 }
