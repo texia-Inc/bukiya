@@ -127,9 +127,9 @@ const RIDE={on:false,train:TRAM,car:0,s:-1,x:0,look:0};
 const canRide=()=>!URA.on&&!DRONE.active&&!ST.run&&state==='play';
 const tramOpen=T=>T.at&&T.door>0.8&&T.wait>1.2;
 // the door on the platform side (north of the rails) of a car, in the world, and a point on the platform in front of it
-function tramDoor(T,k,dx,out){const g=T.cars[k],s=T.platS();return g.localToWorld(new THREE.Vector3(dx,0,s*(1.3+(out||0))));}
-function tramNear(){const T=AREA==='inaka'?INKT:TRAM;if(!tramOpen(T)||!canRide())return null;let best=null,bd=3;
-  for(let k=0;k<2;k++)for(const dx of [-4,4]){const p=tramDoor(T,k,dx,0.8),d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best={kind:'tram',T,k,dx,d,label:'乗る　うみまち線',verb:'乗る'};}}
+function tramDoor(T,k,dx,out,side){const g=T.cars[k],s=side||T.platS();return g.localToWorld(new THREE.Vector3(dx,0,s*(1.3+(out||0))));}
+function tramNear(){const T=AREA==='inaka'?INKT:TRAM;if(!tramOpen(T)||!canRide())return null;let best=null,bd=3.6;   // the doors open on both sides
+  for(let k=0;k<2;k++)for(const dx of [-4,4])for(const sd of [-1,1]){const p=tramDoor(T,k,dx,0.8,sd),d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best={kind:'tram',T,k,dx,d,label:'乗る　うみまち線',verb:'乗る'};}}
   return best;}
 function rideNear(){const T=RIDE.train;return tramOpen(T)?{kind:'alight',label:`降りる　${T.at.name}`,verb:'降りる'}:null;}
 // the free seat on that side of the car nearest to x

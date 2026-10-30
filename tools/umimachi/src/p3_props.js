@@ -251,8 +251,8 @@ const STATION={x0:46,x1:84,z0:203.2,z1:208.8};
   const b=benchMesh();b.position.set(65,y+0.85,205);world.add(b);
   collide(46,84,203.2,208.8,'plat');
 }
-// ramps up to the platform at both ends
-STATION.ramp=[{x0:40,x1:46},{x0:84,x1:90}];
+// a step up to the platform at both ends
+{ const y=G(65,206);for(const [x0,x1] of [[42,46],[84,88]]){const m=M(new THREE.BoxGeometry(x1-x0,0.43,5.6),tm('#c9c2b4'),0.02);m.position.set((x0+x1)/2,y+0.215,206);m.receiveShadow=true;world.add(m);collide(x0,x1,203.2,208.8,'step',y+0.43);}}
 
 /* ---------- the beach ---------- */
 { // sea wall with openings, steps down to the sand

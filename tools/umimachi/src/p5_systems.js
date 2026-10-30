@@ -15,6 +15,7 @@ const XINGS=STREETS.filter(S=>S.ax==='z'&&S.a<TRAM_Z&&S.b>TRAM_Z).map(S=>({S,x:S
 function updateTram(dt){
   const T=TRAM;tramMove(dt);
   const xs=T.cars.map(g=>g.position.x);T.box.x0=Math.min(...xs)-6;T.box.x1=Math.max(...xs)+6;
+  if(!RIDE.on&&AREA==='town'&&P.x>T.box.x0-0.3&&P.x<T.box.x1+0.3&&Math.abs(P.z-TRAM_Z)<1.7){P.z=TRAM_Z+(P.z<TRAM_Z?-1.75:1.75);if(T.v>0.5)P.bump=0.4;}   // on the rails as it comes: pushed to the side
   for(const X of XINGS){const d=Math.min(Math.abs(T.box.x0-X.x),Math.abs(T.box.x1-X.x));const inside=X.x>T.box.x0-2&&X.x<T.box.x1+2;
     const near=inside||d<55&&((T.dir>0&&T.box.x1<X.x)||(T.dir<0&&T.box.x0>X.x))&&T.v>0.3;X.down+=((near?1:0)-X.down)*Math.min(1,dt*1.6);X.box.on=X.down>0.5;
     for(const gt of X.gates){gt.pivot.rotation.z=gt.sd*(1-X.down)*-1.45;const on=X.down>0.1&&Math.floor(clock*3)%2===0;gt.lamps[0].material.color.set(X.down>0.1&&on?'#ff3a24':'#3a0d0a');gt.lamps[1].material.color.set(X.down>0.1&&!on?'#ff3a24':'#3a0d0a');}}
@@ -406,7 +407,7 @@ function stepPlayer(dt){
   P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
   const nx=P.x+F[0]*P.v*dt,nz=P.z+F[1]*P.v*dt,R=0.3;
   let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
-  const c=ok&&hits(nx,nz,R,P.y);
+  const c=ok&&!hits(P.x,P.z,R,P.y)&&hits(nx,nz,R,P.y);   // already inside something (a tram stopping on her, a gate coming down): she can always get out
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
