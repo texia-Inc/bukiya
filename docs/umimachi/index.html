@@ -5411,6 +5411,29 @@ function ownsKey(save,key){return STARTER.has(key)||!!(save.owned&&save.owned[ke
 function ownsItem(save,slot,it){return it.id==='none'||(it.colors||[[]]).some((c,ci)=>ownsKey(save,slot+':'+it.id+':'+ci));}
 function drawPrize(){const x=Math.random();const r=x<RATES.SR?'SR':x<RATES.SR+RATES.R?'R':'N';const pool=PRIZES.filter(p=>p.r===r);return pool[Math.floor(Math.random()*pool.length)];}
 
+/* ---------- Mio's model: made in VRoid Studio (design/mio.vrm) and set in her rest pose in Blender (tools/umimachi/mio_vrm.py).
+   It takes the place of her procedural figure; she only breathes, keeps her head a little bowed and turns it towards Nagi
+   when Nagi comes close. If mio.glb cannot be loaded she stays the procedural figure. ---------- */
+function makeMioVRM(gl,n){const model=gl.scene,B={};
+  model.traverse(o=>{if(o.isBone)B[o.name]=o;if(!o.isMesh)return;o.castShadow=true;o.frustumCulled=false;
+    const src=o.material,face=FACE_MATS.test(src.name||'');
+    if(src.map){src.map.encoding=THREE.LinearEncoding;src.map.needsUpdate=true;}
+    const col=src.map?new THREE.Color(1,1,1):src.color.clone().convertLinearToSRGB();
+    const opt={map:src.map||null,color:col,skinning:!!o.isSkinnedMesh,morphTargets:!!o.morphTargetInfluences,transparent:src.transparent,alphaTest:src.alphaTest,side:src.side,depthWrite:src.depthWrite};
+    o.material=face?new THREE.MeshBasicMaterial(opt):new THREE.MeshToonMaterial(Object.assign(opt,{gradientMap:GRAD}));
+    if(face)UNLIT_MATS.push({m:o.material,c:col.clone()});});
+  n.h.g.traverse(o=>{if(o.isMesh)o.visible=false;});n.h.g.add(model);
+  const V=n.vrm={head:B.J_Bip_C_Head,neck:B.J_Bip_C_Neck,chest:B.J_Bip_C_UpperChest||B.J_Bip_C_Chest,q0:{},t:0,ly:0};
+  for(const k of ['head','neck','chest'])if(V[k])V.q0[k]=V[k].quaternion.clone();}
+const _mioL=new THREE.Vector3();
+function poseMio(n,dt,look){const V=n.vrm;if(!V)return;V.t+=dt;
+  let yaw=0;if(look){_mioL.copy(look);n.h.g.worldToLocal(_mioL);yaw=clamp(Math.atan2(_mioL.x,_mioL.z),-0.9,0.9);}
+  V.ly+=(yaw-V.ly)*Math.min(1,dt*2.5);
+  if(V.chest){V.chest.quaternion.copy(V.q0.chest);V.chest.rotateX(Math.sin(V.t*1.5)*0.012);}   // breathing
+  if(V.neck){V.neck.quaternion.copy(V.q0.neck);V.neck.rotateY(V.ly*0.4);}
+  if(V.head){V.head.quaternion.copy(V.q0.head);V.head.rotateY(V.ly*0.6);V.head.rotateX(0.1);}}   // a little bowed
+if(window.MIO_GLTF)makeMioVRM(window.MIO_GLTF,NPCS.mio);
+
 /* ---------- drone fight: Oceangate's surveillance drones over the town, shot down with the pair of pistols the baker (an old
    agent) lends. Only in this event do the pistols come out: the arms aim at the nearest drones in front and the shots alternate
    left and right. Drones circle ahead of you, take three hits, fall and burst on the ground. They shoot back: the eye glows and a
@@ -6850,7 +6873,8 @@ function updateCamera(dt){
 let state='title',clock=0,last=performance.now();
 function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-n.x,P.z-n.z),here=present(n);n.box.on=here;n.h.g.visible=d<110&&here;if(!n.h.g.visible)continue;
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
-    poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
+    poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});
+    if(n.vrm)poseMio(n,dt,d<9||talkNpc===n?_mioL.set(P.x,P.y+1.3,P.z).clone():null);}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
 function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);tMark.visible=beam.visible=!!t&&state==='play'&&!calm;
@@ -6905,7 +6929,10 @@ const heroineReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader)return 
   const emb=document.getElementById('heroineGLB');   // the single-file build carries the model inline
   if(emb){try{const bin=Uint8Array.from(atob(emb.textContent.trim()),c=>c.charCodeAt(0));ld.parse(bin.buffer,'',ok,fail);}catch(e){fail();}}
   else ld.load('heroine.glb',ok,undefined,fail);});
-Promise.all([fontReady,heroineReady]).then(main);
+// Mio's model, the same way (the procedural figure stays if it cannot be fetched; the single-file build does without it)
+const mioReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader||document.getElementById('heroineGLB'))return res();const t=setTimeout(res,25000);
+  new THREE.GLTFLoader().load('mio.glb',g=>{window.MIO_GLTF=g;clearTimeout(t);res();},undefined,()=>{clearTimeout(t);res();});});
+Promise.all([fontReady,heroineReady,mioReady]).then(main);
 </script>
 
 </body>

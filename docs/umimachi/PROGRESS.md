@@ -72,6 +72,7 @@
 - **2日目**：朝、ばあちゃんと話す（ゆうべのこと、ミオのこと） → 黒いバンに近づくと気づく → しおさいのマスターに聞くと「オーシャンゲート社」 → 浜で白い猫「おもち」に会う → 夕方、ミオが名前を名乗り「30年前、灯台の灯りが消えた」 → 夜、ばあちゃんから灯台と、30年前にいなくなった子と、母の話
 - **3日目**：ソウタくんにスケボー大会に誘われる、黒いバンが灯台を撮っている話 → こむぎ堂の主人が「黒崎には近づくな」 → 夕方、ミオが「今夜、扉が開く」 → 夜、分かれ道
 - **分かれ道**：おもちを追って西のトンネルへ（ホラー）／黒いバンを追って港へ（悪の組織）／そのまま寝る（のほほん）。会ったもの・聞いたことで選択肢の言葉が変わる（おもちに会っていなければ「白い猫」、バンを知らなければ「外の物音」）。選んだルートは `route` に記録される（1 ホラー、2 組織、3 のほほん）。ルートの中身はまだなので、いまは4日目の朝になる
+- ミオのモデルは VRoid Studio で作った（黒髪のボブ、白いノースリーブのワンピース、白いサンダル、150cm、色白）。後ろで手を組んで立ち、ゆっくり息をして、少しうつむき、ナギが近づくと顔を向ける
 - ミオは夕方だけ桟橋の先にいる。島の灯台は30年前から消えている設定なので、夜も光らない（`lighthouse_lit` を立てると光る）
 - 記録しているもの：おつかいを終えると `bond_<人>` が増える。ほかに `bond_mio`、`bond_mochi`、`bond_sota`、`met_mio`、`met_mochi`、`saw_tower`、`saw_van`、`heard_og`、`heard_kurosaki`、`heard_lighthouse`、`promise_contest`、`mio_warn`
 
@@ -147,6 +148,7 @@
 |---|---|
 | `docs/umimachi/index.html` | ゲーム本体（生成物。直接編集しない） |
 | `docs/umimachi/heroine.glb` | 主人公モデル（服の部品つき、約3.3MB） |
+| `docs/umimachi/mio.glb` | ミオのモデル（VRoid Studio で作成、約3.4MB） |
 | `tools/umimachi/src/` | ゲームのソース（分割）。`python3 build.py` で `index.html` を生成 |
 | `tools/umimachi/src/p1_shell.html` | 画面のHTMLとCSS |
 | `tools/umimachi/src/p2_core.js` | 描画の土台、地形、通り、建物 |
@@ -161,6 +163,7 @@
 | `tools/umimachi/src/p5g_og.js` | 悪の組織ルート（黒崎と男たち、走って追ってくる、黒いバンの追跡） |
 | `tools/umimachi/src/p5h_true.js` | 真ルート（五つの灯り、スタッフロール） |
 | `tools/umimachi/src/p5i_tricks.js` | スケボーの技（キックフリップ、ショービット、グラインド）と手すり |
+| `tools/umimachi/src/p4d_mio.js` | ミオのモデルの読み込みと、息・顔を向ける動き |
 | `tools/umimachi/src/p5d_events.js` | 出来事のデータ（シナリオ本体） |
 | `tools/umimachi/src/p5_systems.js` | 電車・車、おつかい、お店、操作、カメラ、着がえ画面、ガチャ画面 |
 | `tools/umimachi/heroine_vrm.py` | 主人公モデルと服の部品を作る Blender スクリプト |
