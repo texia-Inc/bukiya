@@ -96,6 +96,12 @@ const ITEMS={
     for(const [x,y,c] of [[0.38,0.34,'#e2584a'],[0.6,0.3,'#f2c230'],[0.5,0.42,'#f0a0b8'],[0.32,0.48,'#ffffff'],[0.66,0.46,'#a070d0']]){g.fillStyle=c;g.beginPath();g.arc(s*x,s*y,s*0.1,0,7);g.fill();}}},
   chochin:{name:'提灯',d:(g,s)=>{g.fillStyle='#2b2520';g.fillRect(s*0.4,s*0.14,s*0.2,s*0.08);g.fillRect(s*0.4,s*0.78,s*0.2,s*0.08);g.fillStyle='#e8452f';g.beginPath();g.ellipse(s/2,s/2,s*0.24,s*0.3,0,0,7);g.fill();
     g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=1.5;for(let k=-2;k<=2;k++){g.beginPath();g.moveTo(s*0.27,s/2+k*s*0.1);g.lineTo(s*0.73,s/2+k*s*0.1);g.stroke();}}},
+  kingyo:{name:'金魚',d:(g,s)=>{g.fillStyle='rgba(160,215,240,.75)';g.beginPath();g.moveTo(s*0.3,s*0.2);g.lineTo(s*0.7,s*0.2);g.lineTo(s*0.82,s*0.6);g.quadraticCurveTo(s/2,s*0.98,s*0.18,s*0.6);g.fill();
+    g.fillStyle='#f2582a';g.beginPath();g.ellipse(s*0.5,s*0.6,s*0.12,s*0.07,0.3,0,7);g.fill();g.beginPath();g.moveTo(s*0.4,s*0.57);g.lineTo(s*0.3,s*0.5);g.lineTo(s*0.32,s*0.66);g.fill();g.fillStyle='#e8452f';g.fillRect(s*0.36,s*0.16,s*0.28,s*0.05);}},
+  caramel:{name:'キャラメル',d:(g,s)=>{g.fillStyle='#f2c230';g.fillRect(s*0.24,s*0.3,s*0.52,s*0.4);g.fillStyle='#c8372d';g.fillRect(s*0.24,s*0.44,s*0.52,s*0.12);}},
+  kendama:{name:'けん玉',d:(g,s)=>{g.fillStyle='#d9b26a';g.fillRect(s*0.46,s*0.4,s*0.08,s*0.48);g.fillRect(s*0.3,s*0.5,s*0.4,s*0.08);g.fillStyle='#c8372d';g.beginPath();g.arc(s/2,s*0.28,s*0.15,0,7);g.fill();}},
+  nuigurumi:{name:'くまのぬいぐるみ',d:(g,s)=>{g.fillStyle='#e8b48a';g.beginPath();g.arc(s*0.3,s*0.26,s*0.1,0,7);g.arc(s*0.7,s*0.26,s*0.1,0,7);g.arc(s/2,s*0.42,s*0.22,0,7);g.arc(s/2,s*0.74,s*0.2,0,7);g.fill();
+    g.fillStyle='#2b2520';g.beginPath();g.arc(s*0.42,s*0.4,s*0.03,0,7);g.arc(s*0.58,s*0.4,s*0.03,0,7);g.fill();}},
   letter:{name:'手紙',d:(g,s)=>{g.fillStyle='#fffaf0';g.fillRect(s*0.18,s*0.3,s*0.64,s*0.42);g.strokeStyle='#c9b9a2';g.lineWidth=2;g.strokeRect(s*0.18,s*0.3,s*0.64,s*0.42);g.beginPath();g.moveTo(s*0.18,s*0.3);g.lineTo(s/2,s*0.52);g.lineTo(s*0.82,s*0.3);g.stroke();g.fillStyle='#d23a2c';g.fillRect(s*0.66,s*0.34,s*0.1,s*0.1);}},
 };
 const ICON={};for(const id in ITEMS){const c=document.createElement('canvas');c.width=c.height=64;ITEMS[id].d(c.getContext('2d'),64);ICON[id]=c.toDataURL();}
@@ -331,6 +337,9 @@ const closetFov=()=>camera.aspect<0.8?36:30;
   const up=e=>{CL.pts.delete(e.pointerId);CL.pd=0;};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
   el.addEventListener('wheel',e=>{if(e.target!==el)return;e.preventDefault();CL.zoom=clamp(CL.zoom*Math.exp(e.deltaY*0.0012),0.3,1.5);},{passive:false});}
 $('closetBtn').addEventListener('click',openCloset);
+{ const c=$('yCv');for(const [ev,ty] of [['pointerdown','down'],['pointermove','move'],['pointerup','up'],['pointercancel','up']])c.addEventListener(ev,e=>{if(ty==='down')try{c.setPointerCapture(e.pointerId);}catch(_){}
+    e.preventDefault();kingyoPtr(e,ty);shatekiPtr(e,ty);});
+  $('yPlay').onclick=yStart;$('yClose').onclick=()=>{if(YG.on&&YG.S.game==='kingyo')kingyoBreak();YG.on=false;closeModal();};}
 // the gacha at Maruya: rarity first, then an even pick among that rarity's prizes; duplicates turn into kakera
 const RCOL={N:'#6f9fd0',R:'#d977a3',SR:'#e8b030'},RNAME={N:'ノーマル',R:'レア',SR:'スーパーレア'};
 function swatchHTML(c){const a=c&&c[0]||'#7a4a30',b=c&&c[1]||a;return `<span class="sw" style="display:inline-block;background:linear-gradient(135deg,${a} 55%,${b} 55%)"></span>`;}
@@ -468,7 +477,7 @@ function stepPlayer(dt){
 let near=null;
 function findNear(){if(RIDE.on)return rideNear();if(BOAT.on)return null;let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
   const il=islNear();if(il)add(il.d,il);if(URA.on){const u=uraNear();if(u)add(u.d-0.3,u);}
-  const tn=tramNear();if(tn)add(tn.d-0.5,tn);const ik=inkNear();if(ik)add(ik.d,ik);
+  const tn=tramNear();if(tn)add(tn.d-0.5,tn);const yt=festNear();if(yt)add(yt.d-0.4,yt);const ik=inkNear();if(ik)add(ik.d,ik);
   // someone with a story event waiting comes first when two people stand close together
   for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
@@ -485,7 +494,7 @@ function act(o){if(!o)return;
   else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);if(st.gain){addItem(...st.gain);toast(`${ITEMS[st.gain[0]].name}を手に入れた`);}advance(o.q);});}
-  else if(o.kind==='gacha')openGacha();
+  else if(o.kind==='gacha')openGacha();else if(o.kind==='yatai')yataiAct(o);
   else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);
   else if(o.kind==='hide'||o.kind==='unhide')uraAct(o);
   else if(o.kind==='boat'||o.kind==='lhdoor'||o.kind==='lhdown'||o.kind==='lamp')islAct(o);}

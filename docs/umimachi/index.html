@@ -59,7 +59,7 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 #dialog .nx{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--ink-soft);animation:bob 1s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(3px)}}
 #closet{place-items:end center;background:linear-gradient(transparent 45%,rgba(20,50,70,.22))}
-#closet .sheet{width:min(560px,100%);max-height:48vh;overflow-y:auto;padding:12px 14px 0;gap:6px}
+#closet .sheet{width:min(560px,100%);max-height:48vh;max-height:48dvh;overflow-y:auto;padding:12px 14px 0;gap:6px}
 #closet .hint{margin:0;font-size:12px;color:var(--ink-soft)}
 #closet{touch-action:none;cursor:grab}#closet .sheet{touch-action:pan-y;cursor:auto}
 #closet .bar{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:10px;padding:8px 0 12px;background:inherit;background:linear-gradient(rgba(255,250,240,0),#fffaf0 30%)}
@@ -82,7 +82,9 @@ body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.c
 .chip.on{background:var(--sea-deep);color:#fff;border-color:var(--sea-deep)}
 .sw{appearance:none;width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.18);cursor:pointer;padding:0}
 .sw.on{box-shadow:0 0 0 3px var(--sea-deep)}
-#gacha .sheet{width:min(520px,100%);max-height:88vh;overflow-y:auto}
+#gacha .sheet{width:min(520px,100%);padding-bottom:0}
+#gacha .gbar{position:sticky;bottom:0;display:flex;justify-content:flex-end;padding:8px 0 12px;margin-top:4px;background:linear-gradient(rgba(255,250,240,0),#fffaf0 35%)}
+#yCv{width:100%;height:auto;border-radius:12px;touch-action:none;display:block}
 #gachaStage{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:120px;align-items:center}
 .cap{width:70px;height:70px;border-radius:50%;background:linear-gradient(#fff 50%,var(--c) 50%);box-shadow:0 3px 0 rgba(0,0,0,.15),inset 0 0 0 3px rgba(0,0,0,.08);animation:capdrop .5s cubic-bezier(.3,1.6,.6,1) both,capshake .5s .5s ease-in-out 2}
 @keyframes capdrop{from{transform:translateY(-120px) rotate(-90deg);opacity:0}to{transform:none;opacity:1}}
@@ -99,7 +101,8 @@ body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.c
 #gachaShop .it{display:inline-flex;align-items:center;gap:4px;margin:3px;padding:3px 8px;border-radius:999px;background:#f3efe6;font:700 11px var(--round)}
 #gachaShop .it.have{background:#dff0e4}#gachaShop .it button{font:900 10px var(--round);border:0;border-radius:999px;background:var(--sea-deep);color:#fff;padding:2px 6px;cursor:pointer}
 .modal{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:rgba(20,50,70,.28);pointer-events:auto}
-.sheet{width:min(480px,100%);max-height:calc(100% - 32px);overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sheet{width:min(480px,100%);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.sheet>*{flex-shrink:0}   /* a tall sheet scrolls instead of squashing its rows */
 .sheet h2{margin:0;font-family:var(--title);font-size:22px;color:var(--ink)}
 .sheet .sub{margin:-6px 0 0;font-size:12px;color:var(--ink-soft)}
 .row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;background:#fff}
@@ -225,13 +228,16 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   <div class="card" id="closetMini" hidden><div class="mrow"><button class="ar" id="cmSp">‹</button><b id="cmSlot"></b><button class="ar" id="cmSn">›</button><button class="ar" id="cmIp">‹</button><span id="cmItem"></span><button class="ar" id="cmIn">›</button></div>
     <div class="mrow" id="cmCols"></div>
     <div class="mrow mb"><button class="chip" id="cmBg">背景：町</button><button class="chip" id="cmSpin">くるくる</button><button class="chip" id="cmView">正面</button><button class="chip" id="cmShot">撮る</button><span style="flex:1"></span><button class="btn ghost" id="cmBack">一覧へ</button></div></div></div>
+<div class="modal" id="yatai" hidden><div class="sheet card"><h2 id="yName"></h2><p class="sub" id="ySub"></p><canvas id="yCv" width="340" height="250"></canvas>
+  <p class="sub" id="yInfo" style="text-align:center;margin:0;min-height:1.4em;font-weight:700"></p>
+  <div style="display:flex;justify-content:space-between;gap:8px"><button class="btn ghost" id="yClose">屋台をはなれる</button><button class="btn" id="yPlay"></button></div></div></div>
 <div class="modal" id="gacha" hidden><div class="sheet card"><h2>まるやのカプセルトイ</h2>
   <p class="sub">1回100円。出た服はすぐ「着がえ」で着られる。ダブりは「かけら」になって、ほしい物と交換できる。</p>
   <div id="gachaStage"></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0"><button class="btn" id="gachaOne">1回まわす（100円）</button><button class="btn" id="gachaFive">5回まわす（500円）</button></div>
   <p class="sub" id="gachaInfo" style="text-align:center"></p>
   <details id="gachaEx"><summary>かけら交換・コレクション</summary><div id="gachaShop"></div></details>
-  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn ghost" id="gachaClose">とじる</button></div></div></div>
+  <div class="gbar"><button class="btn ghost" id="gachaClose">とじる</button></div></div></div>
 <div id="flash"></div>
 <div class="cbar" id="cbarT"></div><div class="cbar" id="cbarB"></div><div id="fade"></div>
 <div id="credits" hidden><div><h2>海街スケート</h2><p>真ルート「灯台」</p><p style="margin-top:18px">汐見ナギ ・ トメばあちゃん ・ ミオ ・ ナツミ<br>こむぎ堂の主人 ・ ソウタと海街少年探偵団 ・ おもち<br>そして、海街のみなさん</p>
@@ -4482,23 +4488,108 @@ const SHRINE={x:-60,z:-124.6};
   const kasagi=M(new THREE.BoxGeometry(5.6,0.32,0.5),blk,0.025);kasagi.position.y=4.55;g.add(kasagi);
   const shimaki=M(new THREE.BoxGeometry(5.0,0.3,0.42),vermil,0.02);shimaki.position.y=4.25;g.add(shimaki);
   const nuki=M(new THREE.BoxGeometry(4.6,0.24,0.28),vermil,0.02);nuki.position.y=3.4;g.add(nuki);
-  const gaku=M(new THREE.BoxGeometry(0.6,0.75,0.08),blk,0.01);gaku.position.y=3.85;g.add(gaku);
+  const gtx=canvasTex(48,64,(c,w,h)=>{c.fillStyle='#2b2520';c.fillRect(0,0,w,h);c.strokeStyle='#d9b44a';c.lineWidth=3;c.strokeRect(3,3,w-6,h-6);c.fillStyle='#d9b44a';c.font=signFont(18,true);c.textAlign='center';c.textBaseline='middle';c.fillText('海',w/2,h*0.3);c.fillText('見',w/2,h*0.7);});
+  const gaku=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.8,0.08),[blk,blk,blk,blk,tmap(gtx),tmap(gtx)]);outline(gaku,0.01);gaku.position.y=3.85;g.add(gaku);
+  for(const sd of [-1,1]){g.add(M(new THREE.CylinderGeometry(0.34,0.38,0.32,14),blk,0.012).translateX(sd*1.9).translateY(0.16));
+    const tip=M(new THREE.BoxGeometry(0.5,0.3,0.5),blk,0.012);tip.position.set(sd*2.75,4.66,0);tip.rotation.z=sd*0.28;g.add(tip);}
+  { const rp=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.75,3.05,0.18),new THREE.Vector3(0,2.85,0.2),new THREE.Vector3(1.75,3.05,0.18)]);
+    g.add(M(new THREE.TubeGeometry(rp,16,0.07,6,false),tm('#d9c98f'),0.008));
+    const sh=canvasTex(32,64,(c,w,h)=>{c.clearRect(0,0,w,h);c.fillStyle='#ffffff';for(let k=0;k<4;k++)c.fillRect(k%2?14:4,k*16,14,14);});
+    for(const px of [-1,0,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(0.18,0.38),tmap(sh,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide}));m.position.set(px,2.66+Math.abs(px)*0.12,0.2);g.add(m);}}
   // stone path climbing to the hall
   const path=[];for(let zz=z-1.5;zz>-160;zz-=1.6)path.push({x,z:zz});
   inst(new THREE.BoxGeometry(2.2,0.18,1.4),tm('#9d978b'),path,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+0.05,e.z);},{recv:true});
   for(const [lx,lz] of [[x-2.6,z-6],[x+2.6,z-6],[x-2.6,z-24],[x+2.6,z-24]]){const l=new THREE.Group();l.position.set(lx,G(lx,lz),lz);const st=tm('#a9a397');
     l.add(M(new THREE.CylinderGeometry(0.28,0.36,0.3,8),st,0.015).translateY(0.15));l.add(M(new THREE.CylinderGeometry(0.12,0.12,0.9,8),st,0.012).translateY(0.75));
     l.add(M(new THREE.BoxGeometry(0.55,0.4,0.55),st,0.015).translateY(1.35));l.add(M(new THREE.ConeGeometry(0.55,0.4,4),st,0.015).translateY(1.75).rotateY(Math.PI/4));world.add(l);collide(lx-0.35,lx+0.35,lz-0.35,lz+0.35,'prop',G(lx,lz)+1.95);}
+  // the hall: a raised wooden floor with a vermilion railing round it, white walls between vermilion pillars, latticed doors,
+  // a hipped-and-gabled copper roof with crossed boards and logs on its ridge, and a porch over the steps with the bell and the offering box
   const hz=-162,hy=G(x,hz),hall=new THREE.Group();hall.position.set(x,hy,hz);world.add(hall);
-  hall.add(M(new THREE.BoxGeometry(7,0.7,6),tm('#b8b2a6'),0.02).translateY(0.35));
-  hall.add(M(new THREE.BoxGeometry(5.6,2.8,4.6),tm('#8a5a3a'),0.025).translateY(2.1));
-  const roof=M(prism,tm('#3a3d44'),0);roof.scale.set(7.6,1.9,6.6/1.732);roof.position.y=3.5+1.27*0.5+0.35;hall.add(roof);
-  hall.add(M(new THREE.BoxGeometry(1.4,0.7,0.6),tm('#6b4a2e'),0.015).translateY(1.05).translateZ(2.9));
-  const rope=M(new THREE.TorusGeometry(1.6,0.09,8,24,Math.PI),tm('#e9dcb0'),0);rope.rotation.z=Math.PI;rope.position.set(0,3.4,2.4);hall.add(rope);
-  collide(x-3.5,x+3.5,hz-3,hz+3,'bld');
+  const stone=tm('#b8b2a6'),wood=tm('#6b4a2e'),dark=tm('#4a3326'),white=tm('#f1eadb'),cop=tm('#4f7a6c'),gold=tm('#d9b44a');
+  const H=(geo,mat,ol,px,py,pz)=>{const m=M(geo,mat,ol);m.position.set(px||0,py||0,pz||0);hall.add(m);return m;};
+  H(new THREE.BoxGeometry(7,0.7,6),stone,0.02,0,0.35,0);
+  for(const px of [-2.9,-1,1,2.9])for(const pz of [-2.4,0,2.4])H(new THREE.CylinderGeometry(0.1,0.1,0.42,8),dark,0,px,0.91,pz);
+  H(new THREE.BoxGeometry(6.4,0.14,5.4),wood,0.015,0,1.15,0);
+  // the railing round the verandah, open in the middle of the front for the steps
+  for(const [px,pz,w,d] of [[0,-2.65,6.3,0.08],[-3.15,0,0.08,5.3],[3.15,0,0.08,5.3],[-2.05,2.65,2.2,0.08],[2.05,2.65,2.2,0.08]]){
+    H(new THREE.BoxGeometry(w,0.07,d),vermil,0.008,px,1.62,pz);H(new THREE.BoxGeometry(w,0.05,d),vermil,0,px,1.36,pz);}
+  for(const [px,pz] of [[-3.15,-2.65],[3.15,-2.65],[-3.15,2.65],[3.15,2.65],[-0.95,2.65],[0.95,2.65],[-3.15,0],[3.15,0]])H(new THREE.BoxGeometry(0.1,0.5,0.1),vermil,0.008,px,1.43,pz);
+  H(new THREE.BoxGeometry(4.6,2.3,3.8),white,0.02,0,2.37,0);
+  for(const px of [-2.3,-0.78,0.78,2.3])for(const pz of [-1.9,1.9])H(new THREE.CylinderGeometry(0.12,0.12,2.5,10),vermil,0.012,px,2.47,pz);
+  for(const px of [-2.3,2.3])H(new THREE.CylinderGeometry(0.12,0.12,2.5,10),vermil,0.012,px,2.47,0);
+  for(const py of [1.5,3.38])H(new THREE.BoxGeometry(4.75,0.18,3.95),vermil,0.012,0,py,0);
+  const lat=canvasTex(128,96,(g,w,h)=>{g.fillStyle='#f6efdf';g.fillRect(0,0,w,h);g.fillStyle='#c23a28';for(let k=0;k<=w;k+=8)g.fillRect(k,0,2,h);for(let k=0;k<=h;k+=8)g.fillRect(0,k,w,2);
+    g.fillRect(0,0,w,5);g.fillRect(0,h-5,w,5);g.fillRect(w/2-3,0,6,h);});
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.75),tmap(lat));door.position.set(0,2.4,1.905);hall.add(door);
+  for(const sd of [-1,1]){const dd=door.clone();dd.scale.set(0.9,1,1);dd.position.x=sd*1.54;hall.add(dd);}
+  // brackets, then the roof: a hipped lower part with a gable on top
+  H(new THREE.BoxGeometry(5.2,0.32,4.4),dark,0.012,0,3.62,0);
+  H(new THREE.BoxGeometry(7.6,0.14,6.6),dark,0.015,0,3.86,0);
+  const hip=H(new THREE.CylinderGeometry(0.46,1,1,4,1).rotateY(Math.PI/4),cop,0.02,0,4.42,0);hip.scale.set(3.75/0.707,1.0,3.25/0.707);
+  const gab=H(prism,cop,0.02,0,5.4,0);gab.scale.set(3.6,1.05,1.52/1.732*1.15);
+  for(const sd of [-1,1]){const tri=H(prism,white,0,sd*1.82,5.36,0);tri.scale.set(0.04,0.8,1.3/1.732*1.15);}
+  H(new THREE.BoxGeometry(3.9,0.2,0.26),dark,0.012,0,6.47,0);
+  for(const sd of [-1,1])for(const r of [-0.55,0.55]){const c=H(new THREE.BoxGeometry(0.08,1.1,0.16),dark,0.008,sd*1.95,6.75,0);c.rotation.z=r;}
+  for(const px of [-1.1,-0.37,0.37,1.1]){H(new THREE.CylinderGeometry(0.1,0.1,0.62,10).rotateX(Math.PI/2),dark,0.008,px,6.66,0);
+    for(const sd of [-1,1])H(new THREE.CylinderGeometry(0.105,0.105,0.04,10).rotateX(Math.PI/2),gold,0,px,6.66,sd*0.31);}
+  // the porch: two pillars, a sloping roof, a beam with the sacred rope and its paper streamers
+  for(const sd of [-1,1])H(new THREE.CylinderGeometry(0.11,0.11,3.55,10),vermil,0.012,sd*1.3,1.78,3.85);
+  H(new THREE.BoxGeometry(2.9,0.2,0.24),vermil,0.01,0,3.45,3.85);
+  const por=H(new THREE.BoxGeometry(3.4,0.12,2.6),cop,0.015,0,3.86,3.05);por.rotation.x=0.26;
+  H(new THREE.BoxGeometry(3.4,0.1,0.1),dark,0,0,3.52,4.3);
+  const rp=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.25,3.28,3.95),new THREE.Vector3(0,2.98,4.0),new THREE.Vector3(1.25,3.28,3.95)]);
+  H(new THREE.TubeGeometry(rp,20,0.11,8,false),tm('#d9c98f'),0.01);
+  const shide=canvasTex(32,64,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#ffffff';for(let k=0;k<4;k++){const y=k*16;g.fillRect(k%2?14:4,y,14,14);}});
+  const shM=tmap(shide,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide});
+  for(const px of [-0.8,0,0.8]){const m=new THREE.Mesh(new THREE.PlaneGeometry(0.22,0.45),shM);m.position.set(px,2.7+Math.abs(px)*0.18,4.02);hall.add(m);}
+  // the bell on its red-and-white rope, the offering box at the foot of the steps
+  const bellRope=canvasTex(8,64,(g,w,h)=>{for(let k=0;k<8;k++){g.fillStyle=['#c8372d','#f4efe2','#7a3a8a'][k%3];g.fillRect(0,k*8,w,8);}},true);
+  H(new THREE.CylinderGeometry(0.05,0.05,2.1,8),tmap(bellRope),0,0,2.2,4.25);
+  H(new THREE.SphereGeometry(0.2,14,10),gold,0.012,0,3.28,4.25);
+  for(let k=0;k<4;k++){const tt=1.15-0.29*k;H(new THREE.BoxGeometry(1.9,tt,0.3),k?stone:wood,0.012,0,tt/2,2.75+0.3*k);}
+  const slat=canvasTex(128,64,(g,w,h)=>{g.fillStyle='#6b4a2e';g.fillRect(0,0,w,h);g.fillStyle='#4a3326';for(let k=4;k<w;k+=12)g.fillRect(k,14,6,h-14);g.fillStyle='#f4efe2';g.font=signFont(13,true);g.textAlign='center';g.fillText('奉　納',w/2,11);});
+  const box=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.75,0.6),[wood,wood,dark,wood,tmap(slat),wood]);box.castShadow=true;outline(box,0.015);box.position.set(0,0.38,4.3);hall.add(box);
+  // hanging lanterns under the eaves
+  for(const sd of [-1,1]){H(new THREE.CylinderGeometry(0.012,0.012,0.4,4),dark,0,sd*2.7,3.58,3.0);const lt=H(new THREE.CylinderGeometry(0.16,0.12,0.36,6),tm('#3d3a33'),0.008,sd*2.7,3.2,3.0);
+    H(new THREE.ConeGeometry(0.24,0.16,6),tm('#3d3a33'),0,sd*2.7,3.44,3.0);}
+  collide(x-3.5,x+3.5,hz-3,hz+3,'bld');collide(x-1,x+1,hz+3,hz+4.65,'prop',hy+1.15);
+  // the guardian dogs on their stones, one each side in front of the hall
+  const kom=(sd)=>{const kx=x+sd*3.1,kz=hz+6.2,g2=new THREE.Group();g2.position.set(kx,G(kx,kz),kz);g2.rotation.y=-sd*0.55;world.add(g2);const st=tm('#a39d90'),ds=tm('#8f897d');
+    const K=(geo,mat,px,py,pz)=>{const m=M(geo,mat,0.012);m.position.set(px,py,pz);g2.add(m);return m;};
+    K(new THREE.BoxGeometry(0.8,0.75,0.9),ds,0,0.375,0);K(new THREE.BoxGeometry(0.9,0.12,1.0),ds,0,0.81,0);
+    K(new THREE.BoxGeometry(0.42,0.36,0.6),st,0,1.05,-0.1).rotation.x=-0.1;K(new THREE.SphereGeometry(0.26,10,8),st,0,1.35,0.12).scale.set(0.9,1.15,0.8);
+    for(const px of [-0.12,0.12])K(new THREE.CylinderGeometry(0.06,0.07,0.42,6),st,px,1.08,0.26);
+    K(new THREE.SphereGeometry(0.27,10,8),ds,0,1.72,0.12).scale.set(1.05,1,0.85);K(new THREE.SphereGeometry(0.2,10,8),st,0,1.7,0.28);
+    K(new THREE.BoxGeometry(0.2,0.12,0.12),st,0,1.63,0.45);for(const px of [-0.09,0.09])K(new THREE.SphereGeometry(0.035,6,4),tm('#2b2520'),px,1.78,0.44);
+    const tail=K(new THREE.SphereGeometry(0.16,8,6),ds,0,1.38,-0.42);tail.scale.set(1,1.4,0.7);
+    collide(kx-0.5,kx+0.5,kz-0.5,kz+0.5,'prop',G(kx,kz)+0.87);};
+  kom(-1);kom(1);
+  // the water basin by the gate, under its own little roof, with ladles across it
+  { const tx=x-6.4,tz=z-2.9,ty=G(tx,tz),g2=new THREE.Group();g2.position.set(tx,ty,tz);world.add(g2);const T=(geo,mat,ol,px,py,pz)=>{const m=M(geo,mat,ol);m.position.set(px,py,pz);g2.add(m);return m;};
+    for(const px of [-0.85,0.85])for(const pz of [-0.65,0.65])T(new THREE.CylinderGeometry(0.07,0.07,2.3,8),wood,0.01,px,1.15,pz);
+    T(new THREE.BoxGeometry(1.9,0.12,1.5),dark,0.01,0,2.3,0);const rf=T(prism,cop,0.015,0,2.6,0);rf.scale.set(2.3,0.62,2.1/1.732);
+    T(new THREE.BoxGeometry(1.25,0.55,0.75),tm('#9d978b'),0.015,0,0.28,0);const w=new THREE.Mesh(new THREE.PlaneGeometry(1.05,0.55).rotateX(-Math.PI/2),tm('#5aa3c8'));w.position.set(0,0.52,0);g2.add(w);
+    for(const px of [-0.35,0,0.35]){T(new THREE.CylinderGeometry(0.012,0.012,0.7,4).rotateX(Math.PI/2),tm('#d9c08a'),0,px,0.6,0.02);T(new THREE.CylinderGeometry(0.06,0.06,0.09,8),tm('#d9c08a'),0,px,0.6,0.38);}
+    collide(tx-0.95,tx+0.95,tz-0.75,tz+0.75,'prop',ty+0.55);}
+  // the wishing-plaque rack beside the hall
+  { const ex=x+7.4,ez=hz+1,ey=G(ex,ez),g2=new THREE.Group();g2.position.set(ex,ey,ez);g2.rotation.y=-Math.PI/2;world.add(g2);const E=(geo,mat,ol,px,py,pz)=>{const m=M(geo,mat,ol);m.position.set(px,py,pz);g2.add(m);return m;};
+    for(const px of [-1.1,1.1])E(new THREE.CylinderGeometry(0.06,0.06,1.9,8),wood,0.01,px,0.95,0);
+    const rf=E(prism,tm('#3a3d44'),0.01,0,2.05,0);rf.scale.set(2.6,0.36,0.7/1.732);for(const py of [1.05,1.45])E(new THREE.BoxGeometry(2.2,0.05,0.05),wood,0,0,py,0);
+    const ema=canvasTex(32,24,(g,w,h)=>{g.fillStyle='#e2c48e';g.beginPath();g.moveTo(0,8);g.lineTo(16,0);g.lineTo(32,8);g.lineTo(32,24);g.lineTo(0,24);g.fill();g.fillStyle='#c8372d';g.fillRect(4,12,24,3);g.fillStyle='#4a3326';g.fillRect(6,17,20,2);});
+    const eM=tmap(ema,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide}),list=[];for(const py of [0.9,1.3])for(let k=0;k<9;k++)list.push({x:-0.96+k*0.24+(rnd()-0.5)*0.04,y:py,r:(rnd()-0.5)*0.25});
+    inst(new THREE.PlaneGeometry(0.2,0.15),eM,list,(e,d)=>{d.position.set(e.x,e.y,0.04);d.rotation.z=e.r;});
+    collide(ex-0.25,ex+0.25,ez-1.2,ez+1.2,'prop',ey+2);}
+  // the sacred tree with a rope round it
+  { const sx=x-8.2,sz=hz+2,sy=G(sx,sz);const tr=M(new THREE.CylinderGeometry(0.55,0.8,7,10),tm('#5a4232'),0.02);tr.position.set(sx,sy+3.5,sz);world.add(tr);
+    const cn=M(new THREE.IcosahedronGeometry(3.6,1),tm('#2a5434'),0);cn.position.set(sx,sy+8.4,sz);cn.scale.set(1,0.85,1);world.add(cn);
+    const rope2=M(new THREE.TorusGeometry(0.74,0.08,8,24),tm('#d9c98f'),0.008);rope2.rotation.x=Math.PI/2;rope2.position.set(sx,sy+1.7,sz);world.add(rope2);
+    for(let k=0;k<5;k++){const a=k/5*TAU,m=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.34),shM);m.position.set(sx+Math.cos(a)*0.78,sy+1.45,sz+Math.sin(a)*0.78);m.rotation.y=-a+Math.PI/2;world.add(m);}
+    collide(sx-0.8,sx+0.8,sz-0.8,sz+0.8,'prop',sy+7);}
+  // the grove keeps clear of the stalls along the approach, the plaque rack and the sacred tree
   const big=[];for(let k=0;k<14;k++){const a=rnd()*TAU,r=7+rnd()*10;big.push({x:x+Math.cos(a)*r,z:-150+Math.sin(a)*14,s:3+rnd()*2});}
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#2f5d3a'),big.filter(t=>Math.abs(t.x-x)>3.5),(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s,e.s*1.4,e.s);},{cast:true});
-  inst(new THREE.CylinderGeometry(0.25,0.35,1,7).translate(0,0.5,0),tm('#5a4232'),big.filter(t=>Math.abs(t.x-x)>3.5),(e,d)=>{d.position.set(e.x,G(e.x,e.z),e.z);d.scale.set(1,e.s*1.2,1);});
+  const grove=big.filter(t=>Math.abs(t.x-x)>8.6&&Math.hypot(t.x-(x+7.4),t.z-(hz+1))>3.5&&Math.hypot(t.x-(x-8.2),t.z-(hz+2))>4);
+  inst(new THREE.IcosahedronGeometry(1,1),tm('#2f5d3a'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s,e.s*1.4,e.s);},{cast:true});
+  inst(new THREE.CylinderGeometry(0.25,0.35,1,7).translate(0,0.5,0),tm('#5a4232'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z),e.z);d.scale.set(1,e.s*1.2,1);});
 }
 const LOOKOUT={x:0,z:-212};
 { const x=LOOKOUT.x,z=LOOKOUT.z,y=G(x,-206);const g=new THREE.Group();g.position.set(x,y,-206);world.add(g);
@@ -5755,9 +5846,40 @@ function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);upd
 /* ---------- the summer festival of the easy-going route: lanterns over the shrine approach and the shopping street,
    stalls at the shrine, fireworks over the sea, and the downhill race the kids call the skateboard contest ---------- */
 const FEST={lanterns:new THREE.Group(),stalls:new THREE.Group(),bursts:[],fwUntil:0,fwT:0};
+// the stalls: four that sell something to eat on the spot, the goldfish pool and the cork-gun stall
+const YATAI=[
+  {id:'kakigori',sd:-1,z:-132,name:'かき氷',col:'#5aa3d8',price:200,food:true,say:['いらっしゃい！ いちご、メロン、ブルーハワイ！'],eat:['ガリガリの氷に、赤いシロップ。','……つめたーい！ 頭がキーンとする。'],
+   keeper:{skin:'#efc9aa',hair:'#2b2520',style:'short',shirt:'#3a7bd5',bottom:'pants',bottomCol:'#22242a',apron:'#f4efe2'},
+   ware:Mk=>{Mk(new THREE.BoxGeometry(0.5,0.5,0.45),tm('#d8d2c6'),0.01).position.set(-0.8,1.25,-0.15);Mk(new THREE.CylinderGeometry(0.16,0.16,0.04,14).rotateZ(Math.PI/2),tm('#c8372d'),0).position.set(-0.53,1.3,-0.15);
+     [['#e8452f',-0.2],['#4fbf6a',0.15],['#3a7bd5',0.5],['#f2c230',0.85]].forEach(([c,px])=>{Mk(new THREE.CylinderGeometry(0.08,0.06,0.14,10),tm('#ffffff'),0.006).position.set(px,1.08,0.2);
+       Mk(new THREE.SphereGeometry(0.1,10,6,0,TAU,0,Math.PI/2),tm(c),0).position.set(px,1.14,0.2);});}},
+  {id:'yakisoba',sd:1,z:-132,name:'やきそば',col:'#e8a23a',price:400,food:true,say:['へい、らっしゃい！ ソースたっぷりだよ！'],eat:['鉄板でジュウジュウ焼いた、ソースのやきそば。','青のりと紅しょうがが、いいにおい。'],
+   keeper:{skin:'#e3b088',hair:'#1c1a1a',style:'short',shirt:'#e85a2a',bottom:'pants',bottomCol:'#2b2f36',scarf:'#f4efe2'},
+   ware:Mk=>{Mk(new THREE.BoxGeometry(1.5,0.08,0.7),tm('#2b2724'),0.01).position.set(-0.2,1.05,-0.05);for(let k=0;k<6;k++){const m=Mk(new THREE.SphereGeometry(0.16,8,5),tm('#9a5a2a'),0);m.position.set(-0.75+k*0.22,1.1,-0.05+(k%2)*0.12);m.scale.set(1,0.3,1);}
+     for(let k=0;k<3;k++)Mk(new THREE.BoxGeometry(0.28,0.07,0.18),tm('#f4efe2'),0.005).position.set(0.8,1.05+k*0.075,0.2);}},
+  {id:'kingyo',sd:-1,z:-142,name:'金魚すくい',col:'#e8452f',price:300,game:'kingyo',say:['金魚すくい、1回300円だよ。ポイが破れるまで、何匹すくえるかな？'],
+   keeper:{skin:'#efc9aa',hair:'#d9d6d0',style:'grey',shirt:'#2e5fa8',sleeves:'long',bottom:'pants',bottomCol:'#3a3a3a',bend:0.15},
+   ware:Mk=>{Mk(new THREE.BoxGeometry(2.4,0.45,1.3),tm('#3a7bd5'),0.015).position.set(0,0.23,0.2);
+     const w=Mk(new THREE.PlaneGeometry(2.2,1.1).rotateX(-Math.PI/2),tmap(canvasTex(128,64,(g,W,H)=>{g.fillStyle='#7cc4e8';g.fillRect(0,0,W,H);const r=mulberry(7);
+       for(let k=0;k<16;k++){const fx=r()*W,fy=r()*H,a=r()*6;g.save();g.translate(fx,fy);g.rotate(a);g.fillStyle=k%6?'#f2582a':'#2b2520';g.beginPath();g.ellipse(0,0,5,3,0,0,7);g.fill();g.beginPath();g.moveTo(-4,0);g.lineTo(-9,-3);g.lineTo(-9,3);g.fill();g.restore();}})),0);
+     w.position.set(0,0.43,0.2);Mk(new THREE.BoxGeometry(0.6,0.7,0.5),tm('#8a6a4c'),0.01).position.set(0,0.35,-0.75);}},
+  {id:'shateki',sd:1,z:-142,name:'射的',col:'#8a5cf0',price:300,game:'shateki',say:['射的だよ！ コルク5発で300円。落とした景品は持って帰っていいよ！'],
+   keeper:{skin:'#f1cdb0',hair:'#3a2a1e',style:'bun',shirt:'#c8372d',bottom:'pants',bottomCol:'#22242a',apron:'#22242a'},
+   ware:Mk=>{for(const py of [1.45,1.85])Mk(new THREE.BoxGeometry(2.3,0.05,0.3),tm('#6b4a2e'),0.008).position.set(0,py,-0.35);
+     [['#f2c230',-0.8,1.55],['#3a7bd5',-0.3,1.6],['#e2584a',0.3,1.53],['#4fbf6a',0.8,1.58],['#f0a0b8',-0.5,1.98],['#ffffff',0.4,1.95]].forEach(([c,px,py])=>Mk(new THREE.BoxGeometry(0.2,0.2+((px*7)%3+3)%3*0.05,0.16),tm(c),0.006).position.set(px,py,-0.35));
+     for(const px of [-0.6,0.5]){const gun=Mk(new THREE.BoxGeometry(0.06,0.06,0.7),tm('#4a3326'),0.005);gun.position.set(px,1.05,0.15);gun.rotation.y=0.3;}}},
+  {id:'ringo',sd:-1,z:-152,name:'りんご飴',col:'#c8372d',price:250,food:true,say:['りんご飴、つやつやだよ！'],eat:['まっかな飴の中から、すっぱいりんご。','カリッ……かたい！ でも、あまい。'],
+   keeper:{skin:'#f3d0b5',hair:'#3a2a1e',style:'pony',shirt:'#f0a0b8',bottom:'skirt',bottomCol:'#6b7a8a',apron:'#f4efe2'},
+   ware:Mk=>{Mk(new THREE.BoxGeometry(1.6,0.12,0.4),tm('#d8d2c6'),0.008).position.set(0,1.06,0.05);for(let k=0;k<7;k++){const px=-0.66+k*0.22;
+     Mk(new THREE.CylinderGeometry(0.01,0.01,0.3,4),tm('#e9dcb0'),0).position.set(px,1.25,0.05);Mk(new THREE.SphereGeometry(0.085,10,8),tm('#d0201a'),0.005).position.set(px,1.42,0.05);}}},
+  {id:'takoyaki',sd:1,z:-152,name:'たこ焼き',col:'#e8a23a',price:400,food:true,say:['あつあつのたこ焼き、8個入りだよ！'],eat:['ふうふう……あふっ、あつい！','中はとろとろ。大きなたこが入っていた。'],
+   keeper:{skin:'#e6bb95',hair:'#2b2520',style:'short',shirt:'#f4efe2',bottom:'pants',bottomCol:'#3b4a66',apron:'#2e5fa8',scarf:'#c8372d'},
+   ware:Mk=>{Mk(new THREE.BoxGeometry(1.2,0.12,0.6),tm('#2b2724'),0.01).position.set(-0.3,1.06,-0.05);for(let a=0;a<4;a++)for(let b=0;b<3;b++)Mk(new THREE.SphereGeometry(0.07,8,6),tm('#c98a3a'),0).position.set(-0.68+a*0.25,1.14,-0.25+b*0.2);
+     for(let k=0;k<2;k++)Mk(new THREE.BoxGeometry(0.3,0.06,0.2),tm('#e9dcb0'),0.005).position.set(0.75,1.04+k*0.07,0.2);}},
+];
 { const red=new THREE.MeshToonMaterial({color:'#e8452f',gradientMap:GRAD,emissive:'#ffa060',emissiveIntensity:0}),
     white=new THREE.MeshToonMaterial({color:'#f4efe2',gradientMap:GRAD,emissive:'#ffe2b0',emissiveIntensity:0}),cap=tm('#2b2520'),rope=tm('#3a2f26');
-  NIGHT_MATS.push(red,white);
+  NIGHT_MATS.push(red,white);FEST.red=red;
   const lg=new THREE.CylinderGeometry(0.2,0.2,0.42,10),cg=new THREE.CylinderGeometry(0.12,0.12,0.06,8);
   const lantern=(x,y,z,k)=>{const m=new THREE.Mesh(lg,k%3===2?white:red);m.position.set(x,y,z);outline(m,0.012);FEST.lanterns.add(m);
     for(const s of [1,-1]){const c=new THREE.Mesh(cg,cap);c.position.set(x,y+s*0.23,z);FEST.lanterns.add(c);}};
@@ -5772,20 +5894,28 @@ const FEST={lanterns:new THREE.Group(),stalls:new THREE.Group(),bursts:[],fwUnti
   for(let sx=-60;sx<=60;sx+=10)if(Math.abs(sx)>6){const y=G(sx,-20)+4.6;line([sx,y,-24.6],[sx,y,-15.4],4,0.5);}
   for(let z=-190;z<=-120;z+=14){const y=G(0,z)+4.8;line([-5.4,y,z],[5.4,y,z],5,0.55);}
   FEST.lanterns.visible=false;world.add(FEST.lanterns);
-  // three stalls along the approach, facing the path
+  // six stalls along the approach, facing the path, each with its keeper behind the counter and its wares on it
   const awning=canvasTex(128,32,(g,w,h)=>{for(let k=0;k<8;k++){g.fillStyle=k%2?'#f4efe2':'#d8452f';g.fillRect(k*16,0,16,h);}});
-  const signTex=t=>canvasTex(128,48,(g,w,h)=>{g.fillStyle='#fffaf0';g.fillRect(0,0,w,h);g.fillStyle='#c8372d';g.font='900 30px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,w/2,h/2+2);});
-  for(const [sd,z,name,col] of [[-1,-134,'かき氷','#5aa3d8'],[1,-134,'やきそば','#e8a23a'],[-1,-145,'金魚すくい','#e8452f']]){
-    const sx=x+sd*5.6,y=G(sx,z),g=new THREE.Group();g.position.set(sx,y,z);g.rotation.y=sd>0?-Math.PI/2:Math.PI/2;FEST.stalls.add(g);
+  const signTex=(t,col)=>canvasTex(160,48,(g,w,h)=>{g.fillStyle='#fffaf0';g.fillRect(0,0,w,h);g.fillStyle=col;g.fillRect(0,h-6,w,6);g.fillStyle='#c8372d';g.font='900 28px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,w/2,h/2);});
+  const nobori=(t,col)=>canvasTex(32,128,(g,w,h)=>{g.fillStyle=col;g.fillRect(0,0,w,h);g.fillStyle='#fffaf0';g.font='900 22px "Zen Maru Gothic", sans-serif';g.textAlign='center';g.textBaseline='middle';[...t].slice(0,4).forEach((c,k)=>g.fillText(c,w/2,18+k*28));});
+  for(const S of YATAI){const sd=S.sd,z=S.z,sx=x+sd*5.6,y=G(sx,z),g=new THREE.Group();g.position.set(sx,y,z);g.rotation.y=sd>0?-Math.PI/2:Math.PI/2;FEST.stalls.add(g);S.g=g;
     const Mk=(geo,mat,ol)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;if(ol)outline(m,ol);g.add(m);return m;};
-    Mk(new THREE.BoxGeometry(2.6,0.95,1.1),tm('#8a6a4c'),0.02).position.set(0,0.48,0);
-    Mk(new THREE.BoxGeometry(2.6,0.05,1.1),tm(col),0).position.set(0,0.98,0);
+    if(S.id!=='kingyo'){Mk(new THREE.BoxGeometry(2.6,0.95,1.1),tm('#8a6a4c'),0.02).position.set(0,0.48,0);Mk(new THREE.BoxGeometry(2.6,0.05,1.1),tm(S.col),0).position.set(0,0.98,0);}
     for(const px of [-1.25,1.25])for(const pz of [-0.5,0.5])Mk(new THREE.CylinderGeometry(0.04,0.04,2.3,6),tm('#6b4a2e'),0).position.set(px,1.15,pz);
     const aw=Mk(new THREE.BoxGeometry(2.9,0.06,1.6),tmap(awning),0.015);aw.position.set(0,2.35,0.15);aw.rotation.x=0.22;
-    const sg=Mk(new THREE.BoxGeometry(1.4,0.5,0.04),tmap(signTex(name)),0.01);sg.position.set(0,1.95,0.62);
+    const sg=Mk(new THREE.BoxGeometry(1.6,0.48,0.04),tmap(signTex(S.name,S.col)),0.01);sg.position.set(0,1.95,0.62);
     const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,6),white);bulb.position.set(0,2.15,0.5);g.add(bulb);
-    const c=collide(sx-0.7,sx+0.7,z-1.4,z+1.4,'prop',y+1);c.on=false;g.userData.box=c;}
-  FEST.stalls.visible=false;world.add(FEST.stalls);}
+    const nb=Mk(new THREE.PlaneGeometry(0.34,1.36),tmap(nobori(S.name,S.col),{side:THREE.DoubleSide}),0);nb.position.set(1.5,1.65,0.7);nb.rotation.y=0.3;
+    Mk(new THREE.CylinderGeometry(0.02,0.02,2.5,5),tm('#6b4a2e'),0).position.set(1.68,1.25,0.66);
+    S.ware(Mk,g);
+    const k=makeHuman(S.keeper);k.g.position.set(0,0,-0.85);g.add(k.g);S.k=k;
+    const c=collide(sx-0.75,sx+0.75,z-1.4,z+1.4,'prop',y+1);c.on=false;g.userData.box=c;
+    S.fx=sx-sd*1.75;S.fz=z;}   // in front of the counter, on the path side
+  FEST.stalls.visible=false;world.add(FEST.stalls);
+  // at night the grounds are lit warm by the lanterns and the stalls: a few lights along the approach and a glow at every stall's bulb
+  FEST.lights=[-129,-141,-153].map(z=>{const l=new THREE.PointLight('#ffc68a',0,26,1.2);l.position.set(x,G(x,z)+4.2,z);scene.add(l);return l;});
+  FEST.glows=YATAI.map(S=>{const bx=x+S.sd*(5.6-0.5),bz=S.z;return glow('#ffd9a0',bx,G(bx,bz)+2.15,bz,2.4);});
+  FEST.lglows=[];for(const sd of [-1,1])for(let z=-130.5;z>=-154.5;z-=6)FEST.lglows.push(glow('#ffb070',x+sd*3.6,G(x+sd*3.6,z)+2.2,z,1.8));}
 // fireworks: each burst is a shell of sparks that falls and fades, with a flash at its heart
 function burst(p,col){const n=140,pos=new Float32Array(n*3),vel=[];const r=mulberry((Math.random()*1e6)|0);
   for(let k=0;k<n;k++){const u=r()*2-1,a=r()*TAU,s=Math.sqrt(1-u*u),sp=22+r()*4;vel.push(new THREE.Vector3(Math.cos(a)*s*sp,u*sp,Math.sin(a)*s*sp));pos.set([p.x,p.y,p.z],k*3);}
@@ -5797,6 +5927,10 @@ const FW_COL=['#ff5a4a','#ffd24a','#7ad8ff','#b78cff','#7dff9a','#ffffff','#ff9a
 function updateFestival(dt){const fest=SAVE.flags.fest_day;
   FEST.lanterns.visible=!URA.on&&(fest||qs('fest_lantern').state===2);const st=!URA.on&&(fest||qs('fest_yatai').state===2);
   if(FEST.stalls.visible!==st){FEST.stalls.visible=st;for(const g of FEST.stalls.children)g.userData.box.on=st;}
+  updateCrowd(dt);
+  const ng=FEST.red.emissiveIntensity/0.85,lit=FEST.lanterns.visible&&ng>0.02&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+141)<120;
+  for(const l of FEST.lights)l.intensity=lit?ng*(festOn()?0.45:0.22):0;
+  for(const g of FEST.glows){g.visible=lit&&st;g.material.opacity=ng;}for(const g of FEST.lglows){g.visible=lit;g.material.opacity=ng*0.8;}
   if(clock<FEST.fwUntil){FEST.fwT-=dt;if(FEST.fwT<=0){FEST.fwT=0.35+Math.random()*0.7;
       burst(new THREE.Vector3(-150+Math.random()*230,80+Math.random()*60,440+Math.random()*90),pick(FW_COL));}}
   for(const b of FEST.bursts.slice()){b.t+=dt;const a=b.m.geometry.attributes.position;
@@ -5818,6 +5952,122 @@ function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
   RACE.t+=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール</span><span class="meter">${RACE.t.toFixed(1)} 秒</span>`;
   const done=Math.hypot(P.x-g[0],P.z-g[1])<g[2],over=RACE.t>RACE.limit;
   if(done||over){const r=RACE.res,t=RACE.t;RACE.on=false;RACE.res=null;RACE.mark.visible=false;tr.hidden=true;r(done?t:-1);}}
+
+/* the festival crowd: people in yukata walking up and down the approach and the main street, standing at the stalls, children with balloons.
+   One set of instanced shapes, only on the festival day */
+const festOn=()=>!!SAVE.flags.fest_day&&SAVE.day===6&&!URA.on;
+const FCROWD=[];
+{ const r=mulberry(606),P2=a=>a[Math.floor(r()*a.length)],x=SHRINE.x;
+  const yk=['#2e3f6e','#f4efe2','#e8a0b4','#3a7bd5','#2b2520','#7a5aa8','#e8c94a','#4f8a6a','#c8372d','#9cc3e6'],obi=['#c8372d','#f2c230','#f4efe2','#e85a2a','#2e5fa8','#f0a0b8'];
+  const add=o=>FCROWD.push(Object.assign({ph:r()*6,yk:C3(P2(yk)),obi:C3(P2(obi)),hair:C3(P2(['#1c1a1a','#2a1d15','#3a2a1e','#5a3a24'])),k:o.kid?0.7+r()*0.08:0.92+r()*0.14,bal:o.kid&&r()<0.7?C3(P2(['#e8452f','#3a7bd5','#f2c230','#4fbf6a','#f0a0b8'])):null},o));
+  for(let n=0;n<26;n++){const kid=r()<0.3;add({kind:'walk',ax:'z',c:x+(r()<0.5?-1:1)*(1.2+r()*1.2),a:-155,b:-126,t:-155+r()*29,v:(0.6+r()*0.5)*(r()<0.5?1:-1),kid});}
+  for(let n=0;n<18;n++){const kid=r()<0.25;add({kind:'walk',ax:'z',c:(r()<0.5?-1:1)*(4.4+r()*1.4),a:-190,b:-30,t:-190+r()*160,v:(0.7+r()*0.5)*(r()<0.5?1:-1),kid});}
+  for(let n=0;n<10;n++){const kid=r()<0.3;add({kind:'walk',ax:'x',c:-20+(r()<0.5?-1:1)*(1.2+r()*1.6),a:-60,b:-8,t:-60+r()*52,v:(0.6+r()*0.5)*(r()<0.5?1:-1),kid});}
+  // at the stalls: one to three in front of each, facing the counter
+  for(const S of YATAI){const n=1+Math.floor(r()*2.6);for(let k=0;k<n;k++){const off=[-1.05,1.05,-1.7][k],kid=r()<0.35;
+    add({kind:'stand',x:x+S.sd*(3.1+r()*0.4),z:S.z+off,yaw:S.sd>0?Math.PI/2:-Math.PI/2,kid});}}
+  // little groups chatting by the gate and the lanterns
+  for(const [gx,gz,n] of [[x+2.4,-126.2,3],[x-2.4,-137.5,2],[x+2.2,-147,3],[-6.5,-60,3],[6.5,-110,2]]){for(let k=0;k<n;k++){const a=k/n*TAU+r();add({kind:'stand',x:gx+Math.cos(a)*0.6,z:gz+Math.sin(a)*0.6,yaw:Math.atan2(-Math.cos(a),-Math.sin(a)),kid:r()<0.25});}}}
+const fcMesh={};
+{ const n=FCROWD.length,mk=(geo,key,col,cnt)=>{const im=new THREE.InstancedMesh(geo,tm('#ffffff'),cnt||n);im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);im.castShadow=true;
+    if(!cnt)FCROWD.forEach((p,k)=>im.setColorAt(k,key?p[key]:col));im.visible=false;im.frustumCulled=false;world.add(im);olInst(im,0.012);return im;};
+  const V=(a,b)=>new THREE.Vector2(a,b);
+  fcMesh.body=mk(new THREE.LatheGeometry([V(0.001,0.04),V(0.2,0.05),V(0.19,0.5),V(0.165,0.95),V(0.18,1.22),V(0.165,1.4),V(0.08,1.47),V(0.001,1.47)],14),'yk');
+  fcMesh.obi=mk(new THREE.CylinderGeometry(0.178,0.172,0.16,14).translate(0,0.98,0),'obi');
+  fcMesh.head=mk(new THREE.SphereGeometry(0.115,14,10).translate(0,1.58,0),null,C3('#efc7a6'));
+  fcMesh.hair=mk(new THREE.SphereGeometry(0.124,14,10,0,TAU,0,Math.PI*0.56).translate(0,1.605,-0.012),'hair');
+  fcMesh.bun=mk(new THREE.SphereGeometry(0.07,8,6).translate(0,1.66,-0.1),'hair');
+  fcMesh.slL=mk(new THREE.BoxGeometry(0.1,0.4,0.24).translate(0,-0.2,0),'yk');fcMesh.slR=mk(new THREE.BoxGeometry(0.1,0.4,0.24).translate(0,-0.2,0),'yk');
+  const kids=FCROWD.filter(p=>p.bal);fcMesh.bal=mk(new THREE.SphereGeometry(0.17,12,10).scale(1,1.15,1).translate(0,2.05,0.28),null,null,kids.length);kids.forEach((p,k)=>{p.bi=k;fcMesh.bal.setColorAt(k,p.bal);});
+  fcMesh.str=mk(new THREE.CylinderGeometry(0.006,0.006,0.95,3).translate(0,1.42,0.24),null,null,kids.length);kids.forEach((p,k)=>fcMesh.str.setColorAt(k,C3('#f4efe2')));}
+const FCB=new THREE.Object3D(),FCL=new THREE.Object3D();FCB.add(FCL);
+function updateCrowd(dt){const on=festOn()&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+110)<260;
+  for(const k in fcMesh)fcMesh[k].visible=on;if(!on)return;
+  FCROWD.forEach((p,k)=>{let x,z,yaw,walking=false;
+    if(p.kind==='walk'){[x,z]=p.ax==='z'?[p.c,p.t]:[p.t,p.c];const d=Math.hypot(x-P.x,z-P.z);p.stop=d<1.5?0.6:Math.max(0,(p.stop||0)-dt);
+      if(p.stop<=0){p.t+=p.v*dt;walking=true;if(p.t<p.a||p.t>p.b){p.v=-p.v;p.t=clamp(p.t,p.a,p.b);}}
+      [x,z]=p.ax==='z'?[p.c,p.t]:[p.t,p.c];yaw=p.ax==='z'?(p.v>0?0:Math.PI):(p.v>0?Math.PI/2:-Math.PI/2);}
+    else{x=p.x;z=p.z;yaw=p.yaw;}
+    p.ph+=dt*(walking?5.4:1.2);
+    FCB.position.set(x,G(x,z)+(walking?Math.abs(Math.cos(p.ph))*0.02:0),z);FCB.rotation.set(0,yaw+(walking?0:Math.sin(p.ph*0.7)*0.15),0);FCB.scale.setScalar(p.k);FCB.updateMatrixWorld(true);
+    for(const m of ['body','obi','head','hair','bun'])fcMesh[m].setMatrixAt(k,FCB.matrixWorld);
+    const s=walking?Math.sin(p.ph):Math.sin(p.ph)*0.15;
+    for(const [m,sx,sg] of [[fcMesh.slL,-1,-1],[fcMesh.slR,1,1]]){FCL.position.set(sx*0.2,1.4,0);FCL.rotation.set(-s*0.3*sg,0,sx*0.12);FCL.updateMatrixWorld(true);m.setMatrixAt(k,FCL.matrixWorld);}
+    if(p.bal){FCL.position.set(0,0,0);FCL.rotation.set(Math.sin(p.ph*0.5)*0.08,0,Math.sin(p.ph*0.4)*0.1);FCL.updateMatrixWorld(true);fcMesh.bal.setMatrixAt(p.bi,FCL.matrixWorld);fcMesh.str.setMatrixAt(p.bi,FCL.matrixWorld);}});
+  for(const k in fcMesh)fcMesh[k].instanceMatrix.needsUpdate=true;
+  for(const S of YATAI)if(S.g.visible!==false&&Math.hypot(P.x-S.fx,P.z-S.fz)<60)poseHuman(S.k,'stand',dt,{look:Math.hypot(P.x-S.fx,P.z-S.fz)<6?player.g.position:null});}
+
+/* buying at the stalls: food is eaten on the spot; the goldfish pool and the cork guns open a little game */
+function festNear(){if(!FEST.stalls.visible)return null;let best=null;
+  for(const S of YATAI){const d=Math.hypot(P.x-S.fx,P.z-S.fz);if(d<2.3&&(!best||d<best.d))best={kind:'yatai',S,d,label:`${S.game?'あそぶ':'買う'}　${S.name}（${S.price}円）`,verb:S.game?'あそぶ':'買う'};}
+  return best;}
+const FOODS=['kakigori','yakisoba','ringo','takoyaki'];
+function yataiAct(o){const S=o.S,who=S.name+'の屋台';
+  if(!festOn()){say(who,['お祭りの日においで！ いま準備しているところだよ。']);return;}
+  if(S.game){say(who,S.say,()=>openYatai(S));return;}
+  if(SAVE.money<S.price){say(who,S.say.concat(['……あれ、お金が足りないみたい。']));return;}
+  say(who,S.say,()=>{SAVE.money-=S.price;sfx.pay&&sfx.pay();renderHUD();player.happyT=2.4;
+    say('',S.eat,()=>{SAVE.flags['ate_'+S.id]=1;toast(`${S.name}を食べた（-${S.price}円）`);
+      if(FOODS.every(id=>SAVE.flags['ate_'+id])&&!SAVE.flags.ate_all){SAVE.flags.ate_all=1;toast('屋台の食べ物を、ぜんぶ食べた！',true);}save();});});}
+
+// the little games, drawn on a canvas in their own sheet
+const YG={S:null,on:false,raf:0};
+function openYatai(S){YG.S=S;$('yName').textContent=S.name;$('ySub').textContent=S.game==='kingyo'?'水の中に指（マウス）を入れて、金魚の下へ。はなすと すくう。動かしすぎるとポイが破れる。':'景品をねらって、タップ（クリック）でコルクを撃つ。照準は少しゆれる。上のほうに当てると倒れやすい。';
+  YG.on=false;yDrawIdle();yButtons();openModal('yatai');cancelAnimationFrame(YG.raf);let last=performance.now();
+  const tick=now=>{if(modal!=='yatai')return;const dt=Math.min(0.05,(now-last)/1000);last=now;if(YG.on){(S.game==='kingyo'?kingyoStep:shatekiStep)(dt);}(S.game==='kingyo'?kingyoDraw:shatekiDraw)();YG.raf=requestAnimationFrame(tick);};YG.raf=requestAnimationFrame(tick);}
+function yButtons(){const b=$('yPlay'),S=YG.S;b.textContent=`${YG.played?'もう1回':'あそぶ'}（${S.price}円）`;b.disabled=YG.on||SAVE.money<S.price;}
+function yStart(){const S=YG.S;if(YG.on||SAVE.money<S.price)return;SAVE.money-=S.price;renderHUD();YG.played=true;YG.on=true;YG.t=0;
+  if(S.game==='kingyo')kingyoInit();else shatekiInit();yButtons();$('yInfo').textContent='';}
+function yEnd(text,items){YG.on=false;$('yInfo').textContent=text;for(const id of items||[]){addItem(id,1);}if(items&&items.length)toast(items.map(id=>ITEMS[id].name).join('・')+'をもらった');save();yButtons();}
+function yDrawIdle(){YG.fish=null;YG.prizes=null;$('yInfo').textContent=SAVE.money<YG.S.price?'お金が足りない':'';}
+const yCv=()=>$('yCv'),yPt=e=>{const c=yCv(),r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height];};
+
+// goldfish: they wander; the paper weakens while it is in the water and faster when it moves; lifting it out under a fish scoops it
+function kingyoInit(){const r=Math.random;YG.fish=[];for(let k=0;k<11;k++){const big=k<2;YG.fish.push({x:40+r()*260,y:40+r()*170,a:r()*TAU,v:30+r()*30,big,col:big?'#2b2520':pick(['#f2582a','#f2582a','#e8452f','#f4efe2']),gone:false});}
+  YG.poi={x:170,y:125,down:false,hp:100};YG.caught=0;}
+function kingyoStep(dt){const W=340,H=250;for(const f of YG.fish){if(f.gone)continue;const p=YG.poi,d=Math.hypot(f.x-p.x,f.y-p.y);
+    if(p.down&&d<60)f.a+=Math.sign(Math.sin(Math.atan2(f.y-p.y,f.x-p.x)-f.a))*dt*2;f.a+=(Math.random()-0.5)*dt*4;
+    const sp=f.v*(p.down&&d<45?1.8:1);f.x+=Math.cos(f.a)*sp*dt;f.y+=Math.sin(f.a)*sp*dt;
+    if(f.x<20||f.x>W-20){f.a=Math.PI-f.a;f.x=clamp(f.x,20,W-20);}if(f.y<20||f.y>H-20){f.a=-f.a;f.y=clamp(f.y,20,H-20);}}
+  if(YG.poi.down){YG.poi.hp-=dt*9;if(YG.poi.hp<=0)kingyoBreak();}}
+function kingyoBreak(){const p=YG.poi;p.hp=0;p.down=false;const n=YG.caught;
+  yEnd(n?`ポイが破れた！ ${n}匹すくった。おじさんが1匹、袋に入れてくれた。`:'ポイが破れた！ 1匹もすくえなかった……。',n?['kingyo']:[]);if(n>(SAVE.flags.kingyo_best||0)){SAVE.flags.kingyo_best=n;save();}}
+function kingyoDraw(){const c=yCv(),g=c.getContext('2d'),W=c.width,H=c.height;const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#8fd0f0');gr.addColorStop(1,'#4f9ac8');g.fillStyle=gr;g.fillRect(0,0,W,H);
+  g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=2;const t=performance.now()/1000;for(let k=0;k<6;k++){g.beginPath();g.arc((k*67+t*9)%W,(k*41)%H,14+((t*20+k*13)%30),0,7);g.stroke();}
+  for(const f of YG.fish||[]){if(f.gone)continue;g.save();g.translate(f.x,f.y);g.rotate(f.a);const s=f.big?1.5:1;g.fillStyle=f.col;g.beginPath();g.ellipse(0,0,11*s,6*s,0,0,7);g.fill();
+    g.beginPath();g.moveTo(-8*s,0);g.lineTo(-18*s,-7*s+Math.sin(t*12+f.x)*2);g.lineTo(-18*s,7*s+Math.sin(t*12+f.x)*2);g.fill();g.fillStyle='#111';g.beginPath();g.arc(6*s,-2.5*s,1.5*s,0,7);g.arc(6*s,2.5*s,1.5*s,0,7);g.fill();g.restore();}
+  const p=YG.poi;if(p){g.save();g.translate(p.x,p.y);g.globalAlpha=p.down?0.75:1;g.fillStyle=`rgba(255,255,255,${0.15+0.6*p.hp/100})`;g.beginPath();g.arc(0,0,26,0,7);g.fill();
+    if(p.hp<=0){g.fillStyle='rgba(79,154,200,1)';g.beginPath();g.arc(4,3,18,0,7);g.fill();}
+    g.strokeStyle='#e8452f';g.lineWidth=4;g.beginPath();g.arc(0,0,26,0,7);g.stroke();g.fillStyle='#e8452f';g.fillRect(20,14,34,7);g.restore();}
+  g.fillStyle='rgba(255,250,240,.9)';g.fillRect(8,8,150,26);g.fillStyle='#2b2520';g.font='900 14px "Zen Maru Gothic", sans-serif';
+  g.fillText(YG.fish?`すくった ${YG.caught||0}匹　ポイ ${Math.max(0,Math.ceil(p?p.hp:0))}`:'「あそぶ」で始める',16,26);}
+function kingyoPtr(e,type){if(!YG.on||YG.S.game!=='kingyo')return;const [x,y]=yPt(e),p=YG.poi;
+  if(type==='down'){p.down=true;p.x=x;p.y=y;}
+  else if(type==='move'){if(p.down)p.hp-=Math.hypot(x-p.x,y-p.y)*0.09;p.x=x;p.y=y;if(p.down&&p.hp<=0)kingyoBreak();}
+  else if(type==='up'&&p.down){p.down=false;let best=null,bd=1e9;for(const f of YG.fish){if(f.gone)continue;const d=Math.hypot(f.x-p.x,f.y-p.y);if(d<(f.big?30:24)&&d<bd){bd=d;best=f;}}
+    if(best){const cost=best.big?32:13;if(p.hp>cost){p.hp-=cost;best.gone=true;YG.caught++;sfx.blip&&sfx.blip();if(YG.fish.every(f=>f.gone))yEnd(`ぜんぶすくった！ ${YG.caught}匹。お店の人もびっくり。`,['kingyo']);}else kingyoBreak();}}}
+
+// the cork guns: five shots at a shelf of prizes; the sight sways a little; a prize falls after enough hits, sooner when hit near its top
+function shatekiInit(){YG.corks=5;YG.fly=null;YG.aim={x:170,y:120};YG.won=[];
+  YG.prizes=[{n:'キャラメル',it:'caramel',x:52,y:62,w:30,h:22,hp:1,col:'#f2c230'},{n:'けん玉',it:'kendama',x:160,y:62,w:26,h:36,hp:2,col:'#c8372d'},{n:'キャラメル',it:'caramel',x:268,y:62,w:30,h:22,hp:1,col:'#f2c230'},
+    {n:'ラムネ',it:'ramune',x:95,y:126,w:18,h:42,hp:2,col:'#8fd0f0'},{n:'ラムネ',it:'ramune',x:235,y:126,w:18,h:42,hp:2,col:'#8fd0f0'},
+    {n:'ぬいぐるみ',it:'nuigurumi',x:150,y:170,w:66,h:56,hp:4,col:'#e8b48a'},{n:'キャラメル',it:'caramel',x:270,y:170,w:30,h:22,hp:1,col:'#f2c230'}].map(p=>Object.assign(p,{hits:0,fall:0,wob:0}));}
+function shatekiStep(dt){YG.t+=dt;for(const p of YG.prizes){p.wob=Math.max(0,p.wob-dt*3);if(p.fall>0)p.fall+=dt;}
+  if(YG.fly){YG.fly.t+=dt;if(YG.fly.t>=0.22){const f=YG.fly;YG.fly=null;let hit=null;for(const p of YG.prizes){if(p.fall)continue;if(f.x>p.x-p.w/2-3&&f.x<p.x+p.w/2+3&&f.y>p.y-p.h-3&&f.y<p.y+3){hit=p;break;}}
+      if(hit){hit.hits+=f.y<hit.y-hit.h*0.65?2:1;hit.wob=1;sfx.blip&&sfx.blip();if(hit.hits>=hit.hp){hit.fall=0.001;YG.won.push(hit.it);}}
+      if(YG.corks<=0)setTimeout(()=>{if(!YG.on)return;const w=YG.won;yEnd(w.length?`${w.length}つ落とした！`:'ひとつも落ちなかった……。',w);},500);}}}
+function shatekiSway(){const t=YG.t||0;return[Math.sin(t*2.3)*13+Math.sin(t*5.1)*5,Math.cos(t*1.7)*9+Math.sin(t*4.3)*3];}
+function shatekiDraw(){const c=yCv(),g=c.getContext('2d'),W=c.width,H=c.height;g.fillStyle='#8a2a22';g.fillRect(0,0,W,H);g.fillStyle='rgba(0,0,0,.18)';for(let x=0;x<W;x+=18)g.fillRect(x,0,8,H);
+  g.fillStyle='#6b4a2e';g.fillRect(20,62,300,10);g.fillRect(20,126,300,10);g.fillRect(20,170,300,10);
+  for(const p of YG.prizes||[{n:'',x:0,y:0,w:0,h:0}]){if(!p.col)continue;g.save();const fy=p.fall?p.fall*p.fall*600:0;g.translate(p.x,p.y+fy);g.rotate(p.fall?p.fall*3:Math.sin(p.wob*20)*0.12*p.wob);g.globalAlpha=p.fall?Math.max(0,1-p.fall*2):1;
+    g.fillStyle=p.col;if(p.it==='nuigurumi'){g.beginPath();g.arc(0,-p.h*0.35,p.h*0.36,0,7);g.fill();g.beginPath();g.arc(-p.w*0.3,-p.h*0.75,9,0,7);g.arc(p.w*0.3,-p.h*0.75,9,0,7);g.fill();g.fillStyle='#2b2520';g.beginPath();g.arc(-7,-p.h*0.4,2.5,0,7);g.arc(7,-p.h*0.4,2.5,0,7);g.fill();}
+    else{g.fillRect(-p.w/2,-p.h,p.w,p.h);g.strokeStyle='rgba(0,0,0,.3)';g.strokeRect(-p.w/2,-p.h,p.w,p.h);}g.restore();}
+  if(!YG.prizes){g.fillStyle='rgba(255,250,240,.9)';g.font='900 16px "Zen Maru Gothic", sans-serif';g.fillText('「あそぶ」で始める',100,230);return;}
+  if(YG.fly){const f=YG.fly,k=f.t/0.22;g.fillStyle='#d9b26a';g.beginPath();g.arc(f.x,f.y+(1-k)*80,10-k*6,0,7);g.fill();}
+  if(YG.on){const [sx,sy]=shatekiSway(),ax=YG.aim.x+sx,ay=YG.aim.y+sy;g.strokeStyle='#fffaf0';g.lineWidth=2;g.beginPath();g.arc(ax,ay,12,0,7);g.moveTo(ax-18,ay);g.lineTo(ax+18,ay);g.moveTo(ax,ay-18);g.lineTo(ax,ay+18);g.stroke();}
+  g.fillStyle='rgba(255,250,240,.92)';g.fillRect(8,H-30,190,24);g.fillStyle='#2b2520';g.font='900 13px "Zen Maru Gothic", sans-serif';g.fillText(`コルク ${'●'.repeat(YG.corks)}${'○'.repeat(5-YG.corks)}　落とした ${YG.won.length}`,14,H-13);}
+function shatekiPtr(e,type){if(!YG.on||YG.S.game!=='shateki')return;const [x,y]=yPt(e);YG.aim.x=x;YG.aim.y=y-(e.pointerType==='touch'?40:0);
+  if(type==='up'&&YG.corks>0&&!YG.fly){const [sx,sy]=shatekiSway();YG.corks--;YG.fly={x:YG.aim.x+sx,y:YG.aim.y+sy,t:0};sfx.pop&&sfx.pop();}}
 
 /* ---------- the horror route "トンネルの向こう": 裏海街, the town on the other side of the west tunnel, stopped thirty years ago.
    The same streets, drained of colour and sunk in fog; nobody about but the faceless shadows walking their beats and the tram
@@ -7275,7 +7525,7 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resu
     const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=osc?f*4:f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;src.connect(fl);fl.connect(g);g.connect(S.master);
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
-  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');
+  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');S.L.crowd=loop('bandpass',650,0.8);
 }
 function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();if(S.master)S.master.gain.setTargetAtTime(S.on?0.9:0,S.ctx.currentTime,0.05);
   $('soundBtn').textContent=S.on?'音：オン':'音：オフ';toast(S.on?'音をオンにした':'音をオフにした');}
@@ -7327,6 +7577,11 @@ const sfx={
 
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
+  // the festival band at the shrine: drums and a flute, louder as you come up the approach, and the murmur of the crowd
+  { const fd=Math.hypot(P.x-SHRINE.x,P.z+141),v=play&&festOn()&&AREA==='town'?att(fd,110):0;set(L.crowd.g.gain,v*0.05,0.5);
+    if(v>0.01&&t>=(S.nextHayashi||0)){const b=S.hb=(S.hb||0)+1,at=Math.max(t,S.nextHayashi||0)-t,beat=0.3;S.nextHayashi=t+at+beat;
+      const pat=[1,0,2,0,1,1,2,0],k=pat[b%8];if(k===1){tone(78,0.28,'sine',0.42*v,48,at);hiss(0.08,'lowpass',320,0.25*v,1,null,at);}else if(k===2)hiss(0.05,'bandpass',2200,0.18*v,4,null,at);
+      if(b%2===0){const tune=[0,2,4,2,5,4,2,0,2,4,5,7,5,4,2,4],n=tune[(b/2)%16];if(n!=null)tone(880*Math.pow(2,[0,2,3,5,7,9,10,12][n]/12),beat*1.8,'triangle',0.05*v,null,at);}}}
   // the board: the low rumble of the wheels on the road and a fine grit, with a light tick at each joint in the paving
   const rolling=board&&!P.air&&!P.grind,sp=clamp(P.v/12,0,1);
   set(L.roll.g.gain,rolling?sp*0.075*(sand?1.4:1):0);set(L.roll.fl.frequency,sand?160+P.v*12:190+P.v*16);
@@ -7477,6 +7732,12 @@ const ITEMS={
     for(const [x,y,c] of [[0.38,0.34,'#e2584a'],[0.6,0.3,'#f2c230'],[0.5,0.42,'#f0a0b8'],[0.32,0.48,'#ffffff'],[0.66,0.46,'#a070d0']]){g.fillStyle=c;g.beginPath();g.arc(s*x,s*y,s*0.1,0,7);g.fill();}}},
   chochin:{name:'提灯',d:(g,s)=>{g.fillStyle='#2b2520';g.fillRect(s*0.4,s*0.14,s*0.2,s*0.08);g.fillRect(s*0.4,s*0.78,s*0.2,s*0.08);g.fillStyle='#e8452f';g.beginPath();g.ellipse(s/2,s/2,s*0.24,s*0.3,0,0,7);g.fill();
     g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=1.5;for(let k=-2;k<=2;k++){g.beginPath();g.moveTo(s*0.27,s/2+k*s*0.1);g.lineTo(s*0.73,s/2+k*s*0.1);g.stroke();}}},
+  kingyo:{name:'金魚',d:(g,s)=>{g.fillStyle='rgba(160,215,240,.75)';g.beginPath();g.moveTo(s*0.3,s*0.2);g.lineTo(s*0.7,s*0.2);g.lineTo(s*0.82,s*0.6);g.quadraticCurveTo(s/2,s*0.98,s*0.18,s*0.6);g.fill();
+    g.fillStyle='#f2582a';g.beginPath();g.ellipse(s*0.5,s*0.6,s*0.12,s*0.07,0.3,0,7);g.fill();g.beginPath();g.moveTo(s*0.4,s*0.57);g.lineTo(s*0.3,s*0.5);g.lineTo(s*0.32,s*0.66);g.fill();g.fillStyle='#e8452f';g.fillRect(s*0.36,s*0.16,s*0.28,s*0.05);}},
+  caramel:{name:'キャラメル',d:(g,s)=>{g.fillStyle='#f2c230';g.fillRect(s*0.24,s*0.3,s*0.52,s*0.4);g.fillStyle='#c8372d';g.fillRect(s*0.24,s*0.44,s*0.52,s*0.12);}},
+  kendama:{name:'けん玉',d:(g,s)=>{g.fillStyle='#d9b26a';g.fillRect(s*0.46,s*0.4,s*0.08,s*0.48);g.fillRect(s*0.3,s*0.5,s*0.4,s*0.08);g.fillStyle='#c8372d';g.beginPath();g.arc(s/2,s*0.28,s*0.15,0,7);g.fill();}},
+  nuigurumi:{name:'くまのぬいぐるみ',d:(g,s)=>{g.fillStyle='#e8b48a';g.beginPath();g.arc(s*0.3,s*0.26,s*0.1,0,7);g.arc(s*0.7,s*0.26,s*0.1,0,7);g.arc(s/2,s*0.42,s*0.22,0,7);g.arc(s/2,s*0.74,s*0.2,0,7);g.fill();
+    g.fillStyle='#2b2520';g.beginPath();g.arc(s*0.42,s*0.4,s*0.03,0,7);g.arc(s*0.58,s*0.4,s*0.03,0,7);g.fill();}},
   letter:{name:'手紙',d:(g,s)=>{g.fillStyle='#fffaf0';g.fillRect(s*0.18,s*0.3,s*0.64,s*0.42);g.strokeStyle='#c9b9a2';g.lineWidth=2;g.strokeRect(s*0.18,s*0.3,s*0.64,s*0.42);g.beginPath();g.moveTo(s*0.18,s*0.3);g.lineTo(s/2,s*0.52);g.lineTo(s*0.82,s*0.3);g.stroke();g.fillStyle='#d23a2c';g.fillRect(s*0.66,s*0.34,s*0.1,s*0.1);}},
 };
 const ICON={};for(const id in ITEMS){const c=document.createElement('canvas');c.width=c.height=64;ITEMS[id].d(c.getContext('2d'),64);ICON[id]=c.toDataURL();}
@@ -7712,6 +7973,9 @@ const closetFov=()=>camera.aspect<0.8?36:30;
   const up=e=>{CL.pts.delete(e.pointerId);CL.pd=0;};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
   el.addEventListener('wheel',e=>{if(e.target!==el)return;e.preventDefault();CL.zoom=clamp(CL.zoom*Math.exp(e.deltaY*0.0012),0.3,1.5);},{passive:false});}
 $('closetBtn').addEventListener('click',openCloset);
+{ const c=$('yCv');for(const [ev,ty] of [['pointerdown','down'],['pointermove','move'],['pointerup','up'],['pointercancel','up']])c.addEventListener(ev,e=>{if(ty==='down')try{c.setPointerCapture(e.pointerId);}catch(_){}
+    e.preventDefault();kingyoPtr(e,ty);shatekiPtr(e,ty);});
+  $('yPlay').onclick=yStart;$('yClose').onclick=()=>{if(YG.on&&YG.S.game==='kingyo')kingyoBreak();YG.on=false;closeModal();};}
 // the gacha at Maruya: rarity first, then an even pick among that rarity's prizes; duplicates turn into kakera
 const RCOL={N:'#6f9fd0',R:'#d977a3',SR:'#e8b030'},RNAME={N:'ノーマル',R:'レア',SR:'スーパーレア'};
 function swatchHTML(c){const a=c&&c[0]||'#7a4a30',b=c&&c[1]||a;return `<span class="sw" style="display:inline-block;background:linear-gradient(135deg,${a} 55%,${b} 55%)"></span>`;}
@@ -7849,7 +8113,7 @@ function stepPlayer(dt){
 let near=null;
 function findNear(){if(RIDE.on)return rideNear();if(BOAT.on)return null;let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
   const il=islNear();if(il)add(il.d,il);if(URA.on){const u=uraNear();if(u)add(u.d-0.3,u);}
-  const tn=tramNear();if(tn)add(tn.d-0.5,tn);const ik=inkNear();if(ik)add(ik.d,ik);
+  const tn=tramNear();if(tn)add(tn.d-0.5,tn);const yt=festNear();if(yt)add(yt.d-0.4,yt);const ik=inkNear();if(ik)add(ik.d,ik);
   // someone with a story event waiting comes first when two people stand close together
   for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
@@ -7866,7 +8130,7 @@ function act(o){if(!o)return;
   else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);if(st.gain){addItem(...st.gain);toast(`${ITEMS[st.gain[0]].name}を手に入れた`);}advance(o.q);});}
-  else if(o.kind==='gacha')openGacha();
+  else if(o.kind==='gacha')openGacha();else if(o.kind==='yatai')yataiAct(o);
   else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);
   else if(o.kind==='hide'||o.kind==='unhide')uraAct(o);
   else if(o.kind==='boat'||o.kind==='lhdoor'||o.kind==='lhdown'||o.kind==='lamp')islAct(o);}
