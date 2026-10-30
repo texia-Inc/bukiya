@@ -379,7 +379,9 @@ function stepPlayer(dt){
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
-  const g1=G(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=G(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
+  // the slope under her: on a bridge it is the deck's, not the ground far below
+  const gs=(x,z)=>{let g=G(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
+  const g1=gs(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=gs(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;

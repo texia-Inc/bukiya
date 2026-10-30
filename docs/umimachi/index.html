@@ -6624,6 +6624,7 @@ function inkBase(lx,lz){const F=INK_FALL,sd=(lx-F.x)*F.nx+(lz-F.z)*F.nz,lat=Math
 function inkRim(lx,lz){const m=Math.max(Math.abs(lx),Math.abs(lz))+(vnoise(lx/45+3,lz/45)-0.5)*20;
   if(Math.abs(lz-INK_TRACK)<6&&lx<-150&&lx>-216)return 0;
   const t=clamp((m-195)/85,0,1);return t>0?52*smooth(t)+vnoise(lx/22,lz/22)*7*smooth(clamp(t*3,0,1)):0;}
+const INK_BR=(()=>{const b=ROAD.filter(p=>p.f==='bridge'),xs=b.map(p=>p.x);return{x0:Math.min(...xs),x1:Math.max(...xs),z:b[0].z,h:b[0].h};})();
 { const best=new Float32Array(INK_N*INK_N).fill(99),bh=new Float32Array(INK_N*INK_N);
   for(let r=0;r<INK_N;r++)for(let c=0;c<INK_N;c++)INK_BASE[r*INK_N+c]=inkBase(-INK_R+c*INK_CELL,-INK_R+r*INK_CELL);
   for(const p of ROAD){if(p.f==='bridge')continue;const c0=Math.floor((p.x+INK_R-10)/INK_CELL),r0=Math.floor((p.z+INK_R-10)/INK_CELL);
@@ -6633,6 +6634,7 @@ function inkRim(lx,lz){const m=Math.max(Math.abs(lx),Math.abs(lz))+(vnoise(lx/45
     {const d=Math.hypot(lx-INK_LOOK.x,lz-INK_LOOK.z);if(d<10)h=lerp(INK_LOOK.h,h,smooth(clamp((d-6.5)/3.5,0,1)));}
     if(lx>PARK.x0-4&&lx<PARK.x1+4&&lz>PARK.z0-4&&lz<PARK.z1+4){const e=Math.min(lx-PARK.x0,PARK.x1-lx,lz-PARK.z0,PARK.z1-lz);h=lerp(h,INK_TOP,smooth(clamp((e+4)/4,0,1)));}
     if(lz>62&&lz<210&&Math.abs(lx)<210)h=0.05+inkRim(lx,lz);   // the valley floor stays level up to the hills
+    if(lx>INK_BR.x0&&lx<INK_BR.x1&&Math.abs(lz-INK_BR.z)<5)h=Math.min(h,INK_BR.h-0.3);   // no ground poking up through the bridge deck
     INK_HG[k]=h;INK_BASE[k]=h;}}
 // heights in the country: the deck and its ramp, then the grid
 function inkG(x,z){const lx=x-INK_X,lz=z;
@@ -7491,7 +7493,9 @@ function stepPlayer(dt){
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
-  const g1=G(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=G(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
+  // the slope under her: on a bridge it is the deck's, not the ground far below
+  const gs=(x,z)=>{let g=G(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
+  const g1=gs(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=gs(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
