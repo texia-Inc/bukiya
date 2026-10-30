@@ -85,8 +85,10 @@ dome.material.map.wrapS=THREE.RepeatWrapping;
 const SEA_Y=-1.2,HILL=0.115,COAST_Z=240,SHORE=247,TRAM_Z=212,CUT_X=232;
 // the tram line and the coast road run through level cuttings into the hills on both sides
 function cutting(x,z){return Math.abs(x)<CUT_X+2&&(Math.abs(z-TRAM_Z)<6.6||(z>232.4&&z<SHORE+0.5));}
-// the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map
-function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7);}
+// the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map.
+// Past the shore they run on as headlands that sink into the sea, so from the water or the island the land does not end in a cut
+function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));
+  return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7*(1-smooth(clamp((z-SHORE)/(130+(ax-200)*0.25),0,1))));}
 function H(x,z){let y=z<COAST_Z?(COAST_Z-z)*HILL:z<SHORE?0:-(z-SHORE)*0.035;const ax=Math.abs(x);if(ax>200&&!cutting(x,z))y+=hillY(ax,z);return y;}
 // the country at the end of the tram line lies far to the east (p5k_inaka.js); its heights come from a baked grid
 const INK_X=3000;
@@ -124,9 +126,9 @@ const C3=c=>new THREE.Color(c);
 
 /* ground: gardens and hills, sand, sea floor */
 {
-  const X0=-340,X1=340,Z0=-260,Z1=440,S=4,nx=(X1-X0)/S+1,nz=(Z1-Z0)/S+1;
+  const X0=-560,X1=560,Z0=-460,Z1=472,S=4,nx=(X1-X0)/S+1,nz=(Z1-Z0)/S+1;
   grid(nz,nx,(r,c)=>{const x=X0+c*S,z=Z0+r*S,y=H(x,z),n=vnoise(x/14,z/14),n2=vnoise(x/40+9,z/40);let col;
-    if(z>SHORE-1&&Math.abs(x)>203&&y>SEA_Y+0.6){const k=0.8+n*0.3;col=[0.52*k,0.48*k,0.42*k];}
+    if(z>SHORE-1&&Math.abs(x)>203&&y>SEA_Y+0.6){const k=0.8+n*0.3;col=y>7+n*5?[0.3*k,0.44*k,0.25*k]:[0.52*k,0.48*k,0.42*k];}   // headlands: green on top, rock near the water
     else if(z>SHORE-1){const wet=clamp((y-SEA_Y)/0.6,0,1);col=y<SEA_Y?[0.62,0.7,0.62]:[lerp(0.78,0.93,wet),lerp(0.72,0.86,wet),lerp(0.55,0.66,wet)];}
     else if(z>COAST_Z-6){col=[0.7,0.68,0.62];}
     else{const k=0.8+n*0.3;col=n2>0.62?[0.3*k,0.45*k,0.24*k]:[0.42*k,0.55*k,0.33*k];if(Math.abs(x)>200||z<-170)col=[0.26*k,0.42*k,0.22*k];}

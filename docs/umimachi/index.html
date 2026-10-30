@@ -224,7 +224,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
     <button class="pb" id="bJump">ジャンプ</button>
     <button class="pb" id="bTrick" hidden>技</button>
     <button class="pb" id="bAct">話す</button>
-    <button class="pb" id="bFoot">降りる</button>
+    <button class="pb" id="bFoot">歩く</button>
     <button class="pb main kick" id="bKick">ける</button>
     <button class="pb shoot" id="bShoot" hidden>撃つ</button>
   </div>
@@ -270,11 +270,11 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
       <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
       <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
       <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
-      <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる</dd>
+      <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
       <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
       <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
       <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
-      <dt class="tc">降りる</dt><dd class="tc">スケボーを降りて歩く。もう一度押すと乗る</dd>
+      <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
       <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
     </dl>
     <div id="slots" role="list" aria-label="セーブデータ"></div>
@@ -4019,8 +4019,10 @@ dome.material.map.wrapS=THREE.RepeatWrapping;
 const SEA_Y=-1.2,HILL=0.115,COAST_Z=240,SHORE=247,TRAM_Z=212,CUT_X=232;
 // the tram line and the coast road run through level cuttings into the hills on both sides
 function cutting(x,z){return Math.abs(x)<CUT_X+2&&(Math.abs(z-TRAM_Z)<6.6||(z>232.4&&z<SHORE+0.5));}
-// the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map
-function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7);}
+// the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map.
+// Past the shore they run on as headlands that sink into the sea, so from the water or the island the land does not end in a cut
+function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));
+  return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7*(1-smooth(clamp((z-SHORE)/(130+(ax-200)*0.25),0,1))));}
 function H(x,z){let y=z<COAST_Z?(COAST_Z-z)*HILL:z<SHORE?0:-(z-SHORE)*0.035;const ax=Math.abs(x);if(ax>200&&!cutting(x,z))y+=hillY(ax,z);return y;}
 // the country at the end of the tram line lies far to the east (p5k_inaka.js); its heights come from a baked grid
 const INK_X=3000;
@@ -4058,9 +4060,9 @@ const C3=c=>new THREE.Color(c);
 
 /* ground: gardens and hills, sand, sea floor */
 {
-  const X0=-340,X1=340,Z0=-260,Z1=440,S=4,nx=(X1-X0)/S+1,nz=(Z1-Z0)/S+1;
+  const X0=-560,X1=560,Z0=-460,Z1=472,S=4,nx=(X1-X0)/S+1,nz=(Z1-Z0)/S+1;
   grid(nz,nx,(r,c)=>{const x=X0+c*S,z=Z0+r*S,y=H(x,z),n=vnoise(x/14,z/14),n2=vnoise(x/40+9,z/40);let col;
-    if(z>SHORE-1&&Math.abs(x)>203&&y>SEA_Y+0.6){const k=0.8+n*0.3;col=[0.52*k,0.48*k,0.42*k];}
+    if(z>SHORE-1&&Math.abs(x)>203&&y>SEA_Y+0.6){const k=0.8+n*0.3;col=y>7+n*5?[0.3*k,0.44*k,0.25*k]:[0.52*k,0.48*k,0.42*k];}   // headlands: green on top, rock near the water
     else if(z>SHORE-1){const wet=clamp((y-SEA_Y)/0.6,0,1);col=y<SEA_Y?[0.62,0.7,0.62]:[lerp(0.78,0.93,wet),lerp(0.72,0.86,wet),lerp(0.55,0.66,wet)];}
     else if(z>COAST_Z-6){col=[0.7,0.68,0.62];}
     else{const k=0.8+n*0.3;col=n2>0.62?[0.3*k,0.45*k,0.24*k]:[0.42*k,0.55*k,0.33*k];if(Math.abs(x)>200||z<-170)col=[0.26*k,0.42*k,0.22*k];}
@@ -4309,6 +4311,84 @@ inst(new THREE.CylinderGeometry(0.2,0.15,0.36,10).translate(0,0.18,0),tm('#a5603
 inst(new THREE.SphereGeometry(0.3,10,8).translate(0,0.55,0),tm('#4f8a3a'),pots,(e,d)=>{d.position.set(...e.p);d.scale.set(1,0.9+hash(e.p[0]*9,e.p[2])*0.5,1);});
 for(const w of walls){const yaw=w.yaw,c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),hx=(w.w/2)*c+0.08*s,hz=(w.w/2)*s+0.08*c;collide(w.p[0]-hx,w.p[0]+hx,w.p[2]-hz,w.p[2]+hz,'wall',w.p[1]+0.55);}
 
+/* ---------- trees and grass: canopies with some shape to them, the wind that sways them, and grass round where you are.
+   WIND.t is the clock the shaders share (set every frame in p5_systems.js). Gusts are bands that roll across the town from
+   the sea; where one passes, the grass bends further and catches the light, so bright waves seem to run over it. ---------- */
+const WIND={t:{value:0}};
+const WIND_GLSL=`uniform float uWindT;
+float gust(vec2 p){return 0.5+0.5*sin(dot(p,vec2(0.045,0.07))-uWindT*1.15)*sin(dot(p,vec2(-0.021,0.033))-uWindT*0.53+1.7);}`;
+// leaves: the whole crown leans and shivers, more at the top, each tree on its own beat (its place sets the phase)
+function windify(mat,amp){mat.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;
+  sh.vertexShader=WIND_GLSL+'\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+#ifdef USE_INSTANCING
+  vec2 wp=instanceMatrix[3].xz;float ph=dot(wp,vec2(0.37,0.23));float g=gust(wp);
+  float k=max(transformed.y+0.6,0.0)*${amp.toFixed(3)};
+  transformed.x+=k*(sin(uWindT*1.6+ph)*0.6+g*0.9);transformed.z+=k*(sin(uWindT*1.23+ph*1.7)*0.45+g*0.4);
+  transformed+=normal*sin(uWindT*7.0+ph*3.0+transformed.y*4.0)*0.012;
+#endif`);};mat.customProgramCacheKey=()=>'wind'+amp;return mat;}
+// a broadleaf crown: a few lumpy balls run together, darker underneath and brighter on top
+function canopyGeo(seed){const r=mulberry(seed),parts=[[0,0,0,1],[0.55,0.25,0.2,0.7],[-0.5,0.2,-0.25,0.68],[0.1,0.55,-0.45,0.6],[-0.15,-0.3,0.5,0.62]];
+  const pos=[],col=[];for(const [ox,oy,oz,s] of parts){const g=new THREE.IcosahedronGeometry(s,1),p=g.attributes.position;
+    for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),n=0.82+0.3*vnoise(x*2.3+seed,z*2.3+y*1.7);pos.push(ox+x*n,oy+y*n*0.9,oz+z*n);}}
+  for(let i=0;i<pos.length;i+=9){const cy=(pos[i+1]+pos[i+4]+pos[i+7])/3,k=clamp(0.62+(cy+0.9)*0.3,0.6,1.12)*(0.94+r()*0.1);for(let j=0;j<3;j++)col.push(k,k,k*0.96);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  geo.computeVertexNormals();return geo;}
+// a cedar or pine: tiers of drooping cones on a base at y=0, one unit tall
+function cedarGeo(){const pos=[],col=[];const tiers=[[0.0,0.5,1],[0.28,0.42,0.78],[0.52,0.34,0.56],[0.72,0.28,0.36]];
+  for(const [y0,h,rad] of tiers){const g=new THREE.ConeGeometry(rad,h,8,1,true).toNonIndexed(),p=g.attributes.position;
+    for(let i=0;i<p.count;i++){const y=p.getY(i)+h/2+y0,top=p.getY(i)>0;pos.push(p.getX(i)*(top?1:1.04),y-(top?0:0.04),p.getZ(i)*(top?1:1.04));const k=top?1.05:0.7+y0*0.3;col.push(k,k,k);}}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  geo.computeVertexNormals();return geo;}
+const CANOPY=[canopyGeo(3),canopyGeo(11)],CEDAR=cedarGeo();
+const LEAF=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true}),0.05);
+const NEEDLE=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.035);
+
+/* grass: clumps of blades in 16 m squares, made when you come near and dropped when you are far away.
+   Only on open ground: not on streets, lots, the tram line, the shore, the cuttings or the paved places */
+const GRASS={chunks:new Map(),S:16,mesh:null,on:true};
+function grassOK(x,z){if(x>INK_X-600)return false;
+  if(z>ISL_Z0&&ISL_ON){const y=G(x,z);return y>SEA_Y+1.6&&Math.hypot(x-198,z-760)>9;}
+  const y=H(x,z);if(z>SHORE-1)return Math.abs(x)>205&&y>7;if(z>COAST_Z-6.5||cutting(x,z))return false;
+  const b={x0:x-0.6,x1:x+0.6,z0:z-0.6,z1:z+0.6};
+  for(const S of STREETS)if(overlaps(b,streetBox(S,0.6),0))return false;
+  if(Math.abs(z-TRAM_Z)<4.5&&Math.abs(x)<TRAM_X1+30)return false;
+  for(const r of RES)if(overlaps(b,r,1))return false;for(const o of BLD)if(overlaps(b,o,0.8))return false;
+  for(const c of COLL)if(c.tag!=='tree'&&overlaps(b,c,0.4))return false;
+  for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<9)return false;return true;}
+// one clump: three bent blades, dark at the root and light at the tip (the tip height is kept in the colour's alpha slot via uv.y)
+const GRASS_GEO=(()=>{const pos=[],uv=[],idx=[];let v=0;
+  for(const [a,lean,h,o] of [[0,0.06,1,0],[1.3,0.1,0.8,0.09],[2.6,0.05,0.92,0.07],[3.9,0.12,0.72,0.1],[5.2,0.08,0.86,0.06]]){const cx=Math.cos(a),sx=Math.sin(a),ox=Math.cos(a+1.3)*o,oz=Math.sin(a+1.3)*o;
+    for(let s=0;s<=2;s++){const t=s/2,w=0.06*(1-t*0.8),bend=lean*t*t;
+      for(const side of [-1,1]){pos.push(ox+cx*w*side+bend*Math.cos(a+1.3),t*h*0.32,oz+sx*w*side+bend*Math.sin(a+1.3));uv.push(side>0?1:0,t);}}
+    for(let s=0;s<2;s++){const b=v+s*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}v+=6;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;})();
+const GRASS_MAT=(()=>{const m=new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,side:THREE.DoubleSide});   // toon: the same light as the ground, and three.js hands it cameraPosition (Lambert does not get it)
+  m.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;sh.uniforms.uFar={value:GRASS.R||40};GRASS.uFar=sh.uniforms.uFar;
+    sh.vertexShader=WIND_GLSL+'\nuniform float uFar;varying float vTip;varying float vGlow;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  vec2 wp=instanceMatrix[3].xz;float t=uv.y;vTip=t;float g=gust(wp);vGlow=smoothstep(0.62,0.95,g);
+  float fd=1.0-smoothstep(uFar*0.72,uFar,distance(wp,cameraPosition.xz));transformed.y*=fd;
+  float ph=dot(wp,vec2(1.7,1.3));float bendA=(0.02+g*0.12)*t*t;
+  transformed.x+=bendA*0.9+sin(uWindT*2.4+ph)*0.035*t;transformed.z+=bendA*0.5+cos(uWindT*1.9+ph)*0.03*t;transformed.y-=bendA*0.12;`);
+    sh.fragmentShader='varying float vTip;varying float vGlow;\n'+sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );',
+      'vec4 diffuseColor = vec4( diffuse*mix(0.62,1.1,vTip), opacity );')
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=diffuseColor.rgb*vec3(0.42,0.46,0.24)*vGlow*vTip;');};
+  m.customProgramCacheKey=()=>'grass';return m;})();
+const GRASS_COLS=['#5f9c46','#6ea951','#558f42','#7bb15a','#4f8a3f'].map(c=>new THREE.Color(c));
+function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+cz*104729)&0x7fffffff),list=[];
+  const cells=new Map(),ok=(x,z)=>{const k=Math.floor(x/2)+','+Math.floor(z/2);if(!cells.has(k))cells.set(k,grassOK(Math.floor(x/2)*2+1,Math.floor(z/2)*2+1));return cells.get(k);};
+  for(let n=0;n<GRASS.per;n++){const x=x0+r()*S,z=z0+r()*S;if(!ok(x,z))continue;const y=G(x,z);if(y<SEA_Y+0.3)continue;list.push({x,y,z,s:0.75+r()*0.55,a:r()*TAU,c:GRASS_COLS[Math.floor(r()*5)]});}
+  if(!list.length)return null;const im=new THREE.InstancedMesh(GRASS_GEO,GRASS_MAT,list.length),d=new THREE.Object3D();
+  list.forEach((e,i)=>{d.position.set(e.x,e.y-0.03,e.z);d.scale.set(e.s,e.s*(0.75+0.45*vnoise(e.x/9,e.z/9)),e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,e.c);});
+  im.frustumCulled=false;im.matrixAutoUpdate=false;scene.add(im);return im;}
+// keep the squares round the player made, a couple per frame, and let go of the far ones
+function updateGrass(){if(!GRASS.per){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
+  const S=GRASS.S,R=GRASS.R,px=P.x,pz=P.z,on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&px<INK_X-600,c0x=Math.floor((px-R)/S),c1x=Math.floor((px+R)/S),c0z=Math.floor((pz-R)/S),c1z=Math.floor((pz+R)/S);
+  let made=0;for(const [k,c] of GRASS.chunks){const dx=Math.max(0,Math.abs((c.cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((c.cz+0.5)*S-pz)-S/2),d=Math.hypot(dx,dz);
+    if(c.m)c.m.visible=on&&d<R;if(d>R+S*2){if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.delete(k);}}
+  if(!on)return;for(let cx=c0x;cx<=c1x;cx++)for(let cz=c0z;cz<=c1z;cz++){const k=cx+','+cz;if(GRASS.chunks.has(k))continue;
+    const dx=Math.max(0,Math.abs((cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((cz+0.5)*S-pz)-S/2);if(Math.hypot(dx,dz)>R)continue;
+    if(made++>=2)return;GRASS.chunks.set(k,{cx,cz,m:grassChunk(cx,cz)});}}
+
 /* ---------- the named shops ---------- */
 function signFont(px,bold){return `${bold?900:700} ${px}px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif`;}
 function bread(g,x,y,s,type){g.save();g.translate(x,y);
@@ -4460,14 +4540,14 @@ function pineLayers(list){inst(new THREE.CylinderGeometry(0.18,0.3,1,7).translat
 pineLayers(PINES);
 // forest on the hills around the town
 const TREES=[];for(let n=0;n<900;n++){const x=-330+rnd()*660,z=-258+rnd()*430;if(!(z<-182||Math.abs(x)>202))continue;if(x>-82&&x<-38&&z>-180&&z<-122)continue;if(Math.abs(x)<34&&z>-236)continue;if(inDeckView(x,z))continue;TREES.push({x,z,s:2.2+rnd()*2.6,col:C3(pick(['#3f7a45','#4f8a4a','#356a3c','#5a9450']))});}
-inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),TREES,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*0.9,e.z);d.scale.set(e.s,e.s*1.15,e.s);},{cast:false});
+for(const k of [0,1])inst(CANOPY[k],LEAF,TREES.filter((e,i)=>i%2===k),(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*0.95,e.z);d.scale.set(e.s*0.8,e.s*0.92,e.s*0.8);d.rotation.y=e.x;},{cast:false});
 // far mountains round the back and the sides of the town: the land the town sits in, so from the sea or the lighthouse
 // the hills do not just stop. Hazy blue-green and far enough for the fog to soften them
 { const r=mulberry(4242),ML=[];
   for(let k=0;k<46;k++){const a=-Math.PI-0.42+(Math.PI+0.84)*(k+r()*0.6)/46,R=560+r()*260,s=150+r()*110;
     ML.push({x:Math.cos(a)*R*1.15,z:-60+Math.sin(a)*R,s,h:(80+r()*120)*(Math.abs(Math.cos(a))>0.8?0.8:1),y:r()*6,col:C3(['#6f8f86','#7a9a8e','#68867f','#809e94'][k%4])});}
   for(let k=0;k<26;k++){const a=-Math.PI-0.3+(Math.PI+0.6)*(k+0.5)/26,R=380+r()*60;ML.push({x:Math.cos(a)*R*1.1,z:-60+Math.sin(a)*R*0.9,s:90+r()*50,h:45+r()*40,y:r()*6,col:C3(['#4f7a5a','#5a8562','#486f52'][k%3])});}
-  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4,e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
+  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4+Math.max(0,H(clamp(e.x,-560,560),clamp(e.z,-460,472))),e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
 // vending machines (two of them are open for business)
 const vendTex=canvasTex(64,128,(g,w,h)=>{g.fillStyle='#f4f4f0';g.fillRect(0,0,w,h);g.fillStyle='#cfe7f2';g.fillRect(5,8,w-10,62);
   for(let r=0;r<3;r++)for(let c=0;c<5;c++){g.fillStyle=pick(['#3a7bd5','#e2584a','#4f9a5a','#f2c230','#8a5a3a','#ffffff']);g.fillRect(8+c*10.4,12+r*20,7,14);g.fillStyle='#e2584a';g.fillRect(9+c*10.4,28+r*20,5,2);}
@@ -4627,7 +4707,7 @@ const SHRINE={x:-60,z:-124.6};
   // the grove keeps clear of the stalls along the approach, the plaque rack and the sacred tree
   const big=[];for(let k=0;k<14;k++){const a=rnd()*TAU,r=7+rnd()*10;big.push({x:x+Math.cos(a)*r,z:-150+Math.sin(a)*14,s:3+rnd()*2});}
   const grove=big.filter(t=>Math.abs(t.x-x)>8.6&&Math.hypot(t.x-(x+7.4),t.z-(hz+1))>3.5&&Math.hypot(t.x-(x-8.2),t.z-(hz+2))>4);
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#2f5d3a'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s,e.s*1.4,e.s);},{cast:true});
+  for(const k of [0,1])inst(CANOPY[k],LEAF,grove.filter((e,i)=>i%2===k).map(e=>({...e,col:C3(k?'#35663f':'#2f5d3a')})),(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s*0.82,e.s*1.2,e.s*0.82);d.rotation.y=e.x;},{cast:true});
   inst(new THREE.CylinderGeometry(0.25,0.35,1,7).translate(0,0.5,0),tm('#5a4232'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z),e.z);d.scale.set(1,e.s*1.2,1);});
 }
 const LOOKOUT={x:0,z:-212};
@@ -4844,9 +4924,8 @@ const BEACHHOUSE={x:40,z:SHORE+10};
   for(const e of woods){const r=0.12*e.s;collide(e.x-r,e.x+r,e.z-r,e.z+r,'tree');HILL_TREES.push(e);}
   const broad=woods.filter(e=>!e.cedar),ced=woods.filter(e=>e.cedar);
   inst(new THREE.CylinderGeometry(0.16,0.26,1,6).translate(0,0.5,0),tm('#6b4a36'),woods.map(e=>({...e,col:null})),(e,d)=>{d.position.set(e.x,e.y-0.3,e.z);d.scale.set(e.s*0.5,e.s*1.2,e.s*0.5);});
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),broad,(e,d)=>{d.position.set(e.x,e.y+e.s*1.35,e.z);d.scale.set(e.s,e.s*0.82,e.s);d.rotation.set(e.lean,e.s*3,0);},{cast:true});
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),broad.map(e=>({...e,col:e.col.clone().multiplyScalar(1.12)})),(e,d)=>{d.position.set(e.x+e.s*0.45,e.y+e.s*1.75,e.z-e.s*0.2);d.scale.setScalar(e.s*0.62);});
-  inst(new THREE.ConeGeometry(1,1,7).translate(0,0.5,0),tm('#ffffff'),ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(e.x,e.y+e.s*0.5,e.z);d.scale.set(e.s*0.75,e.s*2.6,e.s*0.75);d.rotation.z=e.lean*0.5;},{cast:true});
+  for(const k of [0,1])inst(CANOPY[k],LEAF,broad.filter((e,i)=>i%2===k),(e,d)=>{d.position.set(e.x,e.y+e.s*1.45,e.z);d.scale.set(e.s*0.85,e.s*0.78,e.s*0.85);d.rotation.set(e.lean,e.s*3,0);},{cast:true});
+  inst(CEDAR,NEEDLE,ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(e.x,e.y+e.s*0.45,e.z);d.scale.set(e.s*0.85,e.s*2.7,e.s*0.85);d.rotation.set(0,e.s*5,e.lean*0.5);},{cast:true});
   const mx=-285,mz=-40,my=H(mx,mz),mast=new THREE.Group();mast.position.set(mx,my,mz);world.add(mast);
   for(let k=0;k<8;k++){const s=new THREE.Mesh(new THREE.CylinderGeometry(1.2-k*0.13,1.33-k*0.13,5,6,1,true),tm(k%2?'#f2f2ee':'#d8452f',{side:THREE.DoubleSide}));s.position.y=2.5+k*5;mast.add(s);}
   mast.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6),new THREE.MeshBasicMaterial({color:'#ff4030'})).translateY(41));
@@ -7658,7 +7737,7 @@ const islPathD=(u,w)=>{let best=1e9;for(let i=1;i<ISL_PATH.length;i++){const [ax
     for(let k=0;k<400&&trees.length<70;k++){const u=-95+R()*190,w=-40+R()*80,h=islH(u,w);
       if(h<SEA_Y+2.5||islPathD(u,w)<3.5||Math.hypot(u-18,w)<14||(u>-60&&u<-48&&w<-18))continue;if(trees.some(t=>Math.hypot(t.u-u,t.w-w)<4))continue;
       trees.push({u,w,x:ISL.x+u,z:ISL.z+w,y:h,s:0.8+R()*0.6,col:new THREE.Color(['#3f7a4e','#4a8656','#386f47'][trees.length%3])});}
-    inst(new THREE.ConeGeometry(1.6,4.6,8),itm('#ffffff'),trees,(e,d)=>{d.position.set(e.x,e.y+2.6*e.s+1,e.z);d.scale.setScalar(e.s);},{cast:true});
+    inst(CEDAR,NEEDLE,trees,(e,d)=>{d.position.set(e.x,e.y+0.4*e.s+0.9,e.z);d.scale.set(1.75*e.s,5*e.s,1.75*e.s);d.rotation.y=e.u;},{cast:true});
     inst(new THREE.CylinderGeometry(0.16,0.22,1.6,6),itm('#6b4a36'),trees,(e,d)=>{d.position.set(e.x,e.y+0.7*e.s,e.z);d.scale.setScalar(e.s);});
     for(const t of trees)collide(t.x-0.35,t.x+0.35,t.z-0.35,t.z+0.35,'tree');
     const bx=LH.x-7,bz=LH.z-7,b=new THREE.Group();b.position.set(bx,islG(bx,bz),bz);b.rotation.y=Math.PI;world.add(b);
@@ -8313,7 +8392,9 @@ function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
-function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
+function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
+// the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
+function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=f?'スケボー':'歩く';if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
 function stepPlayer(dt){
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
   if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
@@ -8328,7 +8409,8 @@ function stepPlayer(dt){
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
       if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else rideNow();
-      $('bFoot').textContent=P.foot?'乗る':'降りる';}}
+      padLabels();}}
+  padLabels();
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns
   // smoothly to face it; a small push walks, a full push runs. On the board the stick still steers like the keys.
@@ -8451,7 +8533,7 @@ function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q o
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
-  updateStory(dt);
+  WIND.t.value=clock;updateGrass();updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;

@@ -440,7 +440,9 @@ function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
-function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
+function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
+// the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
+function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=f?'スケボー':'歩く';if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
 function stepPlayer(dt){
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
   if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
@@ -455,7 +457,8 @@ function stepPlayer(dt){
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
       if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else rideNow();
-      $('bFoot').textContent=P.foot?'乗る':'降りる';}}
+      padLabels();}}
+  padLabels();
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns
   // smoothly to face it; a small push walks, a full push runs. On the board the stick still steers like the keys.
@@ -578,7 +581,7 @@ function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q o
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
 function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
-  updateStory(dt);
+  WIND.t.value=clock;updateGrass();updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;

@@ -64,7 +64,7 @@ const islPathD=(u,w)=>{let best=1e9;for(let i=1;i<ISL_PATH.length;i++){const [ax
     for(let k=0;k<400&&trees.length<70;k++){const u=-95+R()*190,w=-40+R()*80,h=islH(u,w);
       if(h<SEA_Y+2.5||islPathD(u,w)<3.5||Math.hypot(u-18,w)<14||(u>-60&&u<-48&&w<-18))continue;if(trees.some(t=>Math.hypot(t.u-u,t.w-w)<4))continue;
       trees.push({u,w,x:ISL.x+u,z:ISL.z+w,y:h,s:0.8+R()*0.6,col:new THREE.Color(['#3f7a4e','#4a8656','#386f47'][trees.length%3])});}
-    inst(new THREE.ConeGeometry(1.6,4.6,8),itm('#ffffff'),trees,(e,d)=>{d.position.set(e.x,e.y+2.6*e.s+1,e.z);d.scale.setScalar(e.s);},{cast:true});
+    inst(CEDAR,NEEDLE,trees,(e,d)=>{d.position.set(e.x,e.y+0.4*e.s+0.9,e.z);d.scale.set(1.75*e.s,5*e.s,1.75*e.s);d.rotation.y=e.u;},{cast:true});
     inst(new THREE.CylinderGeometry(0.16,0.22,1.6,6),itm('#6b4a36'),trees,(e,d)=>{d.position.set(e.x,e.y+0.7*e.s,e.z);d.scale.setScalar(e.s);});
     for(const t of trees)collide(t.x-0.35,t.x+0.35,t.z-0.35,t.z+0.35,'tree');
     const bx=LH.x-7,bz=LH.z-7,b=new THREE.Group();b.position.set(bx,islG(bx,bz),bz);b.rotation.y=Math.PI;world.add(b);
