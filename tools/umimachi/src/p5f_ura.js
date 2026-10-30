@@ -55,14 +55,18 @@ const uraAtt=(d,r)=>clamp(1-d/r,0,1)**2;
 function uraNear(){if(URA.hide)return{kind:'unhide',d:0,label:'出る　木箱から',verb:'出る'};
   let best=null;for(const h of URA.hides){const d=Math.hypot(P.x-h.x,P.z-h.z);if(d<2.5&&(!best||d<best.d))best={kind:'hide',h,d,label:'隠れる　木箱',verb:'隠れる'};}return best;}
 function uraAct(o){const C=URA.chase;
-  if(o.kind==='hide'){URA.hide=o.h;P.v=0;P.air=false;player.g.visible=false;camInit=false;
+  if(o.kind==='hide'){URA.hide=o.h;o.h.peek=null;P.v=0;P.air=false;player.g.visible=false;camInit=false;
     if(C){C.save=[o.h.x+1.6,o.h.z,P.yaw];C.saw=C.mode==='hunt'&&C.d<12;}renderHUD();}
   else uraUnhide();}
 function uraUnhide(){const h=URA.hide;URA.hide=null;player.g.visible=true;if(h){const a=Math.atan2(P.x-h.x,P.z-h.z);P.x=h.x+Math.sin(a)*1.7;P.z=h.z+Math.cos(a)*1.7;P.y=G(P.x,P.z);}camInit=false;renderHUD();}
-// peeking out over the lid of the crate: the view stays low and turns to the shadow
-function uraHideCam(want,look){const h=URA.hide,bg=URA.big&&URA.chase?URA.big.h.g.position:null;
-  const tx=bg?bg.x:h.x+Math.sin(P.yaw)*10,tz=bg?bg.z:h.z+Math.cos(P.yaw)*10,a=Math.atan2(tx-h.x,tz-h.z);
-  want.set(h.x+Math.sin(a)*0.35,h.y+1.62,h.z+Math.cos(a)*0.35);look.set(tx,(bg?bg.y:h.y)+2.2,tz);}
+// peeking out over the lid of the crate: the view stays low. A/D or the stick turns it round; left alone for a moment,
+// it turns back to the shadow (or the way she was facing)
+function uraPeekAim(h){const bg=URA.big&&URA.chase?URA.big.h.g.position:null;return bg?Math.atan2(bg.x-h.x,bg.z-h.z):P.yaw;}
+function uraPeek(dt,turn){const h=URA.hide;if(h.peek==null){h.peek=uraPeekAim(h);h.hold=0;}
+  if(Math.abs(turn)>0.05){h.peek-=turn*dt*1.9;h.hold=2.5;}
+  else if((h.hold-=dt)<=0){let d=uraPeekAim(h)-h.peek;d=Math.atan2(Math.sin(d),Math.cos(d));h.peek+=d*Math.min(1,dt*2.5);}}
+function uraHideCam(want,look){const h=URA.hide,a=h.peek==null?uraPeekAim(h):h.peek;
+  want.set(h.x+Math.sin(a)*0.35,h.y+1.62,h.z+Math.cos(a)*0.35);look.set(h.x+Math.sin(a)*12,h.y+2.3,h.z+Math.cos(a)*12);}
 // caught in the open: first a short replay from the side, so you see it reach you (the last 2 s, the end slowed down)
 function uraCaught(){const C=URA.chase;C.grace=99;
   if(!URA.hide&&C.rec.length>20&&!C.replay){const t1=C.rec[C.rec.length-1].t;C.replay={t:0,f:C.rec.filter(r=>r.t>=t1-2),t1,side:1};

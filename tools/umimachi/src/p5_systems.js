@@ -469,7 +469,7 @@ function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=f?'スケボー':'
 function stepPlayer(dt){
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
   if(URA.chase&&URA.chase.replay){jumpQ=kickQ=footQ=trickQ=false;uraReplayPose(dt);return;}   // the replay of being caught moves her, not the keys
-  if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
+  if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;uraPeek(dt,DLG||modal?0:inputs().turn);return;}   // in a crate in 裏海街: still and out of sight
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
