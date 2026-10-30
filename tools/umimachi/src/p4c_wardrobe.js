@@ -69,7 +69,7 @@ const WARDROBE=[
     {id:'deviltail',name:'小悪魔のしっぽ',parts:{W_deviltail:0},colors:[['#2b2b30'],['#c8323a']]},
     {id:'pumpkin',name:'かぼちゃポーチ',parts:{W_pumpkin:'#ffffff'},colors:[['#ffffff']]}]},
   {slot:'hair',label:'髪の色',items:[
-    {id:'hair',name:'髪',parts:{},hair:true,colors:[[null],['#2a2220'],['#d9b06a'],['#e88fa8'],['#8a9fd0'],['#b9b9c2']]}]},
+    {id:'hair',name:'髪',parts:{},hair:true,colors:[[null],['#8a5530'],['#d9b06a'],['#e88fa8'],['#8a9fd0'],['#b9b9c2']]}]},
 ];
 // Nagi's summer school uniform (tools/umimachi/design/06_turnaround_uniform_fixed.png)
 const DEFAULT_OUTFIT={tops:['uniform',0],neck:['ribbon',0],bottoms:['skirt',5],legs:['knee',2],shoes:['sneakers',2],hands:['none',0],head:['none',0],tie:['scrunchie',5],back:['none',0],waist:['none',0],hair:['hair',0]};
