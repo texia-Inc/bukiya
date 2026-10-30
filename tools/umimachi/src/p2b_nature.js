@@ -62,15 +62,37 @@ const GRASS_MAT=(()=>{const m=new THREE.MeshToonMaterial({color:'#ffffff',gradie
   transformed.x+=bendA*0.3+sin(uWindT*0.9+ph)*0.012*t;transformed.z-=bendA*0.95+cos(uWindT*0.7+ph)*0.01*t;transformed.y-=bendA*0.15;`);
     sh.fragmentShader='varying float vTip;varying float vGlow;\n'+sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );',
       'vec4 diffuseColor = vec4( diffuse*mix(0.62,1.1,vTip), opacity );')
-      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=(diffuseColor.rgb*0.6+vec3(0.22,0.2,0.1))*vGlow*vTip*vTip;   // the sheen on the bent tips');};
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=diffuseColor.rgb*0.18*vGlow*vTip*vTip;   // the sheen on the bent tips');};
   m.customProgramCacheKey=()=>'grass';return m;})();
 const GRASS_COLS=['#5f9c46','#6ea951','#558f42','#7bb15a','#4f8a3f'].map(c=>new THREE.Color(c));
+/* wild flowers in the grass: little five-petalled heads on thin stems, in patches. The stems are green, the heads take the
+   colour of the patch (white clover, yellow, pink, pale purple, sky blue) */
+const FLOWER_GEO=(()=>{const mk=(head)=>{const pos=[],col=[];
+    if(!head){for(const a of [0,Math.PI/2]){const cx=Math.cos(a)*0.012,cz=Math.sin(a)*0.012;for(const [x,y,z] of [[-cx,0,-cz],[cx,0,cz],[cx,0.44,cz],[-cx,0,-cz],[cx,0.44,cz],[-cx,0.44,-cz]]){pos.push(x,y,z);col.push(0.32,0.55,0.25);}}}
+    else{const y=0.44,r=0.085;for(let k=0;k<5;k++){const a0=k/5*TAU,a1=a0+TAU/10,a2=a0+TAU/5;   // a petal is two triangles out to a rounded tip
+        for(const [x,yy,z,c] of [[0,y,0,0.7],[Math.cos(a0)*r*0.55,y,Math.sin(a0)*r*0.55,1],[Math.cos(a1)*r,y+0.008,Math.sin(a1)*r,1],[0,y,0,0.7],[Math.cos(a1)*r,y+0.008,Math.sin(a1)*r,1],[Math.cos(a2)*r*0.55,y,Math.sin(a2)*r*0.55,1]]){pos.push(x,yy,z);col.push(c,c,c*0.97);}}
+      for(let k=0;k<6;k++){const a0=k/6*TAU,a1=(k+1)/6*TAU,rc=0.024;for(const [x,z] of [[0,0],[Math.cos(a0)*rc,Math.sin(a0)*rc],[Math.cos(a1)*rc,Math.sin(a1)*rc]]){pos.push(x,y+0.012,z);col.push(1.0,0.82,0.25);}}}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+    if(head)g.translate(0,-0.44,0).rotateX(0.65).translate(0,0.44,0);   // the head nods to one side, so its face shows from the path
+    g.computeVertexNormals();return g;};
+  return{stem:mk(false),head:mk(true)};})();
+const FLOWER_MAT=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.06);
+const FLOWER_COLS=['#ffffff','#f6f2e4','#f4d23c','#f2a6c4','#c3aef0','#9cc2f2'].map(c=>new THREE.Color(c));
+function flowerPatch(cx,cz,r,ok){const list=[];const n=Math.round(GRASS.per/3.5);for(let i=0;i<n;i++){const x=cx*GRASS.S+r()*GRASS.S,z=cz*GRASS.S+r()*GRASS.S;
+    const p=vnoise(x/11+40,z/11-20);if(p<0.5||r()>(p-0.5)*2.6||!ok(x,z))continue;const y=G(x,z);if(y<SEA_Y+0.3)continue;
+    list.push({x,y,z,s:0.85+r()*0.5,a:r()*TAU,c:FLOWER_COLS[Math.floor(vnoise(x/23-7,z/23+3)*7.99)%FLOWER_COLS.length]});}
+  if(!list.length)return null;const g=new THREE.Group(),d=new THREE.Object3D();
+  for(const part of ['stem','head']){const im=new THREE.InstancedMesh(FLOWER_GEO[part],FLOWER_MAT,list.length);
+    list.forEach((e,i)=>{d.position.set(e.x,e.y-0.02,e.z);d.rotation.set(0,e.a,0);d.scale.setScalar(e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,part==='head'?e.c:WHITE3);});
+    im.frustumCulled=false;g.add(im);}
+  return g;}
+const WHITE3=new THREE.Color('#ffffff');
 function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+cz*104729)&0x7fffffff),list=[];
   const cells=new Map(),ok=(x,z)=>{const k=Math.floor(x/2)+','+Math.floor(z/2);if(!cells.has(k))cells.set(k,grassOK(Math.floor(x/2)*2+1,Math.floor(z/2)*2+1));return cells.get(k);};
   for(let n=0;n<GRASS.per;n++){const x=x0+r()*S,z=z0+r()*S;if(!ok(x,z))continue;const y=G(x,z);if(y<SEA_Y+0.3)continue;list.push({x,y,z,s:0.75+r()*0.55,a:r()*TAU,c:GRASS_COLS[Math.floor(r()*5)]});}
   if(!list.length)return null;const im=new THREE.InstancedMesh(GRASS_GEO,GRASS_MAT,list.length),d=new THREE.Object3D();
   list.forEach((e,i)=>{d.position.set(e.x,e.y-0.03,e.z);d.scale.set(e.s,e.s*(0.75+0.45*vnoise(e.x/9,e.z/9)),e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,e.c);});
-  im.frustumCulled=false;im.matrixAutoUpdate=false;scene.add(im);return im;}
+  im.frustumCulled=false;im.matrixAutoUpdate=false;const fl=flowerPatch(cx,cz,r,ok);if(fl)im.add(fl);scene.add(im);return im;}
 // keep the squares round the player made, a couple per frame, and let go of the far ones
 function updateGrass(){if(GRASS.per==null){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
   const S=GRASS.S,R=GRASS.R,px=P.x,pz=P.z,on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&px<INK_X-600,c0x=Math.floor((px-R)/S),c1x=Math.floor((px+R)/S),c0z=Math.floor((pz-R)/S),c1z=Math.floor((pz+R)/S);
@@ -85,5 +107,32 @@ function updateGrass(){if(GRASS.per==null){const touch=('ontouchstart' in window
     sh.vertexShader='varying vec3 vWP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  vWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader=WIND_GLSL+'\nvarying vec3 vWP;\n'+sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
   { float grassy=smoothstep(0.06,0.14,vColor.g-vColor.r);float fd=1.0-smoothstep(70.0,170.0,distance(vWP.xz,cameraPosition.xz));
-    totalEmissiveRadiance+=(diffuseColor.rgb*0.5+vec3(0.1,0.1,0.04))*windLine(vWP.xz)*grassy*fd; }`);};
+    totalEmissiveRadiance+=diffuseColor.rgb*0.08*windLine(vWP.xz)*grassy*fd; }`);};
     m.customProgramCacheKey=()=>'ground-wind';m.needsUpdate=true;}}
+
+/* wind lines: thin white strokes in the air over the grass, the way a breeze is drawn in a picture. Each one is the trail of a
+   point that drifts inland with the wind, bobbing a little, now and then turning a loop; it grows, runs and fades in 2–3 s */
+const WL={list:[],t:0,dir:new THREE.Vector3(0.3,0,-1).normalize(),N:24};
+const WL_MAT=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uOp:{value:1}},
+  vertexShader:'attribute float a;varying float vA;void main(){vA=a;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:'uniform float uOp;varying float vA;void main(){gl_FragColor=vec4(1.0,1.0,0.97,vA*uOp);}'});
+function wlMake(){const n=WL.N,g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*2*3),3));
+  g.setAttribute('a',new THREE.BufferAttribute(new Float32Array(n*2),1));const idx=[];for(let i=0;i<n-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}g.setIndex(idx);
+  const m=new THREE.Mesh(g,WL_MAT);m.frustumCulled=false;m.visible=false;m.renderOrder=3;scene.add(m);return{m,pts:[],alive:false};}
+function wlSpawn(L){const cd=camera.getWorldDirection(new THREE.Vector3()),a=Math.atan2(cd.x,cd.z)+(rnd()-0.5)*1.4,r=6+rnd()*14,x=camera.position.x+Math.sin(a)*r-WL.dir.x*5,z=camera.position.z+Math.cos(a)*r-WL.dir.z*5;   // in front of the cameraif(!grassOK(x,z))return false;
+  Object.assign(L,{alive:true,t:0,life:2.2+rnd()*1.2,x,z,y:G(x,z)+0.7+rnd()*1.6,sp:4+rnd()*2.5,ph:rnd()*TAU,loopAt:rnd()<0.65?0.6+rnd()*0.8:-1,pts:[],acc:0});
+  L.y0=L.y;return true;}
+function updateWindLines(dt){WL.t+=dt;if(!WL.list.length)for(let k=0;k<7;k++)WL.list.push(wlMake());
+  const on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&P.x<INK_X-600&&state==='play',day=clamp((sun.intensity-0.15)/0.6,0,1);WL_MAT.uniforms.uOp.value=0.95*day;
+  const want=(typeof hasTouch!=='undefined'&&hasTouch)?4:7,d=WL.dir,side=new THREE.Vector3(-d.z,0,d.x),cam=camera.position;
+  WL.list.forEach((L,k)=>{if(!L.alive){L.m.visible=false;if(on&&k<want&&day>0.05&&rnd()<dt*0.9)wlSpawn(L);return;}
+    L.t+=dt;const u=L.t;let hx=L.x+d.x*L.sp*u+side.x*Math.sin(u*2.4+L.ph)*1.1,hz=L.z+d.z*L.sp*u+side.z*Math.sin(u*2.4+L.ph)*1.1,hy=L.y0+Math.sin(u*3.1+L.ph)*0.35;
+    if(L.loopAt>0&&u>L.loopAt&&u<L.loopAt+0.7){const q=(u-L.loopAt)/0.7*TAU,R=0.55;hx-=d.x*Math.sin(q)*R*1.6;hz-=d.z*Math.sin(q)*R*1.6;hy+=(1-Math.cos(q))*R;}   // a loop, up and over
+    L.acc+=dt;if(L.acc>0.045||!L.pts.length){L.acc=0;L.pts.unshift([hx,hy,hz]);if(L.pts.length>WL.N)L.pts.pop();}else L.pts[0]=[hx,hy,hz];
+    if(u>L.life){L.alive=false;L.m.visible=false;return;}
+    const pos=L.m.geometry.attributes.position,al=L.m.geometry.attributes.a,n=L.pts.length,life=Math.min(1,u/0.4)*Math.min(1,(L.life-u)/0.6);
+    for(let i=0;i<WL.N;i++){const p=L.pts[Math.min(i,n-1)],q=L.pts[Math.min(i+1,n-1)]||p,tx=p[0]-q[0],ty=p[1]-q[1],tz=p[2]-q[2];
+      const vx=cam.x-p[0],vy=cam.y-p[1],vz=cam.z-p[2];let sx=ty*vz-tz*vy,sy=tz*vx-tx*vz,sz=tx*vy-ty*vx;const sl=Math.hypot(sx,sy,sz)||1,f=i/(WL.N-1),w=0.085*Math.sin(Math.PI*Math.min(1,f*1.15));
+      sx*=w/sl;sy*=w/sl;sz*=w/sl;pos.setXYZ(i*2,p[0]+sx,p[1]+sy,p[2]+sz);pos.setXYZ(i*2+1,p[0]-sx,p[1]-sy,p[2]-sz);
+      const aa=(i<n?1:0)*Math.sin(Math.PI*Math.min(1,f*1.05))*life;al.setX(i*2,aa);al.setX(i*2+1,aa);}
+    pos.needsUpdate=true;al.needsUpdate=true;L.m.visible=on;});}
