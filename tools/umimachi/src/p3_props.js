@@ -157,7 +157,7 @@ for(const k of [0,1])inst(CANOPY[k],LEAF,TREES.filter((e,i)=>i%2===k),(e,d)=>{d.
   for(let k=0;k<46;k++){const a=-Math.PI-0.42+(Math.PI+0.84)*(k+r()*0.6)/46,R=560+r()*260,s=150+r()*110;
     ML.push({x:Math.cos(a)*R*1.15,z:-60+Math.sin(a)*R,s,h:(80+r()*120)*(Math.abs(Math.cos(a))>0.8?0.8:1),y:r()*6,col:C3(['#6f8f86','#7a9a8e','#68867f','#809e94'][k%4])});}
   for(let k=0;k<26;k++){const a=-Math.PI-0.3+(Math.PI+0.6)*(k+0.5)/26,R=380+r()*60;ML.push({x:Math.cos(a)*R*1.1,z:-60+Math.sin(a)*R*0.9,s:90+r()*50,h:45+r()*40,y:r()*6,col:C3(['#4f7a5a','#5a8562','#486f52'][k%3])});}
-  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4+Math.max(0,H(clamp(e.x,-560,560),clamp(e.z,-460,472))),e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
+  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4+(Math.abs(e.x)<550&&e.z>-450?Math.max(0,H(e.x,e.z))*0.85:0),e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
 // vending machines (two of them are open for business)
 const vendTex=canvasTex(64,128,(g,w,h)=>{g.fillStyle='#f4f4f0';g.fillRect(0,0,w,h);g.fillStyle='#cfe7f2';g.fillRect(5,8,w-10,62);
   for(let r=0;r<3;r++)for(let c=0;c<5;c++){g.fillStyle=pick(['#3a7bd5','#e2584a','#4f9a5a','#f2c230','#8a5a3a','#ffffff']);g.fillRect(8+c*10.4,12+r*20,7,14);g.fillStyle='#e2584a';g.fillRect(9+c*10.4,28+r*20,5,2);}
@@ -227,7 +227,7 @@ const SHRINE={x:-60,z:-124.6};
     for(const px of [-1,0,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(0.18,0.38),tmap(sh,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide}));m.position.set(px,2.66+Math.abs(px)*0.12,0.2);g.add(m);}}
   // stone path climbing to the hall
   const path=[];for(let zz=z-1.5;zz>-160;zz-=1.6)path.push({x,z:zz});
-  inst(new THREE.BoxGeometry(2.2,0.18,1.4),tm('#9d978b'),path,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+0.05,e.z);},{recv:true});
+  inst(new THREE.BoxGeometry(2.2,0.18,1.4),tm('#9d978b'),path,(e,d)=>{d.position.set(e.x,G(e.x,e.z)-0.06,e.z);d.rotation.x=Math.atan(HILL);},{recv:true});   // laid along the slope, just proud of the ground
   for(const [lx,lz] of [[x-2.6,z-6],[x+2.6,z-6],[x-2.6,z-24],[x+2.6,z-24]]){const l=new THREE.Group();l.position.set(lx,G(lx,lz),lz);const st=tm('#a9a397');
     l.add(M(new THREE.CylinderGeometry(0.28,0.36,0.3,8),st,0.015).translateY(0.15));l.add(M(new THREE.CylinderGeometry(0.12,0.12,0.9,8),st,0.012).translateY(0.75));
     l.add(M(new THREE.BoxGeometry(0.55,0.4,0.55),st,0.015).translateY(1.35));l.add(M(new THREE.ConeGeometry(0.55,0.4,4),st,0.015).translateY(1.75).rotateY(Math.PI/4));world.add(l);collide(lx-0.35,lx+0.35,lz-0.35,lz+0.35,'prop',G(lx,lz)+1.95);}
@@ -275,13 +275,14 @@ const SHRINE={x:-60,z:-124.6};
   const bellRope=canvasTex(8,64,(g,w,h)=>{for(let k=0;k<8;k++){g.fillStyle=['#c8372d','#f4efe2','#7a3a8a'][k%3];g.fillRect(0,k*8,w,8);}},true);
   H(new THREE.CylinderGeometry(0.05,0.05,2.1,8),tmap(bellRope),0,0,2.2,4.25);
   H(new THREE.SphereGeometry(0.2,14,10),gold,0.012,0,3.28,4.25);
-  for(let k=0;k<4;k++){const tt=1.15-0.29*k;H(new THREE.BoxGeometry(1.9,tt,0.3),k?stone:wood,0.012,0,tt/2,2.75+0.3*k);}
+  // the hall stands on a slope: six steps, the lower ones reaching down to the ground in front, each low enough to walk up
+  for(let k=0;k<6;k++){const tt=1.15-0.29*k;H(new THREE.BoxGeometry(1.9,tt+0.8,0.3),k?stone:wood,0.012,0,(tt-0.8)/2,2.75+0.3*k);}
   const slat=canvasTex(128,64,(g,w,h)=>{g.fillStyle='#6b4a2e';g.fillRect(0,0,w,h);g.fillStyle='#4a3326';for(let k=4;k<w;k+=12)g.fillRect(k,14,6,h-14);g.fillStyle='#f4efe2';g.font=signFont(13,true);g.textAlign='center';g.fillText('奉　納',w/2,11);});
-  const box=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.75,0.6),[wood,wood,dark,wood,tmap(slat),wood]);box.castShadow=true;outline(box,0.015);box.position.set(0,0.38,4.3);hall.add(box);
+  const box=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.75,0.6),[wood,wood,dark,wood,tmap(slat),wood]);box.castShadow=true;outline(box,0.015);box.position.set(0,G(x,hz+5.3)-hy+0.38,5.3);hall.add(box);collide(x-0.8,x+0.8,hz+5,hz+5.6,'prop',G(x,hz+5.3)+0.75);   // on the ground before the steps
   // hanging lanterns under the eaves
   for(const sd of [-1,1]){H(new THREE.CylinderGeometry(0.012,0.012,0.4,4),dark,0,sd*2.7,3.58,3.0);const lt=H(new THREE.CylinderGeometry(0.16,0.12,0.36,6),tm('#3d3a33'),0.008,sd*2.7,3.2,3.0);
     H(new THREE.ConeGeometry(0.24,0.16,6),tm('#3d3a33'),0,sd*2.7,3.44,3.0);}
-  collide(x-3.5,x+3.5,hz-3,hz+3,'bld');collide(x-1,x+1,hz+3,hz+4.65,'prop',hy+1.15);
+  collide(x-3.5,x+3.5,hz-3,hz+2.6,'bld');for(let k=0;k<6;k++)collide(x-0.95,x+0.95,hz+2.6+0.3*k,hz+2.9+0.3*k,'step',hy+1.15-0.29*k);
   // the guardian dogs on their stones, one each side in front of the hall
   const kom=(sd)=>{const kx=x+sd*3.1,kz=hz+6.2,g2=new THREE.Group();g2.position.set(kx,G(kx,kz),kz);g2.rotation.y=-sd*0.55;world.add(g2);const st=tm('#a39d90'),ds=tm('#8f897d');
     const K=(geo,mat,px,py,pz)=>{const m=M(geo,mat,0.012);m.position.set(px,py,pz);g2.add(m);return m;};

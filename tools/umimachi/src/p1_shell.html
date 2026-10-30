@@ -187,11 +187,13 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   #tools{top:calc(env(safe-area-inset-top,0px) + 112px);gap:6px}#menuBtn{display:block}
   #tools .tool{display:none}#tools #menuBtn,#tools #lightBtn,#tools.open .tool{display:block}#tools .tool[hidden]{display:none!important}
   .tool{font-size:11px;padding:7px 9px;min-width:56px}
+  #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 290px);max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis;font-size:13px}   /* above the buttons */
   #pad{gap:9px;right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
   .pb{width:56px;height:56px;font-size:12px}.pb.main{width:72px;height:72px}.pb.kick{width:80px;height:80px;font-size:15px}
   .cslot{grid-template-columns:52px 1fr;gap:4px 8px}
   #ring{opacity:.22}#bag .it{font-size:11px;padding:2px 6px 2px 2px}#bag .it img{width:20px;height:20px}
 }
+@media (pointer:coarse) and (orientation:landscape){#prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:40vw}}   /* landscape: the middle of the bottom is free */
 @media (prefers-reduced-motion: reduce){.tst{animation-duration:3.5s}#dialog .nx{animation:none}}
 </style>
 

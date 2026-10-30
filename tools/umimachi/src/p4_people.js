@@ -291,7 +291,7 @@ function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))
 
 /* townsfolk and the people you run errands for */
 const NPCS={};
-function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
+function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z)+paveY(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
   const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;n.box=collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
 // someone who is only there at certain times has n.show(); hidden people neither stand in the way nor talk
 const present=n=>!URA.on&&(!n.show||n.show());   // nobody you know is in 裏海街
@@ -362,7 +362,7 @@ function updateFolk(dt,px,pz,init){
       if(p.stop<=0){p.t+=p.v*dt;walking=true;}if(p.t<p.R.a||p.t>p.R.b){p.v=-p.v;p.t=clamp(p.t,p.R.a,p.R.b);}
       [x,z]=folkPos(p);yaw=p.R.ax==='x'?(p.v>0?Math.PI/2:-Math.PI/2):(p.v>0?0:Math.PI);}
     p.ph+=dt*6.2;const s=walking?Math.sin(p.ph):0;
-    FB.position.set(x,G(x,z)+(p.R&&p.R.ax==='z'&&Math.abs(p.lane)>4?0.12:0)+(walking?Math.abs(Math.cos(p.ph))*0.02:0),z);FB.rotation.set(0,yaw,0);FB.scale.setScalar(p.k);FB.updateMatrixWorld(true);
+    FB.position.set(x,G(x,z)+paveY(x,z)+(walking?Math.abs(Math.cos(p.ph))*0.02:0),z);FB.rotation.set(0,yaw,0);FB.scale.setScalar(p.k);FB.updateMatrixWorld(true);
     folkMesh.torso.setMatrixAt(k,FB.matrixWorld);folkMesh.head.setMatrixAt(k,FB.matrixWorld);folkMesh.hair.setMatrixAt(k,FB.matrixWorld);
     for(const [m,sx,sg] of [[folkMesh.legL,-1,1],[folkMesh.legR,1,-1]]){FL.position.set(sx*0.09,0.86,0);FL.rotation.set(-s*0.42*sg,0,0);FL.updateMatrixWorld(true);m.setMatrixAt(k,FL.matrixWorld);}
     for(const [m,sx,sg] of [[folkMesh.armL,-1,-1],[folkMesh.armR,1,1]]){FL.position.set(sx*0.2,1.4,0);FL.rotation.set(-s*0.35*sg,0,sx*0.08);FL.updateMatrixWorld(true);m.setMatrixAt(k,FL.matrixWorld);}

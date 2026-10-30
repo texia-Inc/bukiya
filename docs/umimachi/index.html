@@ -192,11 +192,13 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   #tools{top:calc(env(safe-area-inset-top,0px) + 112px);gap:6px}#menuBtn{display:block}
   #tools .tool{display:none}#tools #menuBtn,#tools #lightBtn,#tools.open .tool{display:block}#tools .tool[hidden]{display:none!important}
   .tool{font-size:11px;padding:7px 9px;min-width:56px}
+  #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 290px);max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis;font-size:13px}   /* above the buttons */
   #pad{gap:9px;right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
   .pb{width:56px;height:56px;font-size:12px}.pb.main{width:72px;height:72px}.pb.kick{width:80px;height:80px;font-size:15px}
   .cslot{grid-template-columns:52px 1fr;gap:4px 8px}
   #ring{opacity:.22}#bag .it{font-size:11px;padding:2px 6px 2px 2px}#bag .it img{width:20px;height:20px}
 }
+@media (pointer:coarse) and (orientation:landscape){#prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:40vw}}   /* landscape: the middle of the bottom is free */
 @media (prefers-reduced-motion: reduce){.tst{animation-duration:3.5s}#dialog .nx{animation:none}}
 </style>
 </head>
@@ -4144,6 +4146,10 @@ for(const S of STREETS){
     }
   }
 }
+// how high the pavement is here (0.12 on a pavement, 0 elsewhere): feet stand on it, not in it
+const PAVE_CUTS=new Map(STREETS.filter(S=>S.sw).map(S=>[S,crossings(S).map(o=>[o.c-o.w/2-0.2,o.c+o.w/2+0.2])]));
+function paveY(x,z){for(const [S,cuts] of PAVE_CUTS){const a=S.ax==='z'?z:x,o=Math.abs((S.ax==='z'?x:z)-S.c);
+  if(a<S.a||a>S.b||o<S.w/2-0.05||o>S.w/2+S.sw)continue;for(const [c0,c1] of cuts)if(a>c0&&a<c1)return 0;return 0.12;}return 0;}
 /* the tram track: ballast, sleepers, rails */
 {
   grid(Math.round(2*CUT_X/8)+1,2,(r,c)=>{const x=-CUT_X+r*8,z=TRAM_Z-1.7+c*3.4;return[x,G(x,z)+0.05,z,r,c];},tmap(canvasTex(64,64,(g,w,h)=>{g.fillStyle='#8a8276';g.fillRect(0,0,w,h);
@@ -4330,16 +4336,19 @@ for(const w of walls){const yaw=w.yaw,c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.
    WIND.t is the clock the shaders share (set every frame in p5_systems.js). Gusts are bands that roll across the town from
    the sea; where one passes, the grass bends further and catches the light, so bright waves seem to run over it. ---------- */
 const WIND={t:{value:0}};
+// gust: broad, slow swells of wind. windLine: the thin bright lines a breeze draws over a field, wavy, drifting inland from the sea
 const WIND_GLSL=`uniform float uWindT;
-float gust(vec2 p){return 0.5+0.5*sin(dot(p,vec2(0.045,0.07))-uWindT*1.15)*sin(dot(p,vec2(-0.021,0.033))-uWindT*0.53+1.7);}`;
+float gust(vec2 p){return 0.5+0.5*sin(dot(p,vec2(0.02,0.032))-uWindT*0.42)*sin(dot(p,vec2(-0.011,0.017))-uWindT*0.21+1.7);}
+float windLine(vec2 p){float ph=dot(p,vec2(0.15,-0.48))+sin(dot(p,vec2(0.07,0.025))+uWindT*0.15)*2.2+sin(dot(p,vec2(-0.21,0.08)))*0.7-uWindT*1.9;
+  float l=pow(0.5+0.5*sin(ph),9.0);float br=smoothstep(0.25,0.75,0.5+0.5*sin(dot(p,vec2(0.017,0.009))-uWindT*0.12));return l*br;}`;
 // leaves: the whole crown leans and shivers, more at the top, each tree on its own beat (its place sets the phase)
 function windify(mat,amp){mat.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;
   sh.vertexShader=WIND_GLSL+'\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
 #ifdef USE_INSTANCING
   vec2 wp=instanceMatrix[3].xz;float ph=dot(wp,vec2(0.37,0.23));float g=gust(wp);
   float k=max(transformed.y+0.6,0.0)*${amp.toFixed(3)};
-  transformed.x+=k*(sin(uWindT*1.6+ph)*0.6+g*0.9);transformed.z+=k*(sin(uWindT*1.23+ph*1.7)*0.45+g*0.4);
-  transformed+=normal*sin(uWindT*7.0+ph*3.0+transformed.y*4.0)*0.012;
+  transformed.x+=k*(sin(uWindT*0.55+ph)*0.35+g*0.8);transformed.z-=k*(sin(uWindT*0.41+ph*1.7)*0.25+g*0.5);
+  transformed+=normal*sin(uWindT*1.8+ph*3.0+transformed.y*3.0)*0.004;
 #endif`);};mat.customProgramCacheKey=()=>'wind'+amp;return mat;}
 // a broadleaf crown: a few lumpy balls run together, darker underneath and brighter on top
 function canopyGeo(seed){const r=mulberry(seed),parts=[[0,0,0,1],[0.55,0.25,0.2,0.7],[-0.5,0.2,-0.25,0.68],[0.1,0.55,-0.45,0.6],[-0.15,-0.3,0.5,0.62]];
@@ -4355,17 +4364,17 @@ function cedarGeo(){const pos=[],col=[];const tiers=[[0.0,0.5,1],[0.28,0.42,0.78
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
   geo.computeVertexNormals();return geo;}
 const CANOPY=[canopyGeo(3),canopyGeo(11)],CEDAR=cedarGeo();
-const LEAF=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true}),0.05);
-const NEEDLE=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.035);
+const LEAF=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true}),0.025);
+const NEEDLE=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.016);
 
 /* grass: clumps of blades in 16 m squares, made when you come near and dropped when you are far away.
    Only on open ground: not on streets, lots, the tram line, the shore, the cuttings or the paved places */
 const GRASS={chunks:new Map(),S:16,mesh:null,on:true};
 function grassOK(x,z){if(x>INK_X-600)return false;
-  if(z>ISL_Z0&&ISL_ON){const y=G(x,z);return y>SEA_Y+1.6&&Math.hypot(x-198,z-760)>9;}
+  if(z>ISL_Z0&&ISL_ON){const y=G(x,z),u=x-ISL.x,w=z-ISL.z;return y>SEA_Y+1.6&&Math.hypot(x-LH.x,z-LH.z)>9&&islPathD(u,w)>2.6&&!(u>-60&&u<-48&&w<-18);}   // not on the path up to the lighthouse or the jetty
   const y=H(x,z);if(z>SHORE-1)return Math.abs(x)>205&&y>7;if(z>COAST_Z-6.5||cutting(x,z))return false;
   const b={x0:x-0.6,x1:x+0.6,z0:z-0.6,z1:z+0.6};
-  for(const S of STREETS)if(overlaps(b,streetBox(S,0.6),0))return false;
+  for(const S of STREETS){const sb=streetBox(S,0.6);if(S.ax==='z'){sb.z0-=3;sb.z1+=3;}else{sb.x0-=3;sb.x1+=3;}if(overlaps(b,sb,0))return false;}   // the street and a little past its ends
   if(Math.abs(z-TRAM_Z)<4.5&&Math.abs(x)<TRAM_X1+30)return false;
   for(const r of RES)if(overlaps(b,r,1))return false;for(const o of BLD)if(overlaps(b,o,0.8))return false;
   for(const c of COLL)if(c.tag!=='tree'&&overlaps(b,c,0.4))return false;
@@ -4380,13 +4389,13 @@ const GRASS_GEO=(()=>{const pos=[],uv=[],idx=[];let v=0;
 const GRASS_MAT=(()=>{const m=new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,side:THREE.DoubleSide});   // toon: the same light as the ground, and three.js hands it cameraPosition (Lambert does not get it)
   m.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;sh.uniforms.uFar={value:GRASS.R||40};GRASS.uFar=sh.uniforms.uFar;
     sh.vertexShader=WIND_GLSL+'\nuniform float uFar;varying float vTip;varying float vGlow;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-  vec2 wp=instanceMatrix[3].xz;float t=uv.y;vTip=t;float g=gust(wp);vGlow=smoothstep(0.62,0.95,g);
+  vec2 wp=instanceMatrix[3].xz;float t=uv.y;vTip=t;float g=gust(wp);float wl=windLine(wp);vGlow=wl;
   float fd=1.0-smoothstep(uFar*0.72,uFar,distance(wp,cameraPosition.xz));transformed.y*=fd;
-  float ph=dot(wp,vec2(1.7,1.3));float bendA=(0.02+g*0.12)*t*t;
-  transformed.x+=bendA*0.9+sin(uWindT*2.4+ph)*0.035*t;transformed.z+=bendA*0.5+cos(uWindT*1.9+ph)*0.03*t;transformed.y-=bendA*0.12;`);
+  float ph=dot(wp,vec2(1.7,1.3));float bendA=(0.03+g*0.06+wl*0.1)*t*t;   // leaning with the wind, a little more as a line of wind passes
+  transformed.x+=bendA*0.3+sin(uWindT*0.9+ph)*0.012*t;transformed.z-=bendA*0.95+cos(uWindT*0.7+ph)*0.01*t;transformed.y-=bendA*0.15;`);
     sh.fragmentShader='varying float vTip;varying float vGlow;\n'+sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );',
       'vec4 diffuseColor = vec4( diffuse*mix(0.62,1.1,vTip), opacity );')
-      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=diffuseColor.rgb*vec3(0.42,0.46,0.24)*vGlow*vTip;');};
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=(diffuseColor.rgb*0.6+vec3(0.22,0.2,0.1))*vGlow*vTip*vTip;   // the sheen on the bent tips');};
   m.customProgramCacheKey=()=>'grass';return m;})();
 const GRASS_COLS=['#5f9c46','#6ea951','#558f42','#7bb15a','#4f8a3f'].map(c=>new THREE.Color(c));
 function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+cz*104729)&0x7fffffff),list=[];
@@ -4403,6 +4412,14 @@ function updateGrass(){if(GRASS.per==null){const touch=('ontouchstart' in window
   if(!on)return;for(let cx=c0x;cx<=c1x;cx++)for(let cz=c0z;cz<=c1z;cz++){const k=cx+','+cz;if(GRASS.chunks.has(k))continue;
     const dx=Math.max(0,Math.abs((cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((cz+0.5)*S-pz)-S/2);if(Math.hypot(dx,dz)>R)continue;
     if(made++>=2)return;GRASS.chunks.set(k,{cx,cz,m:grassChunk(cx,cz)});}}
+// the same lines of wind run over the green ground itself, so between the blades and beyond the grass the field shines in waves too
+{ let ground=null;world.traverse(o=>{if(!ground&&o.isMesh&&o.material&&o.material.vertexColors&&o.geometry.attributes.position.count>60000)ground=o;});
+  if(ground){const m=ground.material;m.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;
+    sh.vertexShader='varying vec3 vWP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  vWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    sh.fragmentShader=WIND_GLSL+'\nvarying vec3 vWP;\n'+sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+  { float grassy=smoothstep(0.06,0.14,vColor.g-vColor.r);float fd=1.0-smoothstep(70.0,170.0,distance(vWP.xz,cameraPosition.xz));
+    totalEmissiveRadiance+=(diffuseColor.rgb*0.5+vec3(0.1,0.1,0.04))*windLine(vWP.xz)*grassy*fd; }`);};
+    m.customProgramCacheKey=()=>'ground-wind';m.needsUpdate=true;}}
 
 /* ---------- the named shops ---------- */
 function signFont(px,bold){return `${bold?900:700} ${px}px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif`;}
@@ -4562,7 +4579,7 @@ for(const k of [0,1])inst(CANOPY[k],LEAF,TREES.filter((e,i)=>i%2===k),(e,d)=>{d.
   for(let k=0;k<46;k++){const a=-Math.PI-0.42+(Math.PI+0.84)*(k+r()*0.6)/46,R=560+r()*260,s=150+r()*110;
     ML.push({x:Math.cos(a)*R*1.15,z:-60+Math.sin(a)*R,s,h:(80+r()*120)*(Math.abs(Math.cos(a))>0.8?0.8:1),y:r()*6,col:C3(['#6f8f86','#7a9a8e','#68867f','#809e94'][k%4])});}
   for(let k=0;k<26;k++){const a=-Math.PI-0.3+(Math.PI+0.6)*(k+0.5)/26,R=380+r()*60;ML.push({x:Math.cos(a)*R*1.1,z:-60+Math.sin(a)*R*0.9,s:90+r()*50,h:45+r()*40,y:r()*6,col:C3(['#4f7a5a','#5a8562','#486f52'][k%3])});}
-  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4+Math.max(0,H(clamp(e.x,-560,560),clamp(e.z,-460,472))),e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
+  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4+(Math.abs(e.x)<550&&e.z>-450?Math.max(0,H(e.x,e.z))*0.85:0),e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
 // vending machines (two of them are open for business)
 const vendTex=canvasTex(64,128,(g,w,h)=>{g.fillStyle='#f4f4f0';g.fillRect(0,0,w,h);g.fillStyle='#cfe7f2';g.fillRect(5,8,w-10,62);
   for(let r=0;r<3;r++)for(let c=0;c<5;c++){g.fillStyle=pick(['#3a7bd5','#e2584a','#4f9a5a','#f2c230','#8a5a3a','#ffffff']);g.fillRect(8+c*10.4,12+r*20,7,14);g.fillStyle='#e2584a';g.fillRect(9+c*10.4,28+r*20,5,2);}
@@ -4632,7 +4649,7 @@ const SHRINE={x:-60,z:-124.6};
     for(const px of [-1,0,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(0.18,0.38),tmap(sh,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide}));m.position.set(px,2.66+Math.abs(px)*0.12,0.2);g.add(m);}}
   // stone path climbing to the hall
   const path=[];for(let zz=z-1.5;zz>-160;zz-=1.6)path.push({x,z:zz});
-  inst(new THREE.BoxGeometry(2.2,0.18,1.4),tm('#9d978b'),path,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+0.05,e.z);},{recv:true});
+  inst(new THREE.BoxGeometry(2.2,0.18,1.4),tm('#9d978b'),path,(e,d)=>{d.position.set(e.x,G(e.x,e.z)-0.06,e.z);d.rotation.x=Math.atan(HILL);},{recv:true});   // laid along the slope, just proud of the ground
   for(const [lx,lz] of [[x-2.6,z-6],[x+2.6,z-6],[x-2.6,z-24],[x+2.6,z-24]]){const l=new THREE.Group();l.position.set(lx,G(lx,lz),lz);const st=tm('#a9a397');
     l.add(M(new THREE.CylinderGeometry(0.28,0.36,0.3,8),st,0.015).translateY(0.15));l.add(M(new THREE.CylinderGeometry(0.12,0.12,0.9,8),st,0.012).translateY(0.75));
     l.add(M(new THREE.BoxGeometry(0.55,0.4,0.55),st,0.015).translateY(1.35));l.add(M(new THREE.ConeGeometry(0.55,0.4,4),st,0.015).translateY(1.75).rotateY(Math.PI/4));world.add(l);collide(lx-0.35,lx+0.35,lz-0.35,lz+0.35,'prop',G(lx,lz)+1.95);}
@@ -4680,13 +4697,14 @@ const SHRINE={x:-60,z:-124.6};
   const bellRope=canvasTex(8,64,(g,w,h)=>{for(let k=0;k<8;k++){g.fillStyle=['#c8372d','#f4efe2','#7a3a8a'][k%3];g.fillRect(0,k*8,w,8);}},true);
   H(new THREE.CylinderGeometry(0.05,0.05,2.1,8),tmap(bellRope),0,0,2.2,4.25);
   H(new THREE.SphereGeometry(0.2,14,10),gold,0.012,0,3.28,4.25);
-  for(let k=0;k<4;k++){const tt=1.15-0.29*k;H(new THREE.BoxGeometry(1.9,tt,0.3),k?stone:wood,0.012,0,tt/2,2.75+0.3*k);}
+  // the hall stands on a slope: six steps, the lower ones reaching down to the ground in front, each low enough to walk up
+  for(let k=0;k<6;k++){const tt=1.15-0.29*k;H(new THREE.BoxGeometry(1.9,tt+0.8,0.3),k?stone:wood,0.012,0,(tt-0.8)/2,2.75+0.3*k);}
   const slat=canvasTex(128,64,(g,w,h)=>{g.fillStyle='#6b4a2e';g.fillRect(0,0,w,h);g.fillStyle='#4a3326';for(let k=4;k<w;k+=12)g.fillRect(k,14,6,h-14);g.fillStyle='#f4efe2';g.font=signFont(13,true);g.textAlign='center';g.fillText('奉　納',w/2,11);});
-  const box=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.75,0.6),[wood,wood,dark,wood,tmap(slat),wood]);box.castShadow=true;outline(box,0.015);box.position.set(0,0.38,4.3);hall.add(box);
+  const box=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.75,0.6),[wood,wood,dark,wood,tmap(slat),wood]);box.castShadow=true;outline(box,0.015);box.position.set(0,G(x,hz+5.3)-hy+0.38,5.3);hall.add(box);collide(x-0.8,x+0.8,hz+5,hz+5.6,'prop',G(x,hz+5.3)+0.75);   // on the ground before the steps
   // hanging lanterns under the eaves
   for(const sd of [-1,1]){H(new THREE.CylinderGeometry(0.012,0.012,0.4,4),dark,0,sd*2.7,3.58,3.0);const lt=H(new THREE.CylinderGeometry(0.16,0.12,0.36,6),tm('#3d3a33'),0.008,sd*2.7,3.2,3.0);
     H(new THREE.ConeGeometry(0.24,0.16,6),tm('#3d3a33'),0,sd*2.7,3.44,3.0);}
-  collide(x-3.5,x+3.5,hz-3,hz+3,'bld');collide(x-1,x+1,hz+3,hz+4.65,'prop',hy+1.15);
+  collide(x-3.5,x+3.5,hz-3,hz+2.6,'bld');for(let k=0;k<6;k++)collide(x-0.95,x+0.95,hz+2.6+0.3*k,hz+2.9+0.3*k,'step',hy+1.15-0.29*k);
   // the guardian dogs on their stones, one each side in front of the hall
   const kom=(sd)=>{const kx=x+sd*3.1,kz=hz+6.2,g2=new THREE.Group();g2.position.set(kx,G(kx,kz),kz);g2.rotation.y=-sd*0.55;world.add(g2);const st=tm('#a39d90'),ds=tm('#8f897d');
     const K=(geo,mat,px,py,pz)=>{const m=M(geo,mat,0.012);m.position.set(px,py,pz);g2.add(m);return m;};
@@ -5312,7 +5330,7 @@ function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))
 
 /* townsfolk and the people you run errands for */
 const NPCS={};
-function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
+function placeNPC(id,o,x,z,yaw,mode,name,idle){const h=makeHuman(o);const y=o.y!=null?o.y:G(x,z)+paveY(x,z);h.g.position.set(x,y,z);h.g.rotation.y=yaw;world.add(h.g);
   const n={id,h,x,z,yaw,mode,name,idle:idle||[],rad:o.rad||0.45};NPCS[id]=n;n.box=collide(x-n.rad,x+n.rad,z-n.rad,z+n.rad,'npc');return n;}
 // someone who is only there at certain times has n.show(); hidden people neither stand in the way nor talk
 const present=n=>!URA.on&&(!n.show||n.show());   // nobody you know is in 裏海街
@@ -5383,7 +5401,7 @@ function updateFolk(dt,px,pz,init){
       if(p.stop<=0){p.t+=p.v*dt;walking=true;}if(p.t<p.R.a||p.t>p.R.b){p.v=-p.v;p.t=clamp(p.t,p.R.a,p.R.b);}
       [x,z]=folkPos(p);yaw=p.R.ax==='x'?(p.v>0?Math.PI/2:-Math.PI/2):(p.v>0?0:Math.PI);}
     p.ph+=dt*6.2;const s=walking?Math.sin(p.ph):0;
-    FB.position.set(x,G(x,z)+(p.R&&p.R.ax==='z'&&Math.abs(p.lane)>4?0.12:0)+(walking?Math.abs(Math.cos(p.ph))*0.02:0),z);FB.rotation.set(0,yaw,0);FB.scale.setScalar(p.k);FB.updateMatrixWorld(true);
+    FB.position.set(x,G(x,z)+paveY(x,z)+(walking?Math.abs(Math.cos(p.ph))*0.02:0),z);FB.rotation.set(0,yaw,0);FB.scale.setScalar(p.k);FB.updateMatrixWorld(true);
     folkMesh.torso.setMatrixAt(k,FB.matrixWorld);folkMesh.head.setMatrixAt(k,FB.matrixWorld);folkMesh.hair.setMatrixAt(k,FB.matrixWorld);
     for(const [m,sx,sg] of [[folkMesh.legL,-1,1],[folkMesh.legR,1,-1]]){FL.position.set(sx*0.09,0.86,0);FL.rotation.set(-s*0.42*sg,0,0);FL.updateMatrixWorld(true);m.setMatrixAt(k,FL.matrixWorld);}
     for(const [m,sx,sg] of [[folkMesh.armL,-1,-1],[folkMesh.armR,1,1]]){FL.position.set(sx*0.2,1.4,0);FL.rotation.set(-s*0.35*sg,0,sx*0.08);FL.updateMatrixWorld(true);m.setMatrixAt(k,FL.matrixWorld);}
@@ -8424,9 +8442,9 @@ function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.Ar
    if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
-function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
+function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP||c.tag==='step')continue;   /* steps never stop you: you rise onto them one at a time */if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
-function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
+function groundAt(x,z,y){let g=G(x,z)+paveY(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
 function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
 // the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
@@ -8438,7 +8456,7 @@ function stepPlayer(dt){
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   // the slope under her: on a bridge it is the deck's, not the ground far below
-  const gs=(x,z)=>{let g=G(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
+  const gs=(x,z)=>{let g=G(x,z)+paveY(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
   const g1=gs(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=gs(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&!onPier(P.x,P.z);
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
@@ -8573,7 +8591,8 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;
-    const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));}else pr.hidden=true;
+    const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';if(hasTouch)pr.textContent=near.label.replace(near.verb,'').replace(/^[\s　]+/,'')||near.label;   // phones: the button already says the verb
+      else{const k=document.createElement('kbd');k.textContent='E';pr.append(k,document.createTextNode(near.label));}}else pr.hidden=true;
     // the act button is there only when there is something to do with it: someone or something close by, or a line to read on
     const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&!ST.run),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}

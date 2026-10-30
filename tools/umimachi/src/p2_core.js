@@ -195,6 +195,10 @@ for(const S of STREETS){
     }
   }
 }
+// how high the pavement is here (0.12 on a pavement, 0 elsewhere): feet stand on it, not in it
+const PAVE_CUTS=new Map(STREETS.filter(S=>S.sw).map(S=>[S,crossings(S).map(o=>[o.c-o.w/2-0.2,o.c+o.w/2+0.2])]));
+function paveY(x,z){for(const [S,cuts] of PAVE_CUTS){const a=S.ax==='z'?z:x,o=Math.abs((S.ax==='z'?x:z)-S.c);
+  if(a<S.a||a>S.b||o<S.w/2-0.05||o>S.w/2+S.sw)continue;for(const [c0,c1] of cuts)if(a>c0&&a<c1)return 0;return 0.12;}return 0;}
 /* the tram track: ballast, sleepers, rails */
 {
   grid(Math.round(2*CUT_X/8)+1,2,(r,c)=>{const x=-CUT_X+r*8,z=TRAM_Z-1.7+c*3.4;return[x,G(x,z)+0.05,z,r,c];},tmap(canvasTex(64,64,(g,w,h)=>{g.fillStyle='#8a8276';g.fillRect(0,0,w,h);
