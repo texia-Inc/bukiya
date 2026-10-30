@@ -6999,7 +6999,7 @@ function inkQuests(){const F=INK.fall,L=INK_LOOK,gx=INK_X+L.x+L.ox*2.5+L.oz*3,gz
           {type:'talk',to:'ink_kenta',hint:'ふもとのケンタくんに子ヤギを返す',text:['メエ！ よかったあ……！','おねえちゃん、ありがとう！ これ、おこづかい。','今度、いろは坂のてっぺんまで連れてってね！']}],reward:300,wait:['見晴らしは、坂を上ってS字になってるとこだよ。']}];}
 
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
-   The board rolling (louder and brighter with speed, rougher on sand), the wind at speed, kicks, pops, landings and grinds,
+   The board rolling (louder and brighter with speed, rougher on sand), kicks, pops, landings and grinds,
    footsteps; the sea, cicadas by day and crickets at night, a low hum in 裏海街; the tram's bell, doors, motor and the
    clack of the rail joints, the level crossings; the racers' engines and tyres; the drone fight, fireworks, coins, the
    camera, the dialogue. Browsers allow no sound before the first tap or key, so it starts then; M (or the 音 button)
@@ -7013,7 +7013,7 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resu
   const loop=(type,f,q,osc)=>{let src;if(osc){src=c.createOscillator();src.type=osc;src.frequency.value=f;}else{src=c.createBufferSource();src.buffer=nb;src.loop=true;}
     const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=osc?f*4:f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;src.connect(fl);fl.connect(g);g.connect(S.master);
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
-  S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.wind=loop('bandpass',900,0.55);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
+  S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
   S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');
   // cicadas: a high band of noise, buzzing on and off thirty times a second
   { const L=S.L.cicada=loop('bandpass',4800,7),am=c.createGain(),lfo=c.createOscillator(),dep=c.createGain();
@@ -7065,14 +7065,10 @@ const sfx={
 
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&AREA==='town';
-  // the board and the wind
-  // the board: mostly the air rushing past (a soft whoosh that swells with speed and gusts a little), under it the low rumble
-  // of the wheels on the road and a fine grit, with a light tick at each joint in the paving
+  // the board: the low rumble of the wheels on the road and a fine grit, with a light tick at each joint in the paving
   const rolling=board&&!P.air&&!P.grind,sp=clamp(P.v/12,0,1);
   set(L.roll.g.gain,rolling?sp*0.075*(sand?1.4:1):0);set(L.roll.fl.frequency,sand?160+P.v*12:190+P.v*16);
   set(L.grit.g.gain,rolling?sp*0.03*(0.7+Math.random()*0.5)*(sand?1.6:1):0,0.03);set(L.grit.fl.frequency,sand?1100:1500+P.v*40);
-  const gust=0.85+0.1*Math.sin(clock*1.3)+0.07*Math.sin(clock*3.7);
-  set(L.wind.g.gain,play&&!ride&&!P.foot?(clamp((P.v-1.5)/11,0,1)**1.4*0.11*gust+(P.air?clamp(-P.vy/14,0,1)*0.08:0)):0,0.15);set(L.wind.fl.frequency,700+P.v*55);
   if(rolling&&!sand&&P.v>1.5){S.dist.joint=(S.dist.joint||0)+P.v*dt;if(S.dist.joint>2.4){S.dist.joint=0;hiss(0.025,'bandpass',2600,0.012+sp*0.02,2);}}
   set(L.grind.g.gain,play&&P.grind?0.11:0);
   // footsteps
