@@ -125,6 +125,9 @@ body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.c
 .album figcaption{font-size:11px;text-align:center;margin-top:4px;color:var(--ink-soft)}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .4s}
 /* the floating stick: touch anywhere on the lower left and the stick appears under your thumb */
+.cbar .rpl{position:absolute;left:18px;bottom:10px;color:#e8e2da;font:900 13px var(--round);letter-spacing:.2em}.cbar .rpl::first-letter{color:#e2584a}
+#bLook{position:absolute;left:calc(env(safe-area-inset-left,0px) + 14px);bottom:calc(env(safe-area-inset-bottom,0px) + 230px);width:52px;height:52px;font-size:11px;line-height:1.15;z-index:2;pointer-events:auto}
+body.closet #bLook,body.riding #bLook,body.cine #bLook{visibility:hidden}
 #stick{position:absolute;left:0;bottom:0;width:50%;height:58%;pointer-events:auto;touch-action:none}
 #ring{position:absolute;left:82px;top:calc(100% - 140px - env(safe-area-inset-bottom,0px));width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:rgba(255,250,240,.35);border:2px solid rgba(255,250,240,.7);opacity:.45;transition:opacity .2s}
 #stick.on #ring{opacity:1;transition:none}
@@ -218,6 +221,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   <div id="prompt" class="card" hidden></div>
   <div id="hurt"></div>
   <div id="toast"></div>
+  <button class="pb" id="bLook" hidden>振り<br>返る</button>
   <div id="stick" hidden><div id="ring"><div id="knob"></div></div></div>
   <div id="trick" hidden></div>
   <div id="pad" hidden>
@@ -251,6 +255,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
     <dt class="pc">F</dt><dd class="pc">スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
     <dt class="pc">Q ・ P</dt><dd class="pc">おつかい帳 ・ 写真を撮る</dd>
     <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
+    <dt class="pc">R</dt><dd class="pc">振り返る（押しているあいだ、うしろを見る）</dd>
     <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
     <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
     <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
@@ -258,6 +263,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
     <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
     <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
     <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
+    <dt class="tc">振り返る</dt><dd class="tc">左のボタンを押しているあいだ、うしろを見る</dd>
     <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
   </dl>
   <button class="btn" id="helpClose" style="align-self:flex-end">とじる</button></div></div>
