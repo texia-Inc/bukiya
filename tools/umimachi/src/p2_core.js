@@ -213,6 +213,7 @@ function reserve(x0,x1,z0,z1){RES.push({x0,x1,z0,z1});}
 reserve(-80,-40,-178,-123.2);   // shrine grounds
 reserve(-16,16,-222,-206);      // lookout at the top of the hill
 reserve(44,86,203,208.9);       // station platform
+reserve(47,83,173.4,203.2);     // the station square in front of it
 reserve(16,32,183.6,197.5);     // the rooftop you can climb
 // a building is a box whose front faces the street: face = +z, -z, +x or -x
 function bAt(frontS,side,t,w,d,o){const S=frontS,off=S.w/2+S.sw+(o&&o.set||0.45);

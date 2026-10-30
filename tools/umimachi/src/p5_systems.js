@@ -284,7 +284,7 @@ function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',isl=!ink&&P.z>I
     mg.fillStyle='#e2584a';mg.beginPath();mg.arc(mx,my,out?6:8,0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=2;mg.stroke();}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
-function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();
+function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();if(x>EKI.x0&&x<EKI.x1&&z>EKI.z0&&z<EKI.z1)return'うみまち駅前';
   if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<12)return d.name;if(Math.abs(x)>212&&z<SHORE)return x>0?'東の山':'西の山';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
   const st=Math.abs(z-207)<3&&stopAt(x);if(st&&st.id!=='station')return st.name+' 停留所';
   if(onPier(x,z))return'桟橋';if(z>SHORE)return'しおさい海岸';if(x>STATION.x0-4&&x<STATION.x1+4&&Math.abs(z-TRAM_Z)<8)return'うみまち駅';

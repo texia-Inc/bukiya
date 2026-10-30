@@ -318,6 +318,9 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
   placeNPC('lady2',{skin:'#efc9aa',hair:'#1c1a1a',style:'bun',shirt:'#cfe0d2',sleeves:'long',bottom:'pants',bottomCol:'#5a4a3a'},5.6,31.1,-Math.PI/2-0.6,'stand','',['商店街のコロッケ、食べた？']);
   placeNPC('kid1',{skin:'#f3d0b5',hair:'#2a1d15',style:'pony',shirt:'#f0a0b8',bottom:'skirt',bottomCol:'#3a7bd5',scale:0.72},-30.5,-16.5,Math.PI,'stand','',['当たりが出たんだよ！']);
   placeNPC('kid2',{skin:'#e3b088',hair:'#1c1a1a',style:'short',shirt:'#4f9a5a',bottom:'shorts',bottomCol:'#2b2f36',scale:0.74},-31.4,-16.6,Math.PI-0.5,'stand','',['ラムネのビー玉、取れないんだよなあ。']);}
+// the station square: someone waiting for the bus, and the taxi driver by his car
+{ placeNPC('eki_bus',{skin:'#efc9aa',hair:'#2b2520',style:'short',shirt:'#f2f2ee',sleeves:'long',bottom:'pants',bottomCol:'#3b4a66',glasses:true},53.4,189.6,Math.PI,'stand','',['バス、まだかなあ。','この町のバスは、のんびりしてるんだよ。']);
+  placeNPC('eki_taxi',{skin:'#d9a987',hair:'#8a8580',style:'short',cap:'#2b2b30',shirt:'#f4f4f0',sleeves:'long',vest:'#2b2b30',bottom:'pants',bottomCol:'#2b2b30'},74.3,181.5,-Math.PI/2,'stand','タクシーの運転手',['どちらまで？ ……なんてね。','夏は海水浴のお客さんで、駅前もにぎやかになるんだ。']);}
 const CATS=[];
 const MIKE={x:-56.6,z:-158.4};
 { const m=makeCat({calico:true});m.g.position.set(MIKE.x,G(MIKE.x,MIKE.z)+0.7,MIKE.z);m.g.rotation.y=0.6;world.add(m.g);CATS.push(m);MIKE.cat=m;
