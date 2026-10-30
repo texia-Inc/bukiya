@@ -190,8 +190,15 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');c
   if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
-    if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
+    if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
+    // the other errands under it, each with its number (the same as on the map); tap one to follow it instead
+    const act=activeQuests(),k0=act.indexOf(q);b.prepend(Object.assign(document.createElement('i'),{className:'qn',textContent:k0+1}));b.querySelector('.qn').style.background=QCOL[k0%QCOL.length];
+    if(act.length>1){const box=document.createElement('div');box.className='others';
+      let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
+        r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();}
+// errands in hand, in a fixed order, and the colour each one has on the tracker and the map
+const activeQuests=()=>QUESTS.filter(q=>qs(q.id).state===1),QCOL=['#e2584a','#3a7bd5','#2e9a5a','#a070d0','#e8a23a','#d0508a'];
 function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){const s=qs(q.id);if(s.state===0&&!available(q))continue;
   const d=document.createElement('div');d.className='q'+(SAVE.tracked===q.id?' on':'');const st=document.createElement('span');
   st.className='st '+(s.state===2?'done':s.state===1?'act':'new');st.textContent=s.state===2?'完了':s.state===1?'おつかい中':'まだ話していない';
@@ -279,9 +286,12 @@ function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',isl=!ink&&P.z>I
   const toM=(x,z)=>[(x-P.x)*S+mapc.width/2,(z-P.z)*S+mapc.height/2];
   for(const p of SPOTS){const [mx,my]=toM(p.x,p.z);mg.fillStyle=SAVE.spots.includes(p.id)?'#9aa6ae':'#1f7fc0';mg.beginPath();mg.arc(mx,my,5,0,7);mg.fill();}
   for(const q of QUESTS){if(!available(q))continue;const n=NPCS[q.giver],[mx,my]=toM(n.x,n.z);mg.fillStyle='#f2a33a';mg.beginPath();mg.arc(mx,my,7,0,7);mg.fill();mg.fillStyle='#fff';mg.font='900 11px sans-serif';mg.textAlign='center';mg.textBaseline='middle';mg.fillText('!',mx,my+1);}
-  const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);
-  if(t){let [mx,my]=toM(t[0],t[1]);const W=mapc.width,pad=10,out=mx<pad||my<pad||mx>W-pad||my>W-pad;mx=clamp(mx,pad,W-pad);my=clamp(my,pad,W-pad);
-    mg.fillStyle='#e2584a';mg.beginPath();mg.arc(mx,my,out?6:8,0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=2;mg.stroke();}
+  // every errand in hand has its numbered dot; the one followed is bigger and drawn last
+  const act=activeQuests(),qt=SAVE.tracked&&QBY(SAVE.tracked);
+  for(const q of act.filter(o=>o!==qt).concat(qt&&act.includes(qt)?[qt]:[])){const t=targetOf(q);if(!t)continue;const k=act.indexOf(q),big=q===qt;
+    let [mx,my]=toM(t[0],t[1]);const W=mapc.width,pad=10,out=mx<pad||my<pad||mx>W-pad||my>W-pad;mx=clamp(mx,pad,W-pad);my=clamp(my,pad,W-pad);
+    mg.fillStyle=QCOL[k%QCOL.length];mg.beginPath();mg.arc(mx,my,big?(out?7:9):(out?5:6.5),0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=big?2.5:1.5;mg.stroke();
+    if(act.length>1){mg.fillStyle='#fff';mg.font=`900 ${big?11:9}px sans-serif`;mg.textAlign='center';mg.textBaseline='middle';mg.fillText(k+1,mx,my+1);}}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
 function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();if(x>EKI.x0&&x<EKI.x1&&z>EKI.z0&&z<EKI.z1)return'うみまち駅前';
@@ -491,7 +501,7 @@ function findNear(){if(RIDE.on)return rideNear();if(BOAT.on)return null;let best
 function act(o){if(!o)return;
   if(o.kind==='npc')talk(o.n);else if(o.kind==='shop')openShop(o.id);
   else if(o.kind==='post'){const q=QBY('letter'),st=stepOf(q);say('ポスト',st.text,()=>{addItem('letter',-1);advance(q);});}
-  else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
+  else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',phaseOf(SAVE.hour)==='night'?['ニャア。…いた！ 本殿の石の上で、丸くなって眠っている。']:st.text,()=>advance(q));else{const ph=phaseOf(SAVE.hour);say('三毛猫',[ph==='night'?'丸くなって、すやすや眠っている。なでると、しっぽだけが少しゆれた。':ph==='evening'?'ゴロゴロ…。夕日をあびて、目を細めている。':ph==='morning'?'ゴロゴロ…。朝の石の上で、毛づくろいをしている。':'ゴロゴロ…。日なたであくびをしている。']);}}
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);if(st.gain){addItem(...st.gain);toast(`${ITEMS[st.gain[0]].name}を手に入れた`);}advance(o.q);});}
   else if(o.kind==='gacha')openGacha();else if(o.kind==='yatai')yataiAct(o);

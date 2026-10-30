@@ -33,6 +33,10 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 #tracker b{display:block;font-size:14px;color:var(--rose)}
 #tracker .step{color:var(--ink)}
 #tracker .meter{display:block;color:var(--ink-soft);font-size:12px;margin-top:2px}
+#tracker .qn{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;color:#fff;font:900 11px var(--round);font-style:normal;margin-right:5px;vertical-align:1px}
+#tracker .others{display:flex;flex-direction:column;gap:2px;margin-top:6px;padding-top:5px;border-top:1px dashed rgba(0,0,0,.15);pointer-events:auto}
+#tracker .oq{appearance:none;border:0;background:none;padding:2px 0;text-align:left;font:700 12px var(--round);color:var(--ink-soft);cursor:pointer;display:flex;align-items:center}
+#tracker .oq .qn{width:15px;height:15px;font-size:10px}
 #map{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;width:132px;height:132px;padding:5px;pointer-events:auto;cursor:pointer}
 #map canvas{width:100%;height:100%;border-radius:10px;display:block}
 #tools{position:absolute;top:calc(env(safe-area-inset-top,0px) + 158px);right:12px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}

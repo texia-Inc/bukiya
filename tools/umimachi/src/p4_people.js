@@ -286,8 +286,8 @@ function makeCat(o){const g=new THREE.Group(),base=tm(o.col||'#f2f2ee'),Mc=(geo,
   for(const [x,z] of [[-0.07,0.13],[0.07,0.13],[-0.07,-0.13],[0.07,-0.13]])Mc(new THREE.CylinderGeometry(0.03,0.025,0.14,6),fur,0).position.set(x,0.07,z);
   const tail=new THREE.Group();tail.position.set(0,0.22,-0.2);g.add(tail);const tm1=new THREE.Mesh(limb(0.025,0.02,0.24,6),o.calico?tm('#e8913a'):base);tm1.rotation.x=-2.3;tail.add(tm1);
   return{g,head,tail,t:rnd()*10,sleep:!!o.sleep,body};}
-function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))*0.5;if(c.sleep){c.body.scale.y=0.62+Math.sin(c.t*1.6)*0.02;c.head.position.set(0,0.16,0.18);c.head.rotation.set(0.5,0,0.3);}
-  else{c.head.rotation.y=Math.sin(c.t*0.6)*0.5;}}
+function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))*0.5;if(c.sleep||c.nap&&phaseOf(SAVE.hour)==='night'){c.body.scale.y=0.62+Math.sin(c.t*1.6)*0.02;c.head.position.set(0,0.16,0.18);c.head.rotation.set(0.5,0,0.3);}
+  else{c.body.scale.y=0.75;c.head.position.set(0,0.32,0.2);c.head.rotation.set(0,Math.sin(c.t*0.6)*0.5,0);}}
 
 /* townsfolk and the people you run errands for */
 const NPCS={};
@@ -322,8 +322,9 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
 { placeNPC('eki_bus',{skin:'#efc9aa',hair:'#2b2520',style:'short',shirt:'#f2f2ee',sleeves:'long',bottom:'pants',bottomCol:'#3b4a66',glasses:true},53.4,189.6,Math.PI,'stand','',['バス、まだかなあ。','この町のバスは、のんびりしてるんだよ。']);
   placeNPC('eki_taxi',{skin:'#d9a987',hair:'#8a8580',style:'short',cap:'#2b2b30',shirt:'#f4f4f0',sleeves:'long',vest:'#2b2b30',bottom:'pants',bottomCol:'#2b2b30'},74.3,181.5,-Math.PI/2,'stand','タクシーの運転手',['どちらまで？ ……なんてね。','夏は海水浴のお客さんで、駅前もにぎやかになるんだ。']);}
 const CATS=[];
-const MIKE={x:-56.6,z:-158.4};
-{ const m=makeCat({calico:true});m.g.position.set(MIKE.x,G(MIKE.x,MIKE.z)+0.7,MIKE.z);m.g.rotation.y=0.6;world.add(m.g);CATS.push(m);MIKE.cat=m;
+// the shrine's calico sits on the corner of the hall's stone base (its top is 0.7 above the ground at the hall); she naps at night
+const MIKE={x:-57.3,z:-159.5};
+{ const m=makeCat({calico:true});m.nap=true;m.g.position.set(MIKE.x,G(SHRINE.x,-162)+0.7,MIKE.z);m.g.rotation.y=0.6;world.add(m.g);CATS.push(m);MIKE.cat=m;
   for(const [x,z,col,sl] of [[11.5,-15.8,'#3a3a3a',true],[66,205.3,'#e8913a',true],[-108.5,SHORE+11,'#f2f2ee',false],[118.6,90,'#9a8a7a',true]]){
     const c=makeCat({col,sleep:sl});c.g.position.set(x,(x===66?G(65,206)+0.85:G(x,z)),z);c.g.rotation.y=rnd()*6;world.add(c.g);CATS.push(c);}}
 
