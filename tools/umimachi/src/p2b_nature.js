@@ -69,7 +69,7 @@ function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+c
   list.forEach((e,i)=>{d.position.set(e.x,e.y-0.03,e.z);d.scale.set(e.s,e.s*(0.75+0.45*vnoise(e.x/9,e.z/9)),e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,e.c);});
   im.frustumCulled=false;im.matrixAutoUpdate=false;scene.add(im);return im;}
 // keep the squares round the player made, a couple per frame, and let go of the far ones
-function updateGrass(){if(!GRASS.per){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
+function updateGrass(){if(GRASS.per==null){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
   const S=GRASS.S,R=GRASS.R,px=P.x,pz=P.z,on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&px<INK_X-600,c0x=Math.floor((px-R)/S),c1x=Math.floor((px+R)/S),c0z=Math.floor((pz-R)/S),c1z=Math.floor((pz+R)/S);
   let made=0;for(const [k,c] of GRASS.chunks){const dx=Math.max(0,Math.abs((c.cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((c.cz+0.5)*S-pz)-S/2),d=Math.hypot(dx,dz);
     if(c.m)c.m.visible=on&&d<R;if(d>R+S*2){if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.delete(k);}}

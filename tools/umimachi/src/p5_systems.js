@@ -272,7 +272,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='p
 $('photoBtn').addEventListener('click',()=>{photoReq=true;});
 // phones: the menu button folds the tools away; choosing one folds them again. Tapping the tracker folds it to its title
 $('menuBtn').addEventListener('click',()=>{const T=$('tools');T.classList.toggle('open');$('menuBtn').textContent=T.classList.contains('open')?'とじる':'メニュー';});
-for(const id of ['logBtn','albumBtn','closetBtn','photoBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
+for(const id of ['logBtn','albumBtn','closetBtn','photoBtn','setBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
 $('tracker').addEventListener('click',()=>{$('tracker').classList.toggle('mini');});$('lightBtn').addEventListener('click',toggleTorch);
 // markers floating in the world
 const markTex=(ch,bg)=>canvasTex(64,64,(g,w,h)=>{g.fillStyle=bg;g.beginPath();g.arc(32,30,24,0,7);g.fill();g.beginPath();g.moveTo(22,48);g.lineTo(42,48);g.lineTo(32,62);g.fill();
@@ -429,6 +429,25 @@ const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(hasTouch)for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());   // no long-press menu or selection while playing
 // Safari ignores user-scalable=no: a pinch would zoom the page and leave the buttons off screen (double taps: touch-action:manipulation)
 if(hasTouch)for(const ev of ['gesturestart','gesturechange'])document.addEventListener(ev,e=>e.preventDefault());
+/* ---------- settings: sound and its volume, vibration (the app), how much the picture draws, the how-to, back to the title ---------- */
+const QUALITY=[{pr:1,grass:0,shadow:false,note:'草と影なし、解像度ひかえめ。電池が長もちして、熱くなりにくい'},
+  {pr:1.75,grass:1,shadow:true,note:'いつもの画質'},{pr:2.5,grass:1.5,shadow:true,note:'草が多く、遠くまで。画面がくっきり（重くなる）'}];
+function applyQuality(q){const Q=QUALITY[q]||QUALITY[1];renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));resize();
+  sun.castShadow=Q.shadow;GRASS.on=Q.grass>0;GRASS.per=Math.round((hasTouch?420:900)*Q.grass);GRASS.R=Math.round((hasTouch?30:42)*(Q.grass>1?1.2:1));
+  for(const c of GRASS.chunks.values())if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.clear();}
+let QLV=clamp(+(store.get('umimachi_q')??1)|0,0,2);applyQuality(QLV);
+function renderSettings(){$('setSnd').textContent=SND.on?'オン':'オフ';$('setVol').value=Math.round(SND.vol*100);$('setVol').disabled=!SND.on;
+  $('setBuzzRow').hidden=!APP.native;$('setBuzz').textContent=store.get('umimachi_buzz')==='0'?'オフ':'オン';
+  for(const b of $('setQ').children)b.classList.toggle('on',+b.dataset.q===QLV);$('setQNote').textContent=QUALITY[QLV].note;}
+$('setBtn').addEventListener('click',()=>{renderSettings();openModal('setM');});
+$('setClose').addEventListener('click',closeModal);
+$('setSnd').addEventListener('click',sndToggle);
+$('setVol').addEventListener('input',e=>{SND.vol=e.target.value/100;store.set('umimachi_vol',String(e.target.value));sndInit();sndApply();});
+$('setBuzz').addEventListener('click',()=>{const off=store.get('umimachi_buzz')!=='0';store.set('umimachi_buzz',off?'0':'1');if(!off)buzz('medium',true);renderSettings();});
+for(const b of $('setQ').children)b.addEventListener('click',()=>{QLV=+b.dataset.q;store.set('umimachi_q',String(QLV));applyQuality(QLV);renderSettings();});
+$('setHelp').addEventListener('click',()=>{closeModal();openModal('helpM');});
+$('helpClose').addEventListener('click',()=>{closeModal();if(state==='play'){renderSettings();openModal('setM');}});
+$('setTitle').addEventListener('click',()=>{if(state==='play')save();location.reload();});
 if(hasTouch){$('albumSub').textContent='メニューの「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をタップすると保存や共有ができます。';$('creditsEnd').textContent='夏休みは、まだ続く。（タップでとじる）';}
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
@@ -600,7 +619,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
     camera.layers.set(1);renderer.render(scene,camera);scene.background=bg;camera.layers.set(0);renderer.shadowMap.autoUpdate=su;renderer.autoClear=true;}
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
-function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
+function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));const fresh=!loadSlot(k);SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(fresh)setTimeout(()=>toast(hasTouch?'操作は「メニュー」→「設定」→「あそびかた」で見られる':'操作は右の「設定」→「あそびかた」で見られる'),6000);if(player.vrm)applyOutfit(player,SAVE.outfit);
   state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
   // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)

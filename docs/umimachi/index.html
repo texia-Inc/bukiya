@@ -169,6 +169,11 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 .keys{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
 .keys dt{font-weight:900;color:var(--sea-deep);white-space:nowrap}
 .keys dd{margin:0}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:700;font-size:14px}
+.setrow input[type=range]{flex:1;max-width:220px;accent-color:var(--sea)}
+.seg{display:flex;gap:4px;background:rgba(43,37,32,.08);padding:3px;border-radius:12px}
+.seg button{appearance:none;border:0;background:none;font:900 13px var(--round);color:var(--ink-soft);padding:7px 11px;border-radius:9px;cursor:pointer}
+.seg button.on{background:#fff;color:var(--sea-deep);box-shadow:0 2px 0 var(--shade)}
 .keys .tc{display:none}
 @media (pointer:coarse){
   .keys .pc{display:none}.keys .tc{display:block}
@@ -212,7 +217,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
     <button class="tool" id="closetBtn">着がえ</button>
     <button class="tool" id="photoBtn">写真を撮る</button>
     <button class="tool" id="lightBtn" hidden>ライト</button>
-    <button class="tool" id="soundBtn">音：オン</button>
+    <button class="tool" id="setBtn">設定</button>
   </div>
   <div id="bag"></div>
   <div id="prompt" class="card" hidden></div>
@@ -231,6 +236,36 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 </div>
 <div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><div id="dchoices"></div><span class="nx">▼</span></div>
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
+<div class="modal" id="setM" hidden><div class="sheet card"><h2>設定</h2>
+  <div class="setrow"><span>音</span><button class="btn ghost" id="setSnd">オン</button></div>
+  <div class="setrow"><span>音の大きさ</span><input type="range" id="setVol" min="0" max="100" step="5" aria-label="音の大きさ"></div>
+  <div class="setrow" id="setBuzzRow" hidden><span>振動</span><button class="btn ghost" id="setBuzz">オン</button></div>
+  <div class="setrow"><span>画質</span><div class="seg" id="setQ"><button data-q="0">軽い</button><button data-q="1">ふつう</button><button data-q="2">きれい</button></div></div>
+  <p class="sub" id="setQNote"></p>
+  <div class="setrow"><button class="btn ghost" id="setHelp">あそびかた</button><button class="btn ghost" id="setTitle">タイトルにもどる</button></div>
+  <button class="btn" id="setClose" style="align-self:flex-end">とじる</button></div></div>
+<div class="modal" id="helpM" hidden><div class="sheet card"><h2>あそびかた</h2>
+  <dl class="keys">
+    <dt class="pc">W / ↑</dt><dd class="pc">地面をける。押すたびにひと蹴りで加速（押したままだと蹴りつづける。坂は勝手に転がる）</dd>
+    <dt class="pc">S / ↓</dt><dd class="pc">ブレーキ</dd>
+    <dt class="pc">A D / ← →</dt><dd class="pc">曲がる</dd>
+    <dt class="pc">E</dt><dd class="pc">話す・お店に入る・会話を進める</dd>
+    <dt class="pc">Space</dt><dd class="pc">ジャンプ</dd>
+    <dt class="pc">C</dt><dd class="pc">着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
+    <dt class="pc">K</dt><dd class="pc">技（空中で）。キックフリップ、曲がりながらなら360ショービット。手すりに着地するとグラインド</dd>
+    <dt class="pc">F</dt><dd class="pc">スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
+    <dt class="pc">Q ・ P</dt><dd class="pc">おつかい帳 ・ 写真を撮る</dd>
+    <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
+    <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
+    <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
+    <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
+    <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
+    <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
+    <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
+    <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
+    <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
+  </dl>
+  <button class="btn" id="helpClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub" id="albumSub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をクリックすると保存できます。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="closet" hidden><div class="sheet card" id="closetSheet"><h2>着がえ<button class="btn" id="closetBig">大きく見る</button></h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギはドラッグで回せる。ピンチ（マウスはホイール）で拡大</p><div id="closetSlots"></div>
@@ -257,26 +292,6 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   <div class="sheet card">
     <h1 class="logo"><span>UMIMACHI SKATE</span>海街スケート</h1>
     <p class="lede">海へ下る坂の町を、スケートボードでのんびり散歩。パン屋でおつかい、浜辺へ届けもの、迷子の猫さがし。気に入った景色は写真に残して。</p>
-    <dl class="keys">
-      <dt class="pc">W / ↑</dt><dd class="pc">地面をける。押すたびにひと蹴りで加速（押したままだと蹴りつづける。坂は勝手に転がる）</dd>
-      <dt class="pc">S / ↓</dt><dd class="pc">ブレーキ</dd>
-      <dt class="pc">A D / ← →</dt><dd class="pc">曲がる</dd>
-      <dt class="pc">E</dt><dd class="pc">話す・お店に入る・会話を進める</dd>
-      <dt class="pc">Space</dt><dd class="pc">ジャンプ</dd>
-      <dt class="pc">C</dt><dd class="pc">着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
-      <dt class="pc">K</dt><dd class="pc">技（空中で）。キックフリップ、曲がりながらなら360ショービット。手すりに着地するとグラインド</dd>
-      <dt class="pc">F</dt><dd class="pc">スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
-      <dt class="pc">Q ・ P</dt><dd class="pc">おつかい帳 ・ 写真を撮る</dd>
-      <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
-      <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
-      <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
-      <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
-      <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
-      <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
-      <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
-      <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
-      <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
-    </dl>
     <div id="slots" role="list" aria-label="セーブデータ"></div>
     <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：VRoid Studio で作成</p>
   </div>
@@ -4381,7 +4396,7 @@ function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+c
   list.forEach((e,i)=>{d.position.set(e.x,e.y-0.03,e.z);d.scale.set(e.s,e.s*(0.75+0.45*vnoise(e.x/9,e.z/9)),e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,e.c);});
   im.frustumCulled=false;im.matrixAutoUpdate=false;scene.add(im);return im;}
 // keep the squares round the player made, a couple per frame, and let go of the far ones
-function updateGrass(){if(!GRASS.per){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
+function updateGrass(){if(GRASS.per==null){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
   const S=GRASS.S,R=GRASS.R,px=P.x,pz=P.z,on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&px<INK_X-600,c0x=Math.floor((px-R)/S),c1x=Math.floor((px+R)/S),c0z=Math.floor((pz-R)/S),c1z=Math.floor((pz+R)/S);
   let made=0;for(const [k,c] of GRASS.chunks){const dx=Math.max(0,Math.abs((c.cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((c.cz+0.5)*S-pz)-S/2),d=Math.hypot(dx,dz);
     if(c.m)c.m.visible=on&&d<R;if(d>R+S*2){if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.delete(k);}}
@@ -7828,7 +7843,7 @@ function updateIsland(dt){const B=BOAT;
 const SND={ctx:null,on:store.get('umimachi_sound')!=='0',L:{},prev:{},dist:{},nextX:0,nextCricket:0};
 function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state!=='running'&&!document.hidden)S.ctx.resume();return;}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=S.ctx=new AC();
-  const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=S.on?0.9:0;S.master.connect(comp);
+  const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=sndLevel();S.master.connect(comp);
   const nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;S.noise=nb;
   // the loops: noise (or an oscillator) through a filter into a gain that the update turns up and down
   const loop=(type,f,q,osc)=>{let src;if(osc){src=c.createOscillator();src.type=osc;src.frequency.value=f;}else{src=c.createBufferSource();src.buffer=nb;src.loop=true;}
@@ -7837,10 +7852,12 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state!=='running'&&!document.h
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
   S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');S.L.crowd=loop('bandpass',650,0.8);
 }
-function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();if(S.master)S.master.gain.setTargetAtTime(S.on?0.9:0,S.ctx.currentTime,0.05);
-  $('soundBtn').textContent=S.on?'音：オン':'音：オフ';toast(S.on?'音をオンにした':'音をオフにした');}
+// the level: on/off and the volume from the settings
+function sndLevel(){return SND.on?0.9*SND.vol:0;}
+function sndApply(){const S=SND;if(S.master)S.master.gain.setTargetAtTime(sndLevel(),S.ctx.currentTime,0.05);if(typeof renderSettings==='function')renderSettings();}
+function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();sndApply();toast(S.on?'音をオンにした':'音をオフにした');}
 for(const ev of ['pointerdown','keydown','touchstart'])window.addEventListener(ev,sndInit,{passive:true});
-$('soundBtn').textContent=SND.on?'音：オン':'音：オフ';$('soundBtn').addEventListener('click',sndToggle);
+SND.vol=clamp(+(store.get('umimachi_vol')||100)/100,0,1);
 window.addEventListener('keydown',e=>{if(e.code==='KeyM'&&!e.repeat)sndToggle();});
 
 /* one-shots */
@@ -7887,7 +7904,7 @@ const sfx={
 
 // iPhone app: a light buzz with the bumps and rewards (works with the sound off too)
 const BUZZ={land:'light',bump:'medium',thud:'heavy',coin:'light',pay:'light',shutter:'light',win:'success',lose:'error'};let buzzT=0;
-function buzz(k,force){const H=APP.haptics;if(!H)return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
+function buzz(k,force){const H=APP.haptics;if(!H||store.get('umimachi_buzz')==='0')return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
   (k==='success'||k==='error'?H.notification({type:k.toUpperCase()}):H.impact({style:k.toUpperCase()})).catch(()=>{});}
 for(const k in BUZZ)if(sfx[k]){const f=sfx[k];sfx[k]=(...a)=>{if(k!=='land'||a[0]>0.25)buzz(BUZZ[k]);return f(...a);};}
 document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden)c.suspend().catch(()=>{});else c.resume().catch(()=>{});});
@@ -8224,7 +8241,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='p
 $('photoBtn').addEventListener('click',()=>{photoReq=true;});
 // phones: the menu button folds the tools away; choosing one folds them again. Tapping the tracker folds it to its title
 $('menuBtn').addEventListener('click',()=>{const T=$('tools');T.classList.toggle('open');$('menuBtn').textContent=T.classList.contains('open')?'とじる':'メニュー';});
-for(const id of ['logBtn','albumBtn','closetBtn','photoBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
+for(const id of ['logBtn','albumBtn','closetBtn','photoBtn','setBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
 $('tracker').addEventListener('click',()=>{$('tracker').classList.toggle('mini');});$('lightBtn').addEventListener('click',toggleTorch);
 // markers floating in the world
 const markTex=(ch,bg)=>canvasTex(64,64,(g,w,h)=>{g.fillStyle=bg;g.beginPath();g.arc(32,30,24,0,7);g.fill();g.beginPath();g.moveTo(22,48);g.lineTo(42,48);g.lineTo(32,62);g.fill();
@@ -8381,6 +8398,25 @@ const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(hasTouch)for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());   // no long-press menu or selection while playing
 // Safari ignores user-scalable=no: a pinch would zoom the page and leave the buttons off screen (double taps: touch-action:manipulation)
 if(hasTouch)for(const ev of ['gesturestart','gesturechange'])document.addEventListener(ev,e=>e.preventDefault());
+/* ---------- settings: sound and its volume, vibration (the app), how much the picture draws, the how-to, back to the title ---------- */
+const QUALITY=[{pr:1,grass:0,shadow:false,note:'草と影なし、解像度ひかえめ。電池が長もちして、熱くなりにくい'},
+  {pr:1.75,grass:1,shadow:true,note:'いつもの画質'},{pr:2.5,grass:1.5,shadow:true,note:'草が多く、遠くまで。画面がくっきり（重くなる）'}];
+function applyQuality(q){const Q=QUALITY[q]||QUALITY[1];renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));resize();
+  sun.castShadow=Q.shadow;GRASS.on=Q.grass>0;GRASS.per=Math.round((hasTouch?420:900)*Q.grass);GRASS.R=Math.round((hasTouch?30:42)*(Q.grass>1?1.2:1));
+  for(const c of GRASS.chunks.values())if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.clear();}
+let QLV=clamp(+(store.get('umimachi_q')??1)|0,0,2);applyQuality(QLV);
+function renderSettings(){$('setSnd').textContent=SND.on?'オン':'オフ';$('setVol').value=Math.round(SND.vol*100);$('setVol').disabled=!SND.on;
+  $('setBuzzRow').hidden=!APP.native;$('setBuzz').textContent=store.get('umimachi_buzz')==='0'?'オフ':'オン';
+  for(const b of $('setQ').children)b.classList.toggle('on',+b.dataset.q===QLV);$('setQNote').textContent=QUALITY[QLV].note;}
+$('setBtn').addEventListener('click',()=>{renderSettings();openModal('setM');});
+$('setClose').addEventListener('click',closeModal);
+$('setSnd').addEventListener('click',sndToggle);
+$('setVol').addEventListener('input',e=>{SND.vol=e.target.value/100;store.set('umimachi_vol',String(e.target.value));sndInit();sndApply();});
+$('setBuzz').addEventListener('click',()=>{const off=store.get('umimachi_buzz')!=='0';store.set('umimachi_buzz',off?'0':'1');if(!off)buzz('medium',true);renderSettings();});
+for(const b of $('setQ').children)b.addEventListener('click',()=>{QLV=+b.dataset.q;store.set('umimachi_q',String(QLV));applyQuality(QLV);renderSettings();});
+$('setHelp').addEventListener('click',()=>{closeModal();openModal('helpM');});
+$('helpClose').addEventListener('click',()=>{closeModal();if(state==='play'){renderSettings();openModal('setM');}});
+$('setTitle').addEventListener('click',()=>{if(state==='play')save();location.reload();});
 if(hasTouch){$('albumSub').textContent='メニューの「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をタップすると保存や共有ができます。';$('creditsEnd').textContent='夏休みは、まだ続く。（タップでとじる）';}
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
@@ -8552,7 +8588,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
     camera.layers.set(1);renderer.render(scene,camera);scene.background=bg;camera.layers.set(0);renderer.shadowMap.autoUpdate=su;renderer.autoClear=true;}
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
-function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
+function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));const fresh=!loadSlot(k);SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(fresh)setTimeout(()=>toast(hasTouch?'操作は「メニュー」→「設定」→「あそびかた」で見られる':'操作は右の「設定」→「あそびかた」で見られる'),6000);if(player.vrm)applyOutfit(player,SAVE.outfit);
   state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
   // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)

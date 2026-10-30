@@ -164,6 +164,11 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 .keys{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
 .keys dt{font-weight:900;color:var(--sea-deep);white-space:nowrap}
 .keys dd{margin:0}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:700;font-size:14px}
+.setrow input[type=range]{flex:1;max-width:220px;accent-color:var(--sea)}
+.seg{display:flex;gap:4px;background:rgba(43,37,32,.08);padding:3px;border-radius:12px}
+.seg button{appearance:none;border:0;background:none;font:900 13px var(--round);color:var(--ink-soft);padding:7px 11px;border-radius:9px;cursor:pointer}
+.seg button.on{background:#fff;color:var(--sea-deep);box-shadow:0 2px 0 var(--shade)}
 .keys .tc{display:none}
 @media (pointer:coarse){
   .keys .pc{display:none}.keys .tc{display:block}
@@ -205,7 +210,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
     <button class="tool" id="closetBtn">着がえ</button>
     <button class="tool" id="photoBtn">写真を撮る</button>
     <button class="tool" id="lightBtn" hidden>ライト</button>
-    <button class="tool" id="soundBtn">音：オン</button>
+    <button class="tool" id="setBtn">設定</button>
   </div>
   <div id="bag"></div>
   <div id="prompt" class="card" hidden></div>
@@ -224,6 +229,36 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 </div>
 <div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><div id="dchoices"></div><span class="nx">▼</span></div>
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
+<div class="modal" id="setM" hidden><div class="sheet card"><h2>設定</h2>
+  <div class="setrow"><span>音</span><button class="btn ghost" id="setSnd">オン</button></div>
+  <div class="setrow"><span>音の大きさ</span><input type="range" id="setVol" min="0" max="100" step="5" aria-label="音の大きさ"></div>
+  <div class="setrow" id="setBuzzRow" hidden><span>振動</span><button class="btn ghost" id="setBuzz">オン</button></div>
+  <div class="setrow"><span>画質</span><div class="seg" id="setQ"><button data-q="0">軽い</button><button data-q="1">ふつう</button><button data-q="2">きれい</button></div></div>
+  <p class="sub" id="setQNote"></p>
+  <div class="setrow"><button class="btn ghost" id="setHelp">あそびかた</button><button class="btn ghost" id="setTitle">タイトルにもどる</button></div>
+  <button class="btn" id="setClose" style="align-self:flex-end">とじる</button></div></div>
+<div class="modal" id="helpM" hidden><div class="sheet card"><h2>あそびかた</h2>
+  <dl class="keys">
+    <dt class="pc">W / ↑</dt><dd class="pc">地面をける。押すたびにひと蹴りで加速（押したままだと蹴りつづける。坂は勝手に転がる）</dd>
+    <dt class="pc">S / ↓</dt><dd class="pc">ブレーキ</dd>
+    <dt class="pc">A D / ← →</dt><dd class="pc">曲がる</dd>
+    <dt class="pc">E</dt><dd class="pc">話す・お店に入る・会話を進める</dd>
+    <dt class="pc">Space</dt><dd class="pc">ジャンプ</dd>
+    <dt class="pc">C</dt><dd class="pc">着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
+    <dt class="pc">K</dt><dd class="pc">技（空中で）。キックフリップ、曲がりながらなら360ショービット。手すりに着地するとグラインド</dd>
+    <dt class="pc">F</dt><dd class="pc">スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
+    <dt class="pc">Q ・ P</dt><dd class="pc">おつかい帳 ・ 写真を撮る</dd>
+    <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
+    <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
+    <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
+    <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
+    <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
+    <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
+    <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
+    <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
+    <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
+  </dl>
+  <button class="btn" id="helpClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub" id="albumSub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をクリックすると保存できます。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="closet" hidden><div class="sheet card" id="closetSheet"><h2>着がえ<button class="btn" id="closetBig">大きく見る</button></h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギはドラッグで回せる。ピンチ（マウスはホイール）で拡大</p><div id="closetSlots"></div>
@@ -250,26 +285,6 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   <div class="sheet card">
     <h1 class="logo"><span>UMIMACHI SKATE</span>海街スケート</h1>
     <p class="lede">海へ下る坂の町を、スケートボードでのんびり散歩。パン屋でおつかい、浜辺へ届けもの、迷子の猫さがし。気に入った景色は写真に残して。</p>
-    <dl class="keys">
-      <dt class="pc">W / ↑</dt><dd class="pc">地面をける。押すたびにひと蹴りで加速（押したままだと蹴りつづける。坂は勝手に転がる）</dd>
-      <dt class="pc">S / ↓</dt><dd class="pc">ブレーキ</dd>
-      <dt class="pc">A D / ← →</dt><dd class="pc">曲がる</dd>
-      <dt class="pc">E</dt><dd class="pc">話す・お店に入る・会話を進める</dd>
-      <dt class="pc">Space</dt><dd class="pc">ジャンプ</dd>
-      <dt class="pc">C</dt><dd class="pc">着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
-      <dt class="pc">K</dt><dd class="pc">技（空中で）。キックフリップ、曲がりながらなら360ショービット。手すりに着地するとグラインド</dd>
-      <dt class="pc">F</dt><dd class="pc">スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
-      <dt class="pc">Q ・ P</dt><dd class="pc">おつかい帳 ・ 写真を撮る</dd>
-      <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
-      <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
-      <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
-      <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
-      <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
-      <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
-      <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
-      <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
-      <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
-    </dl>
     <div id="slots" role="list" aria-label="セーブデータ"></div>
     <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：VRoid Studio で作成</p>
   </div>

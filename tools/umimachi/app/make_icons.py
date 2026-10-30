@@ -10,6 +10,18 @@ maru = os.path.join(here, '.cache', 'ZenMaruGothic-Black.ttf')
 INK, PAPER, SEA, DEEP, SUN, ROSE = (43, 37, 32), (255, 250, 240), (31, 127, 192), (20, 90, 140), (242, 163, 58), (226, 88, 74)
 
 def icon():
+    # the icon is a shot from the game itself (icon_shot.jpg: Nagi on the pier, the lighthouse island behind, a summer evening),
+    # trimmed a little and warmed. Without the shot it falls back to the drawn one below
+    shot = os.path.join(here, 'icon_shot.jpg')
+    if os.path.exists(shot):
+        from PIL import ImageEnhance
+        im = Image.open(shot).convert('RGB'); w = im.width
+        im = im.crop((int(w*0.04), 0, int(w*0.96), int(w*0.92))).resize((1024, 1024), Image.LANCZOS)
+        im = ImageEnhance.Color(im).enhance(1.15); im = ImageEnhance.Contrast(im).enhance(1.06)
+        im.save(os.path.join(assets, 'AppIcon.appiconset', 'AppIcon-512@2x.png')); return
+    drawn_icon()
+
+def drawn_icon():
     N = 1024
     im = Image.new('RGB', (N, N))
     d = ImageDraw.Draw(im)
