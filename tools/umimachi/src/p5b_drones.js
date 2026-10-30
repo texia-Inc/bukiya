@@ -82,7 +82,7 @@ function droneShot(d,side){dropLaser(d);const a=d.eye.getWorldPosition(new THREE
   const aim=c.addScaledVector(DRONE.pv,t*0.9).add(new THREE.Vector3(Math.cos(P.yaw),0,-Math.sin(P.yaw)).multiplyScalar(side||0)).add(new THREE.Vector3(rnd()-0.5,(rnd()-0.5)*0.5,rnd()-0.5).multiplyScalar(0.7));
   const m=new THREE.Group(),glow=new THREE.Mesh(FXG.ball,DM.bolt),core=new THREE.Mesh(FXG.ball,DM.core);glow.scale.set(0.12,0.12,0.42);core.scale.set(0.05,0.05,0.24);m.add(glow,core);
   m.position.copy(a);m.lookAt(aim);scene.add(m);DRONE.bolts.push({m,v:aim.sub(a).setLength(BOLT_V),life:4});sparks(a,4,'#ff6a50',2,0.04);}
-function hurtPlayer(p){DRONE.hp--;DRONE.invT=1.2;DRONE.hurt=1;P.bump=Math.max(P.bump,0.5);P.v*=0.6;sparks(p,10,'#ff5a40',4,0.05);renderHUD();
+function hurtPlayer(p){buzz('heavy',true);DRONE.hp--;DRONE.invT=1.2;DRONE.hurt=1;P.bump=Math.max(P.bump,0.5);P.v*=0.6;sparks(p,10,'#ff5a40',4,0.05);renderHUD();
   if(DRONE.hp<=0){loseDrones();return;}
   if(!DRONE.dodgeHint){DRONE.dodgeHint=true;toast('当たった！ 走りながら曲がると、よけやすい');}}
 function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.list)dropLaser(d);renderHUD();

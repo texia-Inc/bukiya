@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Umimachi Skate</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Kaisei+Decol:wght@700&display=swap">
@@ -24,13 +24,13 @@
   color-scheme:light;
 }
 [hidden]{display:none!important}
-html,body{height:100%;margin:0;overflow:hidden;background:#cfe8f5;color:var(--ink);font-family:var(--round)}
+html,body{height:100%;margin:0;overflow:hidden;touch-action:manipulation;background:#cfe8f5;color:var(--ink);font-family:var(--round)}
 /* holding a finger on the screen must not start a text selection or the long-press menu */
 body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
 .hud{position:fixed;inset:0;pointer-events:none;user-select:none;-webkit-user-select:none}
 .card{background:var(--card);border-radius:14px;box-shadow:0 3px 0 var(--shade),0 8px 22px rgba(20,60,90,.12)}
-#topL{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;display:flex;flex-direction:column;gap:8px;max-width:min(62vw,320px)}
+#topL{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:calc(env(safe-area-inset-left,0px) + 12px);display:flex;flex-direction:column;gap:8px;max-width:min(62vw,320px)}
 #wallet{padding:7px 12px;display:flex;align-items:baseline;gap:8px;font-weight:900;font-size:19px;font-variant-numeric:tabular-nums;align-self:flex-start}
 #wallet small{font-size:11px;color:var(--ink-soft);font-weight:700;letter-spacing:.1em}
 #place{font-size:12px;font-weight:700;color:var(--paper);background:var(--sea-deep);border-radius:99px;padding:4px 11px;align-self:flex-start;letter-spacing:.06em}
@@ -42,13 +42,13 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 #tracker .others{display:flex;flex-direction:column;gap:2px;margin-top:6px;padding-top:5px;border-top:1px dashed rgba(0,0,0,.15);pointer-events:auto}
 #tracker .oq{appearance:none;border:0;background:none;padding:2px 0;text-align:left;font:700 12px var(--round);color:var(--ink-soft);cursor:pointer;display:flex;align-items:center}
 #tracker .oq .qn{width:15px;height:15px;font-size:10px}
-#map{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;width:132px;height:132px;padding:5px;pointer-events:auto;cursor:pointer}
+#map{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:calc(env(safe-area-inset-right,0px) + 12px);width:132px;height:132px;padding:5px;pointer-events:auto;cursor:pointer}
 #map canvas{width:100%;height:100%;border-radius:10px;display:block}
-#tools{position:absolute;top:calc(env(safe-area-inset-top,0px) + 158px);right:12px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+#tools{position:absolute;top:calc(env(safe-area-inset-top,0px) + 158px);right:calc(env(safe-area-inset-right,0px) + 12px);display:flex;flex-direction:column;gap:8px;pointer-events:auto}
 .tool{appearance:none;border:0;cursor:pointer;font-family:var(--round);font-weight:900;font-size:12px;color:var(--ink);padding:8px 10px;min-width:64px;border-radius:12px;
   background:var(--card);box-shadow:0 3px 0 var(--shade)}
 .tool:focus-visible,.btn:focus-visible,.buy:focus-visible{outline:3px solid var(--sea);outline-offset:2px}
-#bag{position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;gap:6px;flex-wrap:wrap;max-width:46vw}
+#bag{position:absolute;left:calc(env(safe-area-inset-left,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;gap:6px;flex-wrap:wrap;max-width:46vw}
 .it{background:var(--card);border-radius:10px;padding:3px 7px 3px 3px;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:900;box-shadow:0 2px 0 var(--shade)}
 .it img{width:26px;height:26px}
 #prompt{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);translate:-50% 0;padding:8px 14px;font-size:14px;font-weight:700;white-space:nowrap}
@@ -136,7 +136,7 @@ body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.c
 #knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--card);box-shadow:0 3px 0 var(--shade)}
 #trick{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 86px);translate:-50% 0;text-align:center;pointer-events:none;text-shadow:0 2px 0 rgba(0,0,0,.35)}
 #trick .tn{font-weight:900;font-size:22px;color:#ffd24a}
-#pad{position:absolute;right:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:12px;align-items:end;pointer-events:auto}
+#pad{position:absolute;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:12px;align-items:end;pointer-events:auto}
 body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{display:none}
 .pb.kick{grid-column:2;grid-row:1/3;width:92px;height:92px;font-size:17px}
 .pb.kick.on{transform:scale(.94);background:#f7c06a}
@@ -160,7 +160,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 #credits h2{font-family:var(--title);font-size:clamp(30px,8vw,46px);margin:0 0 6px}#credits p{margin:4px 0;font-size:14px;line-height:1.8;opacity:.9}#credits .sm{font-size:12px;opacity:.6;margin-top:18px}
 #hurt{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 140px 50px rgba(214,40,32,.75)}
 .pb.main{background:var(--sun);color:#fff;width:78px;height:78px;box-shadow:0 3px 0 #b8741c}
-#title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:16px;
+#title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:flex-start;overflow-y:auto;padding-inline:calc(env(safe-area-inset-left,0px) + 16px) calc(env(safe-area-inset-right,0px) + 16px);
   padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 24px);background:linear-gradient(180deg,rgba(255,250,240,0) 35%,rgba(255,250,240,.9) 78%)}
 #title .sheet{margin-top:auto;width:min(520px,100%);padding:20px 22px}
 .logo{font-family:var(--title);font-size:clamp(38px,11vw,60px);line-height:1;margin:0;color:var(--sea-deep);text-wrap:balance}
@@ -169,6 +169,12 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 .keys{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
 .keys dt{font-weight:900;color:var(--sea-deep);white-space:nowrap}
 .keys dd{margin:0}
+.keys .tc{display:none}
+@media (pointer:coarse){
+  .keys .pc{display:none}.keys .tc{display:block}
+  #title .sheet{padding:18px 18px 16px;gap:10px}.lede{font-size:13px;line-height:1.7}.keys{font-size:12.5px;gap:6px 12px}
+  .keys dt.tc{display:block;min-width:4.5em}
+}
 #loading{position:fixed;inset:0;display:grid;place-items:center;background:#cfe8f5;font-weight:900;color:var(--sea-deep);font-size:16px}
 #menuBtn{display:none}
 /* phones: a quieter screen. The tools fold into one menu button, the top-left cards get smaller (tap the tracker to fold it),
@@ -181,7 +187,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   #tools{top:calc(env(safe-area-inset-top,0px) + 112px);gap:6px}#menuBtn{display:block}
   #tools .tool{display:none}#tools #menuBtn,#tools #lightBtn,#tools.open .tool{display:block}#tools .tool[hidden]{display:none!important}
   .tool{font-size:11px;padding:7px 9px;min-width:56px}
-  #pad{gap:9px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
+  #pad{gap:9px;right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
   .pb{width:56px;height:56px;font-size:12px}.pb.main{width:72px;height:72px}.pb.kick{width:80px;height:80px;font-size:15px}
   .cslot{grid-template-columns:52px 1fr;gap:4px 8px}
   #ring{opacity:.22}#bag .it{font-size:11px;padding:2px 6px 2px 2px}#bag .it img{width:20px;height:20px}
@@ -226,7 +232,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 <div id="dialog" class="card" hidden><span class="who" id="dwho"></span><p id="dtext"></p><div id="dchoices"></div><span class="nx">▼</span></div>
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
-<div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
+<div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub" id="albumSub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をクリックすると保存できます。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="closet" hidden><div class="sheet card" id="closetSheet"><h2>着がえ<button class="btn" id="closetBig">大きく見る</button></h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギはドラッグで回せる。ピンチ（マウスはホイール）で拡大</p><div id="closetSlots"></div>
   <div class="bar"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div>
   <div class="card" id="closetMini" hidden><div class="mrow"><button class="ar" id="cmSp">‹</button><b id="cmSlot"></b><button class="ar" id="cmSn">›</button><button class="ar" id="cmIp">‹</button><span id="cmItem"></span><button class="ar" id="cmIn">›</button></div>
@@ -245,26 +251,31 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 <div id="flash"></div>
 <div class="cbar" id="cbarT"></div><div class="cbar" id="cbarB"></div><div id="fade"></div>
 <div id="credits" hidden><div><h2>海街スケート</h2><p>真ルート「灯台」</p><p style="margin-top:18px">汐見ナギ ・ トメばあちゃん ・ ミオ ・ ナツミ<br>こむぎ堂の主人 ・ ソウタと海街少年探偵団 ・ おもち<br>そして、海街のみなさん</p>
-<p style="margin-top:18px">主人公モデル：VRoid Studio で作成</p><p class="sm">夏休みは、まだ続く。（クリックでとじる）</p></div></div>
+<p style="margin-top:18px">主人公モデル：VRoid Studio で作成</p><p class="sm" id="creditsEnd">夏休みは、まだ続く。（クリックでとじる）</p></div></div>
 
 <div id="title" hidden>
   <div class="sheet card">
     <h1 class="logo"><span>UMIMACHI SKATE</span>海街スケート</h1>
     <p class="lede">海へ下る坂の町を、スケートボードでのんびり散歩。パン屋でおつかい、浜辺へ届けもの、迷子の猫さがし。気に入った景色は写真に残して。</p>
     <dl class="keys">
-      <dt>W / ↑</dt><dd>地面をける。押すたびにひと蹴りで加速（押したままだと蹴りつづける。坂は勝手に転がる）</dd>
-      <dt>S / ↓</dt><dd>ブレーキ</dd>
-      <dt>A D / ← →</dt><dd>曲がる</dd>
-      <dt>E</dt><dd>話す・お店に入る・会話を進める</dd>
-      <dt>Space</dt><dd>ジャンプ</dd>
-      <dt>C</dt><dd>着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
-      <dt>K</dt><dd>技（空中で）。キックフリップ、曲がりながらなら360ショービット。手すりに着地するとグラインド</dd>
-      <dt>F</dt><dd>スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
-      <dt>Q ・ P</dt><dd>おつかい帳 ・ 写真を撮る</dd>
-      <dt>L</dt><dd>ライトをつける・消す（「トンネルの向こう」で）</dd>
-      <dt>M</dt><dd>音をオン・オフ</dd>
-      <dt>J ・ クリック</dt><dd>撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
-      <dt>スマホ</dt><dd>左のスティックで曲がる・ブレーキ。右の「ける」で加速、「話す」「ジャンプ」「降りる」（降りたら「ける」で走る）</dd>
+      <dt class="pc">W / ↑</dt><dd class="pc">地面をける。押すたびにひと蹴りで加速（押したままだと蹴りつづける。坂は勝手に転がる）</dd>
+      <dt class="pc">S / ↓</dt><dd class="pc">ブレーキ</dd>
+      <dt class="pc">A D / ← →</dt><dd class="pc">曲がる</dd>
+      <dt class="pc">E</dt><dd class="pc">話す・お店に入る・会話を進める</dd>
+      <dt class="pc">Space</dt><dd class="pc">ジャンプ</dd>
+      <dt class="pc">C</dt><dd class="pc">着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
+      <dt class="pc">K</dt><dd class="pc">技（空中で）。キックフリップ、曲がりながらなら360ショービット。手すりに着地するとグラインド</dd>
+      <dt class="pc">F</dt><dd class="pc">スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
+      <dt class="pc">Q ・ P</dt><dd class="pc">おつかい帳 ・ 写真を撮る</dd>
+      <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
+      <dt class="pc">M</dt><dd class="pc">音をオン・オフ</dd>
+      <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
+      <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる</dd>
+      <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
+      <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。手すりに乗るとグラインド</dd>
+      <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
+      <dt class="tc">降りる</dt><dd class="tc">スケボーを降りて歩く。もう一度押すと乗る</dd>
+      <dt class="tc">メニュー</dt><dd class="tc">おつかい帳・アルバム・着がえ・写真を撮る・音</dd>
     </dl>
     <div id="slots" role="list" aria-label="セーブデータ"></div>
     <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：VRoid Studio で作成</p>
@@ -3906,6 +3917,22 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 
 </script>
 <script>
+// iPhone app (Capacitor). On the web APP.native is false and none of this runs.
+// iOS may clear a web view's localStorage when the phone is short of space, so every umimachi_* key is also kept in the
+// app's own preferences (APP.keep, called from store.set) and put back on launch before the game reads its saves.
+window.APP=(()=>{const C=window.Capacitor,native=!!(C&&C.isNativePlatform&&C.isNativePlatform()),P=native&&C.Plugins||{};
+  const A={native,haptics:P.Haptics,share:P.Share,fs:P.Filesystem,prefs:P.Preferences,ready:Promise.resolve(),keep(){}};
+  if(!native||!A.prefs)return A;
+  document.documentElement.classList.add('app');
+  const ours=k=>k&&k.startsWith('umimachi'),wait={};
+  A.keep=(k,v)=>{if(!ours(k))return;clearTimeout(wait[k]);wait[k]=setTimeout(()=>A.prefs.set({key:k,value:v}).catch(()=>{}),400);};
+  A.ready=Promise.race([A.prefs.keys().then(async r=>{
+    for(const k of r.keys)if(ours(k)&&localStorage.getItem(k)==null){const v=(await A.prefs.get({key:k})).value;if(v!=null)localStorage.setItem(k,v);}
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(ours(k)&&!r.keys.includes(k))A.prefs.set({key:k,value:localStorage.getItem(k)});}
+  }),new Promise(r=>setTimeout(r,3000))]).catch(()=>{});
+  return A;})();
+</script>
+<script>
 function main(){
 "use strict";
 const $=id=>document.getElementById(id);
@@ -3918,7 +3945,7 @@ function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=x
   const a=hash(xi,yi),b=hash(xi+1,yi),c=hash(xi,yi+1),d=hash(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
 const clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t,smooth=t=>t*t*(3-2*t);
 const TAU=Math.PI*2;
-const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}};
+const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);window.APP&&APP.keep(k,v);return true;}catch(e){return false;}}};
 const rnd=mulberry(7310);
 const pick=a=>a[Math.floor(rnd()*a.length)];
 
@@ -5798,7 +5825,7 @@ function droneShot(d,side){dropLaser(d);const a=d.eye.getWorldPosition(new THREE
   const aim=c.addScaledVector(DRONE.pv,t*0.9).add(new THREE.Vector3(Math.cos(P.yaw),0,-Math.sin(P.yaw)).multiplyScalar(side||0)).add(new THREE.Vector3(rnd()-0.5,(rnd()-0.5)*0.5,rnd()-0.5).multiplyScalar(0.7));
   const m=new THREE.Group(),glow=new THREE.Mesh(FXG.ball,DM.bolt),core=new THREE.Mesh(FXG.ball,DM.core);glow.scale.set(0.12,0.12,0.42);core.scale.set(0.05,0.05,0.24);m.add(glow,core);
   m.position.copy(a);m.lookAt(aim);scene.add(m);DRONE.bolts.push({m,v:aim.sub(a).setLength(BOLT_V),life:4});sparks(a,4,'#ff6a50',2,0.04);}
-function hurtPlayer(p){DRONE.hp--;DRONE.invT=1.2;DRONE.hurt=1;P.bump=Math.max(P.bump,0.5);P.v*=0.6;sparks(p,10,'#ff5a40',4,0.05);renderHUD();
+function hurtPlayer(p){buzz('heavy',true);DRONE.hp--;DRONE.invT=1.2;DRONE.hurt=1;P.bump=Math.max(P.bump,0.5);P.v*=0.6;sparks(p,10,'#ff5a40',4,0.05);renderHUD();
   if(DRONE.hp<=0){loseDrones();return;}
   if(!DRONE.dodgeHint){DRONE.dodgeHint=true;toast('当たった！ 走りながら曲がると、よけやすい');}}
 function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.list)dropLaser(d);renderHUD();
@@ -6283,7 +6310,7 @@ function uraExit(){URA.on=false;for(const h of URA.hides){h.g.visible=false;if(h
 function toggleTorch(){if(!URA.on)return;torchOn=!torchOn;toast(torchOn?'ライトをつけた（遠くまで見えるけど、見つかりやすい）':'ライトを消した');}
 const clueLeft=()=>URA_CLUES.filter(c=>!SAVE.flags['clue_'+c.id]);
 function uraHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=URA.chase?'逃げろ！':'裏海街';const s=document.createElement('span');s.className='step';
-  s.textContent=URA.hide?'木箱の中で、じっと息をひそめる。足音が遠ざかったら、E で出る':URA.chase?'西のトンネルへ。スケボーは遠くまで聞こえる。足音が近づいたら、木箱に隠れてやり過ごす':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
+  s.textContent=URA.hide?'木箱の中で、じっと息をひそめる。足音が遠ざかったら、'+(hasTouch?'「出る」ボタンで外へ':'E で出る'):URA.chase?'西のトンネルへ。スケボーは遠くまで聞こえる。足音が近づいたら、木箱に隠れてやり過ごす':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
   const m=document.createElement('span');m.className='meter';const L=clueLeft(),near=URA.chase?Math.round(uraAtt(URA.chase.d||99,70)*5):0;
   m.textContent=URA.chase?`気配 ${'■'.repeat(near)}${'□'.repeat(5-near)}`:L.length?`手がかり ${3-L.length} / 3　のこり：${L.map(c=>c.name).join('・')}`:'手がかりは そろった';tr.append(b,s,m);}
 // the chase: the big shadow comes from behind. It hunts what it hears or sees, goes to where it last knew you were, waits and
@@ -7699,7 +7726,7 @@ function updateIsland(dt){const B=BOAT;
    camera, the dialogue. Browsers allow no sound before the first tap or key, so it starts then; M (or the 音 button)
    turns it off and on, and that is remembered. Most of it watches the game's state each frame rather than being called. ---------- */
 const SND={ctx:null,on:store.get('umimachi_sound')!=='0',L:{},prev:{},dist:{},nextX:0,nextCricket:0};
-function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resume();return;}
+function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state!=='running'&&!document.hidden)S.ctx.resume();return;}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=S.ctx=new AC();
   const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=S.on?0.9:0;S.master.connect(comp);
   const nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;S.noise=nb;
@@ -7758,6 +7785,12 @@ const sfx={
   const b0=boom;boom=function(p){sfx.boom(att(Math.hypot(p.x-P.x,p.z-P.z),160)+0.15);return b0(p);};
   const f0=burst;burst=function(p,col){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col);};}
 
+// iPhone app: a light buzz with the bumps and rewards (works with the sound off too)
+const BUZZ={land:'light',bump:'medium',thud:'heavy',coin:'light',pay:'light',shutter:'light',win:'success',lose:'error'};let buzzT=0;
+function buzz(k,force){const H=APP.haptics;if(!H)return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
+  (k==='success'||k==='error'?H.notification({type:k.toUpperCase()}):H.impact({style:k.toUpperCase()})).catch(()=>{});}
+for(const k in BUZZ)if(sfx[k]){const f=sfx[k];sfx[k]=(...a)=>{if(k!=='land'||a[0]>0.25)buzz(BUZZ[k]);return f(...a);};}
+document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden)c.suspend().catch(()=>{});else c.resume().catch(()=>{});});
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
   // the festival band at the shrine: drums and a flute, louder as you come up the approach, and the murmur of the crowd
@@ -8040,7 +8073,9 @@ function openShop(key){shopCam=key;const m=MENUS[key];$('shopName').textContent=
   draw();openModal('shop');}
 // dialog
 let DLG=null;
-function say(who,lines,done){DLG={who,lines:lines.slice(),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
+// phones: lines written with keys in mind name the on-screen buttons instead
+function devText(s){return hasTouch&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン'):s;}
+function say(who,lines,done){DLG={who,lines:lines.map(devText),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
 function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;if(!ST.run)talkNpc=null;if(d)d();}
 $('dialog').addEventListener('click',nextLine);
 let talkNpc=null;
@@ -8060,8 +8095,8 @@ function talk(n){talkNpc=n;
 
 /* ---------- photos ---------- */
 let ALBUM=(()=>{try{return JSON.parse(store.get('umimachi_album')||'[]');}catch(e){return[];}})(),photoReq=false;
-function snap(){const src=renderer.domElement,w=360,h=Math.round(w*src.height/src.width);const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(src,0,0,w,h);
-  g.fillStyle='rgba(255,250,240,.85)';g.font='700 13px "Zen Maru Gothic", sans-serif';g.textAlign='right';g.fillText(placeName(),w-10,h-10);
+function snap(){const src=renderer.domElement,w=640,h=Math.round(w*src.height/src.width);const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(src,0,0,w,h);
+  g.fillStyle='rgba(255,250,240,.85)';g.font='700 22px "Zen Maru Gothic", sans-serif';g.textAlign='right';g.fillText(placeName(),w-16,h-16);
   let url='';try{url=c.toDataURL('image/jpeg',0.78);}catch(e){}
   const near=SPOTS.find(p=>Math.hypot(P.x-p.x,P.z-p.z)<9);
   player.happyT=1.6;ALBUM.unshift({url,cap:near?near.name:placeName()});ALBUM=ALBUM.slice(0,12);
@@ -8071,7 +8106,14 @@ function snap(){const src=renderer.domElement,w=360,h=Math.round(w*src.height/sr
   if(near&&st&&st.type==='photos'&&!SAVE.spots.includes(near.id)){SAVE.spots.push(near.id);toast(`${near.name}を撮った（${SAVE.spots.length}/${SPOTS.length}）`,true);autoSteps();save();renderHUD();}
   else toast(near?`${near.name}で1枚`:'パシャ。アルバムに残した');}
 function renderAlbum(){const A=$('albumGrid');A.innerHTML='';if(!ALBUM.length){const p=document.createElement('p');p.className='sub';p.textContent='まだ写真がありません。気に入った景色で撮ってみよう。';A.appendChild(p);return;}
-  for(const a of ALBUM){const f=document.createElement('figure');const im=document.createElement('img');im.src=a.url;im.alt=a.cap;const c=document.createElement('figcaption');c.textContent=a.cap;f.append(im,c);A.appendChild(f);}}
+  for(const a of ALBUM){const f=document.createElement('figure');const im=document.createElement('img');im.src=a.url;im.alt=a.cap;im.style.cursor='pointer';im.onclick=()=>sharePhoto(a);const c=document.createElement('figcaption');c.textContent=a.cap;f.append(im,c);A.appendChild(f);}}
+// a photo leaves the game through the share sheet (the app writes it to a file first), or a download on a computer
+async function sharePhoto(a){if(!a.url)return;const name='umimachi_'+Date.now()+'.jpg';
+  if(APP.native&&APP.fs&&APP.share){try{const r=await APP.fs.writeFile({path:name,data:a.url.split(',')[1],directory:'CACHE'});await APP.share.share({title:a.cap,files:[r.uri]});}catch(e){}return;}
+  try{const f=new File([await (await fetch(a.url)).blob()],name,{type:'image/jpeg'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:a.cap});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  const l=document.createElement('a');l.href=a.url;l.download=name;l.click();}
+// leaving the app (home screen, a call) saves where you are
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')save();});
 $('photoBtn').addEventListener('click',()=>{photoReq=true;});
 // phones: the menu button folds the tools away; choosing one folds them again. Tapping the tracker folds it to its title
 $('menuBtn').addEventListener('click',()=>{const T=$('tools');T.classList.toggle('open');$('menuBtn').textContent=T.classList.contains('open')?'とじる':'メニュー';});
@@ -8230,6 +8272,9 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(hasTouch)for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());   // no long-press menu or selection while playing
+// Safari ignores user-scalable=no: a pinch would zoom the page and leave the buttons off screen (double taps: touch-action:manipulation)
+if(hasTouch)for(const ev of ['gesturestart','gesturechange'])document.addEventListener(ev,e=>e.preventDefault());
+if(hasTouch){$('albumSub').textContent='メニューの「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をタップすると保存や共有ができます。';$('creditsEnd').textContent='夏休みは、まだ続く。（タップでとじる）';}
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(stick.y<-0.45)fwd=true;   // pushing the stick forward kicks (on foot: runs) like holding W
@@ -8433,7 +8478,7 @@ const heroineReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader)return 
 // Mio's model, the same way (the procedural figure stays if it cannot be fetched; the single-file build does without it)
 const mioReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader||document.getElementById('heroineGLB'))return res();const t=setTimeout(res,25000);
   new THREE.GLTFLoader().load('mio.glb',g=>{window.MIO_GLTF=g;clearTimeout(t);res();},undefined,()=>{clearTimeout(t);res();});});
-Promise.all([fontReady,heroineReady,mioReady]).then(main);
+Promise.all([fontReady,heroineReady,mioReady,window.APP&&APP.ready]).then(main);
 </script>
 
 </body>

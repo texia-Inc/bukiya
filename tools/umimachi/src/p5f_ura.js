@@ -39,7 +39,7 @@ function uraExit(){URA.on=false;for(const h of URA.hides){h.g.visible=false;if(h
 function toggleTorch(){if(!URA.on)return;torchOn=!torchOn;toast(torchOn?'ライトをつけた（遠くまで見えるけど、見つかりやすい）':'ライトを消した');}
 const clueLeft=()=>URA_CLUES.filter(c=>!SAVE.flags['clue_'+c.id]);
 function uraHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=URA.chase?'逃げろ！':'裏海街';const s=document.createElement('span');s.className='step';
-  s.textContent=URA.hide?'木箱の中で、じっと息をひそめる。足音が遠ざかったら、E で出る':URA.chase?'西のトンネルへ。スケボーは遠くまで聞こえる。足音が近づいたら、木箱に隠れてやり過ごす':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
+  s.textContent=URA.hide?'木箱の中で、じっと息をひそめる。足音が遠ざかったら、'+(hasTouch?'「出る」ボタンで外へ':'E で出る'):URA.chase?'西のトンネルへ。スケボーは遠くまで聞こえる。足音が近づいたら、木箱に隠れてやり過ごす':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
   const m=document.createElement('span');m.className='meter';const L=clueLeft(),near=URA.chase?Math.round(uraAtt(URA.chase.d||99,70)*5):0;
   m.textContent=URA.chase?`気配 ${'■'.repeat(near)}${'□'.repeat(5-near)}`:L.length?`手がかり ${3-L.length} / 3　のこり：${L.map(c=>c.name).join('・')}`:'手がかりは そろった';tr.append(b,s,m);}
 // the chase: the big shadow comes from behind. It hunts what it hears or sees, goes to where it last knew you were, waits and

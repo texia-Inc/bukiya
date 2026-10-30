@@ -1,0 +1,16 @@
+<script>
+// iPhone app (Capacitor). On the web APP.native is false and none of this runs.
+// iOS may clear a web view's localStorage when the phone is short of space, so every umimachi_* key is also kept in the
+// app's own preferences (APP.keep, called from store.set) and put back on launch before the game reads its saves.
+window.APP=(()=>{const C=window.Capacitor,native=!!(C&&C.isNativePlatform&&C.isNativePlatform()),P=native&&C.Plugins||{};
+  const A={native,haptics:P.Haptics,share:P.Share,fs:P.Filesystem,prefs:P.Preferences,ready:Promise.resolve(),keep(){}};
+  if(!native||!A.prefs)return A;
+  document.documentElement.classList.add('app');
+  const ours=k=>k&&k.startsWith('umimachi'),wait={};
+  A.keep=(k,v)=>{if(!ours(k))return;clearTimeout(wait[k]);wait[k]=setTimeout(()=>A.prefs.set({key:k,value:v}).catch(()=>{}),400);};
+  A.ready=Promise.race([A.prefs.keys().then(async r=>{
+    for(const k of r.keys)if(ours(k)&&localStorage.getItem(k)==null){const v=(await A.prefs.get({key:k})).value;if(v!=null)localStorage.setItem(k,v);}
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(ours(k)&&!r.keys.includes(k))A.prefs.set({key:k,value:localStorage.getItem(k)});}
+  }),new Promise(r=>setTimeout(r,3000))]).catch(()=>{});
+  return A;})();
+</script>
