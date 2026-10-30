@@ -19,7 +19,7 @@ const SUN_H=new THREE.Vector2(-0.55,-0.4).normalize(),LC=[0,1,2,3,5].map(()=>new
 const GLOW_TEX=canvasTex(64,64,(c,w,h)=>{const g=c.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.25,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,w,h);});
 function glow(col,x,y,z,s){const m=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX,color:col,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
   m.position.set(x,y,z);m.scale.setScalar(s);m.visible=false;scene.add(m);return m;}
-const NIGHT={lamps:LAMPS.map(e=>glow('#ffd9a0',e.x,5.7,e.z-1.3,2.6)).concat([glow('#ffb0a0',PIER.x0+0.6,PIER.y+3.2,PIER.z1-0.8,2.2)]),
+const NIGHT={lamps:LAMPS.map(e=>glow('#ffd9a0',e.x,5.7,e.z-1.3,2.6)).concat([glow('#ffb0a0',PIER.x0+0.6,PIER.y+3.2,PIER.z1-0.8,2.2)],EKI_LAMPS.map(e=>glow('#ffd9a0',e.x,e.y,e.z,2.2))),
   house:glow('#fff0c0',198,SEA_Y+72.5,760,26),mast:glow('#ff4030',-285,H(-285,-40)+41,-40,7),beam:new THREE.Group(),stars:null};
 { const bm=new THREE.MeshBasicMaterial({color:'#fff3c4',transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,fog:false,side:THREE.DoubleSide});
   for(const s of [1,-1]){const c=new THREE.Mesh(new THREE.ConeGeometry(14,420,16,1,true),bm);c.rotation.z=s*Math.PI/2;c.position.x=s*210;NIGHT.beam.add(c);}

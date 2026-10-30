@@ -123,7 +123,8 @@ function islNear(){if(BOAT.on||URA.on)return null;let best=null;const add=(d,o)=
   const m=BOAT.moor[BOAT.at],bd=BOAT.at==='town'?Math.hypot(P.x-(m.x-1.6),P.z-m.z):Math.hypot(P.x-(ISL.x-55),P.z-m.z);
   if(bd<3&&!ISL.wait)add(bd,{kind:'boat',label:BOAT.at==='town'?'乗る　島への船（釣りのおじさん）':'乗る　町へ帰る船',verb:'乗る'});
   if(P.z>ISL_Z0){
-    if(!onGallery()){const d=Math.hypot(P.x-LH.x,P.z-(LH.z-3.6));if(d<2.4)add(d,{kind:'lhdoor',label:'入る　灯台',verb:'入る'});}
+    if(!onGallery()){const d=Math.hypot(P.x-LH.x,P.z-(LH.z-3.6));if(d<2.4){const lit=flag('lighthouse_lit'),key=flag('true_key');   // the door says what it needs: look at it, use grandpa's key, or just go in
+        add(d,{kind:'lhdoor',label:lit||ISL.opened?'入る　灯台':key?'鍵を開ける　灯台の扉（じいちゃんの鍵）':'調べる　灯台の扉',verb:lit||ISL.opened?'入る':key?'開ける':'調べる'});}}
     else{const d=Math.hypot(P.x-LH.x,P.z-(LH.z-2.6));if(d<1.3)add(d,{kind:'lhdown',label:'降りる　らせん階段',verb:'降りる'});
       if(ISL.wait){const dl=Math.max(0,Math.hypot(P.x-LH.x,P.z-LH.z)-1.6);if(dl<1.6)add(dl-2,{kind:'lamp',label:'ともす　灯台の灯り',verb:'ともす'});}}}
   return best;}
@@ -131,7 +132,9 @@ function islFade(fn){$('fade').style.opacity=1;setTimeout(()=>{fn();camInit=fals
 function islAct(o){
   if(o.kind==='boat'){if(BOAT.at==='town')say('釣りのおじさん',['島へ行くのかい？ よし、乗りな。','灯台の下まで、道が一本のびてる。帰りたくなったら、島の桟橋の船に乗りな。'],()=>boatP('island'));else boatP('town');}
   else if(o.kind==='lhdoor'){if(!flag('true_key')&&!flag('lighthouse_lit')){say('',['さびた鉄の扉には、大きな錠前がかかっている。','……かぎがないと、入れそうにない。']);return;}
-    islFade(()=>{P.x=LH.x;P.z=LH.z-2.6;P.y=LH.gy;P.yaw=Math.PI;P.v=0;P.air=false;toast('らせん階段をのぼって、灯台のてっぺんに出た');});}
+    const up=()=>islFade(()=>{P.x=LH.x;P.z=LH.z-2.6;P.y=LH.gy;P.yaw=Math.PI;P.v=0;P.air=false;toast('らせん階段をのぼって、灯台のてっぺんに出た');});
+    if(!flag('lighthouse_lit')&&!ISL.opened){ISL.opened=true;sfx.clack&&sfx.clack();say('',['じいちゃんの鍵を、さびた錠前に差しこむ。','……ガチャリ。重たい音がして、錠前がはずれた。','ギイイ……。三十年ぶりに、灯台の扉が開いた。'],up);return;}
+    up();}
   else if(o.kind==='lhdown')islFade(()=>{P.x=LH.x;P.z=LH.z-4.4;P.y=G(P.x,P.z);P.yaw=Math.PI;P.v=0;P.air=false;});
   else if(o.kind==='lamp'){const r=ISL.wait;ISL.wait=null;renderHUD();r();}}
 function islPlace(){if(BOAT.on)return'釣り船の上';if(onGallery())return'灯台のてっぺん';const u=P.x-ISL.x,w=P.z-ISL.z;if(u<-45&&w<-15)return'島の桟橋';return'灯台の島';}

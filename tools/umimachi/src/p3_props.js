@@ -151,6 +151,13 @@ pineLayers(PINES);
 // forest on the hills around the town
 const TREES=[];for(let n=0;n<900;n++){const x=-330+rnd()*660,z=-258+rnd()*430;if(!(z<-182||Math.abs(x)>202))continue;if(x>-82&&x<-38&&z>-180&&z<-122)continue;if(Math.abs(x)<34&&z>-236)continue;if(inDeckView(x,z))continue;TREES.push({x,z,s:2.2+rnd()*2.6,col:C3(pick(['#3f7a45','#4f8a4a','#356a3c','#5a9450']))});}
 inst(new THREE.IcosahedronGeometry(1,1),tm('#ffffff'),TREES,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*0.9,e.z);d.scale.set(e.s,e.s*1.15,e.s);},{cast:false});
+// far mountains round the back and the sides of the town: the land the town sits in, so from the sea or the lighthouse
+// the hills do not just stop. Hazy blue-green and far enough for the fog to soften them
+{ const r=mulberry(4242),ML=[];
+  for(let k=0;k<46;k++){const a=-Math.PI-0.42+(Math.PI+0.84)*(k+r()*0.6)/46,R=560+r()*260,s=150+r()*110;
+    ML.push({x:Math.cos(a)*R*1.15,z:-60+Math.sin(a)*R,s,h:(80+r()*120)*(Math.abs(Math.cos(a))>0.8?0.8:1),y:r()*6,col:C3(['#6f8f86','#7a9a8e','#68867f','#809e94'][k%4])});}
+  for(let k=0;k<26;k++){const a=-Math.PI-0.3+(Math.PI+0.6)*(k+0.5)/26,R=380+r()*60;ML.push({x:Math.cos(a)*R*1.1,z:-60+Math.sin(a)*R*0.9,s:90+r()*50,h:45+r()*40,y:r()*6,col:C3(['#4f7a5a','#5a8562','#486f52'][k%3])});}
+  inst(new THREE.ConeGeometry(1,1,7,1),tm('#ffffff'),ML,(e,d)=>{d.position.set(e.x,e.h/2-4,e.z);d.scale.set(e.s,e.h,e.s*0.8);d.rotation.y=e.y;},{cast:false});}
 // vending machines (two of them are open for business)
 const vendTex=canvasTex(64,128,(g,w,h)=>{g.fillStyle='#f4f4f0';g.fillRect(0,0,w,h);g.fillStyle='#cfe7f2';g.fillRect(5,8,w-10,62);
   for(let r=0;r<3;r++)for(let c=0;c<5;c++){g.fillStyle=pick(['#3a7bd5','#e2584a','#4f9a5a','#f2c230','#8a5a3a','#ffffff']);g.fillRect(8+c*10.4,12+r*20,7,14);g.fillStyle='#e2584a';g.fillRect(9+c*10.4,28+r*20,5,2);}
@@ -339,6 +346,86 @@ const STATION={x0:46,x1:84,z0:203.2,z1:208.8};
 // a step up to the platform at both ends
 { const y=G(65,206);for(const [x0,x1] of [[42,46],[84,88]]){const m=M(new THREE.BoxGeometry(x1-x0,0.43,5.6),tm('#c9c2b4'),0.02);m.position.set((x0+x1)/2,y+0.215,206);m.receiveShadow=true;world.add(m);collide(x0,x1,203.2,208.8,'step',y+0.43);}}
 
+/* the station square: the station building on the platform's town side, a roundabout with a clock tower, a bus stop and a taxi rank,
+   bicycles, a phone box, vending machines, flower beds, lamps and a town map. Open from the street along the shore (浜手通り) */
+const EKI={x0:47,x1:83,z0:173.4,z1:203.2,cx:65,cz:186},EKI_LAMPS=[];   // the lamps glow at night with the others (p5c_story.js)
+{ const E=EKI,W=E.x1-E.x0,D=E.z1-E.z0;
+  // paving that follows the slope: asphalt with the roundabout's lines, and a band of tiles before the building
+  const pave=(x0,x1,z0,z1,tex,lift)=>{const g=new THREE.PlaneGeometry(x1-x0,z1-z0,Math.ceil((x1-x0)/2),Math.ceil((z1-z0)/2)).rotateX(-Math.PI/2),p=g.attributes.position;
+    for(let i=0;i<p.count;i++){const x=p.getX(i)+(x0+x1)/2,z=p.getZ(i)+(z0+z1)/2;p.setY(i,G(x,z)+lift);}g.computeVertexNormals();
+    const m=new THREE.Mesh(g,tmap(tex,{polygonOffset:true,polygonOffsetFactor:-2}));m.position.set((x0+x1)/2,0,(z0+z1)/2);m.receiveShadow=true;world.add(m);return m;};
+  pave(E.x0,E.x1,E.z0,192,canvasTex(256,256,(g,w,h)=>{g.fillStyle='#6a6c70';g.fillRect(0,0,w,h);g.fillStyle='rgba(255,255,255,.05)';for(let k=0;k<400;k++)g.fillRect(Math.random()*w,Math.random()*h,2,2);
+    const cx=(E.cx-E.x0)/W*w,cy=(E.cz-E.z0)/(192-E.z0)*h;g.strokeStyle='#e8e8e2';g.lineWidth=3;g.setLineDash([10,8]);g.beginPath();g.ellipse(cx,cy,12/W*w,12/(192-E.z0)*h,0,0,7);g.stroke();
+    g.setLineDash([]);g.fillStyle='#e8e8e2';for(let k=0;k<4;k++)g.fillRect(8+k*14,h-20,8,16);g.font='900 14px sans-serif';g.fillText('TAXI',w-62,h-10);g.fillText('BUS',10,h-26);}),0.04);
+  pave(E.x0,E.x1,192,E.z1,canvasTex(128,32,(g,w,h)=>{g.fillStyle='#d9d2c4';g.fillRect(0,0,w,h);g.strokeStyle='rgba(0,0,0,.12)';for(let x=0;x<w;x+=8){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();}
+    for(let y=0;y<h;y+=8){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}g.fillStyle='#e8c94a';g.fillRect(0,12,w,5);}),0.07);
+  // the station building, facing the square
+  const bx0=55,bx1=75,bz0=196,bz1=203.2,by=G(65,bz0),bw=bx1-bx0,bd=bz1-bz0,st=new THREE.Group();st.position.set(65,by,(bz0+bz1)/2);world.add(st);
+  const S=(geo,mat,ol,x,y,z)=>{const m=M(geo,mat,ol);m.position.set(x,y,z);st.add(m);return m;};
+  S(new THREE.BoxGeometry(bw,0.3,bd),tm('#bdb6a8'),0.02,0,0.15,0);
+  S(new THREE.BoxGeometry(bw-0.4,3.4,bd-0.4),tm('#f1e9d8'),0.025,0,1.95,0);
+  for(const x of [-bw/2+0.3,-3.2,3.2,bw/2-0.3])S(new THREE.BoxGeometry(0.45,3.6,0.45),tm('#6b4a2e'),0.012,x,1.95,-bd/2+0.25);
+  const glass=new THREE.Mesh(new THREE.PlaneGeometry(5.6,2.6),tmap(canvasTex(128,64,(g,w,h)=>{g.fillStyle='#3a4a52';g.fillRect(0,0,w,h);g.fillStyle='#8fb8c8';for(let k=0;k<4;k++)g.fillRect(4+k*31,4,27,h-8);
+      g.fillStyle='rgba(255,255,255,.35)';for(let k=0;k<4;k++)g.fillRect(8+k*31,8,4,h-16);}),{emissive:new THREE.Color('#1a2a30')}));glass.position.set(0,1.6,-bd/2+0.19);glass.rotation.y=Math.PI;st.add(glass);
+  for(const sd of [-1,1])for(let k=0;k<2;k++){const w2=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.2),tm('#8fb8c8'));w2.position.set(sd*(5.4+k*2.6),2.0,-bd/2+0.19);w2.rotation.y=Math.PI;st.add(w2);}
+  S(new THREE.BoxGeometry(bw+1.4,0.25,bd+1.6),tm('#3a4a5a'),0.02,0,3.75,0);
+  const rf=S(prism,tm('#3a4a5a'),0.02,0,4.55,0);rf.scale.set(bw*0.92,1.3,(bd+0.8)/1.732);
+  // the canopy over the entrance with the name board, and a clock in the gable
+  S(new THREE.BoxGeometry(8,0.18,2.4),tm('#3a4a5a'),0.015,0,3.15,-bd/2-1);for(const sd of [-1,1])S(new THREE.CylinderGeometry(0.08,0.08,3.1,8),tm('#6b4a2e'),0.008,sd*3.7,1.6,-bd/2-2);
+  const nb=new THREE.Mesh(new THREE.BoxGeometry(6,0.9,0.12),[tm('#fff'),tm('#fff'),tm('#fff'),tm('#fff'),tm('#fff'),tmap(canvasTex(384,64,(c,w,h)=>{c.fillStyle='#fffaf0';c.fillRect(0,0,w,h);c.fillStyle='#2e7d4f';c.fillRect(0,h-10,w,10);
+    c.fillStyle='#2b2520';c.font=signFont(34,true);c.textAlign='center';c.fillText('う み ま ち 駅',w/2,38);c.font=signFont(11);c.fillText('UMIMACHI STATION',w/2,51);}))]);
+  nb.position.set(0,3.6,-bd/2-0.05);   // the name is on the box's -z face, the one towards the square
+  outline(nb,0.012);st.add(nb);
+  const clk=new THREE.Mesh(new THREE.CircleGeometry(0.55,24),tmap(canvasTex(64,64,(c,w,h)=>{c.fillStyle='#fffaf0';c.beginPath();c.arc(32,32,31,0,7);c.fill();c.strokeStyle='#2b2520';c.lineWidth=3;c.stroke();
+    for(let k=0;k<12;k++){const a=k/12*TAU;c.fillRect(32+Math.sin(a)*24-1,32-Math.cos(a)*24-1,3,3);}c.lineWidth=3;c.beginPath();c.moveTo(32,32);c.lineTo(32,14);c.moveTo(32,32);c.lineTo(44,36);c.stroke();})));
+  clk.position.set(0,4.6,-bd/2-0.33);clk.rotation.y=Math.PI;st.add(clk);
+  collide(bx0,bx1,bz0,bz1,'bld',by+3.8);
+  // the roundabout: a raised ring of kerb and grass, a clock tower in the middle, flowers round it
+  const ry=G(E.cx,E.cz),ring=new THREE.Group();ring.position.set(E.cx,ry,E.cz);world.add(ring);
+  ring.add(M(new THREE.CylinderGeometry(4.2,4.3,0.3,32),tm('#c9c2b4'),0.02).translateY(0.15));ring.add(M(new THREE.CylinderGeometry(3.95,3.95,0.32,32),tm('#5a9a4a'),0).translateY(0.17));
+  const fl=[];for(let k=0;k<90;k++){const a=k/90*TAU+(k%2)*0.03,r=3.15+(k%3)*0.3;fl.push({x:Math.cos(a)*r,z:Math.sin(a)*r,c:C3(['#e8452f','#f2c230','#f0a0b8','#ffffff','#a070d0'][k%5])});}
+  { const im=new THREE.InstancedMesh(new THREE.SphereGeometry(0.075,6,5),tm('#ffffff'),fl.length);fl.forEach((f,k)=>{dummy.position.set(f.x,0.4,f.z);dummy.rotation.set(0,0,0);dummy.scale.set(1,0.8,1);dummy.updateMatrix();im.setMatrixAt(k,dummy.matrix);im.setColorAt(k,f.c);});ring.add(im);}
+  ring.add(M(new THREE.BoxGeometry(0.9,0.6,0.9),tm('#a39d90'),0.012).translateY(0.6));ring.add(M(new THREE.CylinderGeometry(0.14,0.18,4.4,10),tm('#2e5a4a'),0.012).translateY(3));
+  const ct=M(new THREE.BoxGeometry(1.1,1.1,1.1),tm('#2e5a4a'),0.015);ct.position.y=5.6;ring.add(ct);ring.add(M(new THREE.ConeGeometry(0.85,0.7,4),tm('#2e5a4a'),0.012).translateY(6.5).rotateY(Math.PI/4));
+  const face=clk.material;for(let k=0;k<4;k++){const f=new THREE.Mesh(new THREE.CircleGeometry(0.42,20),face);const a=k*Math.PI/2;f.position.set(Math.sin(a)*0.56,5.6,Math.cos(a)*0.56);f.rotation.y=a;ring.add(f);}
+  collide(E.cx-4.2,E.cx+4.2,E.cz-4.2,E.cz+4.2,'prop',ry+0.3);collide(E.cx-0.5,E.cx+0.5,E.cz-0.5,E.cz+0.5,'pole');
+  // the bus stop with its shelter, the taxi rank with a taxi waiting
+  { const x=51,z=188,y=G(x,z),g=new THREE.Group();g.position.set(x,y,z);world.add(g);
+    g.add(M(new THREE.BoxGeometry(3.6,0.08,1.6),tm('#3a5a66'),0.012).translateY(2.4));for(const sx of [-1.6,1.6])g.add(M(new THREE.CylinderGeometry(0.05,0.05,2.4,6),tm('#3a5a66'),0).translateX(sx).translateY(1.2).translateZ(-0.6));
+    g.add(M(new THREE.BoxGeometry(3.4,1.6,0.05),tm('#bcd6e0'),0.006).translateY(1.4).translateZ(-0.7));const b=benchMesh();b.position.set(0,0,-0.2);g.add(b);
+    const pole=M(new THREE.CylinderGeometry(0.04,0.04,2.4,6),tm('#ddd'),0.006);pole.position.set(2.3,1.2,0.6);g.add(pole);
+    const pl=new THREE.Mesh(new THREE.CircleGeometry(0.32,18),tmap(canvasTex(64,64,(c,w,h)=>{c.fillStyle='#2e7d4f';c.beginPath();c.arc(32,32,31,0,7);c.fill();c.fillStyle='#fff';c.font=signFont(14,true);c.textAlign='center';c.fillText('バス',32,30);c.font=signFont(9);c.fillText('のりば',32,44);}),{side:THREE.DoubleSide}));
+    pl.position.set(2.3,2.5,0.6);g.add(pl);collide(x-1.8,x+1.8,z-0.8,z-0.5,'wall');collide(x+2.25,x+2.35,z+0.55,z+0.65,'pole');}
+  { const x=76.5,z=180,y=G(x,z),car=new THREE.Group();car.position.set(x,y,z);car.rotation.y=Math.PI;world.add(car);const body=tm('#2b2b30');
+    car.add(M(new THREE.BoxGeometry(1.7,0.7,4.2),body,0.02).translateY(0.6));const cab=M(new THREE.BoxGeometry(1.6,0.6,2.2),tm('#9cb4c0'),0.015);cab.position.set(0,1.2,-0.2);car.add(cab);
+    car.add(M(new THREE.BoxGeometry(1.62,0.08,2.22),body,0).translateY(1.52).translateZ(-0.2));const lamp=M(new THREE.BoxGeometry(0.5,0.22,0.22),tm('#f2c230'),0.008);lamp.position.set(0,1.67,-0.2);car.add(lamp);
+    for(const sx of [-0.86,0.86])for(const sz of [-1.35,1.35]){const w=M(new THREE.CylinderGeometry(0.3,0.3,0.22,12).rotateZ(Math.PI/2),tm('#1a1a1a'),0);w.position.set(sx,0.3,sz);car.add(w);}
+    car.add(M(new THREE.BoxGeometry(1.72,0.1,4.22),tm('#e8a23a'),0).translateY(0.75));collide(x-0.9,x+0.9,z-2.1,z+2.1,'prop',y+1.5);}
+  // bicycles in their rack, a phone box, vending machines, flower beds, lamps, the town map, benches
+  { const rk=[];for(let k=0;k<7;k++)rk.push({x:48.6,z:191.5+k*0.75,c:pick(['#c8372d','#3a7bd5','#f2f2ee','#2b2b30','#4f9a5a','#f2c230'])});
+    for(const b of rk){const g=new THREE.Group(),y=G(b.x,b.z);g.position.set(b.x,y,b.z);g.rotation.y=Math.PI/2;world.add(g);const fr=tm(b.c);
+      for(const sx of [-0.5,0.5]){const w=M(new THREE.TorusGeometry(0.32,0.03,6,16),tm('#2b2b30'),0);w.position.set(sx,0.34,0);g.add(w);}
+      const bar=M(new THREE.BoxGeometry(1.0,0.05,0.05),fr,0);bar.position.set(0,0.62,0);g.add(bar);const dn=M(new THREE.BoxGeometry(0.05,0.4,0.05),fr,0);dn.position.set(-0.1,0.45,0);g.add(dn);
+      const sd=M(new THREE.BoxGeometry(0.22,0.05,0.1),tm('#2b2b30'),0);sd.position.set(-0.15,0.72,0);g.add(sd);const hb=M(new THREE.BoxGeometry(0.05,0.05,0.45),tm('#888'),0);hb.position.set(0.42,0.78,0);g.add(hb);}
+    collide(48,49.3,191,196.6,'prop',G(48.6,194)+0.8);}
+  { const x=81.2,z=199,y=G(x,z),g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=-Math.PI/2;world.add(g);
+    g.add(M(new THREE.BoxGeometry(0.9,2.3,0.9),tm('#4f9a5a'),0.015).translateY(1.15));const gl=new THREE.Mesh(new THREE.PlaneGeometry(0.7,1.5),tm('#cfe3ee'));gl.position.set(0,1.25,0.46);g.add(gl);
+    const pt=new THREE.Mesh(new THREE.PlaneGeometry(0.7,0.18),tmap(canvasTex(64,16,(c,w,h)=>{c.fillStyle='#4f9a5a';c.fillRect(0,0,w,h);c.fillStyle='#fff';c.font=signFont(11,true);c.textAlign='center';c.fillText('公衆電話',w/2,12);})));pt.position.set(0,2.15,0.46);g.add(pt);
+    collide(x-0.45,x+0.45,z-0.45,z+0.45,'prop',y+2.3);}
+  vend(80.9,196.6,-Math.PI/2,true,'#d23a2c');vend(80.9,195.5,-Math.PI/2,false,'#2e5fa8');
+  for(const x of [56.5,73.5]){const z=194.6,y=G(x,z),bed=M(new THREE.BoxGeometry(5,0.5,1.2),tm('#a39d90'),0.012);bed.position.set(x,y+0.25,z);world.add(bed);
+    const s=M(new THREE.BoxGeometry(4.8,0.1,1.0),tm('#5a9a4a'),0);s.position.set(x,y+0.52,z);world.add(s);for(let k=0;k<8;k++){const f=new THREE.Mesh(new THREE.SphereGeometry(0.08,6,5),tm(['#e8452f','#f2c230','#f0a0b8','#a070d0'][k%4]));f.position.set(x-2.1+k*0.6,y+0.66,z+((k%2)-0.5)*0.4);world.add(f);}
+    collide(x-2.5,x+2.5,z-0.6,z+0.6,'prop',y+0.5);}
+  for(const [x,z] of [[49,176],[81,176],[49,198.5],[81,190]]){const y=G(x,z);world.add(M(new THREE.CylinderGeometry(0.07,0.09,4.6,8),tm('#3a5a66'),0.01).translateX(x).translateY(y+2.3).translateZ(z));
+    const hd=M(new THREE.SphereGeometry(0.25,10,8),tm('#f2f2ee'),0.008);hd.position.set(x,y+4.7,z);world.add(hd);EKI_LAMPS.push({x,y:y+4.7,z});collide(x-0.12,x+0.12,z-0.12,z+0.12,'pole');}
+  { const x=60,z=193.8,y=G(x,z),bd2=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.5),tmap(canvasTex(192,120,(c,w,h)=>{c.fillStyle='#24466e';c.fillRect(0,0,w,h);c.fillStyle='#fffaf0';c.fillRect(6,22,w-12,h-28);
+      c.fillStyle='#fffaf0';c.font=signFont(14,true);c.textAlign='center';c.fillText('うみまち 観光案内',w/2,16);c.fillStyle='#8fc4e0';c.fillRect(6,h-30,w-12,24);c.fillStyle='#b8d8a8';c.fillRect(6,22,w-12,30);
+      c.fillStyle='#c9c2b4';c.fillRect(w/2-3,22,6,h-52);c.fillRect(6,60,w-12,5);c.fillRect(6,82,w-12,4);c.fillStyle='#d8452f';c.fillRect(30,30,10,8);c.fillStyle='#2e7d4f';c.fillRect(120,84,24,6);
+      c.fillStyle='#2b2520';c.font=signFont(9);c.textAlign='left';c.fillText('神社',42,38);c.fillText('商店街',110,58);c.fillText('駅',148,80);c.fillText('海',90,h-12);c.fillStyle='#d8452f';c.beginPath();c.arc(132,87,4,0,7);c.fill();})));
+    bd2.position.set(x,y+1.55,z);bd2.rotation.y=Math.PI;world.add(bd2);for(const sx of [-1.1,1.1])world.add(M(new THREE.BoxGeometry(0.1,1.6,0.1),tm('#24466e'),0.006).translateX(x+sx).translateY(y+0.8).translateZ(z+0.05));
+    collide(x-1.25,x+1.25,z-0.1,z+0.15,'wall');}
+  for(const x of [69.5,72.5]){const b=benchMesh();b.position.set(x,G(x,193.2),193.2);b.rotation.y=Math.PI;world.add(b);collide(x-0.8,x+0.8,193,193.5,'prop',G(x,193.2)+0.5);}
+}
 /* ---------- the beach ---------- */
 { // sea wall with openings, steps down to the sand
   const gaps=[[-84,-75],[34,46],[-166,-154],[154,166],[-8,8]];let x0=-300;const segs=[];
