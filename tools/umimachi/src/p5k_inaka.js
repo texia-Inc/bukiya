@@ -6,32 +6,65 @@
    The area lies far east of the town (x around INK_X, z around 0; the town is hidden while you are here) and is reached only
    by the tram; G() looks its heights up in a grid baked here. Local coordinates lx, lz are measured from (INK_X, 0). ---------- */
 const INK_FIELDS=[[-200,-75,72,140],[-45,125,72,140]];
-const INK_R=280,INK_CELL=2,INK_N=INK_R*2/INK_CELL+1,INK_GRADE=0.11,INK_TRACK=170;
+const INK_R=280,INK_CELL=2,INK_N=INK_R*2/INK_CELL+1,INK_TRACK=170;
 const INK_BASE=new Float32Array(INK_N*INK_N),INK_HG=new Float32Array(INK_N*INK_N);   // the ground, and the ground with the road cut in
 let AREA='town';
 // instanced meshes get a material of their own: three r128 trips over one shared with another instanced mesh that has colours
 const itm=c=>new THREE.MeshToonMaterial({color:c,gradientMap:GRAD});
-// the road: a sample every metre from the station up to the summit car park {x,z (local), h, s}
+// the road, laid out as corners on the map, each rounded to its own radius: the long sweeper at the foot, a hairpin by the lookout
+// in the east, S-bends back west, the red bridge over the ravine, the rock shed up the west flank, the waterfall at the head of
+// the ravine, then a stack of hairpins under the summit. [x, z, bend radius, what the stretch to the next corner is]
+// A sample every metre {x,z (local), s, h, f (bridge|shed|fall), r (radius in a bend, 0 on the straight)}
 const ROAD=[],CURVES=[];
-{ const pts=[];const line=(x0,z0,x1,z1)=>{const n=Math.ceil(Math.hypot(x1-x0,z1-z0));for(let i=pts.length?1:0;i<=n;i++)pts.push([lerp(x0,x1,i/n),lerp(z0,z1,i/n),0]);};
-  const arc=(cx,cz,a0,a1)=>{const n=Math.ceil(Math.abs(a1-a0)*10);CURVES.push({x:cx,z:cz,i:pts.length+(n>>1)});for(let i=1;i<=n;i++){const a=lerp(a0,a1,i/n);pts.push([cx+10*Math.cos(a),cz+10*Math.sin(a),1]);}};
-  const PI=Math.PI;line(-60,165,-60,50);arc(-50,50,PI,1.5*PI);const s0=pts.length-1;
-  for(let i=0;i<8;i++){const z=40-20*i,e=i%2===0;line(e?-50:50,z,e?50:-50,z);if(i<7){if(e)arc(50,z-10,PI/2,-PI/2);else arc(-50,z-10,PI/2,1.5*PI);}}
-  arc(-50,-110,PI/2,PI);const s1=pts.length-1;line(-60,-110,-60,-127);
-  let s=0;pts.forEach((p,i)=>{if(i)s+=Math.hypot(p[0]-pts[i-1][0],p[1]-pts[i-1][1]);ROAD.push({x:p[0],z:p[1],s,curve:p[2],h:0});});
-  for(const r of ROAD)r.h=clamp(r.s-ROAD[s0].s,0,ROAD[s1].s-ROAD[s0].s)*INK_GRADE;
-  ROAD.s0=s0;ROAD.s1=s1;}
+const INK_WP=[[-60,165,0],[-60,85,40],[70,35,45],[120,0,12],[55,-22,30],[15,-48,30],[-28,-38,22],[-42,-40,0,'bridge'],[-84,-40,0],[-118,-48,26,'shed'],
+  [-124,-98,20],[-98,-114,18,'fall'],[-60,-110,0],[66,-104,9],[66,-122,9],[-34,-126,9],[-34,-142,9],[52,-144,9],[52,-160,9],[-12,-160,10],[-20,-176,8],[12,-178,0]];
+const INK_S0=75,INK_GR=0.105;   // the climb starts at the foot of the hill and keeps a steady grade; bridges are level
+{ const add=(x,z,f,r)=>{const l=ROAD[ROAD.length-1];if(l&&Math.hypot(l.x-x,l.z-z)<0.3)return;ROAD.push({x,z,f:f||'',r:r||0});};
+  const run=(a,b,f)=>{const n=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1]));for(let k=1;k<=n;k++)add(lerp(a[0],b[0],k/n),lerp(a[1],b[1],k/n),f);};
+  let cur=[INK_WP[0][0],INK_WP[0][1]];add(cur[0],cur[1]);
+  for(let i=1;i<INK_WP.length;i++){const A=INK_WP[i-1],B=INK_WP[i],C=INK_WP[i+1],f=A[3];
+    if(!C||!B[2]){run(cur,B,f);cur=[B[0],B[1]];continue;}
+    const d1=[B[0]-A[0],B[1]-A[1]],d2=[C[0]-B[0],C[1]-B[1]],l1=Math.hypot(...d1),l2=Math.hypot(...d2);d1[0]/=l1;d1[1]/=l1;d2[0]/=l2;d2[1]/=l2;
+    const turn=Math.atan2(d1[0]*d2[1]-d1[1]*d2[0],d1[0]*d2[0]+d1[1]*d2[1]),tl=Math.min(B[2]*Math.tan(Math.abs(turn)/2),l1*0.95,l2*0.95),r=tl/Math.tan(Math.abs(turn)/2),sg=Math.sign(turn);
+    const P1=[B[0]-d1[0]*tl,B[1]-d1[1]*tl];run(cur,P1,f);
+    const cx=P1[0]-d1[1]*r*sg,cz=P1[1]+d1[0]*r*sg,a0=Math.atan2(P1[1]-cz,P1[0]-cx),m=Math.max(2,Math.ceil(Math.abs(turn)*r)),i0=ROAD.length;
+    for(let k=1;k<=m;k++){const a=a0+turn*k/m;add(cx+Math.cos(a)*r,cz+Math.sin(a)*r,'',r);}
+    if(Math.abs(turn)>1)CURVES.push({x:cx,z:cz,i:i0+(m>>1)});cur=[ROAD[ROAD.length-1].x,ROAD[ROAD.length-1].z];}
+  let s=0,h=0;ROAD.forEach((p,i)=>{if(i){const ds=Math.hypot(p.x-ROAD[i-1].x,p.z-ROAD[i-1].z);s+=ds;if(s>INK_S0&&p.f!=='bridge')h+=INK_GR*ds;}p.s=s;p.h=h;});
+  ROAD.s0=ROAD.findIndex(p=>p.s>INK_S0);}
 const INK_TOP=ROAD[ROAD.length-1].h;
-const DECK={x0:-4,x1:8,z0:-146,z1:-134,h:INK_TOP+3.6},RAMP={x0:-18,x1:-4,z0:-142,z1:-138};
-const PARK={x0:-84,x1:-18,z0:-152,z1:-126};
-// the mountain before the road is cut in: a steep south face whose height follows the rows of the road, a summit plateau, a long
-// north slope, and a ring of hills round the edge with a cutting for the railway
-function inkBase(lx,lz){const rowH=i=>(i*131.4+50)*INK_GRADE;let f;
-  if(lz>=55)f=0;else if(lz>=40)f=rowH(0)*smooth((55-lz)/15);else if(lz>=-100)f=lerp(rowH(0),rowH(7),(40-lz)/140);
-  else if(lz>=-114)f=lerp(rowH(7),INK_TOP+1,smooth((-100-lz)/14));else if(lz>=-168)f=INK_TOP+1+2.5*Math.sin((lz+114)/54*Math.PI);
-  else f=(INK_TOP+1)*(1-smooth(clamp((-168-lz)/80,0,1)));
-  f*=1-smooth(clamp((Math.abs(lx)-70)/120,0,1));
-  const n=lz<55?vnoise(lx/18,lz/18)*1.6:vnoise(lx/30,lz/30)*0.25;return Math.max(f,inkRim(lx,lz))+n;}
+// the lookout: a level pad beside the S-bends, looking south over the valley
+const INK_LOOK=(()=>{let bi=0,bd=1e9;ROAD.forEach((p,i)=>{const d=Math.hypot(p.x-38,p.z+33);if(d<bd){bd=d;bi=i;}});const p=ROAD[bi],q=ROAD[bi+3],L=Math.hypot(q.x-p.x,q.z-p.z)||1;
+  let ox=-(q.z-p.z)/L,oz=(q.x-p.x)/L;if(oz<0){ox=-ox;oz=-oz;}return{x:p.x+ox*9,z:p.z+oz*9,h:p.h,ox,oz};})();   // on the valley (south) side
+const PARK={x0:4,x1:50,z0:-206,z1:-173},RAMP={x0:50,x1:62,z0:-194,z1:-190},DECK={x0:62,x1:74,z0:-198,z1:-186,h:INK_TOP+3.6};
+// the waterfall: on the mountain side of the middle of the waterfall stretch, with a rocky knoll rising behind it
+const INK_FALL=(()=>{const fs=ROAD.filter(p=>p.f==='fall'),p=fs[fs.length>>1],q=fs[(fs.length>>1)+3],tx=q.x-p.x,tz=q.z-p.z,L=Math.hypot(tx,tz)||1;let nx=-tz/L,nz=tx/L;if(nz>0){nx=-nx;nz=-nz;}
+  return{p,tx:tx/L,tz:tz/L,nx,nz,x:p.x+nx*10,z:p.z+nz*10,top:p.h+15};})();
+// the mountains: a big main peak with the summit car park and a lower peak either side, their outlines
+// bent by noise and their slopes roughened; a ravine runs down between the main and the west peak
+function fbm(x,z,o){let a=0,amp=1,f=1,n=0;for(let i=0;i<o;i++){a+=amp*vnoise(x*f+i*7.3,z*f-i*3.1);n+=amp;amp*=0.5;f*=2.03;}return a/n;}
+const INK_PEAKS=[{x:30,z:-190,h:INK_TOP+4,r:150},{x:-150,z:-130,h:82,r:100},{x:150,z:-120,h:70,r:105}];
+const INK_RAV=[[-66,-98],[-64,-90],[-60,-40],[-62,10],[-60,50]];
+function segDist(px,pz,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=clamp(((px-a[0])*dx+(pz-a[1])*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(px-a[0]-dx*t,pz-a[1]-dz*t);}
+function ravineD(lx,lz){let d=1e9;for(let i=0;i+1<INK_RAV.length;i++)d=Math.min(d,segDist(lx,lz,INK_RAV[i],INK_RAV[i+1]));return d;}
+function inkMtn(lx,lz){const wx=lx+(fbm(lx/90,lz/90,3)-0.5)*50,wz=lz+(fbm(lx/90+5,lz/90+2,3)-0.5)*50;let h=0;
+  for(const p of INK_PEAKS){const d=Math.hypot(wx-p.x,(wz-p.z)*1.05)/p.r;h=Math.max(h,p.h*Math.pow(clamp(1-d,0,1),1.5));}
+  h*=0.78+0.44*fbm(lx/45,lz/45,4);h+=(fbm(lx/12,lz/12,2)-0.5)*3*smooth(clamp(h/20,0,1));
+  h-=30*Math.pow(clamp(1-ravineD(lx,lz)/26,0,1),1.5)*smooth(clamp(h/25,0,1));
+  return Math.max(0,h*smooth(clamp((64-lz)/36,0,1)));}
+// the mountain bends to meet the road: a smooth correction about forty metres wide lifts or lowers the ground towards it (not
+// at the bridge, so the ravine stays deep under it)
+const INK_CS=4,INK_CN=141,INK_CORR=new Float32Array(INK_CN*INK_CN);
+{ const samp=ROAD.filter((p,i)=>i%3===0&&p.f!=='bridge'&&p.s>INK_S0-10).map(p=>({x:p.x,z:p.z,d:p.h-inkMtn(p.x,p.z)}));
+  for(let r=0;r<INK_CN;r++)for(let c=0;c<INK_CN;c++){const x=-INK_R+c*INK_CS,z=-INK_R+r*INK_CS;let a=0,w=0,wm=0;
+    for(const p of samp){const d2=((p.x-x)**2+(p.z-z)**2)/1600;if(d2>9)continue;const ww=Math.exp(-d2*1.2);a+=ww*p.d;w+=ww;wm=Math.max(wm,Math.exp(-d2*0.6));}
+    INK_CORR[r*INK_CN+c]=w?a/w*wm*clamp(ravineD(x,z)/20,0,1):0;}}
+function inkCorr(lx,lz){const fx=clamp((lx+INK_R)/INK_CS,0,INK_CN-1.001),fz=clamp((lz+INK_R)/INK_CS,0,INK_CN-1.001),c=Math.floor(fx),r=Math.floor(fz),u=smooth(fx-c),v=smooth(fz-r),k=r*INK_CN+c;
+  return lerp(lerp(INK_CORR[k],INK_CORR[k+1],u),lerp(INK_CORR[k+INK_CN],INK_CORR[k+INK_CN+1],u),v);}
+// (behind the waterfall's rock face the ground rises to its top; in front of it, nothing changes)
+function inkBase(lx,lz){const F=INK_FALL,sd=(lx-F.x)*F.nx+(lz-F.z)*F.nz,lat=Math.abs((lx-F.x)*F.tx+(lz-F.z)*F.tz);
+  const knoll=sd>0.5&&sd<30&&lat<16?F.top+1-Math.max(0,lat-5)*1.1-Math.max(0,sd-5)*0.9:0;
+  return Math.max(inkMtn(lx,lz)+inkCorr(lx,lz),inkRim(lx,lz),knoll);}
 // the hills round the valley: they start gently past the farms and roll up to the edge of the map, lumpy, never a wall;
 // the railway runs in a shallow cutting up to the tunnel mouth and into the hill beyond it
 function inkRim(lx,lz){const m=Math.max(Math.abs(lx),Math.abs(lz))+(vnoise(lx/45+3,lz/45)-0.5)*20;
@@ -39,10 +72,11 @@ function inkRim(lx,lz){const m=Math.max(Math.abs(lx),Math.abs(lz))+(vnoise(lx/45
   const t=clamp((m-195)/85,0,1);return t>0?52*smooth(t)+vnoise(lx/22,lz/22)*7*smooth(clamp(t*3,0,1)):0;}
 { const best=new Float32Array(INK_N*INK_N).fill(99),bh=new Float32Array(INK_N*INK_N);
   for(let r=0;r<INK_N;r++)for(let c=0;c<INK_N;c++)INK_BASE[r*INK_N+c]=inkBase(-INK_R+c*INK_CELL,-INK_R+r*INK_CELL);
-  for(const p of ROAD){const c0=Math.floor((p.x+INK_R-10)/INK_CELL),r0=Math.floor((p.z+INK_R-10)/INK_CELL);
+  for(const p of ROAD){if(p.f==='bridge')continue;const c0=Math.floor((p.x+INK_R-10)/INK_CELL),r0=Math.floor((p.z+INK_R-10)/INK_CELL);
     for(let r=r0;r<=r0+10;r++)for(let c=c0;c<=c0+10;c++){if(r<0||c<0||r>=INK_N||c>=INK_N)continue;const k=r*INK_N+c,d=Math.hypot(-INK_R+c*INK_CELL-p.x,-INK_R+r*INK_CELL-p.z);if(d<best[k]){best[k]=d;bh[k]=p.h;}}}
   for(let r=0;r<INK_N;r++)for(let c=0;c<INK_N;c++){const k=r*INK_N+c,lx=-INK_R+c*INK_CELL,lz=-INK_R+r*INK_CELL;let h=INK_BASE[k];
     if(best[k]<99)h=lerp(bh[k],h,smooth(clamp((best[k]-4.2)/5.6,0,1)));
+    {const d=Math.hypot(lx-INK_LOOK.x,lz-INK_LOOK.z);if(d<10)h=lerp(INK_LOOK.h,h,smooth(clamp((d-6.5)/3.5,0,1)));}
     if(lx>PARK.x0-4&&lx<PARK.x1+4&&lz>PARK.z0-4&&lz<PARK.z1+4){const e=Math.min(lx-PARK.x0,PARK.x1-lx,lz-PARK.z0,PARK.z1-lz);h=lerp(h,INK_TOP,smooth(clamp((e+4)/4,0,1)));}
     if(lz>62&&lz<210&&Math.abs(lx)<210)h=0.05+inkRim(lx,lz);   // the valley floor stays level up to the hills
     INK_HG[k]=h;INK_BASE[k]=h;}}
@@ -96,7 +130,7 @@ const INK={g:new THREE.Group(),map:document.createElement('canvas')};scene.add(I
       if(i){const a=(i-1)*2;idx.push(a,a+2,a+1,a+1,a+2,a+3);}});
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();
     const m=new THREE.Mesh(geo,tmap(tex,{side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2}));m.receiveShadow=true;INK.g.add(m);
-    const posts=[],rails=[];for(let i=ROAD.s0;i<ROAD.length-12;i+=4){const p=ROAD[i],q=ROAD[i+4],tx=q.x-p.x,tz=q.z-p.z,L=Math.hypot(tx,tz)||1;
+    const posts=[],rails=[];for(let i=ROAD.s0;i<ROAD.length-12;i+=4){const p=ROAD[i],q=ROAD[i+4];if(p.f==='bridge'||q.f==='bridge')continue;const tx=q.x-p.x,tz=q.z-p.z,L=Math.hypot(tx,tz)||1;
       let best=null;for(const sd of [-1,1]){const x=p.x-tz/L*4.1*sd,z=p.z+tx/L*4.1*sd,dh=inkY(p.x-tz/L*7*sd,p.z+tx/L*7*sd)-p.h;if(dh<-1&&(!best||dh<best.dh))best={x,z,dh,sd};}
       if(!best)continue;posts.push({x:best.x,z:best.z,y:p.h});const x2=q.x-tz/L*4.1*best.sd,z2=q.z+tx/L*4.1*best.sd;rails.push({x:(best.x+x2)/2,z:(best.z+z2)/2,y:(p.h+q.h)/2,yaw:Math.atan2(x2-best.x,z2-best.z),l:Math.hypot(x2-best.x,z2-best.z),p:Math.atan2(q.h-p.h,4)});}
     const pm=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.06,0.06,0.8,6),itm('#d8dade'),posts.length);posts.forEach((e,k)=>{dummy.position.set(INK_X+e.x,e.y+0.4,e.z);dummy.rotation.set(0,0,0);dummy.scale.set(1,1,1);dummy.updateMatrix();pm.setMatrixAt(k,dummy.matrix);});INK.g.add(pm);
@@ -110,7 +144,7 @@ const INK={g:new THREE.Group(),map:document.createElement('canvas')};scene.add(I
   { const list=[],r=mulberry(77),cols=['#3f6e3c','#4b7d43','#5a8a4a','#365f36','#6a944f'];
     for(let n=0;n<9000&&list.length<2600;n++){const lx=(r()*2-1)*272,lz=-272+r()*544;
       if(lz>55&&Math.abs(lx)<200&&lz<205&&inkRim(lx,lz)<2)continue;   // the valley floor is farmland
-      if(Math.abs(lz-INK_TRACK)<9&&lx<-140)continue;if(lx>-110&&lx<75&&lz>-185&&lz<-95)continue;   // the cutting, the open summit
+      if(Math.abs(lz-INK_TRACK)<9&&lx<-140)continue;if(lx>PARK.x0-22&&lx<DECK.x1+16&&lz>PARK.z0-22&&lz<PARK.z1+6)continue;if(Math.hypot(lx-INK_LOOK.x,lz-INK_LOOK.z)<16||Math.hypot(lx-INK_FALL.x,lz-INK_FALL.z)<15)continue;   // the cutting, the open summit and lookout
       let near=false;for(let i=0;i<ROAD.length;i+=2){if(Math.abs(ROAD[i].x-lx)<6.5&&Math.abs(ROAD[i].z-lz)<6.5){near=true;break;}}if(near)continue;
       const y=inkY(lx,lz),sl=Math.abs(inkY(lx+1.5,lz)-y)+Math.abs(inkY(lx,lz+1.5)-y);if(sl>3.4)continue;
       list.push({x:lx,z:lz,y,s:1.7+r()*1.9,cedar:r()<0.45,lean:(r()-.5)*0.2,col:new THREE.Color(cols[(r()*cols.length)|0])});}
@@ -121,12 +155,43 @@ const INK={g:new THREE.Group(),map:document.createElement('canvas')};scene.add(I
     im(new THREE.IcosahedronGeometry(1,1),'#ffffff',broad.map(e=>({...e,col:e.col.clone().multiplyScalar(1.12)})),(e,d)=>{d.position.set(INK_X+e.x+e.s*0.45,e.y+e.s*1.75,e.z-e.s*0.2);d.scale.setScalar(e.s*0.62);});
     im(new THREE.ConeGeometry(1,1,7).translate(0,0.5,0),'#ffffff',ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(INK_X+e.x,e.y+e.s*0.5,e.z);d.scale.set(e.s*0.75,e.s*2.6,e.s*0.75);d.rotation.z=e.lean*0.5;},true);}
   // concrete retaining walls holding up the bank on the uphill side of the road, where it is steep
-  { const walls=[];for(let i=ROAD.s0;i<ROAD.length-14;i+=3){const p=ROAD[i],q=ROAD[i+3],tx=q.x-p.x,tz=q.z-p.z,L=Math.hypot(tx,tz)||1;
+  { const walls=[];for(let i=ROAD.s0;i<ROAD.length-14;i+=3){const p=ROAD[i],q=ROAD[i+3];if(p.f==='bridge'||p.f==='shed')continue;const tx=q.x-p.x,tz=q.z-p.z,L=Math.hypot(tx,tz)||1;
       for(const sd of [-1,1]){const ox=-tz/L*sd,oz=tx/L*sd,dh=inkY(p.x+ox*6.5,p.z+oz*6.5)-p.h;if(dh<2.2)continue;
         walls.push({x:p.x+ox*4.25,z:p.z+oz*4.25,y:p.h,h:Math.min(4.2,dh*0.7),yaw:Math.atan2(tx,tz),l:3.2});}}
     const tex=canvasTex(64,64,(g,w,h)=>{g.fillStyle='#b4b0a6';g.fillRect(0,0,w,h);g.strokeStyle='rgba(0,0,0,.18)';g.lineWidth=2;for(let y=0;y<h;y+=16)for(let x=(y/16)%2*16;x<w;x+=32)g.strokeRect(x,y,32,16);},true);
     const m=new THREE.InstancedMesh(new THREE.BoxGeometry(0.6,1,1),new THREE.MeshToonMaterial({map:tex,gradientMap:GRAD}),walls.length);
     walls.forEach((e,k)=>{dummy.rotation.set(0,e.yaw,0);dummy.position.set(INK_X+e.x,e.y+e.h/2-0.3,e.z);dummy.scale.set(1,e.h+0.6,e.l);dummy.updateMatrix();m.setMatrixAt(k,dummy.matrix);});m.receiveShadow=m.castShadow=true;INK.g.add(m);}
+  // along the road: the red bridge over the ravine, the rock shed, the waterfall, the lookout
+  { const conc=tm('#b4b0a6'),red=tm('#c8372d');
+    // the bridge: a level deck on two piers, red girders and red railings
+    const bi=ROAD.filter(p=>p.f==='bridge'),A=bi[0],Bq=bi[bi.length-1],bx0=Math.min(A.x,Bq.x)-1,bx1=Math.max(A.x,Bq.x)+1,bz=A.z,bh=A.h,bl=bx1-bx0,bc=(bx0+bx1)/2;
+    add(Mi(new THREE.BoxGeometry(bl,0.5,8),conc,0.03),bc,bh-0.22,bz).receiveShadow=true;
+    for(const sd of [-1,1]){add(Mi(new THREE.BoxGeometry(bl,0.9,0.35),red,0.02),bc,bh-0.75,bz+sd*3.9);add(Mi(new THREE.BoxGeometry(bl,0.1,0.12),red,0.01),bc,bh+1.0,bz+sd*3.95);
+      for(let x=bx0+0.5;x<=bx1;x+=1.6)add(Mi(new THREE.BoxGeometry(0.1,1.0,0.1),red),x,bh+0.5,bz+sd*3.95);}
+    for(const t of [0.33,0.67]){const x=lerp(bx0,bx1,t),y0=inkY(x,bz)-1;add(Mi(new THREE.BoxGeometry(2.2,bh-y0,6),conc,0.03),x,(bh+y0)/2-0.5,bz);}
+    collide(INK_X+bx0,INK_X+bx1,bz-4,bz+4,'bridge',bh);
+    // the rock shed: a concrete roof over the road on pillars on the valley side, a wall on the mountain side
+    const sh=ROAD.filter(p=>p.f==='shed');for(let k=0;k<sh.length-3;k+=4){const p=sh[k],q=sh[k+3],tx=q.x-p.x,tz=q.z-p.z,L=Math.hypot(tx,tz)||1,nx=-tz/L,nz=tx/L,yaw=Math.atan2(tx,tz);
+      const up=inkY(p.x+nx*7,p.z+nz*7)>inkY(p.x-nx*7,p.z-nz*7)?1:-1,cx=(p.x+q.x)/2,cz=(p.z+q.z)/2,y=(p.h+q.h)/2;
+      const rf=add(Mi(new THREE.BoxGeometry(10,0.45,4.1),conc,0.03),cx,y+5.6,cz);rf.rotation.y=yaw;
+      const wl=add(Mi(new THREE.BoxGeometry(0.5,5.8,4.1),conc,0.02),cx+nx*up*4.7,y+2.8,cz+nz*up*4.7);wl.rotation.y=yaw;
+      const pl=add(Mi(new THREE.BoxGeometry(0.55,5.6,0.55),conc,0.02),cx-nx*up*4.7,y+2.8,cz-nz*up*4.7);pl.rotation.y=yaw;}
+    // the waterfall: white water down a rock face above the road, a pool, a pipe under the road
+    { const F=INK_FALL,p=F.p,nx=F.nx,nz=F.nz,L=1,tx=F.tx,tz=F.tz,fx=F.x,fz=F.z,top=F.top,wt=canvasTex(32,128,(g,w,h)=>{g.fillStyle='#dff2f6';g.fillRect(0,0,w,h);for(let i=0;i<40;i++){g.fillStyle=`rgba(${Math.random()<.5?'150,200,215':'255,255,255'},.7)`;g.fillRect(Math.random()*w,Math.random()*h,2,10+Math.random()*30);}},true);
+      INK.fallTex=wt;const yaw=Math.atan2(-nx,-nz);
+      const face=add(Mi(new THREE.BoxGeometry(11,top-p.h+4,3.4),tm('#7d776c'),0.03),fx+nx*1.6,(top+p.h)/2-1,fz+nz*1.6);face.rotation.y=yaw;
+      const fall=add(new THREE.Mesh(new THREE.PlaneGeometry(3,top-p.h+1),tmap(wt,{transparent:true,opacity:0.92,side:THREE.DoubleSide})),fx-nx*0.5,(top+p.h)/2-0.4,fz-nz*0.5);fall.rotation.y=yaw;
+      const pool=add(new THREE.Mesh(new THREE.CircleGeometry(2.8,20),new THREE.MeshToonMaterial({color:'#7fb6c8',gradientMap:GRAD})),fx-nx*2.4,p.h-0.15,fz-nz*2.4);pool.rotation.x=-Math.PI/2;
+      for(let i=0;i<9;i++){const a=i*0.7,r2=2.8+(i%3)*0.4;add(Mi(new THREE.DodecahedronGeometry(0.5+(i%3)*0.25,0),tm('#8a857a')),fx-nx*2.4+Math.cos(a)*r2,p.h,fz-nz*2.4+Math.sin(a)*r2);}
+      INK.fall={x:INK_X+fx-nx*4.6,z:fz-nz*4.6};
+      const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.5),tmap(canvasTex(128,40,(g,w,h)=>{g.fillStyle='#f4efe2';g.fillRect(0,0,w,h);g.fillStyle='#4a3424';g.font=signFont(22,true);g.textAlign='center';g.fillText('白糸の滝',w/2,28);}),{side:THREE.DoubleSide}));
+      add(sg,p.x+nx*4.3+tx/L*3,p.h+1.6,p.z+nz*4.3+tz/L*3).rotation.y=yaw;add(Mi(new THREE.BoxGeometry(0.08,1.4,0.08),tm('#6b4a30')),p.x+nx*4.3+tx/L*3,p.h+0.7,p.z+nz*4.3+tz/L*3);}
+    // the lookout: a railing round the pad, benches facing out, a sign
+    { const LK=INK_LOOK,yaw=Math.atan2(LK.ox,LK.oz);for(let a=-1.3;a<=1.31;a+=0.26){const x=LK.x+Math.sin(yaw+a)*6.2,z=LK.z+Math.cos(yaw+a)*6.2;add(Mi(new THREE.BoxGeometry(0.12,1,0.12),tm('#6b4a30')),x,LK.h+0.5,z);
+        const x2=LK.x+Math.sin(yaw+a+0.26)*6.2,z2=LK.z+Math.cos(yaw+a+0.26)*6.2;if(a<1.2){const r=add(Mi(new THREE.BoxGeometry(0.1,0.1,Math.hypot(x2-x,z2-z)),tm('#6b4a30')),(x+x2)/2,LK.h+0.95,(z+z2)/2);r.rotation.y=Math.atan2(x2-x,z2-z);}}
+      for(const o of [-1.6,1.6]){const b=benchMesh();add(b,LK.x+Math.cos(yaw)*o,LK.h,LK.z-Math.sin(yaw)*o).rotation.y=yaw;}
+      const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.8,0.6),tmap(canvasTex(192,64,(c,w,h)=>{c.fillStyle='#f4efe2';c.fillRect(0,0,w,h);c.strokeStyle='#6b4a30';c.lineWidth=5;c.strokeRect(3,3,w-6,h-6);c.fillStyle='#4a3424';c.font=signFont(26,true);c.textAlign='center';c.textBaseline='middle';c.fillText('いろは坂 見晴らし',w/2,h/2+1);}),{side:THREE.DoubleSide}));
+      const sx=LK.x-LK.ox*4.6+LK.oz*5,sz=LK.z-LK.oz*4.6-LK.ox*5;add(sg,sx,LK.h+1.5,sz).rotation.y=yaw+Math.PI;add(Mi(new THREE.BoxGeometry(0.1,1.4,0.1),tm('#6b4a30')),sx,LK.h+0.7,sz);}}
   // the railway: track from the tunnel in the hills to the buffer stop past the platform, and the little station
   { const ballast=Mi(new THREE.BoxGeometry(212,0.12,3.4),tm('#8a8276'));add(ballast,-114,0.06,INK_TRACK);ballast.castShadow=false;ballast.receiveShadow=true;
     for(const o of [-0.53,0.53])add(Mi(new THREE.BoxGeometry(212,0.12,0.08),tm('#a9aeb4')),-114,0.2,INK_TRACK+o);
@@ -195,12 +260,12 @@ const INK={g:new THREE.Group(),map:document.createElement('canvas')};scene.add(I
   // the summit: the car park, a tea house, the observation deck with a roof and a telescope
   { const lot=new THREE.Mesh(new THREE.PlaneGeometry(PARK.x1-PARK.x0,PARK.z1-PARK.z0),tmap(canvasTex(128,64,(g,w,h)=>{g.fillStyle='#606266';g.fillRect(0,0,w,h);g.fillStyle='#e8e8e2';for(let x=6;x<w;x+=14)g.fillRect(x,4,2,18);}),{polygonOffset:true,polygonOffsetFactor:-2}));
     lot.rotation.x=-Math.PI/2;add(lot,(PARK.x0+PARK.x1)/2,INK_TOP+0.05,(PARK.z0+PARK.z1)/2);lot.receiveShadow=true;
-    building(-72,-160,0,{w:9,d:6,wallH:2.8,roofH:1.8,engawa:7,y:INK_TOP});
-    for(const [x,t,c] of [[-78.5,'だんご','#c8372d'],[-65.5,'ラムネ','#2e6ab8'],[-62.5,'かき氷','#2e8a5a']]){add(Mi(new THREE.CylinderGeometry(0.04,0.04,3,6),tm('#ccc')),x,INK_TOP+1.5,-154.8);
-      const f=new THREE.Mesh(new THREE.PlaneGeometry(0.6,2),tmap(canvasTex(32,112,(g,w,h)=>{g.fillStyle=c;g.fillRect(0,0,w,h);g.fillStyle='#fff';g.font=signFont(20,true);g.textAlign='center';[...t].forEach((ch,i)=>g.fillText(ch,w/2,26+i*26));}),{side:THREE.DoubleSide}));add(f,x+0.32,INK_TOP+1.9,-154.8);}
+    const TX=PARK.x0+14,TZ=PARK.z0-5;INK.tea={x:TX,z:TZ};building(TX,TZ,0,{w:9,d:6,wallH:2.8,roofH:1.8,engawa:7,y:INK_TOP});
+    for(const [x,t,c] of [[TX-6.5,'だんご','#c8372d'],[TX+6.5,'ラムネ','#2e6ab8'],[TX+9.5,'かき氷','#2e8a5a']]){add(Mi(new THREE.CylinderGeometry(0.04,0.04,3,6),tm('#ccc')),x,INK_TOP+1.5,TZ+5.2);
+      const f=new THREE.Mesh(new THREE.PlaneGeometry(0.6,2),tmap(canvasTex(32,112,(g,w,h)=>{g.fillStyle=c;g.fillRect(0,0,w,h);g.fillStyle='#fff';g.font=signFont(20,true);g.textAlign='center';[...t].forEach((ch,i)=>g.fillText(ch,w/2,26+i*26));}),{side:THREE.DoubleSide}));add(f,x+0.32,INK_TOP+1.9,TZ+5.2);}
     const nr=new THREE.Mesh(new THREE.PlaneGeometry(3,0.9),tmap(canvasTex(128,40,(g,w,h)=>{g.fillStyle='#2e4a7a';g.fillRect(0,0,w,h);g.fillStyle='#fff';g.font=signFont(24,true);g.textAlign='center';g.fillText('峠の茶屋',w/2,28);}),{side:THREE.DoubleSide}));
-    add(nr,-72,INK_TOP+2.5,-155.85);
-    for(const x of [-79,-65]){const b=benchMesh();add(b,x,INK_TOP,-154.2);}
+    add(nr,TX,INK_TOP+2.5,TZ+4.15);
+    for(const x of [TX-7,TX+7]){const b=benchMesh();add(b,x,INK_TOP,TZ+5.8);}
     const wood=tm('#8a6a4c'),D=DECK;
     const fl=Mi(new THREE.BoxGeometry(D.x1-D.x0,0.25,D.z1-D.z0),wood,0.02);add(fl,(D.x0+D.x1)/2,D.h-0.12,(D.z0+D.z1)/2);
     for(const x of [D.x0+0.4,D.x1-0.4])for(const z of [D.z0+0.4,D.z1-0.4]){const y0=inkY(x,z)-0.5;add(Mi(new THREE.BoxGeometry(0.35,D.h-y0+3.4,0.35),wood,0.01),x,(y0+D.h+3.4)/2,z);}
@@ -209,11 +274,11 @@ const INK={g:new THREE.Group(),map:document.createElement('canvas')};scene.add(I
       const L=Math.hypot(x1-x0,z1-z0),m=Mi(new THREE.BoxGeometry(x1===x0?0.08:L,0.9,x1===x0?L:0.08),wood,0.01);add(m,(x0+x1)/2,D.h+0.45,(z0+z1)/2);
       collide(INK_X+Math.min(x0,x1)-0.1,INK_X+Math.max(x0,x1)+0.1,Math.min(z0,z1)-0.1,Math.max(z0,z1)+0.1,'wall',D.h+1);}
     const rf=Mi(new THREE.CylinderGeometry(0.01,5.2,1.8,4,1),tm('#6b3a2e'),0.03);rf.rotation.y=Math.PI/4;rf.scale.set(1.15,0.8,1.15);add(rf,(D.x0+D.x1)/2,D.h+4.1,(D.z0+D.z1)/2);
-    const sc=new THREE.Group();sc.position.set(INK_X+6,D.h,-140);sc.rotation.y=Math.PI*0.75;INK.g.add(sc);
+    const sc=new THREE.Group();sc.position.set(INK_X+D.x1-2,D.h,(D.z0+D.z1)/2);sc.rotation.y=Math.PI*0.75;INK.g.add(sc);
     sc.add(Mi(new THREE.CylinderGeometry(0.06,0.08,1.1,8),tm('#555'),0.01).translateY(0.55));const tb=Mi(new THREE.CylinderGeometry(0.12,0.09,0.7,10),tm('#2e6ab8'),0.012);tb.rotation.x=Math.PI/2-0.15;tb.position.y=1.2;sc.add(tb);
-    INK.scope={x:INK_X+6,z:-140};}
+    INK.scope={x:INK_X+DECK.x1-2,z:(DECK.z0+DECK.z1)/2};}
   // bus stops at the foot and at the top
-  INK.bus=[{x:-66,z:132,to:1,name:'山頂行き'},{x:-66,z:-129,to:0,name:'ふもと行き'}];
+  INK.bus=[{x:-66,z:132,to:1,name:'山頂行き'},{x:PARK.x1-3,z:PARK.z1-3,to:0,name:'ふもと行き'}];
   for(const b of INK.bus){const y=inkY(b.x,b.z);add(Mi(new THREE.CylinderGeometry(0.05,0.05,2.2,6),tm('#ccc')),b.x,y+1.1,b.z);
     const t=new THREE.Mesh(new THREE.CircleGeometry(0.35,20),tmap(canvasTex(64,64,(g,w,h)=>{g.fillStyle='#e8452f';g.beginPath();g.arc(32,32,31,0,7);g.fill();g.fillStyle='#fff';g.font=signFont(22,true);g.textAlign='center';g.textBaseline='middle';g.fillText('バス',32,33);}),{side:THREE.DoubleSide}));
     add(t,b.x,y+2.3,b.z);t.rotation.y=Math.PI/2;
@@ -222,7 +287,7 @@ const INK={g:new THREE.Group(),map:document.createElement('canvas')};scene.add(I
   // the map in the corner
   { const m=INK.map;m.width=m.height=INK_R*2;const g=m.getContext('2d');g.fillStyle='#bcd9a8';g.fillRect(0,0,m.width,m.height);
     g.fillStyle='#9cc3b8';for(const [x0,x1,z0,z1] of INK_FIELDS)g.fillRect(x0+INK_R,z0+INK_R,x1-x0,z1-z0);
-    g.fillStyle='#8fb07a';g.beginPath();g.ellipse(INK_R,INK_R-60,130,110,0,0,7);g.fill();
+    for(let r=0;r<INK_N;r+=2)for(let c=0;c<INK_N;c+=2){const h=INK_HG[r*INK_N+c];if(h<2)continue;const k=clamp(h/120,0,1);g.fillStyle=`rgb(${Math.round(170-k*70)},${Math.round(205-k*60)},${Math.round(150-k*70)})`;g.fillRect(c*INK_CELL,r*INK_CELL,4,4);}
     g.strokeStyle='#fff';g.lineWidth=6;g.beginPath();ROAD.forEach((p,i)=>i?g.lineTo(p.x+INK_R,p.z+INK_R):g.moveTo(p.x+INK_R,p.z+INK_R));g.stroke();
     g.fillStyle='#606266';g.fillRect(PARK.x0+INK_R,PARK.z0+INK_R,PARK.x1-PARK.x0,PARK.z1-PARK.z0);g.fillStyle='#a88a64';g.fillRect(DECK.x0+INK_R,DECK.z0+INK_R,DECK.x1-DECK.x0,DECK.z1-DECK.z0);
     g.strokeStyle='#5a6b72';g.setLineDash([4,3]);g.lineWidth=2;g.beginPath();g.moveTo(0,INK_TRACK+INK_R);g.lineTo(INK_R-8,INK_TRACK+INK_R);g.stroke();g.setLineDash([]);}}
@@ -255,7 +320,7 @@ function inkToTown(){const f=$('fade');f.style.opacity=1;
 // the town and the country are never both shown
 function setArea(a){if(a===AREA)return;AREA=a;const ink=a==='inaka';INK.g.visible=ink;
   for(const o of world.children){if(o===player.g)continue;if(ink){o.userData.vis=o.visible;o.visible=false;}else if(o.userData.vis!==undefined){o.visible=o.userData.vis;delete o.userData.vis;}}}
-function updateInaka(dt){const want=P.x>INK_X-600?'inaka':'town';if(want!==AREA&&!(RIDE.on))setArea(want);inkTrainMove(dt);updateTouge(dt);}
+function updateInaka(dt){updateGoat(dt);if(INK.fallTex)INK.fallTex.offset.y=(clock*1.4)%1;const want=P.x>INK_X-600?'inaka':'town';if(want!==AREA&&!(RIDE.on))setArea(want);inkTrainMove(dt);updateTouge(dt);}
 function inkNear(){if(AREA!=='inaka')return null;let best=null;
   for(const b of INK.bus){const d=Math.hypot(P.x-INK_X-b.x,P.z-b.z);if(d<2.6&&(!best||d<best.d))best={kind:'bus',b,d,label:`乗る　バス（${b.name}・100円）`,verb:'乗る'};}
   const d=Math.hypot(P.x-INK.scope.x,P.z-INK.scope.z);if(d<2.2&&P.y>DECK.h-0.5)best={kind:'scope',d,label:'のぞく　望遠鏡',verb:'のぞく'};
@@ -283,13 +348,13 @@ const RACERS=[
   {id:'r_kenji',name:'ケンジ',car:'#f2f2ee',wing:false,o:{skin:'#e3b088',hair:'#d9a050',style:'short',shirt:'#2e5fa8',sleeves:'short',bottom:'pants',bottomCol:'#3a3a40',shoe:'#f2f2ee'},vtop:12.5,lat:3.6,acc:2.2,prize:500},
   {id:'r_madoka',name:'マドカ',car:'#d23b33',wing:true,o:{skin:'#f1cdb0',hair:'#1c1a1a',style:'long',shirt:'#1d1f22',sleeves:'long',bottom:'pants',bottomCol:'#2b2f36',shoe:'#d23b33'},vtop:14.5,lat:4.6,acc:2.8,prize:1000},
   {id:'r_gen',name:'ゲンさん',car:'#1d1f22',wing:true,o:{skin:'#d9a987',hair:'#2b2520',style:'short',cap:'#c8372d',shirt:'#f2f2ee',sleeves:'short',bottom:'pants',bottomCol:'#3a4a6a',shoe:'#1d1d1d'},vtop:16.5,lat:5.6,acc:3.4,prize:2000}];
-RACERS.forEach((r,k)=>{const x=-74+k*8,z=-136;r.home={x,z};const c=makeRacerCar(r.car,r.wing);c.position.set(INK_X+x,INK_TOP+0.02,z-4.5);INK.g.add(c);r.parked=c;
+RACERS.forEach((r,k)=>{const x=PARK.x0+8+k*9,z=PARK.z1-10;r.home={x,z};const c=makeRacerCar(r.car,r.wing);c.position.set(INK_X+x,INK_TOP+0.02,z-4.5);INK.g.add(c);r.parked=c;
   collide(INK_X+x-1,INK_X+x+1,z-6.8,z-2.2,'car');
   const n=placeNPC(r.id,r.o,INK_X+x+1.6,z-1.2,0.3,'stand',r.name,['この峠は、夜がいちばん速く走れるんだ。']);INK.g.add(n.h.g);});
 // the battles: ['touge', 1|2|3] puts you and the car side by side at the top; the first down to the gate at the foot wins
 const TOUGE={on:false,res:null};
 const INK_START=ROAD.length-6,INK_FIN=ROAD.findIndex(p=>p.z<=60);   // the start just below the car park, the gate near the foot
-function speedPlan(R){const v=ROAD.map((p,i)=>{if(!p.curve)return R.vtop;return Math.min(R.vtop,Math.sqrt(R.lat*10));});
+function speedPlan(R){const v=ROAD.map(p=>p.r?Math.min(R.vtop,Math.sqrt(R.lat*p.r)):R.vtop);
   for(let i=1;i<v.length;i++)v[i]=Math.min(v[i],Math.sqrt(v[i-1]*v[i-1]+2*6.5));return v;}   // going down the road means going down the list: brake in time for the bend below
 function tougeP(lv){return new Promise(res=>{const R=RACERS[lv-1];ST.actor=null;talkNpc=null;
   const s=ROAD[INK_START],q=ROAD[INK_START-4],yaw=Math.atan2(q.x-s.x,q.z-s.z),sx=Math.cos(yaw),sz=-Math.sin(yaw);
@@ -312,7 +377,7 @@ function updateTouge(dt){const T=TOUGE;if(!T.res)return;const tr=$('tracker'),R=
   T.t+=dt;
   const want=T.plan[T.ci]||R.vtop;T.cv+=clamp(want-T.cv,-6.5*dt,R.acc*dt);let mv=T.cv*dt;
   while(mv>0&&T.ci>INK_FIN){const seg=Math.hypot(ROAD[T.ci].x-ROAD[T.ci-1].x,ROAD[T.ci].z-ROAD[T.ci-1].z),left=(1-T.cf)*seg;if(mv<left){T.cf+=mv/seg;mv=0;}else{mv-=left;T.ci--;T.cf=0;}}
-    const cu=ROAD[T.ci].curve,a=ROAD[T.ci],b=ROAD[Math.max(0,T.ci-1)],c=ROAD[Math.max(0,T.ci-2)];
+    const cu=ROAD[T.ci].r>0&&ROAD[T.ci].r<25,a=ROAD[T.ci],b=ROAD[Math.max(0,T.ci-1)],c=ROAD[Math.max(0,T.ci-2)];
   let dy=Math.atan2(c.x-b.x,c.z-b.z)-Math.atan2(b.x-a.x,b.z-a.z);dy=Math.atan2(Math.sin(dy),Math.cos(dy));
   T.drift+=((cu&&T.cv>5?0.5*Math.sign(dy):0)-T.drift)*Math.min(1,dt*3);   // the tail steps out through the hairpins
   placeCar();if(cu&&T.cv>6&&Math.random()<dt*30)sparks(T.car.position.clone().add(_tq.set(0,0.3,0)),1,'#e8e8e8',1.5,0.18);
@@ -339,3 +404,42 @@ RACERS.forEach((R,k)=>{const lv=k+1,key='touge'+lv,prev=k?'touge'+k:null,back=['
   EVENTS.push({id:'tg_'+lv+'_again',on:{talk:R.id},once:false,when:{test:()=>!!SAVE.flags[key]},script:[
     ['ask',R.id,'もう一本、走るか？',[['走る！',[['touge',lv],['fade','out'],back,['fade','in'],['if',{test:()=>SAVE.flags.touge_win===1},[['say',R.id,'やっぱり速いな。']],[['say',R.id,'今日はおれの勝ちだな。']]]]],['やめておく',[]]]]]});
   if(prev)EVENTS.push({id:'tg_'+lv+'_wait',on:{talk:R.id},once:false,when:{test:()=>!SAVE.flags[prev]},script:[['say',R.id,k===1?'わたしと走りたいなら、まずはケンジに勝ってからね。':'わしと走りたいなら、マドカに勝ってからだな。']]});});
+
+/* ---------- the people of 山のふもと and their errands ---------- */
+const INK_NPC=(id,o,x,z,yaw,mode,name,idle)=>{const n=placeNPC(id,o,INK_X+x,z,yaw,mode,name,idle);INK.g.add(n.h.g);return n;};
+INK_NPC('ink_yone',{skin:'#e8bf9a',hair:'#d9d6d0',style:'grey',hat:'straw',shirt:'#7a8f6a',sleeves:'long',bottom:'long',bottomCol:'#5a4a3a',apron:'#e8dcc4',bend:0.25},-26,151,0,'stand','農家のヨネさん',
+  ['いろは坂はね、昔は荷車で越えたもんだよ。','田んぼの水は、山の滝から引いてるんだ。']);
+INK_NPC('ink_chaya',{skin:'#d9a987',hair:'#e2ded8',style:'grey',shirt:'#2e4a7a',sleeves:'long',bottom:'pants',bottomCol:'#3a3a40',apron:'#f2f2ee',bend:0.15},INK.tea.x+3,INK.tea.z+5.2,0,'stand','茶屋のおじいさん',
+  ['峠の茶屋のだんごは、昔から評判でね。','走り屋の若いのも、ここで一服していくよ。']);
+INK_NPC('ink_ekiin',{skin:'#e0b48e',hair:'#2b2520',style:'short',cap:'#24323a',shirt:'#dfe5ea',sleeves:'long',bottom:'pants',bottomCol:'#24323a',shoe:'#1d1d1d'},-48,174,Math.PI,'stand','駅員さん',
+  ['この線は、海街とここを結ぶ一本きりの電車でね。','山の上まではバスもあるよ。坂がきつかったら使いなさい。']);
+INK_NPC('ink_kenta',{skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#e8a23a',shirt:'#f2f2ee',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#2e6ab8',scale:0.78},70,176,Math.PI,'stand','ケンタくん',
+  ['うちのヤギ、すぐどこか行っちゃうんだ。','いろは坂って、カーブにひらがなの看板があるんだよ。']);
+// the kid's goat: white, little horns, a bell; up at the lookout until it is brought home
+const INK_GOAT=(()=>{const g=new THREE.Group(),w=tm('#f4f2ec'),d=tm('#3a3430'),B=(gw,gh,gd,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(gw,gh,gd),m);o.position.set(x,y,z);o.castShadow=true;outline(o,0.012);g.add(o);return o;};
+  B(0.4,0.34,0.7,w,0,0.55,0);const hd=new THREE.Group();hd.position.set(0,0.78,0.38);g.add(hd);
+  const h=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.34),w);h.castShadow=true;outline(h,0.012);hd.add(h);
+  for(const sx of [-1,1]){const e=new THREE.Mesh(new THREE.ConeGeometry(0.04,0.16,6),tm('#c9b9a0'));e.position.set(sx*0.08,0.18,-0.06);e.rotation.x=-0.4;hd.add(e);
+    const ey=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.03,0.02),d);ey.position.set(sx*0.1,0.04,0.17);hd.add(ey);}
+  hd.add(new THREE.Mesh(new THREE.SphereGeometry(0.05,8,6),tm('#e8b84a')).translateY(-0.18).translateZ(0.05));
+  for(const x of [-0.13,0.13])for(const z of [-0.25,0.25])B(0.08,0.4,0.08,w,x,0.2,z);
+  g.userData.head=hd;INK.g.add(g);return g;})();
+function goatHome(){const s=qs('ink_yagi');return s.state===2||(s.state===1&&s.step>=1);}
+function updateGoat(dt){const g=INK_GOAT;if(AREA!=='inaka')return;const home=goatHome(),L=INK_LOOK;
+  const x=home?72:L.x+L.ox*2.5+L.oz*3,z=home?179:L.z+L.oz*2.5-L.ox*3;g.position.set(INK_X+x,inkG(INK_X+x,z),z);
+  g.rotation.y=home?Math.PI:Math.atan2(L.ox,L.oz)+Math.sin(clock*0.4)*0.6;g.userData.head.rotation.x=Math.max(0,Math.sin(clock*1.3))*0.5;}
+const INK_ITEMS={
+  yasai:{name:'野菜かご',d:(g,s)=>{g.fillStyle='#a8763e';g.fillRect(s*0.18,s*0.45,s*0.64,s*0.35);g.fillStyle='#e8532f';g.beginPath();g.arc(s*0.35,s*0.42,s*0.12,0,7);g.fill();g.fillStyle='#5aa34a';g.beginPath();g.arc(s*0.6,s*0.4,s*0.13,0,7);g.fill();g.fillStyle='#7a4fa0';g.beginPath();g.ellipse(s*0.48,s*0.36,s*0.07,s*0.15,0.6,0,7);g.fill();}},
+  mizu:{name:'滝の水',d:(g,s)=>{g.fillStyle='rgba(150,205,225,.9)';g.fillRect(s*0.36,s*0.3,s*0.28,s*0.5);g.fillStyle='#e8e2d4';g.fillRect(s*0.4,s*0.18,s*0.2,s*0.12);g.strokeStyle='#4a7a8a';g.lineWidth=2;g.strokeRect(s*0.36,s*0.3,s*0.28,s*0.5);}}};
+function inkQuests(){const F=INK.fall,L=INK_LOOK,gx=INK_X+L.x+L.ox*2.5+L.oz*3,gz=L.z+L.oz*2.5-L.ox*3;return[
+  {id:'ink_yasai',title:'とれたて野菜を峠へ',giver:'ink_yone',
+   start:['あら、海街から来たのかい。スケボーとは、たいしたもんだ。','ちょうどよかった。とれたての野菜を、峠の茶屋のおじいさんに届けてくれないかい。','いろは坂をずうっと上った、山のてっぺんさ。きつかったら、バスもあるよ。'],give:['yasai',1],
+   steps:[{type:'deliver',to:'ink_chaya',item:'yasai',n:1,hint:'いろは坂の山頂、峠の茶屋のおじいさんに野菜を届ける',text:['おお、ヨネさんの野菜か。今朝とれたやつだな。','坂を上ってきたのかい？ たいしたもんだ。','ほれ、だんごでも食べていきな。']}],reward:400,wait:['峠の茶屋は、いろは坂のてっぺんだよ。']},
+  {id:'ink_mizu',title:'白糸の滝の水',giver:'ink_chaya',requires:'ink_yasai',
+   start:['ちょいと頼まれてくれるかい。','うちの茶は、白糸の滝の水でいれるのが決まりでね。いろは坂の途中、洞門を抜けた先の滝さ。','このびんにくんできておくれ。'],
+   steps:[{type:'place',at:[F.x,F.z],label:'くむ　白糸の滝の水',verb:'くむ',gain:['mizu',1],hint:'いろは坂の途中、白糸の滝で水をくむ',text:['冷たい水が、びんの口までいっぱいになった。']},
+          {type:'deliver',to:'ink_chaya',item:'mizu',n:1,hint:'峠の茶屋のおじいさんに、滝の水を届ける',text:['うん、いい水だ。冷たくて、山のにおいがする。','これでうまい茶がいれられるよ。ありがとう。']}],reward:500,wait:['滝は、洞門を抜けた先だよ。']},
+  {id:'ink_yagi',title:'迷子の子ヤギ',giver:'ink_kenta',
+   start:['おねえちゃん、うちの子ヤギ見なかった？ メエって名前なんだ。','また山のほうへ行っちゃったみたい。いろは坂の「見晴らし」のあたりが好きなんだけど……','ぼく、ひとりじゃ山に行っちゃだめって言われてて。連れて帰ってきてくれる？'],
+   steps:[{type:'place',at:[gx,gz],label:'だっこする　子ヤギ',verb:'だっこ',hint:'いろは坂の「見晴らし」（S字カーブのそば）で、子ヤギをさがす',text:['メエ〜。子ヤギは、ナギの足にすり寄ってきた。','……いっしょに帰ろうね。']},
+          {type:'talk',to:'ink_kenta',hint:'ふもとのケンタくんに子ヤギを返す',text:['メエ！ よかったあ……！','おねえちゃん、ありがとう！ これ、おこづかい。','今度、いろは坂のてっぺんまで連れてってね！']}],reward:300,wait:['見晴らしは、坂を上ってS字になってるとこだよ。']}];}
