@@ -132,5 +132,5 @@ function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);upd
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
     m.visible=!calm&&!URA.on&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
-  if(calm||DRONE.active)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
+  if(calm||DRONE.active||RIDE.on)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
   const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}
