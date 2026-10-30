@@ -4404,12 +4404,34 @@ const GRASS_MAT=(()=>{const m=new THREE.MeshToonMaterial({color:'#ffffff',gradie
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=diffuseColor.rgb*0.18*vGlow*vTip*vTip;   // the sheen on the bent tips');};
   m.customProgramCacheKey=()=>'grass';return m;})();
 const GRASS_COLS=['#5f9c46','#6ea951','#558f42','#7bb15a','#4f8a3f'].map(c=>new THREE.Color(c));
+/* wild flowers in the grass: little five-petalled heads on thin stems, in patches. The stems are green, the heads take the
+   colour of the patch (white clover, yellow, pink, pale purple, sky blue) */
+const FLOWER_GEO=(()=>{const mk=(head)=>{const pos=[],col=[];
+    if(!head){for(const a of [0,Math.PI/2]){const cx=Math.cos(a)*0.012,cz=Math.sin(a)*0.012;for(const [x,y,z] of [[-cx,0,-cz],[cx,0,cz],[cx,0.44,cz],[-cx,0,-cz],[cx,0.44,cz],[-cx,0.44,-cz]]){pos.push(x,y,z);col.push(0.32,0.55,0.25);}}}
+    else{const y=0.44,r=0.085;for(let k=0;k<5;k++){const a0=k/5*TAU,a1=a0+TAU/10,a2=a0+TAU/5;   // a petal is two triangles out to a rounded tip
+        for(const [x,yy,z,c] of [[0,y,0,0.7],[Math.cos(a0)*r*0.55,y,Math.sin(a0)*r*0.55,1],[Math.cos(a1)*r,y+0.008,Math.sin(a1)*r,1],[0,y,0,0.7],[Math.cos(a1)*r,y+0.008,Math.sin(a1)*r,1],[Math.cos(a2)*r*0.55,y,Math.sin(a2)*r*0.55,1]]){pos.push(x,yy,z);col.push(c,c,c*0.97);}}
+      for(let k=0;k<6;k++){const a0=k/6*TAU,a1=(k+1)/6*TAU,rc=0.024;for(const [x,z] of [[0,0],[Math.cos(a0)*rc,Math.sin(a0)*rc],[Math.cos(a1)*rc,Math.sin(a1)*rc]]){pos.push(x,y+0.012,z);col.push(1.0,0.82,0.25);}}}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+    if(head)g.translate(0,-0.44,0).rotateX(0.65).translate(0,0.44,0);   // the head nods to one side, so its face shows from the path
+    g.computeVertexNormals();return g;};
+  return{stem:mk(false),head:mk(true)};})();
+const FLOWER_MAT=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.06);
+const FLOWER_COLS=['#ffffff','#f6f2e4','#f4d23c','#f2a6c4','#c3aef0','#9cc2f2'].map(c=>new THREE.Color(c));
+function flowerPatch(cx,cz,r,ok){const list=[];const n=Math.round(GRASS.per/3.5);for(let i=0;i<n;i++){const x=cx*GRASS.S+r()*GRASS.S,z=cz*GRASS.S+r()*GRASS.S;
+    const p=vnoise(x/11+40,z/11-20);if(p<0.5||r()>(p-0.5)*2.6||!ok(x,z))continue;const y=G(x,z);if(y<SEA_Y+0.3)continue;
+    list.push({x,y,z,s:0.85+r()*0.5,a:r()*TAU,c:FLOWER_COLS[Math.floor(vnoise(x/23-7,z/23+3)*7.99)%FLOWER_COLS.length]});}
+  if(!list.length)return null;const g=new THREE.Group(),d=new THREE.Object3D();
+  for(const part of ['stem','head']){const im=new THREE.InstancedMesh(FLOWER_GEO[part],FLOWER_MAT,list.length);
+    list.forEach((e,i)=>{d.position.set(e.x,e.y-0.02,e.z);d.rotation.set(0,e.a,0);d.scale.setScalar(e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,part==='head'?e.c:WHITE3);});
+    im.frustumCulled=false;g.add(im);}
+  return g;}
+const WHITE3=new THREE.Color('#ffffff');
 function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+cz*104729)&0x7fffffff),list=[];
   const cells=new Map(),ok=(x,z)=>{const k=Math.floor(x/2)+','+Math.floor(z/2);if(!cells.has(k))cells.set(k,grassOK(Math.floor(x/2)*2+1,Math.floor(z/2)*2+1));return cells.get(k);};
   for(let n=0;n<GRASS.per;n++){const x=x0+r()*S,z=z0+r()*S;if(!ok(x,z))continue;const y=G(x,z);if(y<SEA_Y+0.3)continue;list.push({x,y,z,s:0.75+r()*0.55,a:r()*TAU,c:GRASS_COLS[Math.floor(r()*5)]});}
   if(!list.length)return null;const im=new THREE.InstancedMesh(GRASS_GEO,GRASS_MAT,list.length),d=new THREE.Object3D();
   list.forEach((e,i)=>{d.position.set(e.x,e.y-0.03,e.z);d.scale.set(e.s,e.s*(0.75+0.45*vnoise(e.x/9,e.z/9)),e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,e.c);});
-  im.frustumCulled=false;im.matrixAutoUpdate=false;scene.add(im);return im;}
+  im.frustumCulled=false;im.matrixAutoUpdate=false;const fl=flowerPatch(cx,cz,r,ok);if(fl)im.add(fl);scene.add(im);return im;}
 // keep the squares round the player made, a couple per frame, and let go of the far ones
 function updateGrass(){if(GRASS.per==null){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
   const S=GRASS.S,R=GRASS.R,px=P.x,pz=P.z,on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&px<INK_X-600,c0x=Math.floor((px-R)/S),c1x=Math.floor((px+R)/S),c0z=Math.floor((pz-R)/S),c1z=Math.floor((pz+R)/S);
