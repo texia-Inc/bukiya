@@ -61,7 +61,15 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 .cslot .cl{font-size:11px;font-weight:700;color:var(--ink-soft);margin-right:2px;align-self:center}
 /* while dressing, only the sheet and the heroine above it */
 body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.closet #pad,body.closet #stick,body.closet #toast{visibility:hidden}
-#closet h2{margin:0 0 6px}
+#closet h2{margin:0 0 6px;display:flex;justify-content:space-between;align-items:center}#closet h2 .btn{font-size:13px;padding:6px 12px}
+/* the big view: the list folds into one strip at the bottom and she fills the screen */
+#closetMini{position:absolute;left:50%;translate:-50% 0;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);width:min(560px,calc(100% - 20px));padding:8px 10px;display:flex;flex-direction:column;gap:6px;cursor:auto;touch-action:manipulation}
+#closetMini .mrow{display:flex;align-items:center;gap:6px;min-height:28px;flex-wrap:wrap}
+#closetMini .mrow b,#closetMini .mrow span{font-weight:900;font-size:13px;text-align:center}#cmSlot{min-width:52px;color:var(--sea-deep)}#cmItem{flex:1;min-width:90px}
+#closetMini .ar{appearance:none;border:0;background:var(--sea);color:#fff;font:900 18px var(--round);width:34px;height:30px;border-radius:9px;cursor:pointer;padding:0;box-shadow:0 2px 0 var(--sea-deep)}
+#closetMini .ar:disabled{opacity:.3;cursor:default}
+#closetMini .mb .btn{font-size:12px;padding:6px 10px}
+#closet.big{background:none}body.closet.cbig #hud{visibility:hidden}
 .cslot{display:grid;grid-template-columns:72px 1fr;gap:6px 10px;align-items:center;padding:6px 0;border-top:1px solid rgba(0,0,0,.06)}
 .cslot b{font-size:12px;color:var(--sea-deep)}
 .cslot .row{display:flex;flex-wrap:wrap;gap:6px}
@@ -205,8 +213,11 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
-<div class="modal" id="closet" hidden><div class="sheet card"><h2>着がえ</h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギはドラッグで回せる。ピンチ（マウスはホイール）で拡大</p><div id="closetSlots"></div>
-  <div class="bar"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div></div>
+<div class="modal" id="closet" hidden><div class="sheet card" id="closetSheet"><h2>着がえ<button class="btn" id="closetBig">大きく見る</button></h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギはドラッグで回せる。ピンチ（マウスはホイール）で拡大</p><div id="closetSlots"></div>
+  <div class="bar"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div>
+  <div class="card" id="closetMini" hidden><div class="mrow"><button class="ar" id="cmSp">‹</button><b id="cmSlot"></b><button class="ar" id="cmSn">›</button><button class="ar" id="cmIp">‹</button><span id="cmItem"></span><button class="ar" id="cmIn">›</button></div>
+    <div class="mrow" id="cmCols"></div>
+    <div class="mrow mb"><button class="chip" id="cmBg">背景：町</button><button class="chip" id="cmSpin">くるくる</button><button class="chip" id="cmView">正面</button><button class="chip" id="cmShot">撮る</button><span style="flex:1"></span><button class="btn ghost" id="cmBack">一覧へ</button></div></div></div>
 <div class="modal" id="gacha" hidden><div class="sheet card"><h2>まるやのカプセルトイ</h2>
   <p class="sub">1回100円。出た服はすぐ「着がえ」で着られる。ダブりは「かけら」になって、ほしい物と交換できる。</p>
   <div id="gachaStage"></div>
