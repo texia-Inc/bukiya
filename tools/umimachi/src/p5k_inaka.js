@@ -250,7 +250,7 @@ function updateTouge(dt){const T=TOUGE;if(!T.res)return;const tr=$('tracker'),R=
   tr.innerHTML=`<b>峠バトル vs ${R.name}</b><span class="step">ふもとのゴールへ。S でブレーキ、カーブは早めに</span><span class="meter">${gap>=0?`${R.name}より ${gap} m 前`:`${R.name}まで ${-gap} m`}　${T.t.toFixed(1)} 秒</span>`;
   const cd=T.car.position.distanceTo(_tq.set(P.x,P.y,P.z));if(cd<1.8&&!P.air){P.v*=0.6;P.bump=0.4;}
   const g=ROAD[INK_FIN],won=Math.hypot(P.x-INK_X-g.x,P.z-g.z)<5.5,lost=T.ci<=INK_FIN||T.t>240;
-  if(won||lost){const r=T.res;T.res=null;T.on=false;tr.hidden=true;toast(won?'勝った！':`${R.name}が先にゴールした……`,true);setTimeout(()=>{T.car.visible=T.gate.visible=false;R.parked.visible=true;},1500);r(won);}}
+  if(won||lost){const r=T.res;T.res=null;T.on=false;tr.hidden=true;toast(won?'勝った！':`${R.name}が先にゴールした……`,true);(won?sfx.win:sfx.lose)();setTimeout(()=>{T.car.visible=T.gate.visible=false;R.parked.visible=true;},1500);r(won);}}
 
 // talking to the racers: each takes you on once the one before is beaten; afterwards they will race you again for fun
 RACERS.forEach((R,k)=>{const lv=k+1,key='touge'+lv,prev=k?'touge'+k:null,back=['warp',INK_X+R.home.x,R.home.z+2.6,Math.PI];
