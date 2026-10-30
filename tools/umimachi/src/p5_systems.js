@@ -303,7 +303,7 @@ function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Ob
         b.onclick=()=>{const k=(I.colors||[[]]).findIndex((c,ci)=>ownsKey(SAVE,S.slot+':'+I.id+':'+ci));setOutfit(S.slot,I.id,Math.max(0,k));};r.appendChild(b);}col.appendChild(r);}
     const own=(it.colors||[]).filter((c,k)=>ownsKey(SAVE,S.slot+':'+it.id+':'+k)).length;
     if(own>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';const cl=document.createElement('span');cl.className='cl';cl.textContent='色';r.appendChild(cl);
-      it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
+      it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#262222',c2=cs[1]||a;
         b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
     box.appendChild(row);}}
 function setOutfit(slot,id,ci){SAVE.outfit=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{});SAVE.outfit[slot]=[id,ci];save();applyOutfit(player,SAVE.outfit);if(CL.big)renderMini();else renderCloset();}
@@ -314,7 +314,7 @@ function closetBig(on){CL.big=on;$('closet').classList.toggle('big',on);document
 function renderMini(){const sl=closetSlotsOn();if(!sl.length){$('cmSlot').textContent='—';$('cmItem').textContent='まだ服がない';$('cmCols').innerHTML='';return;}
   CL.si=((CL.si||0)%sl.length+sl.length)%sl.length;const S=sl[CL.si],cur=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{}),[id,ci]=cur[S.slot],it=findItem(S.slot,id),items=S.items.filter(I=>ownsItem(SAVE,S.slot,I));
   $('cmSlot').textContent=S.label;$('cmItem').textContent=it.name;$('cmIp').disabled=$('cmIn').disabled=items.length<2;$('cmSp').disabled=$('cmSn').disabled=sl.length<2;
-  const r=$('cmCols');r.innerHTML='';(it.colors||[]).forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
+  const r=$('cmCols');r.innerHTML='';(it.colors||[]).forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#262222',c2=cs[1]||a;
     b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.onclick=()=>setOutfit(S.slot,it.id,k);r.appendChild(b);});r.hidden=r.children.length<2;
   $('cmBg').textContent='背景：'+['町','白','夕やけ','夜'][CL.bg||0];$('cmSpin').classList.toggle('on',!!CL.spin);}
 function miniItem(d){const sl=closetSlotsOn(),S=sl[CL.si];if(!S)return;const items=S.items.filter(I=>ownsItem(SAVE,S.slot,I)),cur=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{}),i=items.findIndex(I=>I.id===cur[S.slot][0]);
@@ -342,7 +342,7 @@ $('closetBtn').addEventListener('click',openCloset);
   $('yPlay').onclick=yStart;$('yClose').onclick=()=>{if(YG.on&&YG.S.game==='kingyo')kingyoBreak();YG.on=false;closeModal();};}
 // the gacha at Maruya: rarity first, then an even pick among that rarity's prizes; duplicates turn into kakera
 const RCOL={N:'#6f9fd0',R:'#d977a3',SR:'#e8b030'},RNAME={N:'ノーマル',R:'レア',SR:'スーパーレア'};
-function swatchHTML(c){const a=c&&c[0]||'#7a4a30',b=c&&c[1]||a;return `<span class="sw" style="display:inline-block;background:linear-gradient(135deg,${a} 55%,${b} 55%)"></span>`;}
+function swatchHTML(c){const a=c&&c[0]||'#262222',b=c&&c[1]||a;return `<span class="sw" style="display:inline-block;background:linear-gradient(135deg,${a} 55%,${b} 55%)"></span>`;}
 function gachaInfo(){SAVE.owned=SAVE.owned||{};const have=PRIZES.filter(p=>SAVE.owned[p.key]).length;
   $('gachaInfo').innerHTML=`さいふ <b>${SAVE.money}</b>円 ・ かけら <b>${SAVE.kakera||0}</b> ・ コレクション <b>${have}</b>/${PRIZES.length}<br><small>出る確率　スーパーレア${RATES.SR*100}%・レア${RATES.R*100}%・ノーマル${RATES.N*100}%</small>`;
   $('gachaOne').disabled=SAVE.money<100;$('gachaFive').disabled=SAVE.money<500;}
