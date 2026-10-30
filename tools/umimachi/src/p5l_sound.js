@@ -6,7 +6,7 @@
    camera, the dialogue. Browsers allow no sound before the first tap or key, so it starts then; M (or the 音 button)
    turns it off and on, and that is remembered. Most of it watches the game's state each frame rather than being called. ---------- */
 const SND={ctx:null,on:store.get('umimachi_sound')!=='0',L:{},prev:{},dist:{},nextX:0,nextCricket:0};
-function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resume();return;}
+function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state!=='running'&&!document.hidden)S.ctx.resume();return;}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=S.ctx=new AC();
   const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=S.on?0.9:0;S.master.connect(comp);
   const nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;S.noise=nb;
@@ -65,6 +65,12 @@ const sfx={
   const b0=boom;boom=function(p){sfx.boom(att(Math.hypot(p.x-P.x,p.z-P.z),160)+0.15);return b0(p);};
   const f0=burst;burst=function(p,col){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col);};}
 
+// iPhone app: a light buzz with the bumps and rewards (works with the sound off too)
+const BUZZ={land:'light',bump:'medium',thud:'heavy',coin:'light',pay:'light',shutter:'light',win:'success',lose:'error'};let buzzT=0;
+function buzz(k,force){const H=APP.haptics;if(!H)return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
+  (k==='success'||k==='error'?H.notification({type:k.toUpperCase()}):H.impact({style:k.toUpperCase()})).catch(()=>{});}
+for(const k in BUZZ)if(sfx[k]){const f=sfx[k];sfx[k]=(...a)=>{if(k!=='land'||a[0]>0.25)buzz(BUZZ[k]);return f(...a);};}
+document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden)c.suspend().catch(()=>{});else c.resume().catch(()=>{});});
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
   // the festival band at the shrine: drums and a flute, louder as you come up the approach, and the murmur of the crowd

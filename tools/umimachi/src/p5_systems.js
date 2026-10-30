@@ -221,7 +221,9 @@ function openShop(key){shopCam=key;const m=MENUS[key];$('shopName').textContent=
   draw();openModal('shop');}
 // dialog
 let DLG=null;
-function say(who,lines,done){DLG={who,lines:lines.slice(),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
+// phones: lines written with keys in mind name the on-screen buttons instead
+function devText(s){return hasTouch&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン'):s;}
+function say(who,lines,done){DLG={who,lines:lines.map(devText),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
 function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;if(!ST.run)talkNpc=null;if(d)d();}
 $('dialog').addEventListener('click',nextLine);
 let talkNpc=null;
@@ -241,8 +243,8 @@ function talk(n){talkNpc=n;
 
 /* ---------- photos ---------- */
 let ALBUM=(()=>{try{return JSON.parse(store.get('umimachi_album')||'[]');}catch(e){return[];}})(),photoReq=false;
-function snap(){const src=renderer.domElement,w=360,h=Math.round(w*src.height/src.width);const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(src,0,0,w,h);
-  g.fillStyle='rgba(255,250,240,.85)';g.font='700 13px "Zen Maru Gothic", sans-serif';g.textAlign='right';g.fillText(placeName(),w-10,h-10);
+function snap(){const src=renderer.domElement,w=640,h=Math.round(w*src.height/src.width);const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.drawImage(src,0,0,w,h);
+  g.fillStyle='rgba(255,250,240,.85)';g.font='700 22px "Zen Maru Gothic", sans-serif';g.textAlign='right';g.fillText(placeName(),w-16,h-16);
   let url='';try{url=c.toDataURL('image/jpeg',0.78);}catch(e){}
   const near=SPOTS.find(p=>Math.hypot(P.x-p.x,P.z-p.z)<9);
   player.happyT=1.6;ALBUM.unshift({url,cap:near?near.name:placeName()});ALBUM=ALBUM.slice(0,12);
@@ -252,7 +254,14 @@ function snap(){const src=renderer.domElement,w=360,h=Math.round(w*src.height/sr
   if(near&&st&&st.type==='photos'&&!SAVE.spots.includes(near.id)){SAVE.spots.push(near.id);toast(`${near.name}を撮った（${SAVE.spots.length}/${SPOTS.length}）`,true);autoSteps();save();renderHUD();}
   else toast(near?`${near.name}で1枚`:'パシャ。アルバムに残した');}
 function renderAlbum(){const A=$('albumGrid');A.innerHTML='';if(!ALBUM.length){const p=document.createElement('p');p.className='sub';p.textContent='まだ写真がありません。気に入った景色で撮ってみよう。';A.appendChild(p);return;}
-  for(const a of ALBUM){const f=document.createElement('figure');const im=document.createElement('img');im.src=a.url;im.alt=a.cap;const c=document.createElement('figcaption');c.textContent=a.cap;f.append(im,c);A.appendChild(f);}}
+  for(const a of ALBUM){const f=document.createElement('figure');const im=document.createElement('img');im.src=a.url;im.alt=a.cap;im.style.cursor='pointer';im.onclick=()=>sharePhoto(a);const c=document.createElement('figcaption');c.textContent=a.cap;f.append(im,c);A.appendChild(f);}}
+// a photo leaves the game through the share sheet (the app writes it to a file first), or a download on a computer
+async function sharePhoto(a){if(!a.url)return;const name='umimachi_'+Date.now()+'.jpg';
+  if(APP.native&&APP.fs&&APP.share){try{const r=await APP.fs.writeFile({path:name,data:a.url.split(',')[1],directory:'CACHE'});await APP.share.share({title:a.cap,files:[r.uri]});}catch(e){}return;}
+  try{const f=new File([await (await fetch(a.url)).blob()],name,{type:'image/jpeg'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:a.cap});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  const l=document.createElement('a');l.href=a.url;l.download=name;l.click();}
+// leaving the app (home screen, a call) saves where you are
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')save();});
 $('photoBtn').addEventListener('click',()=>{photoReq=true;});
 // phones: the menu button folds the tools away; choosing one folds them again. Tapping the tracker folds it to its title
 $('menuBtn').addEventListener('click',()=>{const T=$('tools');T.classList.toggle('open');$('menuBtn').textContent=T.classList.contains('open')?'とじる':'メニュー';});
@@ -411,6 +420,9 @@ const stick={on:false,id:null,x:0,y:0};
 canvas.addEventListener('mousedown',e=>{if(e.button===0&&DRONE.active)FIRE.mouse=true;});window.addEventListener('mouseup',()=>{FIRE.mouse=false;});
 const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(hasTouch)for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());   // no long-press menu or selection while playing
+// Safari ignores user-scalable=no: a pinch would zoom the page and leave the buttons off screen (double taps: touch-action:manipulation)
+if(hasTouch)for(const ev of ['gesturestart','gesturechange'])document.addEventListener(ev,e=>e.preventDefault());
+if(hasTouch){$('albumSub').textContent='メニューの「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をタップすると保存や共有ができます。';$('creditsEnd').textContent='夏休みは、まだ続く。（タップでとじる）';}
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
   if(stick.on){if(stick.y>0.45)back=true;if(stick.y<-0.45)fwd=true;   // pushing the stick forward kicks (on foot: runs) like holding W
@@ -614,5 +626,5 @@ const heroineReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader)return 
 // Mio's model, the same way (the procedural figure stays if it cannot be fetched; the single-file build does without it)
 const mioReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader||document.getElementById('heroineGLB'))return res();const t=setTimeout(res,25000);
   new THREE.GLTFLoader().load('mio.glb',g=>{window.MIO_GLTF=g;clearTimeout(t);res();},undefined,()=>{clearTimeout(t);res();});});
-Promise.all([fontReady,heroineReady,mioReady]).then(main);
+Promise.all([fontReady,heroineReady,mioReady,window.APP&&APP.ready]).then(main);
 </script>
