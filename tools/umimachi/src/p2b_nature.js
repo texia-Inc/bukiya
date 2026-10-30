@@ -3,16 +3,19 @@
    WIND.t is the clock the shaders share (set every frame in p5_systems.js). Gusts are bands that roll across the town from
    the sea; where one passes, the grass bends further and catches the light, so bright waves seem to run over it. ---------- */
 const WIND={t:{value:0}};
+// gust: broad, slow swells of wind. windLine: the thin bright lines a breeze draws over a field, wavy, drifting inland from the sea
 const WIND_GLSL=`uniform float uWindT;
-float gust(vec2 p){return 0.5+0.5*sin(dot(p,vec2(0.045,0.07))-uWindT*1.15)*sin(dot(p,vec2(-0.021,0.033))-uWindT*0.53+1.7);}`;
+float gust(vec2 p){return 0.5+0.5*sin(dot(p,vec2(0.02,0.032))-uWindT*0.42)*sin(dot(p,vec2(-0.011,0.017))-uWindT*0.21+1.7);}
+float windLine(vec2 p){float ph=dot(p,vec2(0.15,-0.48))+sin(dot(p,vec2(0.07,0.025))+uWindT*0.15)*2.2+sin(dot(p,vec2(-0.21,0.08)))*0.7-uWindT*1.9;
+  float l=pow(0.5+0.5*sin(ph),9.0);float br=smoothstep(0.25,0.75,0.5+0.5*sin(dot(p,vec2(0.017,0.009))-uWindT*0.12));return l*br;}`;
 // leaves: the whole crown leans and shivers, more at the top, each tree on its own beat (its place sets the phase)
 function windify(mat,amp){mat.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;
   sh.vertexShader=WIND_GLSL+'\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
 #ifdef USE_INSTANCING
   vec2 wp=instanceMatrix[3].xz;float ph=dot(wp,vec2(0.37,0.23));float g=gust(wp);
   float k=max(transformed.y+0.6,0.0)*${amp.toFixed(3)};
-  transformed.x+=k*(sin(uWindT*1.6+ph)*0.6+g*0.9);transformed.z+=k*(sin(uWindT*1.23+ph*1.7)*0.45+g*0.4);
-  transformed+=normal*sin(uWindT*7.0+ph*3.0+transformed.y*4.0)*0.012;
+  transformed.x+=k*(sin(uWindT*0.55+ph)*0.35+g*0.8);transformed.z-=k*(sin(uWindT*0.41+ph*1.7)*0.25+g*0.5);
+  transformed+=normal*sin(uWindT*1.8+ph*3.0+transformed.y*3.0)*0.004;
 #endif`);};mat.customProgramCacheKey=()=>'wind'+amp;return mat;}
 // a broadleaf crown: a few lumpy balls run together, darker underneath and brighter on top
 function canopyGeo(seed){const r=mulberry(seed),parts=[[0,0,0,1],[0.55,0.25,0.2,0.7],[-0.5,0.2,-0.25,0.68],[0.1,0.55,-0.45,0.6],[-0.15,-0.3,0.5,0.62]];
@@ -28,17 +31,17 @@ function cedarGeo(){const pos=[],col=[];const tiers=[[0.0,0.5,1],[0.28,0.42,0.78
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
   geo.computeVertexNormals();return geo;}
 const CANOPY=[canopyGeo(3),canopyGeo(11)],CEDAR=cedarGeo();
-const LEAF=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true}),0.05);
-const NEEDLE=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.035);
+const LEAF=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true}),0.025);
+const NEEDLE=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,vertexColors:true,side:THREE.DoubleSide}),0.016);
 
 /* grass: clumps of blades in 16 m squares, made when you come near and dropped when you are far away.
    Only on open ground: not on streets, lots, the tram line, the shore, the cuttings or the paved places */
 const GRASS={chunks:new Map(),S:16,mesh:null,on:true};
 function grassOK(x,z){if(x>INK_X-600)return false;
-  if(z>ISL_Z0&&ISL_ON){const y=G(x,z);return y>SEA_Y+1.6&&Math.hypot(x-198,z-760)>9;}
+  if(z>ISL_Z0&&ISL_ON){const y=G(x,z),u=x-ISL.x,w=z-ISL.z;return y>SEA_Y+1.6&&Math.hypot(x-LH.x,z-LH.z)>9&&islPathD(u,w)>2.6&&!(u>-60&&u<-48&&w<-18);}   // not on the path up to the lighthouse or the jetty
   const y=H(x,z);if(z>SHORE-1)return Math.abs(x)>205&&y>7;if(z>COAST_Z-6.5||cutting(x,z))return false;
   const b={x0:x-0.6,x1:x+0.6,z0:z-0.6,z1:z+0.6};
-  for(const S of STREETS)if(overlaps(b,streetBox(S,0.6),0))return false;
+  for(const S of STREETS){const sb=streetBox(S,0.6);if(S.ax==='z'){sb.z0-=3;sb.z1+=3;}else{sb.x0-=3;sb.x1+=3;}if(overlaps(b,sb,0))return false;}   // the street and a little past its ends
   if(Math.abs(z-TRAM_Z)<4.5&&Math.abs(x)<TRAM_X1+30)return false;
   for(const r of RES)if(overlaps(b,r,1))return false;for(const o of BLD)if(overlaps(b,o,0.8))return false;
   for(const c of COLL)if(c.tag!=='tree'&&overlaps(b,c,0.4))return false;
@@ -53,13 +56,13 @@ const GRASS_GEO=(()=>{const pos=[],uv=[],idx=[];let v=0;
 const GRASS_MAT=(()=>{const m=new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRAD,side:THREE.DoubleSide});   // toon: the same light as the ground, and three.js hands it cameraPosition (Lambert does not get it)
   m.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;sh.uniforms.uFar={value:GRASS.R||40};GRASS.uFar=sh.uniforms.uFar;
     sh.vertexShader=WIND_GLSL+'\nuniform float uFar;varying float vTip;varying float vGlow;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-  vec2 wp=instanceMatrix[3].xz;float t=uv.y;vTip=t;float g=gust(wp);vGlow=smoothstep(0.62,0.95,g);
+  vec2 wp=instanceMatrix[3].xz;float t=uv.y;vTip=t;float g=gust(wp);float wl=windLine(wp);vGlow=wl;
   float fd=1.0-smoothstep(uFar*0.72,uFar,distance(wp,cameraPosition.xz));transformed.y*=fd;
-  float ph=dot(wp,vec2(1.7,1.3));float bendA=(0.02+g*0.12)*t*t;
-  transformed.x+=bendA*0.9+sin(uWindT*2.4+ph)*0.035*t;transformed.z+=bendA*0.5+cos(uWindT*1.9+ph)*0.03*t;transformed.y-=bendA*0.12;`);
+  float ph=dot(wp,vec2(1.7,1.3));float bendA=(0.03+g*0.06+wl*0.1)*t*t;   // leaning with the wind, a little more as a line of wind passes
+  transformed.x+=bendA*0.3+sin(uWindT*0.9+ph)*0.012*t;transformed.z-=bendA*0.95+cos(uWindT*0.7+ph)*0.01*t;transformed.y-=bendA*0.15;`);
     sh.fragmentShader='varying float vTip;varying float vGlow;\n'+sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );',
       'vec4 diffuseColor = vec4( diffuse*mix(0.62,1.1,vTip), opacity );')
-      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=diffuseColor.rgb*vec3(0.42,0.46,0.24)*vGlow*vTip;');};
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n  totalEmissiveRadiance+=(diffuseColor.rgb*0.6+vec3(0.22,0.2,0.1))*vGlow*vTip*vTip;   // the sheen on the bent tips');};
   m.customProgramCacheKey=()=>'grass';return m;})();
 const GRASS_COLS=['#5f9c46','#6ea951','#558f42','#7bb15a','#4f8a3f'].map(c=>new THREE.Color(c));
 function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+cz*104729)&0x7fffffff),list=[];
@@ -69,10 +72,18 @@ function grassChunk(cx,cz){const S=GRASS.S,x0=cx*S,z0=cz*S,r=mulberry((cx*7919+c
   list.forEach((e,i)=>{d.position.set(e.x,e.y-0.03,e.z);d.scale.set(e.s,e.s*(0.75+0.45*vnoise(e.x/9,e.z/9)),e.s);d.updateMatrix();im.setMatrixAt(i,d.matrix);im.setColorAt(i,e.c);});
   im.frustumCulled=false;im.matrixAutoUpdate=false;scene.add(im);return im;}
 // keep the squares round the player made, a couple per frame, and let go of the far ones
-function updateGrass(){if(!GRASS.per){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
+function updateGrass(){if(GRASS.per==null){const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;GRASS.per=touch?420:900;GRASS.R=touch?30:42;}if(GRASS.uFar)GRASS.uFar.value=GRASS.R;
   const S=GRASS.S,R=GRASS.R,px=P.x,pz=P.z,on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&px<INK_X-600,c0x=Math.floor((px-R)/S),c1x=Math.floor((px+R)/S),c0z=Math.floor((pz-R)/S),c1z=Math.floor((pz+R)/S);
   let made=0;for(const [k,c] of GRASS.chunks){const dx=Math.max(0,Math.abs((c.cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((c.cz+0.5)*S-pz)-S/2),d=Math.hypot(dx,dz);
     if(c.m)c.m.visible=on&&d<R;if(d>R+S*2){if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.delete(k);}}
   if(!on)return;for(let cx=c0x;cx<=c1x;cx++)for(let cz=c0z;cz<=c1z;cz++){const k=cx+','+cz;if(GRASS.chunks.has(k))continue;
     const dx=Math.max(0,Math.abs((cx+0.5)*S-px)-S/2),dz=Math.max(0,Math.abs((cz+0.5)*S-pz)-S/2);if(Math.hypot(dx,dz)>R)continue;
     if(made++>=2)return;GRASS.chunks.set(k,{cx,cz,m:grassChunk(cx,cz)});}}
+// the same lines of wind run over the green ground itself, so between the blades and beyond the grass the field shines in waves too
+{ let ground=null;world.traverse(o=>{if(!ground&&o.isMesh&&o.material&&o.material.vertexColors&&o.geometry.attributes.position.count>60000)ground=o;});
+  if(ground){const m=ground.material;m.onBeforeCompile=sh=>{sh.uniforms.uWindT=WIND.t;
+    sh.vertexShader='varying vec3 vWP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  vWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    sh.fragmentShader=WIND_GLSL+'\nvarying vec3 vWP;\n'+sh.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+  { float grassy=smoothstep(0.06,0.14,vColor.g-vColor.r);float fd=1.0-smoothstep(70.0,170.0,distance(vWP.xz,cameraPosition.xz));
+    totalEmissiveRadiance+=(diffuseColor.rgb*0.5+vec3(0.1,0.1,0.04))*windLine(vWP.xz)*grassy*fd; }`);};
+    m.customProgramCacheKey=()=>'ground-wind';m.needsUpdate=true;}}

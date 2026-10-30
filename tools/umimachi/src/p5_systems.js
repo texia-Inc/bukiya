@@ -272,7 +272,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='p
 $('photoBtn').addEventListener('click',()=>{photoReq=true;});
 // phones: the menu button folds the tools away; choosing one folds them again. Tapping the tracker folds it to its title
 $('menuBtn').addEventListener('click',()=>{const T=$('tools');T.classList.toggle('open');$('menuBtn').textContent=T.classList.contains('open')?'とじる':'メニュー';});
-for(const id of ['logBtn','albumBtn','closetBtn','photoBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
+for(const id of ['logBtn','albumBtn','closetBtn','photoBtn','setBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
 $('tracker').addEventListener('click',()=>{$('tracker').classList.toggle('mini');});$('lightBtn').addEventListener('click',toggleTorch);
 // markers floating in the world
 const markTex=(ch,bg)=>canvasTex(64,64,(g,w,h)=>{g.fillStyle=bg;g.beginPath();g.arc(32,30,24,0,7);g.fill();g.beginPath();g.moveTo(22,48);g.lineTo(42,48);g.lineTo(32,62);g.fill();
@@ -429,6 +429,25 @@ const hasTouch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
 if(hasTouch)for(const ev of ['contextmenu','selectstart'])document.addEventListener(ev,e=>e.preventDefault());   // no long-press menu or selection while playing
 // Safari ignores user-scalable=no: a pinch would zoom the page and leave the buttons off screen (double taps: touch-action:manipulation)
 if(hasTouch)for(const ev of ['gesturestart','gesturechange'])document.addEventListener(ev,e=>e.preventDefault());
+/* ---------- settings: sound and its volume, vibration (the app), how much the picture draws, the how-to, back to the title ---------- */
+const QUALITY=[{pr:1,grass:0,shadow:false,note:'草と影なし、解像度ひかえめ。電池が長もちして、熱くなりにくい'},
+  {pr:1.75,grass:1,shadow:true,note:'いつもの画質'},{pr:2.5,grass:1.5,shadow:true,note:'草が多く、遠くまで。画面がくっきり（重くなる）'}];
+function applyQuality(q){const Q=QUALITY[q]||QUALITY[1];renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));resize();
+  sun.castShadow=Q.shadow;GRASS.on=Q.grass>0;GRASS.per=Math.round((hasTouch?420:900)*Q.grass);GRASS.R=Math.round((hasTouch?30:42)*(Q.grass>1?1.2:1));
+  for(const c of GRASS.chunks.values())if(c.m){scene.remove(c.m);c.m.dispose();}GRASS.chunks.clear();}
+let QLV=clamp(+(store.get('umimachi_q')??1)|0,0,2);applyQuality(QLV);
+function renderSettings(){$('setSnd').textContent=SND.on?'オン':'オフ';$('setVol').value=Math.round(SND.vol*100);$('setVol').disabled=!SND.on;
+  $('setBuzzRow').hidden=!APP.native;$('setBuzz').textContent=store.get('umimachi_buzz')==='0'?'オフ':'オン';
+  for(const b of $('setQ').children)b.classList.toggle('on',+b.dataset.q===QLV);$('setQNote').textContent=QUALITY[QLV].note;}
+$('setBtn').addEventListener('click',()=>{renderSettings();openModal('setM');});
+$('setClose').addEventListener('click',closeModal);
+$('setSnd').addEventListener('click',sndToggle);
+$('setVol').addEventListener('input',e=>{SND.vol=e.target.value/100;store.set('umimachi_vol',String(e.target.value));sndInit();sndApply();});
+$('setBuzz').addEventListener('click',()=>{const off=store.get('umimachi_buzz')!=='0';store.set('umimachi_buzz',off?'0':'1');if(!off)buzz('medium',true);renderSettings();});
+for(const b of $('setQ').children)b.addEventListener('click',()=>{QLV=+b.dataset.q;store.set('umimachi_q',String(QLV));applyQuality(QLV);renderSettings();});
+$('setHelp').addEventListener('click',()=>{closeModal();openModal('helpM');});
+$('helpClose').addEventListener('click',()=>{closeModal();if(state==='play'){renderSettings();openModal('setM');}});
+$('setTitle').addEventListener('click',()=>{if(state==='play')save();location.reload();});
 if(hasTouch){$('albumSub').textContent='メニューの「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をタップすると保存や共有ができます。';$('creditsEnd').textContent='夏休みは、まだ続く。（タップでとじる）';}
 function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.ArrowDown),turn=((keys.KeyD||keys.ArrowRight)?1:0)-((keys.KeyA||keys.ArrowLeft)?1:0);
   fwd=fwd||kickHold;if(ST.run&&!storyFree())return{fwd:false,back:P.v>0.2,turn:0};   // events hold the board still
@@ -436,9 +455,9 @@ function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.Ar
    if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
-function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
+function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP||c.tag==='step')continue;   /* steps never stop you: you rise onto them one at a time */if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
-function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
+function groundAt(x,z,y){let g=G(x,z)+paveY(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
 function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
 // the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
@@ -450,7 +469,7 @@ function stepPlayer(dt){
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   // the slope under her: on a bridge it is the deck's, not the ground far below
-  const gs=(x,z)=>{let g=G(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
+  const gs=(x,z)=>{let g=G(x,z)+paveY(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
   const g1=gs(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=gs(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
   const sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&!onPier(P.x,P.z);
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
@@ -585,7 +604,8 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;
-    const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));}else pr.hidden=true;
+    const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';if(hasTouch)pr.textContent=near.label.replace(near.verb,'').replace(/^[\s　]+/,'')||near.label;   // phones: the button already says the verb
+      else{const k=document.createElement('kbd');k.textContent='E';pr.append(k,document.createTextNode(near.label));}}else pr.hidden=true;
     // the act button is there only when there is something to do with it: someone or something close by, or a line to read on
     const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&!ST.run),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
@@ -600,7 +620,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
     camera.layers.set(1);renderer.render(scene,camera);scene.background=bg;camera.layers.set(0);renderer.shadowMap.autoUpdate=su;renderer.autoClear=true;}
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
-function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
+function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));const fresh=!loadSlot(k);SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(fresh)setTimeout(()=>toast(hasTouch?'操作は「メニュー」→「設定」→「あそびかた」で見られる':'操作は右の「設定」→「あそびかた」で見られる'),6000);if(player.vrm)applyOutfit(player,SAVE.outfit);
   state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
   // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)

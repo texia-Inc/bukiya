@@ -8,7 +8,7 @@
 const SND={ctx:null,on:store.get('umimachi_sound')!=='0',L:{},prev:{},dist:{},nextX:0,nextCricket:0};
 function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state!=='running'&&!document.hidden)S.ctx.resume();return;}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=S.ctx=new AC();
-  const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=S.on?0.9:0;S.master.connect(comp);
+  const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=sndLevel();S.master.connect(comp);
   const nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;S.noise=nb;
   // the loops: noise (or an oscillator) through a filter into a gain that the update turns up and down
   const loop=(type,f,q,osc)=>{let src;if(osc){src=c.createOscillator();src.type=osc;src.frequency.value=f;}else{src=c.createBufferSource();src.buffer=nb;src.loop=true;}
@@ -17,10 +17,12 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state!=='running'&&!document.h
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
   S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');S.L.crowd=loop('bandpass',650,0.8);
 }
-function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();if(S.master)S.master.gain.setTargetAtTime(S.on?0.9:0,S.ctx.currentTime,0.05);
-  $('soundBtn').textContent=S.on?'音：オン':'音：オフ';toast(S.on?'音をオンにした':'音をオフにした');}
+// the level: on/off and the volume from the settings
+function sndLevel(){return SND.on?0.9*SND.vol:0;}
+function sndApply(){const S=SND;if(S.master)S.master.gain.setTargetAtTime(sndLevel(),S.ctx.currentTime,0.05);if(typeof renderSettings==='function')renderSettings();}
+function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();sndApply();toast(S.on?'音をオンにした':'音をオフにした');}
 for(const ev of ['pointerdown','keydown','touchstart'])window.addEventListener(ev,sndInit,{passive:true});
-$('soundBtn').textContent=SND.on?'音：オン':'音：オフ';$('soundBtn').addEventListener('click',sndToggle);
+SND.vol=clamp(+(store.get('umimachi_vol')||100)/100,0,1);
 window.addEventListener('keydown',e=>{if(e.code==='KeyM'&&!e.repeat)sndToggle();});
 
 /* one-shots */
@@ -67,7 +69,7 @@ const sfx={
 
 // iPhone app: a light buzz with the bumps and rewards (works with the sound off too)
 const BUZZ={land:'light',bump:'medium',thud:'heavy',coin:'light',pay:'light',shutter:'light',win:'success',lose:'error'};let buzzT=0;
-function buzz(k,force){const H=APP.haptics;if(!H)return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
+function buzz(k,force){const H=APP.haptics;if(!H||store.get('umimachi_buzz')==='0')return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
   (k==='success'||k==='error'?H.notification({type:k.toUpperCase()}):H.impact({style:k.toUpperCase()})).catch(()=>{});}
 for(const k in BUZZ)if(sfx[k]){const f=sfx[k];sfx[k]=(...a)=>{if(k!=='land'||a[0]>0.25)buzz(BUZZ[k]);return f(...a);};}
 document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden)c.suspend().catch(()=>{});else c.resume().catch(()=>{});});
