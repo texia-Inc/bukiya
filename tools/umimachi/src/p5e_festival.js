@@ -81,7 +81,10 @@ function burst(p,col){const n=140,pos=new Float32Array(n*3),vel=[];const r=mulbe
 function fireworks(sec){FEST.fwUntil=clock+sec;FEST.fwT=0;}
 const FW_COL=['#ff5a4a','#ffd24a','#7ad8ff','#b78cff','#7dff9a','#ffffff','#ff9ad0'];
 function updateFestival(dt){const fest=SAVE.flags.fest_day;
-  FEST.lanterns.visible=!URA.on&&(fest||qs('fest_lantern').state===2);const st=!URA.on&&(fest||qs('fest_yatai').state===2);
+  // the decorations go up as the errands are done and come down after the festival; the stall keepers are only there on the day
+  const season=!URA.on&&SAVE.flags.route===3&&SAVE.day<=6;
+  FEST.lanterns.visible=season&&(fest||qs('fest_lantern').state===2);const st=season&&(fest||qs('fest_yatai').state===2);
+  for(const S of YATAI)S.k.g.visible=festOn();
   if(FEST.stalls.visible!==st){FEST.stalls.visible=st;for(const g of FEST.stalls.children)g.userData.box.on=st;}
   updateCrowd(dt);
   const ng=FEST.red.emissiveIntensity/0.85,lit=FEST.lanterns.visible&&ng>0.02&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+141)<120;
@@ -154,7 +157,7 @@ function updateCrowd(dt){const on=festOn()&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+
   for(const S of YATAI)if(S.g.visible!==false&&Math.hypot(P.x-S.fx,P.z-S.fz)<60)poseHuman(S.k,'stand',dt,{look:Math.hypot(P.x-S.fx,P.z-S.fz)<6?player.g.position:null});}
 
 /* buying at the stalls: food is eaten on the spot; the goldfish pool and the cork guns open a little game */
-function festNear(){if(!FEST.stalls.visible)return null;let best=null;
+function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand emptylet best=null;
   for(const S of YATAI){const d=Math.hypot(P.x-S.fx,P.z-S.fz);if(d<2.3&&(!best||d<best.d))best={kind:'yatai',S,d,label:`${S.game?'あそぶ':'買う'}　${S.name}（${S.price}円）`,verb:S.game?'あそぶ':'買う'};}
   return best;}
 const FOODS=['kakigori','yakisoba','ringo','takoyaki'];

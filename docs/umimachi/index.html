@@ -38,6 +38,10 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 #tracker b{display:block;font-size:14px;color:var(--rose)}
 #tracker .step{color:var(--ink)}
 #tracker .meter{display:block;color:var(--ink-soft);font-size:12px;margin-top:2px}
+#tracker .qn{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;color:#fff;font:900 11px var(--round);font-style:normal;margin-right:5px;vertical-align:1px}
+#tracker .others{display:flex;flex-direction:column;gap:2px;margin-top:6px;padding-top:5px;border-top:1px dashed rgba(0,0,0,.15);pointer-events:auto}
+#tracker .oq{appearance:none;border:0;background:none;padding:2px 0;text-align:left;font:700 12px var(--round);color:var(--ink-soft);cursor:pointer;display:flex;align-items:center}
+#tracker .oq .qn{width:15px;height:15px;font-size:10px}
 #map{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:12px;width:132px;height:132px;padding:5px;pointer-events:auto;cursor:pointer}
 #map canvas{width:100%;height:100%;border-radius:10px;display:block}
 #tools{position:absolute;top:calc(env(safe-area-inset-top,0px) + 158px);right:12px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
@@ -5182,8 +5186,8 @@ function makeCat(o){const g=new THREE.Group(),base=tm(o.col||'#f2f2ee'),Mc=(geo,
   for(const [x,z] of [[-0.07,0.13],[0.07,0.13],[-0.07,-0.13],[0.07,-0.13]])Mc(new THREE.CylinderGeometry(0.03,0.025,0.14,6),fur,0).position.set(x,0.07,z);
   const tail=new THREE.Group();tail.position.set(0,0.22,-0.2);g.add(tail);const tm1=new THREE.Mesh(limb(0.025,0.02,0.24,6),o.calico?tm('#e8913a'):base);tm1.rotation.x=-2.3;tail.add(tm1);
   return{g,head,tail,t:rnd()*10,sleep:!!o.sleep,body};}
-function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))*0.5;if(c.sleep){c.body.scale.y=0.62+Math.sin(c.t*1.6)*0.02;c.head.position.set(0,0.16,0.18);c.head.rotation.set(0.5,0,0.3);}
-  else{c.head.rotation.y=Math.sin(c.t*0.6)*0.5;}}
+function poseCat(c,dt,near){c.t+=dt;c.tail.rotation.z=Math.sin(c.t*(near?4:1.5))*0.5;if(c.sleep||c.nap&&phaseOf(SAVE.hour)==='night'){c.body.scale.y=0.62+Math.sin(c.t*1.6)*0.02;c.head.position.set(0,0.16,0.18);c.head.rotation.set(0.5,0,0.3);}
+  else{c.body.scale.y=0.75;c.head.position.set(0,0.32,0.2);c.head.rotation.set(0,Math.sin(c.t*0.6)*0.5,0);}}
 
 /* townsfolk and the people you run errands for */
 const NPCS={};
@@ -5218,8 +5222,9 @@ function shopFront(id,u,v){const b=SHOPS[id],p=b.local(u,0,v);return[p.x,p.z,b.y
 { placeNPC('eki_bus',{skin:'#efc9aa',hair:'#2b2520',style:'short',shirt:'#f2f2ee',sleeves:'long',bottom:'pants',bottomCol:'#3b4a66',glasses:true},53.4,189.6,Math.PI,'stand','',['バス、まだかなあ。','この町のバスは、のんびりしてるんだよ。']);
   placeNPC('eki_taxi',{skin:'#d9a987',hair:'#8a8580',style:'short',cap:'#2b2b30',shirt:'#f4f4f0',sleeves:'long',vest:'#2b2b30',bottom:'pants',bottomCol:'#2b2b30'},74.3,181.5,-Math.PI/2,'stand','タクシーの運転手',['どちらまで？ ……なんてね。','夏は海水浴のお客さんで、駅前もにぎやかになるんだ。']);}
 const CATS=[];
-const MIKE={x:-56.6,z:-158.4};
-{ const m=makeCat({calico:true});m.g.position.set(MIKE.x,G(MIKE.x,MIKE.z)+0.7,MIKE.z);m.g.rotation.y=0.6;world.add(m.g);CATS.push(m);MIKE.cat=m;
+// the shrine's calico sits on the corner of the hall's stone base (its top is 0.7 above the ground at the hall); she naps at night
+const MIKE={x:-57.3,z:-159.5};
+{ const m=makeCat({calico:true});m.nap=true;m.g.position.set(MIKE.x,G(SHRINE.x,-162)+0.7,MIKE.z);m.g.rotation.y=0.6;world.add(m.g);CATS.push(m);MIKE.cat=m;
   for(const [x,z,col,sl] of [[11.5,-15.8,'#3a3a3a',true],[66,205.3,'#e8913a',true],[-108.5,SHORE+11,'#f2f2ee',false],[118.6,90,'#9a8a7a',true]]){
     const c=makeCat({col,sleep:sl});c.g.position.set(x,(x===66?G(65,206)+0.85:G(x,z)),z);c.g.rotation.y=rnd()*6;world.add(c.g);CATS.push(c);}}
 
@@ -6091,7 +6096,10 @@ function burst(p,col){const n=140,pos=new Float32Array(n*3),vel=[];const r=mulbe
 function fireworks(sec){FEST.fwUntil=clock+sec;FEST.fwT=0;}
 const FW_COL=['#ff5a4a','#ffd24a','#7ad8ff','#b78cff','#7dff9a','#ffffff','#ff9ad0'];
 function updateFestival(dt){const fest=SAVE.flags.fest_day;
-  FEST.lanterns.visible=!URA.on&&(fest||qs('fest_lantern').state===2);const st=!URA.on&&(fest||qs('fest_yatai').state===2);
+  // the decorations go up as the errands are done and come down after the festival; the stall keepers are only there on the day
+  const season=!URA.on&&SAVE.flags.route===3&&SAVE.day<=6;
+  FEST.lanterns.visible=season&&(fest||qs('fest_lantern').state===2);const st=season&&(fest||qs('fest_yatai').state===2);
+  for(const S of YATAI)S.k.g.visible=festOn();
   if(FEST.stalls.visible!==st){FEST.stalls.visible=st;for(const g of FEST.stalls.children)g.userData.box.on=st;}
   updateCrowd(dt);
   const ng=FEST.red.emissiveIntensity/0.85,lit=FEST.lanterns.visible&&ng>0.02&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+141)<120;
@@ -6164,7 +6172,7 @@ function updateCrowd(dt){const on=festOn()&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+
   for(const S of YATAI)if(S.g.visible!==false&&Math.hypot(P.x-S.fx,P.z-S.fz)<60)poseHuman(S.k,'stand',dt,{look:Math.hypot(P.x-S.fx,P.z-S.fz)<6?player.g.position:null});}
 
 /* buying at the stalls: food is eaten on the spot; the goldfish pool and the cork guns open a little game */
-function festNear(){if(!FEST.stalls.visible)return null;let best=null;
+function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand emptylet best=null;
   for(const S of YATAI){const d=Math.hypot(P.x-S.fx,P.z-S.fz);if(d<2.3&&(!best||d<best.d))best={kind:'yatai',S,d,label:`${S.game?'あそぶ':'買う'}　${S.name}（${S.price}円）`,verb:S.game?'あそぶ':'買う'};}
   return best;}
 const FOODS=['kakigori','yakisoba','ringo','takoyaki'];
@@ -8001,8 +8009,15 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');c
   if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
-    if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
+    if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
+    // the other errands under it, each with its number (the same as on the map); tap one to follow it instead
+    const act=activeQuests(),k0=act.indexOf(q);b.prepend(Object.assign(document.createElement('i'),{className:'qn',textContent:k0+1}));b.querySelector('.qn').style.background=QCOL[k0%QCOL.length];
+    if(act.length>1){const box=document.createElement('div');box.className='others';
+      let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
+        r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();}
+// errands in hand, in a fixed order, and the colour each one has on the tracker and the map
+const activeQuests=()=>QUESTS.filter(q=>qs(q.id).state===1),QCOL=['#e2584a','#3a7bd5','#2e9a5a','#a070d0','#e8a23a','#d0508a'];
 function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){const s=qs(q.id);if(s.state===0&&!available(q))continue;
   const d=document.createElement('div');d.className='q'+(SAVE.tracked===q.id?' on':'');const st=document.createElement('span');
   st.className='st '+(s.state===2?'done':s.state===1?'act':'new');st.textContent=s.state===2?'完了':s.state===1?'おつかい中':'まだ話していない';
@@ -8090,9 +8105,12 @@ function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',isl=!ink&&P.z>I
   const toM=(x,z)=>[(x-P.x)*S+mapc.width/2,(z-P.z)*S+mapc.height/2];
   for(const p of SPOTS){const [mx,my]=toM(p.x,p.z);mg.fillStyle=SAVE.spots.includes(p.id)?'#9aa6ae':'#1f7fc0';mg.beginPath();mg.arc(mx,my,5,0,7);mg.fill();}
   for(const q of QUESTS){if(!available(q))continue;const n=NPCS[q.giver],[mx,my]=toM(n.x,n.z);mg.fillStyle='#f2a33a';mg.beginPath();mg.arc(mx,my,7,0,7);mg.fill();mg.fillStyle='#fff';mg.font='900 11px sans-serif';mg.textAlign='center';mg.textBaseline='middle';mg.fillText('!',mx,my+1);}
-  const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);
-  if(t){let [mx,my]=toM(t[0],t[1]);const W=mapc.width,pad=10,out=mx<pad||my<pad||mx>W-pad||my>W-pad;mx=clamp(mx,pad,W-pad);my=clamp(my,pad,W-pad);
-    mg.fillStyle='#e2584a';mg.beginPath();mg.arc(mx,my,out?6:8,0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=2;mg.stroke();}
+  // every errand in hand has its numbered dot; the one followed is bigger and drawn last
+  const act=activeQuests(),qt=SAVE.tracked&&QBY(SAVE.tracked);
+  for(const q of act.filter(o=>o!==qt).concat(qt&&act.includes(qt)?[qt]:[])){const t=targetOf(q);if(!t)continue;const k=act.indexOf(q),big=q===qt;
+    let [mx,my]=toM(t[0],t[1]);const W=mapc.width,pad=10,out=mx<pad||my<pad||mx>W-pad||my>W-pad;mx=clamp(mx,pad,W-pad);my=clamp(my,pad,W-pad);
+    mg.fillStyle=QCOL[k%QCOL.length];mg.beginPath();mg.arc(mx,my,big?(out?7:9):(out?5:6.5),0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=big?2.5:1.5;mg.stroke();
+    if(act.length>1){mg.fillStyle='#fff';mg.font=`900 ${big?11:9}px sans-serif`;mg.textAlign='center';mg.textBaseline='middle';mg.fillText(k+1,mx,my+1);}}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
 function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();if(x>EKI.x0&&x<EKI.x1&&z>EKI.z0&&z<EKI.z1)return'うみまち駅前';
@@ -8302,7 +8320,7 @@ function findNear(){if(RIDE.on)return rideNear();if(BOAT.on)return null;let best
 function act(o){if(!o)return;
   if(o.kind==='npc')talk(o.n);else if(o.kind==='shop')openShop(o.id);
   else if(o.kind==='post'){const q=QBY('letter'),st=stepOf(q);say('ポスト',st.text,()=>{addItem('letter',-1);advance(q);});}
-  else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
+  else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',phaseOf(SAVE.hour)==='night'?['ニャア。…いた！ 本殿の石の上で、丸くなって眠っている。']:st.text,()=>advance(q));else{const ph=phaseOf(SAVE.hour);say('三毛猫',[ph==='night'?'丸くなって、すやすや眠っている。なでると、しっぽだけが少しゆれた。':ph==='evening'?'ゴロゴロ…。夕日をあびて、目を細めている。':ph==='morning'?'ゴロゴロ…。朝の石の上で、毛づくろいをしている。':'ゴロゴロ…。日なたであくびをしている。']);}}
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);if(st.gain){addItem(...st.gain);toast(`${ITEMS[st.gain[0]].name}を手に入れた`);}advance(o.q);});}
   else if(o.kind==='gacha')openGacha();else if(o.kind==='yatai')yataiAct(o);
