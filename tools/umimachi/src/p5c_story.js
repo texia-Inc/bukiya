@@ -44,7 +44,7 @@ function tintUnlit(){_tint.copy(sun.color).multiplyScalar(sun.intensity*0.6);_tc
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||!!URA.chase||ogBusy()||lightsBusy();   // events during which the board is yours
+const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy();   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -106,6 +106,7 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'call':await a[0]();break;
   case 'night':{const e=findEvent('night');if(e){SAVE.seen[e.id]=1;return steps(e.script);}break;}   // ['night']  the first ready event marked on:{night:true}                                       // ['call', fn]  anything the data cannot say
   case 'race':{const t=await raceP(a[0]);SAVE.flags[a[1]]=t<0?-1:Math.round(t*10);break;}   // ['race', {from:[x,z,yaw], to:[x,z,r], limit}, flag]  the time in tenths of a second, -1 if over the limit
+  case 'touge':SAVE.flags.touge_win=await tougeP(a[0])?1:0;break;          // ['touge', 1|2|3]  the downhill battle with that racer of いろは峠; touge_win is 1 if you won
   case 'fireworks':fireworks(a[0]);break;
   case 'chase':await chaseP();break;                                     // ['chase']  in 裏海街: the big shadow chases you to the west tunnel
   case 'ura':if(a[0])uraEnter();else uraExit();break;
@@ -132,5 +133,5 @@ function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);upd
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
     m.visible=!calm&&!URA.on&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
-  if(calm||DRONE.active)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
+  if(calm||DRONE.active||RIDE.on)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
   const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}

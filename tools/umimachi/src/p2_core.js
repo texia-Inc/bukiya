@@ -87,6 +87,8 @@ function cutting(x,z){return Math.abs(x)<CUT_X+2&&(Math.abs(z-TRAM_Z)<6.6||(z>23
 // the hills either side of town: a slope that eases into a broad ridge about 40 m up, then a gentle rise to the edge of the map
 function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1));return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7);}
 function H(x,z){let y=z<COAST_Z?(COAST_Z-z)*HILL:z<SHORE?0:-(z-SHORE)*0.035;const ax=Math.abs(x);if(ax>200&&!cutting(x,z))y+=hillY(ax,z);return y;}
+// the country at the end of the tram line lies far to the east (p5k_inaka.js); its heights come from a baked grid
+const INK_X=3000;
 const PIER={x0:-82.5,x1:-77.5,z0:250,z1:338,y:0.45};
 const RIDGE_DECKS=[{x:318,z:60,yaw:-Math.PI/2,name:'東の峠 見晴らし'},{x:-318,z:-10,yaw:Math.PI/2,name:'西の峠 見晴らし'}];
 // the slope between a ridge deck and the town is kept clear of trees so the view stays open
@@ -94,7 +96,7 @@ function inDeckView(x,z){for(const d of RIDGE_DECKS){if(Math.sign(x)!==Math.sign
   if(dx<-6||ax<190)continue;if(Math.abs(z-d.z)<12+dx*0.6)return true;}return false;}
 const HILL_TREES=[];   // hill trees, so the camera can keep out of them
 function onPier(x,z){return x>PIER.x0&&x<PIER.x1&&z>PIER.z0&&z<PIER.z1;}
-function G(x,z){let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
+function G(x,z){if(x>INK_X-600)return inkG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
 
 const world=new THREE.Group();scene.add(world);
 const COLL=[];   // axis-aligned boxes the board bumps into: {x0,x1,z0,z1,on}

@@ -1,16 +1,6 @@
 
 /* ---------- the tram and its level crossings ---------- */
-const tramTex=canvasTex(512,128,(g,w,h)=>{g.fillStyle='#efe6c8';g.fillRect(0,0,w,h);g.fillStyle='#2f7d4f';g.fillRect(0,h*0.58,w,h*0.42);g.fillStyle='#f2c230';g.fillRect(0,h*0.56,w,4);
-  for(let k=0;k<7;k++){const x=22+k*68;g.fillStyle='#2b3a44';g.fillRect(x,18,50,40);g.fillStyle='rgba(255,255,255,.25)';g.fillRect(x+4,22,14,32);}
-  g.fillStyle='#24323a';g.fillRect(w-70,18,20,76);});
-const TRAM={x:-260,dir:1,v:0,wait:0,cars:[],len:25};
-for(let k=0;k<2;k++){const g=new THREE.Group();const body=new THREE.Mesh(new THREE.BoxGeometry(12,2.9,2.5),[tm('#2f7d4f'),tm('#2f7d4f'),tm('#9aa3ab'),tm('#333'),tmap(tramTex),tmap(tramTex)]);
-  body.position.y=1.85;body.castShadow=true;outline(body,0.05);g.add(body);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(11.4,0.25,2.2),tm('#9aa3ab'));roof.position.y=3.4;g.add(roof);
-  if(k===0){const pan=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.06,0.06),tm('#444'));pan.position.set(0,4.1,0);pan.rotation.z=0.5;g.add(pan);}
-  for(const x of [-4,4])g.add(new THREE.Mesh(new THREE.BoxGeometry(2,0.6,2.2),tm('#3a3a3a')).translateX(x).translateY(0.45));
-  world.add(g);TRAM.cars.push(g);}
-TRAM.box=collide(0,0,TRAM_Z-1.4,TRAM_Z+1.4,'tram');
+// the tram itself, its stops and riding it are in p5j_tram.js
 const XINGS=STREETS.filter(S=>S.ax==='z'&&S.a<TRAM_Z&&S.b>TRAM_Z).map(S=>({S,x:S.c,down:0,gates:[],box:collide(S.c-S.w/2,S.c+S.w/2,TRAM_Z-4.2,TRAM_Z+4.2,'gate')}));
 { const armTex=canvasTex(128,16,(g,w,h)=>{for(let k=0;k<8;k++){g.fillStyle=k%2?'#1d1d1d':'#f2c230';g.fillRect(k*16,0,16,h);}});
   const xb=canvasTex(64,64,(g,w,h)=>{g.clearRect(0,0,w,h);g.save();g.translate(w/2,h/2);for(const a of [0.6,-0.6]){g.save();g.rotate(a);g.fillStyle='#f2c230';g.fillRect(-30,-6,60,12);g.fillStyle='#1d1d1d';for(let x=-30;x<30;x+=12)g.fillRect(x,-6,6,12);g.restore();}g.restore();});
@@ -23,11 +13,7 @@ const XINGS=STREETS.filter(S=>S.ax==='z'&&S.a<TRAM_Z&&S.b>TRAM_Z).map(S=>({S,x:S
       X.gates.push({pivot,lamps,sd});collide(px-0.12,px+0.12,pz-0.12,pz+0.12,'pole');}
     decal(X.x,TRAM_Z,0,X.S.w,3.6,tmap(canvasTex(64,64,(g,w,h)=>{g.fillStyle='#4a4a4c';g.fillRect(0,0,w,h);g.fillStyle='rgba(0,0,0,.25)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,2);g.fillStyle='#a9aeb4';g.fillRect(0,h*0.33,w,3);g.fillRect(0,h*0.64,w,3);},true),{polygonOffset:true,polygonOffsetFactor:-7}));}}
 function updateTram(dt){
-  const T=TRAM;if(T.wait>0){T.wait-=dt;T.v=0;}else{const target=7;T.v+=(target-T.v)*Math.min(1,dt*0.6);}
-  const before=T.x;T.x+=T.dir*T.v*dt;
-  if((before-65)*(T.x-65)<=0&&T.wait<=0&&T.v>1){T.wait=9;T.x=65;}
-  if(T.x>TRAM_X1-10&&T.dir>0){T.dir=-1;T.wait=4;}if(T.x<TRAM_X0+10&&T.dir<0){T.dir=1;T.wait=4;}
-  T.cars.forEach((g,k)=>{const x=T.x-T.dir*(6.2+k*12.6)+T.dir*6.2;g.position.set(x,G(clamp(x,-CUT_X,CUT_X),TRAM_Z)+0.2,TRAM_Z);g.rotation.y=T.dir>0?0:Math.PI;});
+  const T=TRAM;tramMove(dt);
   const xs=T.cars.map(g=>g.position.x);T.box.x0=Math.min(...xs)-6;T.box.x1=Math.max(...xs)+6;
   for(const X of XINGS){const d=Math.min(Math.abs(T.box.x0-X.x),Math.abs(T.box.x1-X.x));const inside=X.x>T.box.x0-2&&X.x<T.box.x1+2;
     const near=inside||d<55&&((T.dir>0&&T.box.x1<X.x)||(T.dir<0&&T.box.x0>X.x))&&T.v>0.3;X.down+=((near?1:0)-X.down)*Math.min(1,dt*1.6);X.box.on=X.down>0.5;
@@ -280,8 +266,8 @@ const mapBase=document.createElement('canvas');mapBase.width=MAPW;mapBase.height
   g.fillStyle='#a88a64';g.fillRect(PIER.x0-MAP_X0,PIER.z0-MAP_Z0,PIER.x1-PIER.x0,PIER.z1-PIER.z0);
   g.fillStyle='#d8452f';g.fillRect(SHRINE.x-MAP_X0-3,SHRINE.z-MAP_Z0-2,6,4);}
 const mapc=$('mapc'),mg=mapc.getContext('2d');
-function drawMap(){const V=150,S=mapc.width/V,cx=P.x-MAP_X0,cz=P.z-MAP_Z0;mg.fillStyle='#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
-  mg.drawImage(mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
+function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',cx=P.x-(ink?INK_X-INK_R:MAP_X0),cz=P.z-(ink?-INK_R:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
+  mg.drawImage(ink?INK.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
   const toM=(x,z)=>[(x-P.x)*S+mapc.width/2,(z-P.z)*S+mapc.height/2];
   for(const p of SPOTS){const [mx,my]=toM(p.x,p.z);mg.fillStyle=SAVE.spots.includes(p.id)?'#9aa6ae':'#1f7fc0';mg.beginPath();mg.arc(mx,my,5,0,7);mg.fill();}
   for(const q of QUESTS){if(!available(q))continue;const n=NPCS[q.giver],[mx,my]=toM(n.x,n.z);mg.fillStyle='#f2a33a';mg.beginPath();mg.arc(mx,my,7,0,7);mg.fill();mg.fillStyle='#fff';mg.font='900 11px sans-serif';mg.textAlign='center';mg.textBaseline='middle';mg.fillText('!',mx,my+1);}
@@ -290,8 +276,9 @@ function drawMap(){const V=150,S=mapc.width/V,cx=P.x-MAP_X0,cz=P.z-MAP_Z0;mg.fil
     mg.fillStyle='#e2584a';mg.beginPath();mg.arc(mx,my,out?6:8,0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=2;mg.stroke();}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
-function placeName(){const x=P.x,z=P.z;
+function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(AREA==='inaka')return inkPlace();
   if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<12)return d.name;if(Math.abs(x)>212&&z<SHORE)return x>0?'東の山':'西の山';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
+  const st=Math.abs(z-207)<3&&stopAt(x);if(st&&st.id!=='station')return st.name+' 停留所';
   if(onPier(x,z))return'桟橋';if(z>SHORE)return'しおさい海岸';if(x>STATION.x0-4&&x<STATION.x1+4&&Math.abs(z-TRAM_Z)<8)return'うみまち駅';
   if(Math.abs(z-TRAM_Z)<4)return'うみまち線の線路';
   let best=null,bd=1e9;for(const S of STREETS){const b=streetBox(S,3);if(x>b.x0&&x<b.x1&&z>b.z0&&z<b.z1){const d=S.ax==='z'?Math.abs(x-S.c):Math.abs(z-S.c);if(d<bd){bd=d;best=S;}}}
@@ -382,6 +369,7 @@ function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STE
 // on the board now, with no hop-on (also when an event puts her straight on it)
 function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
 function stepPlayer(dt){
+  if(RIDE.on){rideStep(dt);return;}
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
@@ -402,7 +390,7 @@ function stepPlayer(dt){
     // (and only while she walks roughly away from it — walking sideways or back, the camera holds its direction)
     let dc=P.yaw-footCamYaw;dc=Math.atan2(Math.sin(dc),Math.cos(dc));footCamYaw+=dc*Math.min(1,dt*(P.v>0.5?1.2:0)*Math.pow(Math.max(0,Math.cos(dc)),4));}
   else footCamYaw=P.yaw;
-  let a=onFoot?0:-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
+  let a=onFoot?0:-9.8*slope*(AREA==='inaka'?0.9:0.5)-(0.25+(sand?3.2:0))*Math.sign(P.v);
   if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?7.5*(I.mag||1)*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
     P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?1.6:still?5:6));kickQ=false;P.kickT=-1;
     if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr&&!player.backBusy)P.tr={type:'stow',t:0,dur:0.4};
@@ -422,7 +410,7 @@ function stepPlayer(dt){
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);
+  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
   if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
@@ -440,7 +428,8 @@ function stepPlayer(dt){
 
 /* ---------- interaction ---------- */
 let near=null;
-function findNear(){let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
+function findNear(){if(RIDE.on)return rideNear();let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
+  const tn=tramNear();if(tn)add(tn.d-0.5,tn);const ik=inkNear();if(ik)add(ik.d,ik);
   // someone with a story event waiting comes first when two people stand close together
   for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
@@ -457,7 +446,8 @@ function act(o){if(!o)return;
   else if(o.kind==='cat'){const q=QBY('cat'),st=stepOf(q);if(st&&st.type==='find')say('ミケ',st.text,()=>advance(q));else say('三毛猫',['ゴロゴロ…。日なたであくびをしている。']);}
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);advance(o.q);});}
-  else if(o.kind==='gacha')openGacha();}
+  else if(o.kind==='gacha')openGacha();
+  else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);}
 
 /* ---------- camera ---------- */
 const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0;
@@ -468,6 +458,7 @@ function updateCamera(dt){
   const cyaw=P.foot&&stick.on?footCamYaw:P.yaw,F=new THREE.Vector3(Math.sin(cyaw),0,Math.cos(cyaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
   else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
+  else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
@@ -479,7 +470,7 @@ function updateCamera(dt){
     const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
     for(let t=1;t>0.25&&blocked(want.x,want.y,want.z);t-=0.1){want=p.clone().addScaledVector(F,-back*t);want.y+=up;}
     want.y=Math.max(want.y,G(want.x,want.z)+0.6);}
-  if(!camInit){camPos.copy(want);camLook.copy(look);camInit=true;}
+  if(!camInit||rate===0){camPos.copy(want);camLook.copy(look);camInit=true;}   // on the tram the view rides with the car
   camPos.lerp(want,1-Math.exp(-dt*rate));camLook.lerp(look,1-Math.exp(-dt*(rate+3)));
   camera.position.copy(camPos);if(P.bump>0&&!reduceMotion){camera.position.y+=(Math.random()-.5)*P.bump*0.3;}P.bump=Math.max(0,P.bump-dt);
   camera.lookAt(camLook);const fov=camera.aspect<0.8?72:58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
@@ -509,7 +500,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
     const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&!ST.run),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
-  updateTram(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
+  updateTram(dt);updateInaka(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
   updateCamera(dt);renderer.render(scene,camera);
   if(photoReq){photoReq=false;snap();}
