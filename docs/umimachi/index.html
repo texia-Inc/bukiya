@@ -59,7 +59,12 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 #dialog .nx{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--ink-soft);animation:bob 1s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(3px)}}
 #closet{place-items:end center;background:linear-gradient(transparent 45%,rgba(20,50,70,.22))}
-#closet .sheet{width:min(560px,100%);max-height:46vh;overflow-y:auto;padding:14px 16px}
+#closet .sheet{width:min(560px,100%);max-height:48vh;overflow-y:auto;padding:12px 14px 0;gap:6px}
+#closet .hint{margin:0;font-size:12px;color:var(--ink-soft)}
+#closet .bar{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:10px;padding:8px 0 12px;background:inherit;background:linear-gradient(rgba(255,250,240,0),#fffaf0 30%)}
+.cslot .cl{font-size:11px;font-weight:700;color:var(--ink-soft);margin-right:2px;align-self:center}
+/* while dressing, only the sheet and the heroine above it */
+body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.closet #pad,body.closet #stick,body.closet #toast{visibility:hidden}
 #closet h2{margin:0 0 6px}
 .cslot{display:grid;grid-template-columns:72px 1fr;gap:6px 10px;align-items:center;padding:6px 0;border-top:1px solid rgba(0,0,0,.06)}
 .cslot b{font-size:12px;color:var(--sea-deep)}
@@ -162,6 +167,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   .tool{font-size:11px;padding:7px 9px;min-width:56px}
   #pad{gap:9px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
   .pb{width:56px;height:56px;font-size:12px}.pb.main{width:72px;height:72px}.pb.kick{width:80px;height:80px;font-size:15px}
+  .cslot{grid-template-columns:52px 1fr;gap:4px 8px}
   #ring{opacity:.22}#bag .it{font-size:11px;padding:2px 6px 2px 2px}#bag .it img{width:20px;height:20px}
 }
 @media (prefers-reduced-motion: reduce){.tst{animation-duration:3.5s}#dialog .nx{animation:none}}
@@ -205,8 +211,8 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
-<div class="modal" id="closet" hidden><div class="sheet card"><h2>着がえ</h2><div id="closetSlots"></div>
-  <div style="display:flex;justify-content:space-between;gap:10px;margin-top:6px"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div></div>
+<div class="modal" id="closet" hidden><div class="sheet card"><h2>着がえ</h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギで確かめよう</p><div id="closetSlots"></div>
+  <div class="bar"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div></div>
 <div class="modal" id="gacha" hidden><div class="sheet card"><h2>まるやのカプセルトイ</h2>
   <p class="sub">1回100円。出た服はすぐ「着がえ」で着られる。ダブりは「かけら」になって、ほしい物と交換できる。</p>
   <div id="gachaStage"></div>
@@ -3907,6 +3913,7 @@ function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSiz
 window.addEventListener('resize',resize);resize();
 const hemi=new THREE.HemisphereLight('#e6f3ff','#8a7c66',0.62);scene.add(hemi);
 const sun=new THREE.DirectionalLight('#fff3dc',0.95);scene.add(sun);scene.add(sun.target);
+hemi.layers.enable(1);sun.layers.enable(1);   // layer 1: the heroine drawn on top while dressing
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 {const sc=sun.shadow.camera;sc.left=-16;sc.right=16;sc.top=16;sc.bottom=-16;sc.near=1;sc.far=140;}
 sun.shadow.bias=-0.0005;
@@ -7558,7 +7565,7 @@ function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){
   h.textContent=s.state===1?q.steps[s.step].hint:s.state===2?`お礼 ${q.reward}円をもらった`:`${NPCS[q.giver].name}が困っているみたい`;
   d.append(st,b,h);if(s.state===1)d.addEventListener('click',()=>{SAVE.tracked=q.id;save();renderLog();renderHUD();});L.appendChild(d);}}
 let modal=null;
-function openModal(id){modal=id;$(id).hidden=false;}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;canvas.focus();}
+function openModal(id){modal=id;$(id).hidden=false;document.body.classList.toggle('closet',id==='closet');}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;document.body.classList.remove('closet');canvas.focus();}
 $('logBtn').addEventListener('click',()=>{renderLog();openModal('log');});$('logClose').addEventListener('click',closeModal);
 $('albumBtn').addEventListener('click',()=>{renderAlbum();openModal('albumM');});$('albumClose').addEventListener('click',closeModal);
 $('shopClose').addEventListener('click',closeModal);
@@ -7660,7 +7667,8 @@ function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Ob
     const lab=document.createElement('b');lab.textContent=S.label;row.appendChild(lab);const col=document.createElement('div');row.appendChild(col);
     if(items.length>1){const r=document.createElement('div');r.className='row';for(const I of items){const b=document.createElement('button');b.className='chip'+(I.id===it.id?' on':'');b.textContent=I.name;
         b.onclick=()=>{const k=(I.colors||[[]]).findIndex((c,ci)=>ownsKey(SAVE,S.slot+':'+I.id+':'+ci));setOutfit(S.slot,I.id,Math.max(0,k));};r.appendChild(b);}col.appendChild(r);}
-    if(it.colors&&it.colors.length>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';
+    const own=(it.colors||[]).filter((c,k)=>ownsKey(SAVE,S.slot+':'+it.id+':'+k)).length;
+    if(own>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';const cl=document.createElement('span');cl.className='cl';cl.textContent='色';r.appendChild(cl);
       it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
         b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
     box.appendChild(row);}}
@@ -7841,7 +7849,9 @@ function updateCamera(dt){
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
-    want=p.clone().addScaledVector(fw,3.3).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),0.7);want.y+=1.05;look=p.clone();look.y+=0.05;rate=4;}
+    // she stands in the space above the sheet: far enough back to fit there, the aim lowered so she sits in its middle
+    const sh=$('closet').firstChild.getBoundingClientRect(),f=clamp(sh.top/innerHeight,0.3,1),tn=Math.tan(camera.fov*Math.PI/360),dist=clamp(2.1/(2*tn*f*0.78),2.4,5.5);
+    want=p.clone().addScaledVector(fw,dist).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),dist*0.2);want.y+=1.0;look=p.clone();look.y+=1.0-dist*(1-f)*tn;rate=4;}
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
@@ -7882,6 +7892,9 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateTram(dt);updateInaka(dt);updateIsland(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
   updateCamera(dt);updateSound(dt);renderer.render(scene,camera);
+  // while dressing, the heroine is drawn again on top, so a stall or a post between her and the camera never hides her
+  if(modal==='closet'){player.g.traverse(o=>o.layers.enable(1));renderer.autoClear=false;renderer.clearDepth();const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
+    camera.layers.set(1);renderer.render(scene,camera);camera.layers.set(0);renderer.shadowMap.autoUpdate=su;renderer.autoClear=true;}
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);

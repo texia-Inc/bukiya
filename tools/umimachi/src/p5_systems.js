@@ -193,7 +193,7 @@ function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){
   h.textContent=s.state===1?q.steps[s.step].hint:s.state===2?`お礼 ${q.reward}円をもらった`:`${NPCS[q.giver].name}が困っているみたい`;
   d.append(st,b,h);if(s.state===1)d.addEventListener('click',()=>{SAVE.tracked=q.id;save();renderLog();renderHUD();});L.appendChild(d);}}
 let modal=null;
-function openModal(id){modal=id;$(id).hidden=false;}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;canvas.focus();}
+function openModal(id){modal=id;$(id).hidden=false;document.body.classList.toggle('closet',id==='closet');}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;document.body.classList.remove('closet');canvas.focus();}
 $('logBtn').addEventListener('click',()=>{renderLog();openModal('log');});$('logClose').addEventListener('click',closeModal);
 $('albumBtn').addEventListener('click',()=>{renderAlbum();openModal('albumM');});$('albumClose').addEventListener('click',closeModal);
 $('shopClose').addEventListener('click',closeModal);
@@ -295,7 +295,8 @@ function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Ob
     const lab=document.createElement('b');lab.textContent=S.label;row.appendChild(lab);const col=document.createElement('div');row.appendChild(col);
     if(items.length>1){const r=document.createElement('div');r.className='row';for(const I of items){const b=document.createElement('button');b.className='chip'+(I.id===it.id?' on':'');b.textContent=I.name;
         b.onclick=()=>{const k=(I.colors||[[]]).findIndex((c,ci)=>ownsKey(SAVE,S.slot+':'+I.id+':'+ci));setOutfit(S.slot,I.id,Math.max(0,k));};r.appendChild(b);}col.appendChild(r);}
-    if(it.colors&&it.colors.length>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';
+    const own=(it.colors||[]).filter((c,k)=>ownsKey(SAVE,S.slot+':'+it.id+':'+k)).length;
+    if(own>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';const cl=document.createElement('span');cl.className='cl';cl.textContent='色';r.appendChild(cl);
       it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
         b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
     box.appendChild(row);}}
@@ -476,7 +477,9 @@ function updateCamera(dt){
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
-    want=p.clone().addScaledVector(fw,3.3).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),0.7);want.y+=1.05;look=p.clone();look.y+=0.05;rate=4;}
+    // she stands in the space above the sheet: far enough back to fit there, the aim lowered so she sits in its middle
+    const sh=$('closet').firstChild.getBoundingClientRect(),f=clamp(sh.top/innerHeight,0.3,1),tn=Math.tan(camera.fov*Math.PI/360),dist=clamp(2.1/(2*tn*f*0.78),2.4,5.5);
+    want=p.clone().addScaledVector(fw,dist).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),dist*0.2);want.y+=1.0;look=p.clone();look.y+=1.0-dist*(1-f)*tn;rate=4;}
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
@@ -517,6 +520,9 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateTram(dt);updateInaka(dt);updateIsland(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
   updateCamera(dt);updateSound(dt);renderer.render(scene,camera);
+  // while dressing, the heroine is drawn again on top, so a stall or a post between her and the camera never hides her
+  if(modal==='closet'){player.g.traverse(o=>o.layers.enable(1));renderer.autoClear=false;renderer.clearDepth();const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
+    camera.layers.set(1);renderer.render(scene,camera);camera.layers.set(0);renderer.shadowMap.autoUpdate=su;renderer.autoClear=true;}
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);

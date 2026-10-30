@@ -28,6 +28,7 @@ function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSiz
 window.addEventListener('resize',resize);resize();
 const hemi=new THREE.HemisphereLight('#e6f3ff','#8a7c66',0.62);scene.add(hemi);
 const sun=new THREE.DirectionalLight('#fff3dc',0.95);scene.add(sun);scene.add(sun.target);
+hemi.layers.enable(1);sun.layers.enable(1);   // layer 1: the heroine drawn on top while dressing
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 {const sc=sun.shadow.camera;sc.left=-16;sc.right=16;sc.top=16;sc.bottom=-16;sc.near=1;sc.far=140;}
 sun.shadow.bias=-0.0005;
