@@ -48,7 +48,7 @@ function chaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;
   if(!URA.big){const h=makeHuman(SHADE);h.g.scale.setScalar(1.9);world.add(h.g);URA.big={h,eye:glow('#ff3020',0,0,0,2.2)};}
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,0,P.z).addScaledVector(F,-30);
   URA.big.h.g.position.set(p.x,G(p.x,p.z),p.z);URA.big.h.g.visible=URA.big.eye.visible=true;
-  URA.chase={t:0,res,mode:'hunt',tx:P.x,tz:P.z,wait:0,sp:0,d:30,grace:2,save:[P.x,P.z,P.yaw],saw:false,hudT:0};
+  URA.chase={t:0,res,mode:'hunt',tx:P.x,tz:P.z,wait:0,sp:0,d:30,grace:2,save:[P.x,P.z,P.yaw],saw:false,hudT:0,rec:[],replay:null};
   if(!URA.goal){URA.goal=marker(MK.target);URA.goal.scale.set(1.6,1.6,1);}
   toast('足音が近づいてきたら、木箱に隠れてやり過ごそう',true);renderHUD();});}
 const uraAtt=(d,r)=>clamp(1-d/r,0,1)**2;
@@ -63,11 +63,33 @@ function uraUnhide(){const h=URA.hide;URA.hide=null;player.g.visible=true;if(h){
 function uraHideCam(want,look){const h=URA.hide,bg=URA.big&&URA.chase?URA.big.h.g.position:null;
   const tx=bg?bg.x:h.x+Math.sin(P.yaw)*10,tz=bg?bg.z:h.z+Math.cos(P.yaw)*10,a=Math.atan2(tx-h.x,tz-h.z);
   want.set(h.x+Math.sin(a)*0.35,h.y+1.62,h.z+Math.cos(a)*0.35);look.set(tx,(bg?bg.y:h.y)+2.2,tz);}
-function uraCaught(){const C=URA.chase;if(URA.hide)uraUnhide();C.grace=99;$('fade').style.opacity=1;P.v=0;
+// caught in the open: first a short replay from the side, so you see it reach you (the last 2 s, the end slowed down)
+function uraCaught(){const C=URA.chase;C.grace=99;
+  if(!URA.hide&&C.rec.length>20&&!C.replay){const t1=C.rec[C.rec.length-1].t;C.replay={t:0,f:C.rec.filter(r=>r.t>=t1-2),t1,side:1};
+    const r0=C.replay.f[0];C.replay.t0=r0.t;C.replay.at=r0.t;document.body.classList.add('cine');$('hurt').style.opacity=0;
+    const mx=(P.x+URA.big.h.g.position.x)/2,mz=(P.z+URA.big.h.g.position.z)/2,dx=P.x-URA.big.h.g.position.x,dz=P.z-URA.big.h.g.position.z,l=Math.hypot(dx,dz)||1;
+    if(blocked(mx-dz/l*7,G(mx,mz)+2.4,mz+dx/l*7))C.replay.side=-1;
+    $('cbarT').innerHTML='<span class="rpl">● リプレイ</span>';return;}
+  uraCaughtReset();}
+function uraReplayStep(dt){const C=URA.chase,R=C.replay,bg=URA.big.h.g;R.at+=dt*(R.t1-R.at<0.8?0.4:1);   // slow for the last moment
+  const f=R.f;let i=0;while(i<f.length-2&&f[i+1].t<R.at)i++;const a=f[i],b=f[i+1]||a,k=b.t>a.t?clamp((R.at-a.t)/(b.t-a.t),0,1):1;
+  P.x=lerp(a.x,b.x,k);P.y=lerp(a.y,b.y,k);P.z=lerp(a.z,b.z,k);P.yaw=a.yaw;P.v=a.v;P.foot=a.foot;
+  bg.position.set(lerp(a.bx,b.bx,k),lerp(a.by,b.by,k),lerp(a.bz,b.bz,k));bg.rotation.y=a.br;
+  if(a.sp>0.5)poseHuman(URA.big.h,'walk',dt*(R.t1-R.at<0.8?0.4:1),{rate:2.2+a.sp*0.45});
+  URA.big.eye.position.set(bg.position.x,bg.position.y+3.05,bg.position.z);
+  if(R.at>=R.t1){if((R.hold=(R.hold||0)+dt)>0.6){C.replay=null;document.body.classList.remove('cine');$('cbarT').innerHTML='';uraCaughtReset();}}}
+// the replay camera: from the side of the line between her and the shadow, a little above, both in the picture
+function uraReplayCam(want,look){const C=URA.chase,R=C.replay,bg=URA.big.h.g.position,mx=(P.x+bg.x)/2,mz=(P.z+bg.z)/2,dx=P.x-bg.x,dz=P.z-bg.z,l=Math.hypot(dx,dz)||1,
+    s=R.side,d=6+Math.min(l,12)*0.45,sw=(R.at-R.t0)*0.25;
+  want.set(mx-dz/l*d*s+dx/l*sw,G(mx,mz)+2.3,mz+dx/l*d*s+dz/l*sw);look.set(mx,G(mx,mz)+1.5,mz);}
+function uraReplayPose(dt){player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);const sl=URA.chase.replay&&URA.chase.replay.t1-URA.chase.replay.at<0.8?0.4:1;
+  if(P.foot){player.root.rotation.set(0,0,0);poseRunner(player,dt*sl,{v:P.v,turn:0,air:false,vy:0,tr:null,carry:P.carry});}
+  else{player.root.rotation.set(0,0,0);poseSkater(player,dt*sl,{v:P.v,turn:0,push:false,brake:false,air:false});}}
+function uraCaughtReset(){const C=URA.chase;if(URA.hide)uraUnhide();C.grace=99;C.rec=[];$('fade').style.opacity=1;P.v=0;
   setTimeout(()=>{P.x=C.save[0];P.z=C.save[1];P.yaw=C.save[2];P.y=G(P.x,P.z);const a=rnd()*TAU,bg=URA.big.h.g;
     bg.position.set(P.x+Math.sin(a)*40,0,P.z+Math.cos(a)*40);C.mode='roam';C.tx=bg.position.x;C.tz=bg.position.z;C.grace=3;camInit=false;$('fade').style.opacity=0;
     toast('冷たい手が、肩にふれた――。気がつくと、さっきの場所にいた',true);},900);}
-function chaseStep(dt){const C=URA.chase;C.t+=dt;C.grace-=dt;const bg=URA.big.h.g,hid=!!URA.hide;
+function chaseStep(dt){const C=URA.chase;if(C.replay){uraReplayStep(dt);return;}C.t+=dt;C.grace-=dt;const bg=URA.big.h.g,hid=!!URA.hide;
   const dx=P.x-bg.position.x,dz=P.z-bg.position.z,dd=Math.hypot(dx,dz)||1;C.d=dd;
   // what it knows: the board from far off, a walker close by, anyone in front of it in the fog; nobody in a crate
   const loud=!P.foot&&P.v>2.5,facing=(Math.sin(bg.rotation.y)*dx+Math.cos(bg.rotation.y)*dz)/dd;
@@ -90,6 +112,8 @@ function chaseStep(dt){const C=URA.chase;C.t+=dt;C.grace-=dt;const bg=URA.big.h.
   URA.goal.visible=true;URA.goal.position.set(URA_EXIT[0],G(URA_EXIT[0],URA_EXIT[1])+3.4+Math.sin(clock*3)*0.12,URA_EXIT[1]);
   $('hurt').style.opacity=Math.max(uraAtt(dd,40)*0.75,C.mode==='hunt'?0.3:0.1);
   C.hudT-=dt;if(C.hudT<=0){C.hudT=0.25;uraHUD($('tracker'));}
+  C.rec.push({t:C.t,x:P.x,y:P.y,z:P.z,yaw:P.yaw,v:P.v,foot:P.foot,bx:bg.position.x,by:bg.position.y,bz:bg.position.z,br:bg.rotation.y,sp:C.sp});
+  while(C.rec.length&&C.t-C.rec[0].t>3)C.rec.shift();
   if(!hid&&dd<1.7&&C.grace<=0){uraCaught();return;}
   if(!hid&&Math.hypot(P.x-URA_EXIT[0],P.z-URA_EXIT[1])<URA_EXIT[2]){URA.chase=null;bg.visible=URA.big.eye.visible=false;URA.goal.visible=false;C.res();}}
 function updateUra(dt){

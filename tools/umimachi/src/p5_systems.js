@@ -395,7 +395,7 @@ const P={x:3,z:-196,yaw:Math.PI,v:0,y:0,vy:0,air:false,turn:0,push:false,brake:f
 const keys={};let jumpQ=false,actQ=false,kickQ=false,kickHold=false,footQ=false,trickQ=false;
 // let go of every held key and button: when the window loses focus, and when a button is hidden under a finger (getting on the
 // tram hides 「ける」, and a hidden button never hears the finger lift, so she would walk on by herself afterwards)
-function releaseInputs(){for(const k in keys)keys[k]=false;kickHold=false;$('bKick').classList.remove('on');}
+function releaseInputs(){for(const k in keys)keys[k]=false;kickHold=false;lookHold=false;$('bKick').classList.remove('on');}
 window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='ArrowUp')return;keys[e.code]=true;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)&&state==='play')e.preventDefault();
   if(state!=='play')return;
@@ -405,6 +405,10 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyK'&&!e.repeat)trickQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
+// looking back while R or the 振り返る button is held
+let lookHold=false;const lookBack=()=>(keys.KeyR||lookHold)&&state==='play'&&!DLG&&!modal;
+{ const b=$('bLook');b.addEventListener('pointerdown',e=>{e.preventDefault();lookHold=true;try{b.setPointerCapture(e.pointerId);}catch(_){}});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{lookHold=false;});}
 const stick={on:false,id:null,x:0,y:0};
 // the floating stick: the ring jumps to where the thumb lands on the lower left, and goes back to its corner when let go
 { const el=$('stick'),ring=$('ring'),kn=$('knob');let ox=0,oy=0;const set=(e)=>{let dx=e.clientX-ox,dy=e.clientY-oy;const L=Math.hypot(dx,dy),m=50;if(L>m){dx*=m/L;dy*=m/L;}
@@ -464,6 +468,7 @@ function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3
 function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=f?'スケボー':'歩く';if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
 function stepPlayer(dt){
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
+  if(URA.chase&&URA.chase.replay){jumpQ=kickQ=footQ=trickQ=false;uraReplayPose(dt);return;}   // the replay of being caught moves her, not the keys
   if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
@@ -561,6 +566,7 @@ function updateCamera(dt){
   else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
   else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
   else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
+  else if(URA.chase&&URA.chase.replay){want=new THREE.Vector3();look=new THREE.Vector3();uraReplayCam(want,look);rate=URA.chase.replay.at===URA.chase.replay.t0?0:5;}
   else if(URA.hide){want=new THREE.Vector3();look=new THREE.Vector3();uraHideCam(want,look);rate=5;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
@@ -574,6 +580,8 @@ function updateCamera(dt){
     look=p.clone();look.y+=cy-dist*(1-1.03*f)*tn;rate=10;}   // her middle a little below the middle of the space, clear of the money and clock
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
+  else if(lookBack()){want=p.clone().addScaledVector(F,2.6);want.y+=1.6;look=p.clone().addScaledVector(F,-9);look.y+=1.1;rate=9;
+    for(let t=1;t>0.25&&blocked(want.x,want.y,want.z);t-=0.1){want=p.clone().addScaledVector(F,2.6*t);want.y+=1.6;}want.y=Math.max(want.y,G(want.x,want.z)+0.6);}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
     // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
     const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
@@ -621,7 +629,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));const fresh=!loadSlot(k);SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(fresh)setTimeout(()=>toast(hasTouch?'操作は「メニュー」→「設定」→「あそびかた」で見られる':'操作は右の「設定」→「あそびかた」で見られる'),6000);if(player.vrm)applyOutfit(player,SAVE.outfit);
-  state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
+  state='play';P.yaw=0;$('title').hidden=true;$('hud').hidden=false;$('stick').hidden=!hasTouch;$('bLook').hidden=!hasTouch;$('pad').hidden=!hasTouch;camInit=false;renderClock();renderHUD();save();canvas.focus();
   toast(hasTouch?'右の「ける」ボタンで地面をけって進もう':'W か ↑ を押すたびに、地面をひと蹴り');if(!SAVE.qs.melon)toast('坂の上の鳥居のそばで、おばあちゃんが手を振っている');
   // test entries: index.html#hour=20 sets the clock, #at=-80,330 starts there, #day=3 jumps to that morning, #set=route:3 sets flags (they combine with &)
   const hr=/hour=([\d.]+)/.exec(location.hash),at=/at=(-?[\d.]+),(-?[\d.]+)/.exec(location.hash),dy=/day=(\d+)/.exec(location.hash);
