@@ -266,8 +266,8 @@ const mapBase=document.createElement('canvas');mapBase.width=MAPW;mapBase.height
   g.fillStyle='#a88a64';g.fillRect(PIER.x0-MAP_X0,PIER.z0-MAP_Z0,PIER.x1-PIER.x0,PIER.z1-PIER.z0);
   g.fillStyle='#d8452f';g.fillRect(SHRINE.x-MAP_X0-3,SHRINE.z-MAP_Z0-2,6,4);}
 const mapc=$('mapc'),mg=mapc.getContext('2d');
-function drawMap(){const V=150,S=mapc.width/V,cx=P.x-MAP_X0,cz=P.z-MAP_Z0;mg.fillStyle='#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
-  mg.drawImage(mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
+function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',cx=P.x-(ink?INK_X-INK_R:MAP_X0),cz=P.z-(ink?-INK_R:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
+  mg.drawImage(ink?INK.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
   const toM=(x,z)=>[(x-P.x)*S+mapc.width/2,(z-P.z)*S+mapc.height/2];
   for(const p of SPOTS){const [mx,my]=toM(p.x,p.z);mg.fillStyle=SAVE.spots.includes(p.id)?'#9aa6ae':'#1f7fc0';mg.beginPath();mg.arc(mx,my,5,0,7);mg.fill();}
   for(const q of QUESTS){if(!available(q))continue;const n=NPCS[q.giver],[mx,my]=toM(n.x,n.z);mg.fillStyle='#f2a33a';mg.beginPath();mg.arc(mx,my,7,0,7);mg.fill();mg.fillStyle='#fff';mg.font='900 11px sans-serif';mg.textAlign='center';mg.textBaseline='middle';mg.fillText('!',mx,my+1);}
@@ -276,7 +276,7 @@ function drawMap(){const V=150,S=mapc.width/V,cx=P.x-MAP_X0,cz=P.z-MAP_Z0;mg.fil
     mg.fillStyle='#e2584a';mg.beginPath();mg.arc(mx,my,out?6:8,0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=2;mg.stroke();}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
-function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';
+function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(AREA==='inaka')return inkPlace();
   if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<12)return d.name;if(Math.abs(x)>212&&z<SHORE)return x>0?'東の山':'西の山';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
   const st=Math.abs(z-207)<3&&stopAt(x);if(st&&st.id!=='station')return st.name+' 停留所';
   if(onPier(x,z))return'桟橋';if(z>SHORE)return'しおさい海岸';if(x>STATION.x0-4&&x<STATION.x1+4&&Math.abs(z-TRAM_Z)<8)return'うみまち駅';
@@ -390,7 +390,7 @@ function stepPlayer(dt){
     // (and only while she walks roughly away from it — walking sideways or back, the camera holds its direction)
     let dc=P.yaw-footCamYaw;dc=Math.atan2(Math.sin(dc),Math.cos(dc));footCamYaw+=dc*Math.min(1,dt*(P.v>0.5?1.2:0)*Math.pow(Math.max(0,Math.cos(dc)),4));}
   else footCamYaw=P.yaw;
-  let a=onFoot?0:-9.8*slope*0.5-(0.25+(sand?3.2:0))*Math.sign(P.v);
+  let a=onFoot?0:-9.8*slope*(AREA==='inaka'?0.9:0.5)-(0.25+(sand?3.2:0))*Math.sign(P.v);
   if(onFoot){const still=P.tr&&P.tr.type!=='stow',tgt=still?0:I.fwd?7.5*(I.mag||1)*(1-clamp(slope,0,0.6)*0.5)*(sand?0.7:1):0;
     P.v+=(tgt-P.v)*Math.min(1,dt*(tgt>P.v?1.6:still?5:6));kickQ=false;P.kickT=-1;
     if(P.foot&&P.carry==='hand'&&P.v>0.4&&!P.tr&&!player.backBusy)P.tr={type:'stow',t:0,dur:0.4};
@@ -410,7 +410,7 @@ function stepPlayer(dt){
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);
+  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
   if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
@@ -429,7 +429,7 @@ function stepPlayer(dt){
 /* ---------- interaction ---------- */
 let near=null;
 function findNear(){if(RIDE.on)return rideNear();let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
-  const tn=tramNear();if(tn)add(tn.d-0.5,tn);
+  const tn=tramNear();if(tn)add(tn.d-0.5,tn);const ik=inkNear();if(ik)add(ik.d,ik);
   // someone with a story event waiting comes first when two people stand close together
   for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
   for(const id of ['bakery','dagashi','yaoya','fish','flower']){const b=SHOPS[id],d=Math.hypot(P.x-b.door[0],P.z-b.door[1]);if(d<2.4)add(d+0.3,{kind:'shop',id,label:`入る　${MENUS[id].title}`,verb:'入る'});}
@@ -447,7 +447,7 @@ function act(o){if(!o)return;
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);advance(o.q);});}
   else if(o.kind==='gacha')openGacha();
-  else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();}
+  else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);}
 
 /* ---------- camera ---------- */
 const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0;
@@ -500,7 +500,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
     const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&!ST.run),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
-  updateTram(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
+  updateTram(dt);updateInaka(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
   updateCamera(dt);renderer.render(scene,camera);
   if(photoReq){photoReq=false;snap();}

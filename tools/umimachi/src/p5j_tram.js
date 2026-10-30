@@ -5,7 +5,7 @@
    At a stop, E at an open door gets you on: you sit facing the sea and ride, look about with A/D (or the stick), and E gets
    you off at whatever stop it comes to. The fare is 100 yen. ---------- */
 const TRAM_STOPS=[{id:'pier',name:'さんばし前',x:-80},{id:'station',name:'うみまち駅',x:65},{id:'east',name:'ひがし浜',x:165}];
-const TRAM={x:-260,dir:1,v:0,wait:0,at:null,door:0,cars:[],len:25};
+const TRAM={x:-260,dir:1,v:0,wait:0,at:null,door:0,cars:[],len:25,platS:()=>TRAM.dir>0?-1:1,seatS:()=>TRAM.dir>0?1:-1};   // platS/seatS: the platform side and the sea side, as the car's local z
 const TRAM_SEATS=[-2.8,-2.1,-1.4,-0.7,0,0.7,1.4,2.1,2.8];
 const TRAM_MAT={green:tm('#2f7d4f'),cream:tm('#efe6c8'),yel:tm('#f2c230'),roof:tm('#8f989f'),dark:tm('#2b2b2b'),floor:tm('#7a6450'),
   seat:tm('#9c3b34'),seatB:tm('#5a2622'),inner:tm('#e9e2cc'),ceil:tm('#f6f2e6'),metal:tm('#c9cdd2'),strap:tm('#f2f2ee'),bel:tm('#3a3a3a'),
@@ -18,7 +18,7 @@ const tramAdTex=(t,s,bg,fg)=>canvasTex(192,64,(c,w,h)=>{c.fillStyle=bg;c.fillRec
 const TRAM_ADS=[['こむぎ堂','焼きたてメロンパン','#fff3d6','#8a4b1d'],['しおさい','珈琲とナポリタン','#e4f0f2','#24525e'],['駄菓子まるや','当たりが出たら もう一本','#ffe9ec','#b2324a'],
   ['魚松','今朝の地あじ','#e6eef8','#1f4a7a'],['はなもり','季節の花 あります','#eef6e6','#3d6b2e'],['夏まつり','海の上に 花火があがる','#2b3a6a','#ffd27a']].map(a=>tmap(tramAdTex(...a),{side:THREE.DoubleSide}));
 const tramMapTex=tmap(canvasTex(256,64,(c,w,h)=>{c.fillStyle='#fffaf0';c.fillRect(0,0,w,h);c.strokeStyle='#2f7d4f';c.lineWidth=4;c.beginPath();c.moveTo(24,26);c.lineTo(w-24,26);c.stroke();
-  c.fillStyle='#2b2520';c.font=signFont(14,true);c.textAlign='center';TRAM_STOPS.forEach((s,k)=>{const x=36+k*(w-72)/2;c.beginPath();c.arc(x,26,7,0,TAU);c.fillStyle='#fff';c.fill();c.stroke();c.fillStyle='#2b2520';c.fillText(s.name,x,54);});}),{side:THREE.DoubleSide});
+  c.fillStyle='#2b2520';c.font=signFont(12,true);c.textAlign='center';[...TRAM_STOPS,{name:'山のふもと'}].forEach((s,k)=>{const x=30+k*(w-60)/3;c.beginPath();c.arc(x,26,7,0,TAU);c.fillStyle='#fff';c.fill();c.stroke();c.fillStyle='#2b2520';c.fillText(s.name,x,54);});}),{side:THREE.DoubleSide});
 function makeTramCar(k){const g=new THREE.Group(),c=k===0?1:-1,ce=-c,doors=[],straps=[],wheels=[],folk=[];   // c: the cab end, ce: the end coupled to the other car
   const B=(w,h,d,mat,x,y,z,ol)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=true;if(ol)outline(m,ol);g.add(m);return m;};
   const glass=(w,h,x,y,z,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),TRAM_MAT.glass);m.position.set(x,y,z);m.rotation.y=ry||0;g.add(m);};
@@ -101,13 +101,14 @@ for(const st of TRAM_STOPS){if(st.id==='station')continue;const x=st.x,y=G(x,207
 const stopAt=x=>TRAM_STOPS.find(s=>Math.abs(x-s.x)<14);
 
 // running: speed up gently, brake into each stop (so the train halts with the platform beside both cars), wait with the doors
-// open, and turn round in the tunnels at the ends of the line
+// open, and turn round in the tunnels at the ends of the line — except that riding into the east tunnel takes you on to the country
 function nextStop(T){let best=null;for(const s of TRAM_STOPS){const sx=s.x+T.dir*6.3,d=(sx-T.x)*T.dir;if(d>-0.5&&s!==T.left&&(!best||d<best.d))best={s,sx,d};}
   if(!best){const ex=T.dir>0?TRAM_X1-10:TRAM_X0+10;best={s:null,sx:ex,d:(ex-T.x)*T.dir};}return best;}   // the stop it has just left does not count, however close
 function tramMove(dt){const T=TRAM,v0=T.v;
-  if(T.wait>0){T.wait-=dt;T.v=0;if(T.wait<=0){if(!T.at){T.dir*=-1;if(RIDE.on)tramTurnFade();}T.left=T.at;T.at=null;if(RIDE.on){const n=nextStop(T);if(n.s)toast(`次は　${n.s.name}　です`);}}}
+  if(T.wait>0){T.wait-=dt;T.v=0;if(T.wait<=0){const me=RIDE.on&&RIDE.train===T;if(!T.at){T.dir*=-1;if(me)tramTurnFade();}T.left=T.at;T.at=null;if(me){const n=nextStop(T);toast(n.s?`次は　${n.s.name}　です`:'次は　終点、山のふもと　です');}}}
   else{const n=nextStop(T),tgt=Math.min(7,Math.sqrt(2*1.1*Math.max(0,n.d))+0.25);T.v+=clamp(tgt-T.v,-2.4*dt,0.9*dt);
-    const step=T.v*dt;if(step>=n.d-0.005){T.x=n.sx;T.v=0;T.at=n.s;T.wait=n.s?(n.s.id==='station'?14:11):4;if(n.s&&RIDE.on)toast(`${n.s.name}　です`);}else T.x+=T.dir*step;}
+    const step=T.v*dt;if(step>=n.d-0.005){T.x=n.sx;T.v=0;T.at=n.s;T.wait=n.s?(n.s.id==='station'?14:11):4;const me=RIDE.on&&RIDE.train===T;if(n.s&&me)toast(`${n.s.name}　です`);
+      if(!n.s&&T.dir>0&&me)townToInk();}else T.x+=T.dir*step;}
   T.acc=(T.v-v0)/Math.max(dt,1e-3);
   T.door+=((T.at&&T.wait>1.2?1:0)-T.door)*Math.min(1,dt*2.5);
   T.cars.forEach((g,k)=>{const x=T.x-T.dir*(6.2+k*12.6)+T.dir*6.2;g.position.set(x,G(clamp(x,-CUT_X,CUT_X),TRAM_Z)+0.2,TRAM_Z);g.rotation.y=T.dir>0?0:Math.PI;
@@ -122,25 +123,27 @@ function tramMove(dt){const T=TRAM,v0=T.v;
 function tramTurnFade(){const f=$('fade');f.style.opacity=1;setTimeout(()=>{f.style.opacity=0;},700);}
 
 /* ---------- riding ---------- */
-const RIDE={on:false,car:0,s:-1,x:0,look:0};
+const RIDE={on:false,train:TRAM,car:0,s:-1,x:0,look:0};
 const canRide=()=>!URA.on&&!DRONE.active&&!ST.run&&state==='play';
-const tramOpen=()=>TRAM.at&&TRAM.door>0.8&&TRAM.wait>1.2;
+const tramOpen=T=>T.at&&T.door>0.8&&T.wait>1.2;
 // the door on the platform side (north of the rails) of a car, in the world, and a point on the platform in front of it
-function tramDoor(k,dx,out){const g=TRAM.cars[k],s=TRAM.dir>0?-1:1;return g.localToWorld(new THREE.Vector3(dx,0,s*(1.3+(out||0))));}
-function tramNear(){if(!tramOpen()||!canRide())return null;let best=null,bd=3;
-  for(let k=0;k<2;k++)for(const dx of [-4,4]){const p=tramDoor(k,dx,0.8),d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best={kind:'tram',k,dx,d,label:'乗る　うみまち線',verb:'乗る'};}}
+function tramDoor(T,k,dx,out){const g=T.cars[k],s=T.platS();return g.localToWorld(new THREE.Vector3(dx,0,s*(1.3+(out||0))));}
+function tramNear(){const T=AREA==='inaka'?INKT:TRAM;if(!tramOpen(T)||!canRide())return null;let best=null,bd=3;
+  for(let k=0;k<2;k++)for(const dx of [-4,4]){const p=tramDoor(T,k,dx,0.8),d=Math.hypot(P.x-p.x,P.z-p.z);if(d<bd){bd=d;best={kind:'tram',T,k,dx,d,label:'乗る　うみまち線',verb:'乗る'};}}
   return best;}
-function rideNear(){return tramOpen()?{kind:'alight',label:`降りる　${TRAM.at.name}`,verb:'降りる'}:null;}
-function boardTram(o){const s=TRAM.dir>0?1:-1,car=TRAM.cars[o.k].userData.car,taken=car.folk.filter(f=>f.s===s).map(f=>f.x);
-  const free=TRAM_SEATS.filter(x=>!taken.some(t=>Math.abs(t-x)<0.6));free.sort((a,b)=>Math.abs(a-o.dx)-Math.abs(b-o.dx));
-  Object.assign(RIDE,{on:true,car:o.k,s,x:free[0],look:0});P.foot=true;P.carry='hand';P.tr=null;P.v=0;P.air=false;P.grind=null;
+function rideNear(){const T=RIDE.train;return tramOpen(T)?{kind:'alight',label:`降りる　${T.at.name}`,verb:'降りる'}:null;}
+// the free seat on that side of the car nearest to x
+function pickSeat(T,k,s,near){const taken=T.cars[k].userData.car.folk.filter(f=>f.s===s).map(f=>f.x);
+  const free=TRAM_SEATS.filter(x=>!taken.some(t=>Math.abs(t-x)<0.6));free.sort((a,b)=>Math.abs(a-near)-Math.abs(b-near));return free[0];}
+function boardTram(o){const T=o.T,s=T.seatS();
+  Object.assign(RIDE,{on:true,train:T,car:o.k,s,x:pickSeat(T,o.k,s,o.dx),look:0});if(T===INKT){T.mode='depart';T.wait=4;}P.foot=true;P.carry='hand';P.tr=null;P.v=0;P.air=false;P.grind=null;
   document.body.classList.add('riding');camInit=false;tramTurnFade();
   toast(hasTouch?'うみまち線に乗った（スティックで まわりを見る）':'うみまち線に乗った（A / D で まわりを見る）');}
-function alightTram(){const car=TRAM.cars[RIDE.car],dx=RIDE.x<0?-4:4;const p=tramDoor(RIDE.car,dx,2.6);
-  RIDE.on=false;document.body.classList.remove('riding');P.x=p.x;P.z=p.z;P.y=groundAt(P.x,P.z,G(P.x,P.z)+1);P.yaw=Math.PI;P.v=0;camInit=false;tramTurnFade();
-  if(SAVE.money>=100){SAVE.money-=100;toast(`${TRAM.at.name}で降りた（運賃 -100円）`);renderHUD();save();}else toast('運転士さん「今日はいいよ。またどうぞ」');}
+function alightTram(){const T=RIDE.train,dx=RIDE.x<0?-4:4;const p=tramDoor(T,RIDE.car,dx,2.6);
+  RIDE.on=false;document.body.classList.remove('riding');P.x=p.x;P.z=p.z;P.y=groundAt(P.x,P.z,G(P.x,P.z)+1);if(AREA==='inaka')P.y=Math.max(P.y,0.34);P.yaw=Math.PI;P.v=0;camInit=false;tramTurnFade();
+  if(SAVE.money>=100){SAVE.money-=100;toast(`${T.at.name}で降りた（運賃 -100円）`);renderHUD();save();}else toast('運転士さん「今日はいいよ。またどうぞ」');}
 // on board: she sits on the long seat on the sea side, the board stood up at her side
-function rideStep(dt){jumpQ=kickQ=footQ=trickQ=false;const g=TRAM.cars[RIDE.car];
+function rideStep(dt){jumpQ=kickQ=footQ=trickQ=false;const g=RIDE.train.cars[RIDE.car];
   const I=DLG||modal?{turn:0}:inputs();RIDE.look=clamp(RIDE.look+I.turn*dt*1.6,-1.3,1.3);
   const p=g.localToWorld(new THREE.Vector3(RIDE.x,0.9,RIDE.s*0.98));P.x=p.x;P.z=p.z;P.y=p.y;P.yaw=g.rotation.y+(RIDE.s>0?Math.PI:0);P.v=0;
   player.g.position.copy(p);player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(0,0,0);poseSitter(player,dt,RIDE.look);}
@@ -155,6 +158,6 @@ function poseSitter(h,dt,look){const P=h.pose;h.t+=dt;h.kneeOut=0.12;P.c=0;P.pus
   if(h.faceM)animHeroine(h,dt,{v:0,turn:0,air:false});
   if(h.vrm)driveVRM(h,dt,{v:0,turn:0,air:false});}
 // the view on board: from across the aisle, her on the seat with the sea going by in the windows behind; A/D look along the car
-function rideCam(want,look){const g=TRAM.cars[RIDE.car],s=RIDE.s;
+function rideCam(want,look){const g=RIDE.train.cars[RIDE.car],s=RIDE.s;
   want.copy(g.localToWorld(new THREE.Vector3(RIDE.x-1.1,1.95,-s*0.55)));
   look.copy(g.localToWorld(new THREE.Vector3(RIDE.x+0.25+RIDE.look*3.5,1.75,s*1.2)));}
