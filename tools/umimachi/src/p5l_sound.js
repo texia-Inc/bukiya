@@ -14,7 +14,7 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resu
   const loop=(type,f,q,osc)=>{let src;if(osc){src=c.createOscillator();src.type=osc;src.frequency.value=f;}else{src=c.createBufferSource();src.buffer=nb;src.loop=true;}
     const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=osc?f*4:f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;src.connect(fl);fl.connect(g);g.connect(S.master);
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
-  S.L.roll=loop('bandpass',700,0.7);S.L.wind=loop('lowpass',500,0.5);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
+  S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.wind=loop('bandpass',900,0.55);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
   S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');
   // cicadas: a high band of noise, buzzing on and off thirty times a second
   { const L=S.L.cicada=loop('bandpass',4800,7),am=c.createGain(),lfo=c.createOscillator(),dep=c.createGain();
@@ -67,8 +67,14 @@ const sfx={
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&AREA==='town';
   // the board and the wind
-  set(L.roll.g.gain,board&&!P.air&&!P.grind?clamp(P.v/11,0,1)*0.15*(sand?1.3:1):0);set(L.roll.fl.frequency,sand?260+P.v*30:320+P.v*95);
-  set(L.wind.g.gain,play&&!ride?clamp((P.v-5)/10,0,1)**2*0.22+(P.air?clamp(-P.vy/14,0,1)*0.15:0):0);
+  // the board: mostly the air rushing past (a soft whoosh that swells with speed and gusts a little), under it the low rumble
+  // of the wheels on the road and a fine grit, with a light tick at each joint in the paving
+  const rolling=board&&!P.air&&!P.grind,sp=clamp(P.v/12,0,1);
+  set(L.roll.g.gain,rolling?sp*0.075*(sand?1.4:1):0);set(L.roll.fl.frequency,sand?160+P.v*12:190+P.v*16);
+  set(L.grit.g.gain,rolling?sp*0.03*(0.7+Math.random()*0.5)*(sand?1.6:1):0,0.03);set(L.grit.fl.frequency,sand?1100:1500+P.v*40);
+  const gust=0.85+0.1*Math.sin(clock*1.3)+0.07*Math.sin(clock*3.7);
+  set(L.wind.g.gain,play&&!ride&&!P.foot?(clamp((P.v-1.5)/11,0,1)**1.4*0.11*gust+(P.air?clamp(-P.vy/14,0,1)*0.08:0)):0,0.15);set(L.wind.fl.frequency,700+P.v*55);
+  if(rolling&&!sand&&P.v>1.5){S.dist.joint=(S.dist.joint||0)+P.v*dt;if(S.dist.joint>2.4){S.dist.joint=0;hiss(0.025,'bandpass',2600,0.012+sp*0.02,2);}}
   set(L.grind.g.gain,play&&P.grind?0.11:0);
   // footsteps
   if(play&&P.foot&&!ride&&!P.air&&P.v>0.6){S.dist.step=(S.dist.step||0)+P.v*dt;if(S.dist.step>(P.v>4?1.1:0.75)){S.dist.step=0;sfx.step();}}
