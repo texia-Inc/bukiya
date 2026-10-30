@@ -70,6 +70,7 @@ function inkBase(lx,lz){const F=INK_FALL,sd=(lx-F.x)*F.nx+(lz-F.z)*F.nz,lat=Math
 function inkRim(lx,lz){const m=Math.max(Math.abs(lx),Math.abs(lz))+(vnoise(lx/45+3,lz/45)-0.5)*20;
   if(Math.abs(lz-INK_TRACK)<6&&lx<-150&&lx>-216)return 0;
   const t=clamp((m-195)/85,0,1);return t>0?52*smooth(t)+vnoise(lx/22,lz/22)*7*smooth(clamp(t*3,0,1)):0;}
+const INK_BR=(()=>{const b=ROAD.filter(p=>p.f==='bridge'),xs=b.map(p=>p.x);return{x0:Math.min(...xs),x1:Math.max(...xs),z:b[0].z,h:b[0].h};})();
 { const best=new Float32Array(INK_N*INK_N).fill(99),bh=new Float32Array(INK_N*INK_N);
   for(let r=0;r<INK_N;r++)for(let c=0;c<INK_N;c++)INK_BASE[r*INK_N+c]=inkBase(-INK_R+c*INK_CELL,-INK_R+r*INK_CELL);
   for(const p of ROAD){if(p.f==='bridge')continue;const c0=Math.floor((p.x+INK_R-10)/INK_CELL),r0=Math.floor((p.z+INK_R-10)/INK_CELL);
@@ -79,6 +80,7 @@ function inkRim(lx,lz){const m=Math.max(Math.abs(lx),Math.abs(lz))+(vnoise(lx/45
     {const d=Math.hypot(lx-INK_LOOK.x,lz-INK_LOOK.z);if(d<10)h=lerp(INK_LOOK.h,h,smooth(clamp((d-6.5)/3.5,0,1)));}
     if(lx>PARK.x0-4&&lx<PARK.x1+4&&lz>PARK.z0-4&&lz<PARK.z1+4){const e=Math.min(lx-PARK.x0,PARK.x1-lx,lz-PARK.z0,PARK.z1-lz);h=lerp(h,INK_TOP,smooth(clamp((e+4)/4,0,1)));}
     if(lz>62&&lz<210&&Math.abs(lx)<210)h=0.05+inkRim(lx,lz);   // the valley floor stays level up to the hills
+    if(lx>INK_BR.x0&&lx<INK_BR.x1&&Math.abs(lz-INK_BR.z)<5)h=Math.min(h,INK_BR.h-0.3);   // no ground poking up through the bridge deck
     INK_HG[k]=h;INK_BASE[k]=h;}}
 // heights in the country: the deck and its ramp, then the grid
 function inkG(x,z){const lx=x-INK_X,lz=z;
