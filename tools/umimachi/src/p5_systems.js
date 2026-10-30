@@ -301,7 +301,18 @@ function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Ob
         b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
     box.appendChild(row);}}
 function setOutfit(slot,id,ci){SAVE.outfit=Object.assign({},DEFAULT_OUTFIT,SAVE.outfit||{});SAVE.outfit[slot]=[id,ci];save();applyOutfit(player,SAVE.outfit);renderCloset();}
-function openCloset(){if(!player.vrm){toast('この端末では着がえられない（主人公のモデルを読み込めなかった）');return;}renderCloset();openModal('closet');}
+function openCloset(){if(!player.vrm){toast('この端末では着がえられない（主人公のモデルを読み込めなかった）');return;}Object.assign(CL,{yaw:0.3,pitch:0.08,zoom:1});renderCloset();openModal('closet');}
+// looking at her in the closet: a narrow lens, turned by dragging the space above the sheet, closer with a pinch or the wheel
+const CL={yaw:0.3,pitch:0.08,zoom:1,pts:new Map(),pd:0};
+const closetFov=()=>camera.aspect<0.8?36:30;
+{ const el=$('closet');
+  el.addEventListener('pointerdown',e=>{if(e.target!==el)return;el.setPointerCapture(e.pointerId);CL.pts.set(e.pointerId,[e.clientX,e.clientY]);CL.pd=0;});
+  el.addEventListener('pointermove',e=>{const q=CL.pts.get(e.pointerId);if(!q)return;
+    if(CL.pts.size===1){CL.yaw-=(e.clientX-q[0])*0.012;CL.pitch=clamp(CL.pitch+(e.clientY-q[1])*0.006,-0.3,0.9);}
+    q[0]=e.clientX;q[1]=e.clientY;
+    if(CL.pts.size===2){const [a,b]=[...CL.pts.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(CL.pd)CL.zoom=clamp(CL.zoom*CL.pd/d,0.3,1.5);CL.pd=d;}});
+  const up=e=>{CL.pts.delete(e.pointerId);CL.pd=0;};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+  el.addEventListener('wheel',e=>{if(e.target!==el)return;e.preventDefault();CL.zoom=clamp(CL.zoom*Math.exp(e.deltaY*0.0012),0.3,1.5);},{passive:false});}
 $('closetBtn').addEventListener('click',openCloset);
 // the gacha at Maruya: rarity first, then an even pick among that rarity's prizes; duplicates turn into kakera
 const RCOL={N:'#6f9fd0',R:'#d977a3',SR:'#e8b030'},RNAME={N:'ノーマル',R:'レア',SR:'スーパーレア'};
@@ -478,8 +489,11 @@ function updateCamera(dt){
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
     // she stands in the space above the sheet: far enough back to fit there, the aim lowered so she sits in its middle
-    const sh=$('closet').firstChild.getBoundingClientRect(),f=clamp(sh.top/innerHeight,0.3,1),tn=Math.tan(camera.fov*Math.PI/360),dist=clamp(2.1/(2*tn*f*0.78),2.4,5.5);
-    want=p.clone().addScaledVector(fw,dist).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),dist*0.2);want.y+=1.0;look=p.clone();look.y+=1.0-dist*(1-f)*tn;rate=4;}
+    // drag turns the view round her, a pinch or the wheel brings it closer (and up to her face)
+    const sh=$('closet').firstChild.getBoundingClientRect(),f=clamp(sh.top/innerHeight,0.3,1),tn=Math.tan(closetFov()*Math.PI/360),dist=clamp(1.85/(2*tn*f*0.9),2.3,9)*CL.zoom;
+    const a=Math.atan2(fw.x,fw.z)+CL.yaw,cy=lerp(1.0,1.5,clamp((1-CL.zoom)/0.6,0,1));
+    want=p.clone().addScaledVector(new THREE.Vector3(Math.sin(a),0,Math.cos(a)),dist*Math.cos(CL.pitch));want.y+=cy+dist*Math.sin(CL.pitch);
+    look=p.clone();look.y+=cy-dist*(1-1.03*f)*tn;rate=10;}   // her middle a little below the middle of the space, clear of the money and clock
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
@@ -490,7 +504,7 @@ function updateCamera(dt){
   if(!camInit||rate===0){camPos.copy(want);camLook.copy(look);camInit=true;}   // on the tram the view rides with the car
   camPos.lerp(want,1-Math.exp(-dt*rate));camLook.lerp(look,1-Math.exp(-dt*(rate+3)));
   camera.position.copy(camPos);if(P.bump>0&&!reduceMotion){camera.position.y+=(Math.random()-.5)*P.bump*0.3;}P.bump=Math.max(0,P.bump-dt);
-  camera.lookAt(camLook);const fov=camera.aspect<0.8?72:58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
+  camera.lookAt(camLook);const fov=modal==='closet'?closetFov():camera.aspect<0.8?72:58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
   dome.position.copy(camera.position);
   const sp=state==='title'?new THREE.Vector3(0,30,-120):p;sun.position.copy(sp).addScaledVector(sunDir,70);sun.target.position.copy(sp);sun.target.updateMatrixWorld();
 }
