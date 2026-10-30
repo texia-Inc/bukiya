@@ -1,5 +1,5 @@
 # Turns the VRoid Studio model of Mio (design/mio.vrm: the girl in the white dress on the pier) into docs/umimachi/mio.glb.
-# Mio only stands, breathes and turns her head in the game, so the arms are lowered and the hands lightly closed here and that
+# Mio only stands, breathes and turns her head in the game, so her hands are clasped behind her back here and that
 # becomes the rest pose; the game moves nothing but the spine, neck and head. Sizes stay VRoid's metres.
 # Blender works z-up with the model facing -y.
 # Usage: Blender -b --python mio_vrm.py -- design/mio.vrm ../../docs/umimachi/mio.glb
