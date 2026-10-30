@@ -6488,8 +6488,16 @@ function uraReplayPose(dt){player.g.position.set(P.x,P.y,P.z);player.g.rotation.
 function uraCaughtReset(){const C=URA.chase;if(URA.hide)uraUnhide();C.grace=99;C.rec=[];$('fade').style.opacity=1;P.v=0;
   setTimeout(()=>{P.x=C.save[0];P.z=C.save[1];P.yaw=C.save[2];P.y=G(P.x,P.z);const a=rnd()*TAU,bg=URA.big.h.g;
     bg.position.set(P.x+Math.sin(a)*40,0,P.z+Math.cos(a)*40);C.mode='roam';C.tx=bg.position.x;C.tz=bg.position.z;C.grace=3;camInit=false;$('fade').style.opacity=0;
-    toast('冷たい手が、肩にふれた――。気がつくと、さっきの場所にいた',true);},900);}
-function chaseStep(dt){const C=URA.chase;if(C.replay){uraReplayStep(dt);return;}C.t+=dt;C.grace-=dt;const bg=URA.big.h.g,hid=!!URA.hide;
+    toast('冷たい手が、肩にふれた――。気がつくと、さっきの場所にいた',true);
+    C.caught=(C.caught||0)+1;if(C.caught%3===0)uraOfferRetire();},900);}
+// every third time caught, a way out for those who would rather go on with the story: the chase counts as escaped
+async function uraOfferRetire(){const C=URA.chase;if(!C)return;C.asking=true;
+  const i=await askP('',`${C.caught}回つかまってしまった……。どうする？`,['もう少しがんばる','先に進む（リタイア）']);C.asking=false;
+  if(URA.chase!==C)return;if(i===0){C.grace=3;toast('木箱に隠れて、足音をやり過ごそう');return;}
+  $('fade').style.opacity=1;setTimeout(()=>{P.x=URA_EXIT[0];P.z=URA_EXIT[1];P.y=G(P.x,P.z);camInit=false;
+    URA.chase=null;URA.big.h.g.visible=URA.big.eye.visible=false;URA.goal.visible=false;$('hurt').style.opacity=0;$('fade').style.opacity=0;
+    toast('なんとか、西のトンネルまでたどり着いた');C.res();},700);}
+function chaseStep(dt){const C=URA.chase;if(C.replay){uraReplayStep(dt);return;}if(C.asking)return;C.t+=dt;C.grace-=dt;const bg=URA.big.h.g,hid=!!URA.hide;
   const dx=P.x-bg.position.x,dz=P.z-bg.position.z,dd=Math.hypot(dx,dz)||1;C.d=dd;
   // what it knows: the board from far off, a walker close by, anyone in front of it in the fog; nobody in a crate
   const loud=!P.foot&&P.v>2.5,facing=(Math.sin(bg.rotation.y)*dx+Math.cos(bg.rotation.y)*dz)/dd;
