@@ -106,7 +106,7 @@ function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
   if(!RACE.mark){RACE.mark=marker(MK.target);RACE.mark.scale.set(1.6,1.6,1);}
   RACE.mark.visible=true;RACE.mark.position.set(g[0],G(g[0],g[1])+3.2+Math.sin(clock*3)*0.12,g[1]);
   tr.hidden=false;
-  if(!RACE.on){RACE.count-=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール。W で蹴って、A D で曲がる</span><span class="meter">${RACE.count>0.2?Math.ceil(RACE.count-0.2):'スタート！'}</span>`;
+  if(!RACE.on){RACE.count-=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">${devText('桟橋の先がゴール。W で蹴って、A D で曲がる')}</span><span class="meter">${RACE.count>0.2?Math.ceil(RACE.count-0.2):'スタート！'}</span>`;
     if(RACE.count<=0.2){RACE.on=true;toast('スタート！',true);}return;}
   RACE.t+=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール</span><span class="meter">${RACE.t.toFixed(1)} 秒</span>`;
   const done=Math.hypot(P.x-g[0],P.z-g[1])<g[2],over=RACE.t>RACE.limit;
@@ -157,7 +157,8 @@ function updateCrowd(dt){const on=festOn()&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+
   for(const S of YATAI)if(S.g.visible!==false&&Math.hypot(P.x-S.fx,P.z-S.fz)<60)poseHuman(S.k,'stand',dt,{look:Math.hypot(P.x-S.fx,P.z-S.fz)<6?player.g.position:null});}
 
 /* buying at the stalls: food is eaten on the spot; the goldfish pool and the cork guns open a little game */
-function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand emptylet best=null;
+function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand empty
+  let best=null;
   for(const S of YATAI){const d=Math.hypot(P.x-S.fx,P.z-S.fz);if(d<2.3&&(!best||d<best.d))best={kind:'yatai',S,d,label:`${S.game?'あそぶ':'買う'}　${S.name}（${S.price}円）`,verb:S.game?'あそぶ':'買う'};}
   return best;}
 const FOODS=['kakigori','yakisoba','ringo','takoyaki'];

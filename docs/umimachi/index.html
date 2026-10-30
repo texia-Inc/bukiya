@@ -5935,7 +5935,8 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   dome.material.color.copy(LC[0]);scene.background.copy(LC[1]);scene.fog.color.copy(LC[1]);hemi.color.copy(LC[2]);hemi.groundColor.copy(LC[3]);hemi.intensity=v(4);
   sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
-  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty yearsNIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty years
+  NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
   NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 // the unlit face takes the colour and strength of the light around it (sun and sky), so it does not glow at dusk or at night
@@ -5988,7 +5989,7 @@ function setCam(a){if(a[0]==='off'){ST.cam=null;document.body.classList.remove('
 async function steps(list){for(const s of list||[])if(await step(s)==='stop')return'stop';}
 async function step(s){const [op,...a]=s;switch(op){
   case 'say':await sayP(a[0],a.slice(1));break;                         // ['say', who, line, line…]  who: an NPC id, 'nagi', '' for narration, or any name
-  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
+  case 'ask':{const opts=a[2].filter(o=>cond(o[2])),i=await askP(a[0],a[1],opts.map(o=>typeof o[0]==='function'?o[0]():o[0]));   // ['ask', who, question, [[label, [steps…], condition?], …]]
     if(a[3])SAVE.flags[a[3]]=a[2].indexOf(opts[i])+1;                    //   an optional 4th item names a flag that records the answer (1, 2, … in the written order)
     return steps(opts[i][1]);}
   case 'set':SAVE.flags[a[0]]=a[1]===undefined?1:a[1];break;           // ['set', flag, value]
@@ -6028,7 +6029,12 @@ function renderClock(){const h=((SAVE.hour%24)+24)%24,hh=Math.floor(h),mm=Math.f
   $('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]} ${hh}:${String(mm).padStart(2,'0')}`;}
 // what to do next, when no errand is being followed: the tracker shows today's aim (storyGoal in p5d_events.js)
 function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.hidden=true;return;}tr.hidden=false;tr.innerHTML='';
-  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);}
+  const b=document.createElement('b');b.textContent='今日のめあて';const s=document.createElement('span');s.className='step';s.textContent=g;tr.append(b,s);
+  // the errands in hand under it, with their numbers; tap one to follow it
+  const act=activeQuests();if(!act.length)return;const box=document.createElement('div');box.className='others';
+  act.slice(0,4).forEach((o,k)=>{const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
+    r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});
+  if(act.length>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${act.length-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
@@ -6148,7 +6154,7 @@ function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
   if(!RACE.mark){RACE.mark=marker(MK.target);RACE.mark.scale.set(1.6,1.6,1);}
   RACE.mark.visible=true;RACE.mark.position.set(g[0],G(g[0],g[1])+3.2+Math.sin(clock*3)*0.12,g[1]);
   tr.hidden=false;
-  if(!RACE.on){RACE.count-=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール。W で蹴って、A D で曲がる</span><span class="meter">${RACE.count>0.2?Math.ceil(RACE.count-0.2):'スタート！'}</span>`;
+  if(!RACE.on){RACE.count-=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">${devText('桟橋の先がゴール。W で蹴って、A D で曲がる')}</span><span class="meter">${RACE.count>0.2?Math.ceil(RACE.count-0.2):'スタート！'}</span>`;
     if(RACE.count<=0.2){RACE.on=true;toast('スタート！',true);}return;}
   RACE.t+=dt;tr.innerHTML=`<b>坂下りレース</b><span class="step">桟橋の先がゴール</span><span class="meter">${RACE.t.toFixed(1)} 秒</span>`;
   const done=Math.hypot(P.x-g[0],P.z-g[1])<g[2],over=RACE.t>RACE.limit;
@@ -6199,7 +6205,8 @@ function updateCrowd(dt){const on=festOn()&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+
   for(const S of YATAI)if(S.g.visible!==false&&Math.hypot(P.x-S.fx,P.z-S.fz)<60)poseHuman(S.k,'stand',dt,{look:Math.hypot(P.x-S.fx,P.z-S.fz)<6?player.g.position:null});}
 
 /* buying at the stalls: food is eaten on the spot; the goldfish pool and the cork guns open a little game */
-function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand emptylet best=null;
+function festNear(){if(!FEST.stalls.visible||!festOn())return null;   // before the day the stalls stand empty
+  let best=null;
   for(const S of YATAI){const d=Math.hypot(P.x-S.fx,P.z-S.fz);if(d<2.3&&(!best||d<best.d))best={kind:'yatai',S,d,label:`${S.game?'あそぶ':'買う'}　${S.name}（${S.price}円）`,verb:S.game?'あそぶ':'買う'};}
   return best;}
 const FOODS=['kakigori','yakisoba','ringo','takoyaki'];
@@ -6415,7 +6422,7 @@ function vanChaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;VAN.scr
 const ogBusy=()=>!!(OG.run||OG.van);
 function ogHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
   if(OG.run){b.textContent='逃げろ！';s.textContent=OG.run.o.hint;const g=OG.run.o.to;m.textContent=`のこり ${Math.round(Math.hypot(P.x-g[0],P.z-g[1]))} m`;}
-  else{b.textContent='黒いバンを止めろ！';s.textContent='W で蹴って追いつく。バンのうしろにぴったりつけたら勝ち';const d=Math.max(0,Math.round(Math.hypot(P.x-VAN.x,P.z-VAN.z)-2.6));
+  else{b.textContent='黒いバンを止めろ！';s.textContent=devText('W で蹴って追いつく。バンのうしろにぴったりつけたら勝ち');const d=Math.max(0,Math.round(Math.hypot(P.x-VAN.x,P.z-VAN.z)-2.6));
     m.textContent=`バンまで ${d} m　ねばり ${'■'.repeat(Math.round(OG.van.near/0.5))}${'□'.repeat(Math.max(0,5-Math.round(OG.van.near/0.5)))}`;}
   tr.append(b,s,m);}
 // the end of the van chase: a camera beside the stopped van
@@ -6427,7 +6434,7 @@ function updateOG(dt){
   if(SAVE.flags.ending_org&&!OG.van){VAN.scripted=true;VAN.g.visible=false;VAN.box.on=false;}   // the van was taken away
   if(OG.run){const R=OG.run,o=R.o;R.t+=dt;const v=Math.min(8.4,6.2+R.t*0.08);
     for(const h of OG.men){const p=h.g.position,dx=P.x-p.x,dz=P.z-p.z,d=Math.hypot(dx,dz);p.x+=dx/d*v*dt;p.z+=dz/d*v*dt;p.y=G(p.x,p.z);h.g.rotation.y=Math.atan2(dx,dz);poseHuman(h,'walk',dt,{rate:13});
-      if(d<1.3){$('fade').style.opacity=1;setTimeout(()=>{$('fade').style.opacity=0;},500);toast('つかまった……！ もう一度',true);ogPlace();break;}}
+      if(d<1.3){$('fade').style.opacity=1;setTimeout(()=>{$('fade').style.opacity=0;},500);toast('つかまった……！ もう一度',true);R.t=0;ogPlace();break;}}
     OG.mark.visible=true;OG.mark.position.set(o.to[0],G(o.to[0],o.to[1])+3.2+Math.sin(clock*3)*0.12,o.to[1]);ogHUD($('tracker'));
     if(Math.hypot(P.x-o.to[0],P.z-o.to[1])<o.to[2]){OG.run=null;OG.mark.visible=false;for(const h of OG.men)h.g.visible=false;R.res();}}
   if(OG.van){const C=OG.van;C.t+=dt;VAN.v=Math.min(12.2,9+C.t*0.25);VAN.x-=VAN.v*dt;
@@ -6530,9 +6537,10 @@ const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
+  if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
   if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
-  if(d===1){if(!SAVE.qs.melon)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
+  if(d===1){if(qs('melon').state===0)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
     if(!seen('d1_mio'))return eve?'夕方の桟橋の先へ行ってみる':'ひと休みしたら、夕方の桟橋へ';return home;}
   if(d<=3){if(d===3&&!seen('d3_sota'))return '浜辺のソウタくんに会いに行く';
     if(eve||night)return seen('d'+d+'_mio')?home:'夕方の桟橋の先へ。それから'+home;
@@ -6550,7 +6558,7 @@ function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id
   if(f.route===2&&!f.ending_org){if(!seen('o4_baker'))return 'こむぎ堂の主人に、ゆうべのことを話す';
     const todo=[];if(!f.drones_cleared)todo.push('こむぎ堂の主人に話してドローン迎撃');if(qs('og_evidence').state<2)todo.push('ソウタくんの探偵団の聞き込み');
     if(todo.length)return todo.join('、')+(d>=5?'':'。夕方は'+home);return d>=5?'こむぎ堂の主人に話して、黒いバンを追う':'あしたの夜が勝負。夕方は'+home;}
-  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
+  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':night?home+'。あしたの夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
   return eve||night?home:null;}
 const endingsSeen=()=>['ending_calm','ending_horror','ending_org'].filter(k=>SAVE.flags[k]).length;
 // back to the third evening: the route and what happened on it are undone; endings, friendships and finished errands stay
@@ -6561,6 +6569,13 @@ function rewindTo3(){SAVE.day=3;SAVE.hour=18.2;SAVE.cap=18.9;SAVE.flags.mio_left
   if(URA.on)uraExit();renderClock();save();}
 NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
+// a choice on the third night, marked once that way has been followed to its ending
+const wayLabel=(l,k)=>()=>l+(SAVE.flags[k]?'（見た）':'');
+// when it gets dark: where to go now (usually home to grandma)
+function darkHint(){const f=SAVE.flags;if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
+  if(f.route===3&&SAVE.day===6&&!f.contest_done)return '暗くなってきた。浜辺のソウタくんが、大会で待っている';
+  if(f.route===2&&!f.ending_org&&SAVE.day>=5&&f.drones_cleared&&qs('og_evidence').state===2)return '暗くなってきた。こむぎ堂の主人に話して、黒いバンを追おう';
+  return '暗くなってきた。トメばあちゃんのところへ帰ろう';}
 const EVENTS=[
   // a check of every kind of step; only index.html#storytest starts it
   {id:'storytest',once:false,when:{test:()=>location.hash==='#storytest'&&!SAVE.flags.storytest_done},script:[
@@ -6667,7 +6682,7 @@ const EVENTS=[
       ['考えとくね',[['say','sota','えー。出てくれたら、ぜったい盛り上がるのになあ。']]]]],
     ['say','sota','あとね、最近、黒いバンのおじさんが浜で写真を撮ってるんだ。','灯台の方ばっかり。なんか、こわいよね。'],
     ['set','saw_van']]},
-  {id:'d3_baker',on:{talk:'baker'},when:{minDay:3,test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og},script:[
+  {id:'d3_baker',on:{talk:'baker'},when:{minDay:3,flags:{route:0},test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og},script:[
     ['say','baker','……ナギちゃん、だったな。黒いバンを見たか。','オーシャンゲートの黒崎って男が、この前うちにパンを買いに来た。','ああいう目をした男は、昔の仕事でよく見た。……あいつらには近づくなよ。'],
     ['say','nagi','昔の仕事……？'],
     ['say','baker','おっと、しゃべりすぎた。メロンパン、焼きたてだよ。'],
@@ -6688,11 +6703,11 @@ const EVENTS=[
       [['say','','庭の塀の上を、白い猫が走った。西のトンネルの方へ駆けていく。']]],
     ['if',{flags:{mio_warn:1}},[['say','nagi','（ミオが言ってた「扉」って、これのこと……？）']]],
     ['ask','nagi','どうする？',[
-      ['おもちを追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:1}}],
-      ['白い猫を追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:0}}],
-      ['黒いバンを追って、港へ',[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
-      ['外の物音を確かめに、坂の下へ',[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
-      ['……そのまま寝る',[['set','route',3]]]]],
+      [wayLabel('おもちを追って、西のトンネルへ','ending_horror'),[['set','route',1]],{flags:{met_mochi:1}}],
+      [wayLabel('白い猫を追って、西のトンネルへ','ending_horror'),[['set','route',1]],{flags:{met_mochi:0}}],
+      [wayLabel('黒いバンを追って、港へ','ending_org'),[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
+      [wayLabel('外の物音を確かめに、坂の下へ','ending_org'),[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
+      [wayLabel('……そのまま寝る','ending_calm'),[['set','route',3]]]]],
     ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。','海岸通りを西へ。トンネルの入り口で、白い猫がこちらをふり返り、闇の中へ消えた。'],
       ['say','nagi','待って、おもち……！'],['fade','out'],['ura',true],['time',23.3,0],['cam','off'],['warp',...URA_START],
       ['cam',[URA_START[0]+9,G(URA_START[0],URA_START[1])+3,URA_START[1]-4],[URA_START[0]-2,G(URA_START[0],URA_START[1])+1.2,URA_START[1]],1.2,'cut'],['fade','in'],
@@ -6746,7 +6761,7 @@ const EVENTS=[
     ['cam','npc','tome',3.4],
     ['say','tome','さあ、今日は夏祭りだよ！','スケボー大会は夕方からだって。ソウタが浜で待ってるよ。'],
     ['cam','off'],['toast','浜辺のソウタくんに話しかけると、スケボー大会が始まる']]},
-  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{day:6,flags:{route:3,contest_done:0}},script:[
+  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{minDay:6,flags:{route:3,contest_done:0}},script:[
     ['say','sota','おねえちゃん！ いよいよ大会だよ！','コースは見晴らし台から桟橋の先まで。町の人もみんな見に来てるんだ！'],
     ['if',{flags:{promise_contest:0}},[['ask','nagi','（大会に出る？）',[['出る！',[]],['もう少しあとで',[['say','sota','えー！ 待ってるからね！'],['stop']]]]]]],
     ['fade','out'],['time',17.3,0],['warp',3,-196,0],
@@ -6945,12 +6960,18 @@ const EVENTS=[
   // after the true ending the evening runs on into the night (until grandma takes you home), to see the lighthouse
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
-    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]]]},
+    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['call',()=>toast(darkHint())]]]]},
   // in the daytime from the second day, grandma lets you rest until the evening
   {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
     ['ask','tome','どうする？ ちょっと休んでいくかい？',[
       ['夕方まで、ひと休みする',[['fade','out'],['time',16.6,0],['cap',18.9],['wait',0.4],['fade','in'],['toast','夕方になった'],['say','tome','よく休めたかい。夕方の海は、きれいだよ。']]],
       ['まだ町を回る',[['say','tome','気をつけて行っておいで。']]]]]]},
+  // the festival day does not end before the contest
+  {id:'home_fest',on:{talk:'tome'},once:false,when:{day:6,phase:['evening','night'],flags:{route:3,contest_done:0}},script:[
+    ['say','tome','まだ帰るには早いよ。スケボー大会は、これからだろう？','ソウタが浜で待ってるよ。']]},
+  // pointers once an ending is seen: Mio can take you back; with all three, grandma has something to say
+  {id:'rewind_hint',when:{test:()=>endingsSeen()===1&&!ST.run},script:[['wait',1.5],['toast','夕方、桟橋の先のミオに話すと、3日目の夜に戻って、ちがう道を選べる',true]]},
+  {id:'true_hint',when:{test:()=>endingsSeen()>=3&&!SAVE.flags.true_key&&!SAVE.flags.ending_true},script:[['wait',1.5],['toast','三つの道を見終えた。トメばあちゃんが、何か話したそうにしている',true]]},
   // grandma takes you home in the evening: the night's event, then the next morning
   {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[
     ['ask','tome','そろそろ、家に帰ろうか？',[
@@ -8022,7 +8043,7 @@ function stepOf(q){const s=qs(q.id);return s.state===1?q.steps[s.step]:null;}
 function available(q){const s=qs(q.id);return s.state===0&&(!q.requires||qs(q.requires).state===2)&&(!q.when||cond(q.when));}
 function advance(q){const s=qs(q.id);s.step++;if(s.step>=q.steps.length){s.state=2;SAVE.money+=q.reward;SAVE.flags['bond_'+q.giver]=(SAVE.flags['bond_'+q.giver]||0)+1;toast(`おつかい完了「${q.title}」 +${q.reward}円`,true);
     if(q.rewardItem){addItem(...q.rewardItem);toast(`${ITEMS[q.rewardItem[0]].name}をもらった`);}if(q.done)q.done();
-    if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=nx?nx.id:null;}}
+    if(SAVE.tracked===q.id){const nx=QUESTS.find(o=>qs(o.id).state===1);SAVE.tracked=storyGoal()||!nx?null:nx.id;}}   // back to today's aim when the story has one
   autoSteps();save();renderHUD();}
 function autoSteps(){for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='have'&&invN(st.item)>=st.n){qs(q.id).step++;toast(`${ITEMS[st.item].name}がそろった。次は「${q.steps[qs(q.id).step].hint}」`);}
   if(st&&st.type==='photos'&&SPOTS.every(p=>SAVE.spots.includes(p.id))){qs(q.id).step++;toast('5か所すべて撮れた！');}}}
@@ -8035,21 +8056,27 @@ function targetOf(q){const st=stepOf(q);if(!st)return null;
   return null;}
 
 /* ---------- HUD ---------- */
-function toast(t,gold){const d=document.createElement('div');d.className='tst card'+(gold?' gold':'');d.textContent=t;const T=$('toast');T.appendChild(d);while(T.children.length>3)T.firstChild.remove();setTimeout(()=>d.remove(),2900);}
+function toast(t,gold){t=devText(t);const d=document.createElement('div');d.className='tst card'+(gold?' gold':'');d.textContent=t;const T=$('toast');T.appendChild(d);while(T.children.length>3)T.firstChild.remove();setTimeout(()=>d.remove(),2900);}
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
-function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
+function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
+  if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
   if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
     // the other errands under it, each with its number (the same as on the map); tap one to follow it instead
     const act=activeQuests(),k0=act.indexOf(q);b.prepend(Object.assign(document.createElement('i'),{className:'qn',textContent:k0+1}));b.querySelector('.qn').style.background=QCOL[k0%QCOL.length];
-    if(act.length>1){const box=document.createElement('div');box.className='others';
+    const goal=!ST.run&&storyGoal();
+    if(act.length>1||goal){const box=document.createElement('div');box.className='others';
+      if(goal){const r=document.createElement('button');r.className='oq';const n=Object.assign(document.createElement('i'),{className:'qn',textContent:'★'});n.style.background='var(--sun)';r.append(n,document.createTextNode('今日のめあて'));
+        r.title=goal;r.onclick=e=>{e.stopPropagation();SAVE.tracked=null;save();renderHUD();};box.appendChild(r);}
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
+// the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
+const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);
 const activeQuests=()=>QUESTS.filter(q=>qs(q.id).state===1),QCOL=['#e2584a','#3a7bd5','#2e9a5a','#a070d0','#e8a23a','#d0508a'];
 function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){const s=qs(q.id);if(s.state===0&&!available(q))continue;
   const d=document.createElement('div');d.className='q'+(SAVE.tracked===q.id?' on':'');const st=document.createElement('span');
@@ -8074,7 +8101,8 @@ function openShop(key){shopCam=key;const m=MENUS[key];$('shopName').textContent=
 // dialog
 let DLG=null;
 // phones: lines written with keys in mind name the on-screen buttons instead
-function devText(s){return hasTouch&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン'):s;}
+function devText(s){return(('ontouchstart' in window)||navigator.maxTouchPoints>0)&&typeof s==='string'?s.replace(/ ?クリックか J キーで/g,'「撃つ」ボタンで').replace(/ ?P キーか「写真を撮る」/g,'「撮る」ボタン')
+  .replace('L でライト','「ライト」ボタンでライト').replace('W で蹴って','「ける」で蹴って').replace('A D で曲がる','スティックで曲がる'):s;}
 function say(who,lines,done){DLG={who,lines:lines.map(devText),done};$('dwho').textContent=who;$('dwho').hidden=!who;$('dtext').textContent=DLG.lines.shift();$('dialog').hidden=false;}
 function nextLine(){if(!DLG||DLG.choice)return;if(DLG.lines.length){$('dtext').textContent=DLG.lines.shift();return;}const d=DLG.done;DLG=null;$('dialog').hidden=true;if(!ST.run)talkNpc=null;if(d)d();}
 $('dialog').addEventListener('click',nextLine);
@@ -8086,7 +8114,7 @@ function talk(n){talkNpc=n;
       say(n.name,st.text,()=>{if(st.type==='deliver')addItem(st.item,-st.n);advance(q);});return;}}
   const ev=findEvent('talk',n.id);if(ev){runEvent(ev,n);return;}
   for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='deliver'&&st.to===n.id){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}}
-  for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
+  for(const q of STORY_FIRST){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
   if(n.id==='baker'&&!DRONE.active&&SAVE.flags.route===2&&SAVE.seen.o4_baker&&!SAVE.flags.drones_cleared){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}

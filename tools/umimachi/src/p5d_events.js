@@ -15,9 +15,10 @@ const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
+  if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
   if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
-  if(d===1){if(!SAVE.qs.melon)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
+  if(d===1){if(qs('melon').state===0)return '坂を下って、神社の鳥居のそばのばあちゃんに会う';if(qs('melon').state<2)return null;
     if(!seen('d1_mio'))return eve?'夕方の桟橋の先へ行ってみる':'ひと休みしたら、夕方の桟橋へ';return home;}
   if(d<=3){if(d===3&&!seen('d3_sota'))return '浜辺のソウタくんに会いに行く';
     if(eve||night)return seen('d'+d+'_mio')?home:'夕方の桟橋の先へ。それから'+home;
@@ -35,7 +36,7 @@ function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id
   if(f.route===2&&!f.ending_org){if(!seen('o4_baker'))return 'こむぎ堂の主人に、ゆうべのことを話す';
     const todo=[];if(!f.drones_cleared)todo.push('こむぎ堂の主人に話してドローン迎撃');if(qs('og_evidence').state<2)todo.push('ソウタくんの探偵団の聞き込み');
     if(todo.length)return todo.join('、')+(d>=5?'':'。夕方は'+home);return d>=5?'こむぎ堂の主人に話して、黒いバンを追う':'あしたの夜が勝負。夕方は'+home;}
-  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
+  if(endingsSeen()>0&&endingsSeen()<3)return eve?'桟橋の先のミオに話すと、あの夜に戻れる':night?home+'。あしたの夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる':'夕方、桟橋の先のミオに話すと、あの夜（3日目）に戻れる';
   return eve||night?home:null;}
 const endingsSeen=()=>['ending_calm','ending_horror','ending_org'].filter(k=>SAVE.flags[k]).length;
 // back to the third evening: the route and what happened on it are undone; endings, friendships and finished errands stay
@@ -46,6 +47,13 @@ function rewindTo3(){SAVE.day=3;SAVE.hour=18.2;SAVE.cap=18.9;SAVE.flags.mio_left
   if(URA.on)uraExit();renderClock();save();}
 NPCS.mio.show=()=>SAVE.flags.mio_here||phaseOf(SAVE.hour)==='evening'&&SAVE.flags.mio_left!==SAVE.day;
 const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from grandma's house: the town below and the radio mast on the west hill
+// a choice on the third night, marked once that way has been followed to its ending
+const wayLabel=(l,k)=>()=>l+(SAVE.flags[k]?'（見た）':'');
+// when it gets dark: where to go now (usually home to grandma)
+function darkHint(){const f=SAVE.flags;if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
+  if(f.route===3&&SAVE.day===6&&!f.contest_done)return '暗くなってきた。浜辺のソウタくんが、大会で待っている';
+  if(f.route===2&&!f.ending_org&&SAVE.day>=5&&f.drones_cleared&&qs('og_evidence').state===2)return '暗くなってきた。こむぎ堂の主人に話して、黒いバンを追おう';
+  return '暗くなってきた。トメばあちゃんのところへ帰ろう';}
 const EVENTS=[
   // a check of every kind of step; only index.html#storytest starts it
   {id:'storytest',once:false,when:{test:()=>location.hash==='#storytest'&&!SAVE.flags.storytest_done},script:[
@@ -152,7 +160,7 @@ const EVENTS=[
       ['考えとくね',[['say','sota','えー。出てくれたら、ぜったい盛り上がるのになあ。']]]]],
     ['say','sota','あとね、最近、黒いバンのおじさんが浜で写真を撮ってるんだ。','灯台の方ばっかり。なんか、こわいよね。'],
     ['set','saw_van']]},
-  {id:'d3_baker',on:{talk:'baker'},when:{minDay:3,test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og},script:[
+  {id:'d3_baker',on:{talk:'baker'},when:{minDay:3,flags:{route:0},test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og},script:[
     ['say','baker','……ナギちゃん、だったな。黒いバンを見たか。','オーシャンゲートの黒崎って男が、この前うちにパンを買いに来た。','ああいう目をした男は、昔の仕事でよく見た。……あいつらには近づくなよ。'],
     ['say','nagi','昔の仕事……？'],
     ['say','baker','おっと、しゃべりすぎた。メロンパン、焼きたてだよ。'],
@@ -173,11 +181,11 @@ const EVENTS=[
       [['say','','庭の塀の上を、白い猫が走った。西のトンネルの方へ駆けていく。']]],
     ['if',{flags:{mio_warn:1}},[['say','nagi','（ミオが言ってた「扉」って、これのこと……？）']]],
     ['ask','nagi','どうする？',[
-      ['おもちを追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:1}}],
-      ['白い猫を追って、西のトンネルへ',[['set','route',1]],{flags:{met_mochi:0}}],
-      ['黒いバンを追って、港へ',[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
-      ['外の物音を確かめに、坂の下へ',[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
-      ['……そのまま寝る',[['set','route',3]]]]],
+      [wayLabel('おもちを追って、西のトンネルへ','ending_horror'),[['set','route',1]],{flags:{met_mochi:1}}],
+      [wayLabel('白い猫を追って、西のトンネルへ','ending_horror'),[['set','route',1]],{flags:{met_mochi:0}}],
+      [wayLabel('黒いバンを追って、港へ','ending_org'),[['set','route',2]],{test:()=>SAVE.flags.saw_van||SAVE.flags.heard_og}],
+      [wayLabel('外の物音を確かめに、坂の下へ','ending_org'),[['set','route',2]],{test:()=>!SAVE.flags.saw_van&&!SAVE.flags.heard_og}],
+      [wayLabel('……そのまま寝る','ending_calm'),[['set','route',3]]]]],
     ['if',{flags:{route:1}},[['say','','ナギは、そっと家を抜け出した。','海岸通りを西へ。トンネルの入り口で、白い猫がこちらをふり返り、闇の中へ消えた。'],
       ['say','nagi','待って、おもち……！'],['fade','out'],['ura',true],['time',23.3,0],['cam','off'],['warp',...URA_START],
       ['cam',[URA_START[0]+9,G(URA_START[0],URA_START[1])+3,URA_START[1]-4],[URA_START[0]-2,G(URA_START[0],URA_START[1])+1.2,URA_START[1]],1.2,'cut'],['fade','in'],
@@ -231,7 +239,7 @@ const EVENTS=[
     ['cam','npc','tome',3.4],
     ['say','tome','さあ、今日は夏祭りだよ！','スケボー大会は夕方からだって。ソウタが浜で待ってるよ。'],
     ['cam','off'],['toast','浜辺のソウタくんに話しかけると、スケボー大会が始まる']]},
-  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{day:6,flags:{route:3,contest_done:0}},script:[
+  {id:'c6_contest',on:{talk:'sota'},mark:true,once:false,when:{minDay:6,flags:{route:3,contest_done:0}},script:[
     ['say','sota','おねえちゃん！ いよいよ大会だよ！','コースは見晴らし台から桟橋の先まで。町の人もみんな見に来てるんだ！'],
     ['if',{flags:{promise_contest:0}},[['ask','nagi','（大会に出る？）',[['出る！',[]],['もう少しあとで',[['say','sota','えー！ 待ってるからね！'],['stop']]]]]]],
     ['fade','out'],['time',17.3,0],['warp',3,-196,0],
@@ -430,12 +438,18 @@ const EVENTS=[
   // after the true ending the evening runs on into the night (until grandma takes you home), to see the lighthouse
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
-    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['toast','暗くなってきた。トメばあちゃんのところへ帰ろう']]]]},
+    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['call',()=>toast(darkHint())]]]]},
   // in the daytime from the second day, grandma lets you rest until the evening
   {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
     ['ask','tome','どうする？ ちょっと休んでいくかい？',[
       ['夕方まで、ひと休みする',[['fade','out'],['time',16.6,0],['cap',18.9],['wait',0.4],['fade','in'],['toast','夕方になった'],['say','tome','よく休めたかい。夕方の海は、きれいだよ。']]],
       ['まだ町を回る',[['say','tome','気をつけて行っておいで。']]]]]]},
+  // the festival day does not end before the contest
+  {id:'home_fest',on:{talk:'tome'},once:false,when:{day:6,phase:['evening','night'],flags:{route:3,contest_done:0}},script:[
+    ['say','tome','まだ帰るには早いよ。スケボー大会は、これからだろう？','ソウタが浜で待ってるよ。']]},
+  // pointers once an ending is seen: Mio can take you back; with all three, grandma has something to say
+  {id:'rewind_hint',when:{test:()=>endingsSeen()===1&&!ST.run},script:[['wait',1.5],['toast','夕方、桟橋の先のミオに話すと、3日目の夜に戻って、ちがう道を選べる',true]]},
+  {id:'true_hint',when:{test:()=>endingsSeen()>=3&&!SAVE.flags.true_key&&!SAVE.flags.ending_true},script:[['wait',1.5],['toast','三つの道を見終えた。トメばあちゃんが、何か話したそうにしている',true]]},
   // grandma takes you home in the evening: the night's event, then the next morning
   {id:'home',on:{talk:'tome'},once:false,when:{phase:['evening','night']},script:[
     ['ask','tome','そろそろ、家に帰ろうか？',[
