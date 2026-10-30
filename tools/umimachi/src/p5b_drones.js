@@ -3,9 +3,12 @@
    agent) lends. Only in this event do the pistols come out: the arms aim at the nearest drones in front and the shots alternate
    left and right. Drones circle ahead of you, take three hits, fall and burst on the ground. They shoot back: the eye glows and a
    red line points at you for a moment, then a slow red bolt flies where you are heading. Five hits and the drones pull out;
-   talking to the baker again starts over. ---------- */
+   talking to the baker again starts over.
+   The story also sends them in at the climax of every route (the ['drones', {…}] step): a wave of small ones, then a big
+   drone four times their size that fires three bolts at once and calls in two escorts at a time. Lost, it starts again from
+   the wave you were on. ---------- */
 const DRONE={active:false,total:12,spawned:0,killed:0,spawnT:0,list:[],fx:[],bolts:[],fireT:0,side:1,t:0,hint:false,
-  hp:5,maxHp:5,invT:0,hurt:0,volleyT:0,lost:false,dodgeHint:false,last:null,pv:new THREE.Vector3()};
+  hp:5,maxHp:5,invT:0,hurt:0,volleyT:0,lost:false,dodgeHint:false,last:null,pv:new THREE.Vector3(),o:{},boss:null,escortT:0};
 const FIRE={mouse:false,touch:false};
 const DRONE_TALK=['…おや、来たか。ちょっと耳を貸してくれ。','このところ、町の上を黒いドローンが飛び回ってる。オーシャンゲート社の監視ドローンだ。',
   '昔の仕事道具を貸してやる。…ああ、パン屋の前は別の仕事をしてたのさ。','スケボーに乗ったまま、クリックか J キーで撃てる。全部で12機、撃ち落としてくれ。','気をつけろ、向こうも撃ってくる。目が赤く光ったら、曲がってよけるんだ。'];
@@ -26,11 +29,19 @@ function makeDrone(){const g=new THREE.Group(),rotors=[];
     M(new THREE.CylinderGeometry(0.035,0.035,0.06,10),DM.arm,0.01,[x*0.36,0.07,z*0.3]);
     rotors.push(M(new THREE.CylinderGeometry(0.17,0.17,0.008,18),DM.rotor,0,[x*0.36,0.105,z*0.3]));}
   g.scale.setScalar(1.25);scene.add(g);return{g,body,eye,rotors};}
-function startDrones(){for(const d of DRONE.list){scene.remove(d.g);dropLaser(d);}for(const b of DRONE.bolts)scene.remove(b.m);DRONE.list.length=0;DRONE.bolts.length=0;
-  Object.assign(DRONE,{active:true,spawned:0,killed:0,spawnT:0.6,t:0,hint:false,hp:DRONE.maxHp,invT:0,hurt:0,volleyT:1.5,lost:false});
+// o: {total, boss, title, res} — res is the story's: called once the fight is won (a lost story fight starts again on its own)
+function startDrones(o,atBoss){o=o||{};for(const d of DRONE.list){scene.remove(d.g);dropLaser(d);}for(const b of DRONE.bolts)scene.remove(b.m);DRONE.list.length=0;DRONE.bolts.length=0;
+  Object.assign(DRONE,{active:true,o,total:o.total||12,spawned:0,killed:0,spawnT:0.6,t:0,hint:false,hp:DRONE.maxHp,invT:0,hurt:0,volleyT:1.5,lost:false,boss:null,escortT:3});
+  if(atBoss){DRONE.killed=DRONE.spawned=DRONE.total;spawnBoss();}
+  if(o.res&&P.foot&&P.carry==='hand'&&!P.tr)P.carry='back';   // a story fight starts with the board on her back and the pistols ready
   toast(hasTouch?'ドローンが来た！「撃つ」ボタンで撃ち落とせ':'ドローンが来た！ クリックか J キーで撃ち落とせ',true);renderHUD();}
-function spawnDrone(){const a=(rnd()*2-1)*0.9,r=13+rnd()*9,h=3.2+rnd()*3,d=makeDrone();
-  const ang=P.yaw+a;d.g.position.set(P.x+Math.sin(ang)*(r+28),G(P.x,P.z)+h+7,P.z+Math.cos(ang)*(r+28));
+const dronesP=o=>new Promise(res=>startDrones(Object.assign({},o,{res})));
+// the big one: comes in from high up ahead once the wave is down
+function spawnBoss(){const d=makeDrone();d.g.scale.setScalar(4.2);d.g.position.set(P.x+Math.sin(P.yaw)*60,Math.max(G(P.x,P.z),SEA_Y)+30,P.z+Math.cos(P.yaw)*60);
+  Object.assign(d,{boss:true,hp:60,maxHp:60,off:{a:0,r:23,h:8.5},ph:0,v:new THREE.Vector3(),dead:false,vy:0,spin:new THREE.Vector3(),hitT:0,fireT:3,charge:0,laser:null});
+  DRONE.list.push(d);DRONE.boss=d;P.bump=0.4;toast('大型ドローンが来た！ 三方向に撃ってくる。大きく曲がってよけろ',true);renderHUD();}
+function spawnDrone(escort){const a=(rnd()*2-1)*0.9,r=13+rnd()*9,h=3.2+rnd()*3,d=makeDrone();d.escort=!!escort;
+  const ang=P.yaw+a;d.g.position.set(P.x+Math.sin(ang)*(r+28),Math.max(G(P.x,P.z),SEA_Y)+h+7,P.z+Math.cos(ang)*(r+28));
   Object.assign(d,{hp:3,off:{a,r,h},ph:rnd()*TAU,v:new THREE.Vector3(),dead:false,vy:0,spin:new THREE.Vector3(),hitT:0,fireT:2.5+rnd()*2,charge:0,laser:null});DRONE.list.push(d);DRONE.spawned++;}
 // the drones the pistols can reach: alive, within range, and in front of you
 function droneTargets(){const out=[];for(const d of DRONE.list){if(d.dead)continue;const dx=d.g.position.x-P.x,dz=d.g.position.z-P.z,dist=Math.hypot(dx,dz);
@@ -60,26 +71,32 @@ function shell(sx){const V=player.vrm,h=V?V.arms[sx].hand.getWorldPosition(new T
   fx(m,0.9,(f,k,dt)=>{v.y-=9.8*dt;m.position.addScaledVector(v,dt);m.rotation.x+=sp.x*dt;m.rotation.y+=sp.y*dt;const gy=G(m.position.x,m.position.z)+0.01;if(m.position.y<gy){m.position.y=gy;v.multiplyScalar(0.3);v.y=Math.abs(v.y);}});}
 function shoot(sx,d){const a=muzzleOf(sx);let b;
   if(d){b=d.g.position.clone().add(new THREE.Vector3(rnd()-0.5,rnd()-0.5,rnd()-0.5).multiplyScalar(0.3));
-    if(rnd()<0.82){damage(d,b);}else b.add(b.clone().sub(a).normalize().multiplyScalar(12));}
+    if(rnd()<(d.boss?0.95:0.82)){damage(d,b);}else b.add(b.clone().sub(a).normalize().multiplyScalar(12));}
   else b=a.clone().add(new THREE.Vector3(Math.sin(P.yaw),0.02,Math.cos(P.yaw)).multiplyScalar(40));
   tracer(a,b);flash(a);shell(sx);}
 // return fire: a short aim with a red line, then a bolt led toward where you are going
 const CHARGE=0.7,BOLT_V=16;
 function chest(){return new THREE.Vector3(P.x,P.y+1.05,P.z);}
 function dropLaser(d){if(d.laser){scene.remove(d.laser);d.laser=null;}d.eye.scale.setScalar(1);}
-function droneShot(d){dropLaser(d);const a=d.eye.getWorldPosition(new THREE.Vector3()),c=chest(),t=a.distanceTo(c)/BOLT_V;
-  const aim=c.addScaledVector(DRONE.pv,t*0.9).add(new THREE.Vector3(rnd()-0.5,(rnd()-0.5)*0.5,rnd()-0.5).multiplyScalar(0.7));
+function droneShot(d,side){dropLaser(d);const a=d.eye.getWorldPosition(new THREE.Vector3()),c=chest(),t=a.distanceTo(c)/BOLT_V;
+  const aim=c.addScaledVector(DRONE.pv,t*0.9).add(new THREE.Vector3(Math.cos(P.yaw),0,-Math.sin(P.yaw)).multiplyScalar(side||0)).add(new THREE.Vector3(rnd()-0.5,(rnd()-0.5)*0.5,rnd()-0.5).multiplyScalar(0.7));
   const m=new THREE.Group(),glow=new THREE.Mesh(FXG.ball,DM.bolt),core=new THREE.Mesh(FXG.ball,DM.core);glow.scale.set(0.12,0.12,0.42);core.scale.set(0.05,0.05,0.24);m.add(glow,core);
   m.position.copy(a);m.lookAt(aim);scene.add(m);DRONE.bolts.push({m,v:aim.sub(a).setLength(BOLT_V),life:4});sparks(a,4,'#ff6a50',2,0.04);}
 function hurtPlayer(p){DRONE.hp--;DRONE.invT=1.2;DRONE.hurt=1;P.bump=Math.max(P.bump,0.5);P.v*=0.6;sparks(p,10,'#ff5a40',4,0.05);renderHUD();
   if(DRONE.hp<=0){loseDrones();return;}
   if(!DRONE.dodgeHint){DRONE.dodgeHint=true;toast('当たった！ 走りながら曲がると、よけやすい');}}
 function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.list)dropLaser(d);renderHUD();
+  const o=DRONE.o,atBoss=!!DRONE.boss;
+  if(o.res){toast('やられた… もう一度！',true);setTimeout(()=>startDrones(o,atBoss),2600);return;}
   toast('やられた… ドローンが引き上げていく',true);setTimeout(()=>toast('こむぎ堂の主人にもう一度話しかけると、やり直せる'),1800);}
-function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,6,'#fff3c0',4,0.04);
-  if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);DRONE.killed++;SAVE.money+=50;
-    sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();if(DRONE.killed>=DRONE.total)finishDrones();}}
-function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;SAVE.flags.drones_cleared=1;save();renderHUD();
+function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,d.boss?10:6,'#fff3c0',4,d.boss?0.07:0.04);if(d.boss){renderHUD();if(d.hp>0)return;}
+  if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);if(!d.escort&&!d.boss)DRONE.killed++;SAVE.money+=d.boss?500:50;
+    sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();
+    if(d.boss){d.spin.multiplyScalar(0.3);for(const e of DRONE.list)if(e!==d&&!e.dead){e.dead=true;e.vy=1;dropLaser(e);}boom(d.g.position.clone());finishDrones();}
+    else if(!d.escort&&DRONE.killed>=DRONE.total){if(DRONE.o.boss&&!DRONE.boss)spawnBoss();else if(!DRONE.o.boss)finishDrones();}}}
+function finishDrones(){DRONE.active=false;const o=DRONE.o;
+  if(o.res){for(const d of DRONE.list)dropLaser(d);renderHUD();toast(o.boss?'大型ドローンを撃ち落とした！':'ドローンを全部撃ち落とした！',true);setTimeout(o.res,1800);return;}
+  SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;SAVE.flags.drones_cleared=1;save();renderHUD();
   toast('ドローンを全部撃ち落とした！ お礼 +1000円',true);setTimeout(()=>toast('こむぎ堂の主人「いい腕だ。…このことは、町のみんなには内緒だぞ」'),1800);}
 function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   // how you are moving, for the drones to lead their shots
@@ -87,28 +104,31 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   DRONE.invT-=dt;DRONE.volleyT-=dt;DRONE.hurt=Math.max(0,DRONE.hurt-dt*1.6);
   // spawning: four at a time until all twelve have come
   if(DRONE.active){DRONE.spawnT-=dt;const alive=DRONE.list.filter(d=>!d.dead).length;
-    if(DRONE.spawned<DRONE.total&&alive<4&&DRONE.spawnT<=0){spawnDrone();DRONE.spawnT=1.6;}}
+    if(!DRONE.boss&&DRONE.spawned<DRONE.total&&alive<4&&DRONE.spawnT<=0){spawnDrone();DRONE.spawnT=1.6;}
+    // the big one calls in two escorts at a time
+    if(DRONE.boss&&!DRONE.boss.dead){DRONE.escortT-=dt;if(DRONE.escortT<=0&&alive<3){spawnDrone(true);DRONE.escortT=4.5;}}}
   for(const d of DRONE.list.slice()){const p=d.g.position;
     if(d.dead){d.vy-=12*dt;p.y+=d.vy*dt;d.g.rotation.x+=d.spin.x*dt;d.g.rotation.y+=d.spin.y*dt;d.g.rotation.z+=d.spin.z*dt;
       if(rnd()<dt*30)sparks(p,1,'#4a4644',1,0.08);
-      if(p.y<=G(p.x,p.z)+0.25){boom(p.clone());scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
+      if(p.y<=Math.max(G(p.x,p.z),SEA_Y)+0.25*d.g.scale.x){boom(p.clone());if(d.boss){for(let k=0;k<4;k++)setTimeout(()=>boom(p.clone().add(new THREE.Vector3(rnd()*6-3,rnd()*2,rnd()*6-3))),k*160);P.bump=0.6;}scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
     // after a lost fight the rest climb away and go
     if(!DRONE.active){d.v.y+=7*dt;p.addScaledVector(d.v,dt);for(const ro of d.rotors)ro.rotation.y+=dt*40;
       if(p.y>G(p.x,p.z)+40){scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
     // each drone keeps a spot ahead of you that drifts slowly, and turns its camera on you
     const ang=P.yaw+d.off.a+Math.sin(DRONE.t*0.35+d.ph)*0.45,r=d.off.r+Math.sin(DRONE.t*0.5+d.ph*2)*3;
-    const want=new THREE.Vector3(P.x+Math.sin(ang)*r,0,P.z+Math.cos(ang)*r);want.y=G(want.x,want.z)+d.off.h+Math.sin(DRONE.t*1.3+d.ph)*0.5;
+    const want=new THREE.Vector3(P.x+Math.sin(ang)*r,0,P.z+Math.cos(ang)*r);want.y=Math.max(G(want.x,want.z),SEA_Y)+d.off.h+Math.sin(DRONE.t*1.3+d.ph)*0.5;
     if(p.distanceTo(want)>90)p.copy(want).add(new THREE.Vector3(0,8,0));
     const acc=want.sub(p).multiplyScalar(2.2).sub(d.v.clone().multiplyScalar(1.6));d.v.addScaledVector(acc,dt);if(d.v.length()>14)d.v.setLength(14);p.addScaledVector(d.v,dt);
     d.g.lookAt(P.x,P.y+1.2,P.z);d.g.rotateX(clamp(d.v.length()*0.02,0,0.25));
     for(const ro of d.rotors)ro.rotation.y+=dt*40;
     // aiming and firing back, one drone at a time so the shots come in a rhythm you can dodge
     d.fireT-=dt;
-    if(!busy&&!d.charge&&d.fireT<=0&&DRONE.volleyT<=0&&p.distanceTo(me)<36){d.charge=CHARGE;DRONE.volleyT=0.9;
+    const CH=d.boss?1.1:CHARGE;
+    if(!busy&&!d.charge&&d.fireT<=0&&(d.boss||DRONE.volleyT<=0)&&p.distanceTo(me)<(d.boss?50:36)){d.charge=CH;if(!d.boss)DRONE.volleyT=0.9;
       d.laser=new THREE.Mesh(FXG.box,DM.laser);scene.add(d.laser);}
-    if(d.charge>0){d.charge-=dt;const k=1-d.charge/CHARGE,e=d.eye.getWorldPosition(new THREE.Vector3());d.eye.scale.setScalar(1+1.6*k);
-      d.laser.position.copy(e).add(me).multiplyScalar(0.5);d.laser.lookAt(me);d.laser.scale.set(0.02,0.02,e.distanceTo(me));
-      if(d.charge<=0){d.charge=0;if(busy)dropLaser(d);else droneShot(d);d.fireT=2.6+rnd()*2.2;}}
+    if(d.charge>0){d.charge-=dt;const k=1-d.charge/CH,e=d.eye.getWorldPosition(new THREE.Vector3()),lw=d.boss?0.06:0.02;d.eye.scale.setScalar(1+1.6*k);
+      d.laser.position.copy(e).add(me).multiplyScalar(0.5);d.laser.lookAt(me);d.laser.scale.set(lw,lw,e.distanceTo(me));
+      if(d.charge<=0){d.charge=0;if(busy)dropLaser(d);else if(d.boss){droneShot(d,-2.6);droneShot(d,0);droneShot(d,2.6);}else droneShot(d);d.fireT=d.boss?2.2+rnd():2.6+rnd()*2.2;}}
     d.hitT-=dt;d.eye.material=d.hitT>0?DM.flash:d.charge>0&&(DRONE.t*16|0)%2?DM.hot:DM.eye;}
   // the bolts: hit you, the ground, or run out
   for(const b of DRONE.bolts.slice()){const m=b.m,p=m.position;let gone=false;b.life-=dt;
@@ -132,7 +152,8 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   for(const f of DRONE.fx.slice()){f.t+=dt;const k=Math.min(1,f.t/f.life);f.upd(f,k,dt);if(k>=1){scene.remove(f.o);if(f.o.material&&f.o.material!==DM.flash&&f.o.geometry!==FXG.shell)f.o.material.dispose();DRONE.fx.splice(DRONE.fx.indexOf(f),1);}}
   $('bShoot').hidden=!(DRONE.active&&hasTouch);}
 // the tracker shows the fight while it is on
-function droneHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='ドローン迎撃';const s=document.createElement('span');s.className='step';
+function droneHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=DRONE.o.title||'ドローン迎撃';const s=document.createElement('span');s.className='step';
   s.textContent=(hasTouch?'「撃つ」ボタンで撃つ。':'クリックか J キーで撃つ。')+'近いドローンを自動でねらう。赤い光は曲がってよける';
   const m=document.createElement('span');m.className='meter';
-  m.textContent=`撃ち落とした ${DRONE.killed} / ${DRONE.total}　${'♥'.repeat(Math.max(0,DRONE.hp))}${'♡'.repeat(DRONE.maxHp-Math.max(0,DRONE.hp))}`;tr.append(b,s,m);}
+  const B=DRONE.boss,n=B?Math.ceil(Math.max(0,B.hp)/B.maxHp*10):0;
+  m.textContent=`${B?'大型ドローン '+'■'.repeat(n)+'□'.repeat(10-n):`撃ち落とした ${DRONE.killed} / ${DRONE.total}`}　${'♥'.repeat(Math.max(0,DRONE.hp))}${'♡'.repeat(DRONE.maxHp-Math.max(0,DRONE.hp))}`;tr.append(b,s,m);}

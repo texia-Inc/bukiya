@@ -1,7 +1,7 @@
 
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
    The board rolling (louder and brighter with speed, rougher on sand), kicks, pops, landings and grinds,
-   footsteps; the sea, cicadas by day and crickets at night, a low hum in 裏海街; the tram's bell, doors, motor and the
+   footsteps; the sea, crickets at night, a low hum in 裏海街; the tram's bell, doors, motor and the
    clack of the rail joints, the level crossings; the racers' engines and tyres; the drone fight, fireworks, coins, the
    camera, the dialogue. Browsers allow no sound before the first tap or key, so it starts then; M (or the 音 button)
    turns it off and on, and that is remembered. Most of it watches the game's state each frame rather than being called. ---------- */
@@ -15,10 +15,8 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resu
     const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=osc?f*4:f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;src.connect(fl);fl.connect(g);g.connect(S.master);
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
-  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');
-  // cicadas: a high band of noise, buzzing on and off thirty times a second
-  { const L=S.L.cicada=loop('bandpass',4800,7),am=c.createGain(),lfo=c.createOscillator(),dep=c.createGain();
-    L.g.disconnect();L.g.connect(am);am.connect(S.master);am.gain.value=0.5;lfo.frequency.value=31;dep.gain.value=0.5;lfo.connect(dep);dep.connect(am.gain);lfo.start();}}
+  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');
+}
 function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();if(S.master)S.master.gain.setTargetAtTime(S.on?0.9:0,S.ctx.currentTime,0.05);
   $('soundBtn').textContent=S.on?'音：オン':'音：オフ';toast(S.on?'音をオンにした':'音をオフにした');}
 for(const ev of ['pointerdown','keydown','touchstart'])window.addEventListener(ev,sndInit,{passive:true});
@@ -58,6 +56,9 @@ const sfx={
   firework:()=>{tone(500,0.9,'sine',0.05,1300);setTimeout(()=>{sfx.boom(0.6);for(let i=0;i<7;i++)hiss(0.04,'highpass',3500,0.12,0.7,null,0.25+Math.random()*0.7);},900);},
   win:()=>[523,659,784,1046].forEach((f,i)=>tone(f,0.35,'triangle',0.13,null,i*0.12)),
   lose:()=>[392,330,262].forEach((f,i)=>tone(f,0.4,'triangle',0.11,null,i*0.16)),
+  pad:v=>{hiss(0.08,'lowpass',360,0.16*v);tone(78,0.07,'sine',0.1*v,55);},
+  thud:v=>{tone(50,0.34,'sine',0.6*v,28);hiss(0.2,'lowpass',240,0.4*v);},
+  heart:v=>{tone(56,0.13,'sine',v,38);tone(50,0.15,'sine',v*0.8,34,0.18);},
   cricket:()=>{for(let i=0;i<3;i++)tone(4300,0.035,'sine',0.025,null,i*0.06);}};
 // the drone fight and the fireworks call their own effects
 { const s0=shoot;shoot=function(...a){sfx.shot();return s0.apply(this,a);};
@@ -65,7 +66,7 @@ const sfx={
   const f0=burst;burst=function(p,col){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col);};}
 
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
-  const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&AREA==='town';
+  const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
   // the board: the low rumble of the wheels on the road and a fine grit, with a light tick at each joint in the paving
   const rolling=board&&!P.air&&!P.grind,sp=clamp(P.v/12,0,1);
   set(L.roll.g.gain,rolling?sp*0.075*(sand?1.4:1):0);set(L.roll.fl.frequency,sand?160+P.v*12:190+P.v*16);
@@ -87,12 +88,19 @@ function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,
   if(play&&pv.money!=null&&SAVE.money!==pv.money)(SAVE.money>pv.money?sfx.coin:sfx.pay)();pv.money=play?SAVE.money:null;
   const dl=$('dialog'),tx=dl.hidden?'':$('dtext').textContent;if(tx&&tx!==pv.text)sfx.blip();pv.text=tx;
   if(photoReq&&!pv.photo)sfx.shutter();pv.photo=photoReq;
-  // the world around: the sea, cicadas or crickets, 裏海街's hum
-  const town=AREA==='town',hr=SAVE.hour||12,day=hr>=8&&hr<17.5,night=hr>=19||hr<5,inside=ride?0.45:1;
-  set(L.sea.g.gain,play&&town&&!URA.on?att(Math.max(0,Math.abs(P.z-SHORE)-8),110)*(0.16+0.07*Math.sin(clock*0.5))*inside:0,0.3);
-  set(L.cicada.g.gain,play&&day&&!URA.on?(town?0.035:0.07)*inside:0,0.5);
+  // the world around: the sea, crickets at night, 裏海街's hum
+  const town=AREA==='town',hr=SAVE.hour||12,night=hr>=19||hr<5,inside=ride?0.45:1;
+  set(L.sea.g.gain,play&&town&&!URA.on?att(P.z>ISL_Z0||BOAT.on?2:Math.max(0,Math.abs(P.z-SHORE)-8),110)*(0.16+0.07*Math.sin(clock*0.5))*inside:0,0.3);
   if(play&&night&&!URA.on&&clock>S.nextCricket){S.nextCricket=clock+0.5+Math.random()*1.2;sfx.cricket();}
   set(L.ura.g.gain,play&&URA.on?0.12:0,0.5);
+  // 裏海街: the shadows' steps grow louder as they come near; the big one's heavy tread and growl, and your heartbeat when it is close
+  let gr=0;
+  if(play&&URA.on){for(const s of URA.shadows){if(s.sus>=0.05)continue;s.stepT=(s.stepT||0)-dt;
+      if(s.stepT<=0){s.stepT=0.62;const v=att(Math.hypot(s.h.g.position.x-P.x,s.h.g.position.z-P.z),34);if(v>0.01)sfx.pad(v);}}
+    const C=URA.chase;if(C&&URA.big){const v=att(C.d,90);gr=v*0.2*(C.mode==='hunt'?1.3:1);
+      C.stepT=(C.stepT||0)-dt;if(C.stepT<=0&&C.sp>0.5){C.stepT=clamp(3/C.sp,0.3,0.95);if(v>0.005)sfx.thud(v);}
+      const hv=att(C.d,34);S.heartT=(S.heartT||0)-dt;if(hv>0.02&&S.heartT<=0){S.heartT=lerp(1.0,0.36,hv);sfx.heart(0.12+hv*0.45);}}}
+  set(L.growl.g.gain,gr,0.2);set(L.growl.src.frequency,38+gr*40,0.2);
   // the trams: motor, rail joints, the bell as they leave, the doors
   for(const T of [TRAM,INKT]){const here=(T===INKT)===(AREA==='inaka'),k=T===TRAM?'t':'i';if(!here)continue;
     let d=1e9;for(const g of T.cars)d=Math.min(d,Math.hypot(g.position.x-P.x,g.position.z-P.z));if(ride&&RIDE.train===T)d=0;const v=att(d,90);

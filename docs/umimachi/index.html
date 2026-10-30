@@ -59,7 +59,12 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 #dialog .nx{position:absolute;right:16px;bottom:10px;font-size:12px;color:var(--ink-soft);animation:bob 1s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(3px)}}
 #closet{place-items:end center;background:linear-gradient(transparent 45%,rgba(20,50,70,.22))}
-#closet .sheet{width:min(560px,100%);max-height:46vh;overflow-y:auto;padding:14px 16px}
+#closet .sheet{width:min(560px,100%);max-height:48vh;overflow-y:auto;padding:12px 14px 0;gap:6px}
+#closet .hint{margin:0;font-size:12px;color:var(--ink-soft)}
+#closet .bar{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:10px;padding:8px 0 12px;background:inherit;background:linear-gradient(rgba(255,250,240,0),#fffaf0 30%)}
+.cslot .cl{font-size:11px;font-weight:700;color:var(--ink-soft);margin-right:2px;align-self:center}
+/* while dressing, only the sheet and the heroine above it */
+body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.closet #pad,body.closet #stick,body.closet #toast{visibility:hidden}
 #closet h2{margin:0 0 6px}
 .cslot{display:grid;grid-template-columns:72px 1fr;gap:6px 10px;align-items:center;padding:6px 0;border-top:1px solid rgba(0,0,0,.06)}
 .cslot b{font-size:12px;color:var(--sea-deep)}
@@ -162,6 +167,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   .tool{font-size:11px;padding:7px 9px;min-width:56px}
   #pad{gap:9px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
   .pb{width:56px;height:56px;font-size:12px}.pb.main{width:72px;height:72px}.pb.kick{width:80px;height:80px;font-size:15px}
+  .cslot{grid-template-columns:52px 1fr;gap:4px 8px}
   #ring{opacity:.22}#bag .it{font-size:11px;padding:2px 6px 2px 2px}#bag .it img{width:20px;height:20px}
 }
 @media (prefers-reduced-motion: reduce){.tst{animation-duration:3.5s}#dialog .nx{animation:none}}
@@ -205,8 +211,8 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 <div class="modal" id="shop" hidden><div class="sheet card"><h2 id="shopName"></h2><p class="sub" id="shopSub"></p><div id="shopList"></div><div style="display:flex;justify-content:space-between;align-items:center"><span id="shopMoney"></span><button class="btn ghost" id="shopClose">お店を出る</button></div></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
-<div class="modal" id="closet" hidden><div class="sheet card"><h2>着がえ</h2><div id="closetSlots"></div>
-  <div style="display:flex;justify-content:space-between;gap:10px;margin-top:6px"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div></div>
+<div class="modal" id="closet" hidden><div class="sheet card"><h2>着がえ</h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギで確かめよう</p><div id="closetSlots"></div>
+  <div class="bar"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div></div>
 <div class="modal" id="gacha" hidden><div class="sheet card"><h2>まるやのカプセルトイ</h2>
   <p class="sub">1回100円。出た服はすぐ「着がえ」で着られる。ダブりは「かけら」になって、ほしい物と交換できる。</p>
   <div id="gachaStage"></div>
@@ -3907,6 +3913,7 @@ function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSiz
 window.addEventListener('resize',resize);resize();
 const hemi=new THREE.HemisphereLight('#e6f3ff','#8a7c66',0.62);scene.add(hemi);
 const sun=new THREE.DirectionalLight('#fff3dc',0.95);scene.add(sun);scene.add(sun.target);
+hemi.layers.enable(1);sun.layers.enable(1);   // layer 1: the heroine drawn on top while dressing
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 {const sc=sun.shadow.camera;sc.left=-16;sc.right=16;sc.top=16;sc.bottom=-16;sc.near=1;sc.far=140;}
 sun.shadow.bias=-0.0005;
@@ -3975,7 +3982,9 @@ function inDeckView(x,z){for(const d of RIDGE_DECKS){if(Math.sign(x)!==Math.sign
   if(dx<-6||ax<190)continue;if(Math.abs(z-d.z)<12+dx*0.6)return true;}return false;}
 const HILL_TREES=[];   // hill trees, so the camera can keep out of them
 function onPier(x,z){return x>PIER.x0&&x<PIER.x1&&z>PIER.z0&&z<PIER.z1;}
-function G(x,z){if(x>INK_X-600)return inkG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
+// the island out at sea (p5m_shima.js) has heights of its own once it is built
+const ISL_Z0=640;let ISL_ON=false;
+function G(x,z){if(x>INK_X-600)return inkG(x,z);if(z>ISL_Z0&&ISL_ON)return islG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
 
 const world=new THREE.Group();scene.add(world);
 const COLL=[];   // axis-aligned boxes the board bumps into: {x0,x1,z0,z1,on}
@@ -4555,15 +4564,7 @@ const BEACHHOUSE={x:40,z:SHORE+10};
   const lamp=new THREE.Group();lamp.add(M(new THREE.CylinderGeometry(0.07,0.07,3,8),tm('#f2f2ee'),0.01).translateY(1.5));lamp.add(M(new THREE.CylinderGeometry(0.25,0.25,0.5,10),tm('#d23a2c'),0.015).translateY(3.2));
   lamp.position.set(PIER.x0+0.6,PIER.y,PIER.z1-0.8);world.add(lamp);
 }
-{ // the island with its lighthouse, the cape to the west, mountains behind
-  const isl=new THREE.Group();isl.position.set(180,SEA_Y,760);world.add(isl);
-  const rk=tm('#9a8a70'),gr=tm('#4f8a4a');
-  const a=new THREE.Mesh(new THREE.SphereGeometry(1,24,12),rk);a.scale.set(120,22,64);isl.add(a);
-  const b=new THREE.Mesh(new THREE.SphereGeometry(1,24,12),gr);b.scale.set(100,34,52);b.position.set(-10,6,-4);isl.add(b);
-  const c=new THREE.Mesh(new THREE.SphereGeometry(1,20,10),gr);c.scale.set(50,48,40);c.position.set(18,4,0);isl.add(c);
-  const lh=new THREE.Group();lh.position.set(18,48,0);isl.add(lh);
-  lh.add(M(new THREE.CylinderGeometry(2.2,3,22,16),tm('#f4f2ec'),0.15).translateY(11));lh.add(M(new THREE.CylinderGeometry(2.6,2.6,1,16),tm('#3a3d44')).translateY(22.5));
-  lh.add(new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,3,12),new THREE.MeshBasicMaterial({color:'#fff3c4'})).translateY(24.5));lh.add(M(new THREE.ConeGeometry(2,2.4,12),tm('#d23a2c')).translateY(27.2));
+{ // the cape to the west and east, mountains behind (the island with its lighthouse is p5m_shima.js)
   const cape=[[-760,420,260,70,180],[-620,560,220,50,140],[-900,300,240,90,200],[700,520,260,60,170],[860,380,220,80,200]];
   for(const [x,z,sx,sy,sz] of cape){const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,12),tm('#4f8a4a'));m.scale.set(sx,sy,sz);m.position.set(x,SEA_Y-8,z);world.add(m);}
   for(let k=0;k<9;k++){const m=new THREE.Mesh(new THREE.ConeGeometry(1,1,10),tm(pick(['#5a8f6a','#6a9a78','#4f8460'])));const s=180+rnd()*200;m.scale.set(s,90+rnd()*90,s);m.position.set(-900+k*230+rnd()*80,40,-560-rnd()*300);world.add(m);}
@@ -5444,9 +5445,12 @@ if(window.MIO_GLTF)makeMioVRM(window.MIO_GLTF,NPCS.mio);
    agent) lends. Only in this event do the pistols come out: the arms aim at the nearest drones in front and the shots alternate
    left and right. Drones circle ahead of you, take three hits, fall and burst on the ground. They shoot back: the eye glows and a
    red line points at you for a moment, then a slow red bolt flies where you are heading. Five hits and the drones pull out;
-   talking to the baker again starts over. ---------- */
+   talking to the baker again starts over.
+   The story also sends them in at the climax of every route (the ['drones', {…}] step): a wave of small ones, then a big
+   drone four times their size that fires three bolts at once and calls in two escorts at a time. Lost, it starts again from
+   the wave you were on. ---------- */
 const DRONE={active:false,total:12,spawned:0,killed:0,spawnT:0,list:[],fx:[],bolts:[],fireT:0,side:1,t:0,hint:false,
-  hp:5,maxHp:5,invT:0,hurt:0,volleyT:0,lost:false,dodgeHint:false,last:null,pv:new THREE.Vector3()};
+  hp:5,maxHp:5,invT:0,hurt:0,volleyT:0,lost:false,dodgeHint:false,last:null,pv:new THREE.Vector3(),o:{},boss:null,escortT:0};
 const FIRE={mouse:false,touch:false};
 const DRONE_TALK=['…おや、来たか。ちょっと耳を貸してくれ。','このところ、町の上を黒いドローンが飛び回ってる。オーシャンゲート社の監視ドローンだ。',
   '昔の仕事道具を貸してやる。…ああ、パン屋の前は別の仕事をしてたのさ。','スケボーに乗ったまま、クリックか J キーで撃てる。全部で12機、撃ち落としてくれ。','気をつけろ、向こうも撃ってくる。目が赤く光ったら、曲がってよけるんだ。'];
@@ -5467,11 +5471,19 @@ function makeDrone(){const g=new THREE.Group(),rotors=[];
     M(new THREE.CylinderGeometry(0.035,0.035,0.06,10),DM.arm,0.01,[x*0.36,0.07,z*0.3]);
     rotors.push(M(new THREE.CylinderGeometry(0.17,0.17,0.008,18),DM.rotor,0,[x*0.36,0.105,z*0.3]));}
   g.scale.setScalar(1.25);scene.add(g);return{g,body,eye,rotors};}
-function startDrones(){for(const d of DRONE.list){scene.remove(d.g);dropLaser(d);}for(const b of DRONE.bolts)scene.remove(b.m);DRONE.list.length=0;DRONE.bolts.length=0;
-  Object.assign(DRONE,{active:true,spawned:0,killed:0,spawnT:0.6,t:0,hint:false,hp:DRONE.maxHp,invT:0,hurt:0,volleyT:1.5,lost:false});
+// o: {total, boss, title, res} — res is the story's: called once the fight is won (a lost story fight starts again on its own)
+function startDrones(o,atBoss){o=o||{};for(const d of DRONE.list){scene.remove(d.g);dropLaser(d);}for(const b of DRONE.bolts)scene.remove(b.m);DRONE.list.length=0;DRONE.bolts.length=0;
+  Object.assign(DRONE,{active:true,o,total:o.total||12,spawned:0,killed:0,spawnT:0.6,t:0,hint:false,hp:DRONE.maxHp,invT:0,hurt:0,volleyT:1.5,lost:false,boss:null,escortT:3});
+  if(atBoss){DRONE.killed=DRONE.spawned=DRONE.total;spawnBoss();}
+  if(o.res&&P.foot&&P.carry==='hand'&&!P.tr)P.carry='back';   // a story fight starts with the board on her back and the pistols ready
   toast(hasTouch?'ドローンが来た！「撃つ」ボタンで撃ち落とせ':'ドローンが来た！ クリックか J キーで撃ち落とせ',true);renderHUD();}
-function spawnDrone(){const a=(rnd()*2-1)*0.9,r=13+rnd()*9,h=3.2+rnd()*3,d=makeDrone();
-  const ang=P.yaw+a;d.g.position.set(P.x+Math.sin(ang)*(r+28),G(P.x,P.z)+h+7,P.z+Math.cos(ang)*(r+28));
+const dronesP=o=>new Promise(res=>startDrones(Object.assign({},o,{res})));
+// the big one: comes in from high up ahead once the wave is down
+function spawnBoss(){const d=makeDrone();d.g.scale.setScalar(4.2);d.g.position.set(P.x+Math.sin(P.yaw)*60,Math.max(G(P.x,P.z),SEA_Y)+30,P.z+Math.cos(P.yaw)*60);
+  Object.assign(d,{boss:true,hp:60,maxHp:60,off:{a:0,r:23,h:8.5},ph:0,v:new THREE.Vector3(),dead:false,vy:0,spin:new THREE.Vector3(),hitT:0,fireT:3,charge:0,laser:null});
+  DRONE.list.push(d);DRONE.boss=d;P.bump=0.4;toast('大型ドローンが来た！ 三方向に撃ってくる。大きく曲がってよけろ',true);renderHUD();}
+function spawnDrone(escort){const a=(rnd()*2-1)*0.9,r=13+rnd()*9,h=3.2+rnd()*3,d=makeDrone();d.escort=!!escort;
+  const ang=P.yaw+a;d.g.position.set(P.x+Math.sin(ang)*(r+28),Math.max(G(P.x,P.z),SEA_Y)+h+7,P.z+Math.cos(ang)*(r+28));
   Object.assign(d,{hp:3,off:{a,r,h},ph:rnd()*TAU,v:new THREE.Vector3(),dead:false,vy:0,spin:new THREE.Vector3(),hitT:0,fireT:2.5+rnd()*2,charge:0,laser:null});DRONE.list.push(d);DRONE.spawned++;}
 // the drones the pistols can reach: alive, within range, and in front of you
 function droneTargets(){const out=[];for(const d of DRONE.list){if(d.dead)continue;const dx=d.g.position.x-P.x,dz=d.g.position.z-P.z,dist=Math.hypot(dx,dz);
@@ -5501,26 +5513,32 @@ function shell(sx){const V=player.vrm,h=V?V.arms[sx].hand.getWorldPosition(new T
   fx(m,0.9,(f,k,dt)=>{v.y-=9.8*dt;m.position.addScaledVector(v,dt);m.rotation.x+=sp.x*dt;m.rotation.y+=sp.y*dt;const gy=G(m.position.x,m.position.z)+0.01;if(m.position.y<gy){m.position.y=gy;v.multiplyScalar(0.3);v.y=Math.abs(v.y);}});}
 function shoot(sx,d){const a=muzzleOf(sx);let b;
   if(d){b=d.g.position.clone().add(new THREE.Vector3(rnd()-0.5,rnd()-0.5,rnd()-0.5).multiplyScalar(0.3));
-    if(rnd()<0.82){damage(d,b);}else b.add(b.clone().sub(a).normalize().multiplyScalar(12));}
+    if(rnd()<(d.boss?0.95:0.82)){damage(d,b);}else b.add(b.clone().sub(a).normalize().multiplyScalar(12));}
   else b=a.clone().add(new THREE.Vector3(Math.sin(P.yaw),0.02,Math.cos(P.yaw)).multiplyScalar(40));
   tracer(a,b);flash(a);shell(sx);}
 // return fire: a short aim with a red line, then a bolt led toward where you are going
 const CHARGE=0.7,BOLT_V=16;
 function chest(){return new THREE.Vector3(P.x,P.y+1.05,P.z);}
 function dropLaser(d){if(d.laser){scene.remove(d.laser);d.laser=null;}d.eye.scale.setScalar(1);}
-function droneShot(d){dropLaser(d);const a=d.eye.getWorldPosition(new THREE.Vector3()),c=chest(),t=a.distanceTo(c)/BOLT_V;
-  const aim=c.addScaledVector(DRONE.pv,t*0.9).add(new THREE.Vector3(rnd()-0.5,(rnd()-0.5)*0.5,rnd()-0.5).multiplyScalar(0.7));
+function droneShot(d,side){dropLaser(d);const a=d.eye.getWorldPosition(new THREE.Vector3()),c=chest(),t=a.distanceTo(c)/BOLT_V;
+  const aim=c.addScaledVector(DRONE.pv,t*0.9).add(new THREE.Vector3(Math.cos(P.yaw),0,-Math.sin(P.yaw)).multiplyScalar(side||0)).add(new THREE.Vector3(rnd()-0.5,(rnd()-0.5)*0.5,rnd()-0.5).multiplyScalar(0.7));
   const m=new THREE.Group(),glow=new THREE.Mesh(FXG.ball,DM.bolt),core=new THREE.Mesh(FXG.ball,DM.core);glow.scale.set(0.12,0.12,0.42);core.scale.set(0.05,0.05,0.24);m.add(glow,core);
   m.position.copy(a);m.lookAt(aim);scene.add(m);DRONE.bolts.push({m,v:aim.sub(a).setLength(BOLT_V),life:4});sparks(a,4,'#ff6a50',2,0.04);}
 function hurtPlayer(p){DRONE.hp--;DRONE.invT=1.2;DRONE.hurt=1;P.bump=Math.max(P.bump,0.5);P.v*=0.6;sparks(p,10,'#ff5a40',4,0.05);renderHUD();
   if(DRONE.hp<=0){loseDrones();return;}
   if(!DRONE.dodgeHint){DRONE.dodgeHint=true;toast('当たった！ 走りながら曲がると、よけやすい');}}
 function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.list)dropLaser(d);renderHUD();
+  const o=DRONE.o,atBoss=!!DRONE.boss;
+  if(o.res){toast('やられた… もう一度！',true);setTimeout(()=>startDrones(o,atBoss),2600);return;}
   toast('やられた… ドローンが引き上げていく',true);setTimeout(()=>toast('こむぎ堂の主人にもう一度話しかけると、やり直せる'),1800);}
-function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,6,'#fff3c0',4,0.04);
-  if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);DRONE.killed++;SAVE.money+=50;
-    sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();if(DRONE.killed>=DRONE.total)finishDrones();}}
-function finishDrones(){DRONE.active=false;SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;SAVE.flags.drones_cleared=1;save();renderHUD();
+function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,d.boss?10:6,'#fff3c0',4,d.boss?0.07:0.04);if(d.boss){renderHUD();if(d.hp>0)return;}
+  if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);if(!d.escort&&!d.boss)DRONE.killed++;SAVE.money+=d.boss?500:50;
+    sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();
+    if(d.boss){d.spin.multiplyScalar(0.3);for(const e of DRONE.list)if(e!==d&&!e.dead){e.dead=true;e.vy=1;dropLaser(e);}boom(d.g.position.clone());finishDrones();}
+    else if(!d.escort&&DRONE.killed>=DRONE.total){if(DRONE.o.boss&&!DRONE.boss)spawnBoss();else if(!DRONE.o.boss)finishDrones();}}}
+function finishDrones(){DRONE.active=false;const o=DRONE.o;
+  if(o.res){for(const d of DRONE.list)dropLaser(d);renderHUD();toast(o.boss?'大型ドローンを撃ち落とした！':'ドローンを全部撃ち落とした！',true);setTimeout(o.res,1800);return;}
+  SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;SAVE.flags.drones_cleared=1;save();renderHUD();
   toast('ドローンを全部撃ち落とした！ お礼 +1000円',true);setTimeout(()=>toast('こむぎ堂の主人「いい腕だ。…このことは、町のみんなには内緒だぞ」'),1800);}
 function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   // how you are moving, for the drones to lead their shots
@@ -5528,28 +5546,31 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   DRONE.invT-=dt;DRONE.volleyT-=dt;DRONE.hurt=Math.max(0,DRONE.hurt-dt*1.6);
   // spawning: four at a time until all twelve have come
   if(DRONE.active){DRONE.spawnT-=dt;const alive=DRONE.list.filter(d=>!d.dead).length;
-    if(DRONE.spawned<DRONE.total&&alive<4&&DRONE.spawnT<=0){spawnDrone();DRONE.spawnT=1.6;}}
+    if(!DRONE.boss&&DRONE.spawned<DRONE.total&&alive<4&&DRONE.spawnT<=0){spawnDrone();DRONE.spawnT=1.6;}
+    // the big one calls in two escorts at a time
+    if(DRONE.boss&&!DRONE.boss.dead){DRONE.escortT-=dt;if(DRONE.escortT<=0&&alive<3){spawnDrone(true);DRONE.escortT=4.5;}}}
   for(const d of DRONE.list.slice()){const p=d.g.position;
     if(d.dead){d.vy-=12*dt;p.y+=d.vy*dt;d.g.rotation.x+=d.spin.x*dt;d.g.rotation.y+=d.spin.y*dt;d.g.rotation.z+=d.spin.z*dt;
       if(rnd()<dt*30)sparks(p,1,'#4a4644',1,0.08);
-      if(p.y<=G(p.x,p.z)+0.25){boom(p.clone());scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
+      if(p.y<=Math.max(G(p.x,p.z),SEA_Y)+0.25*d.g.scale.x){boom(p.clone());if(d.boss){for(let k=0;k<4;k++)setTimeout(()=>boom(p.clone().add(new THREE.Vector3(rnd()*6-3,rnd()*2,rnd()*6-3))),k*160);P.bump=0.6;}scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
     // after a lost fight the rest climb away and go
     if(!DRONE.active){d.v.y+=7*dt;p.addScaledVector(d.v,dt);for(const ro of d.rotors)ro.rotation.y+=dt*40;
       if(p.y>G(p.x,p.z)+40){scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
     // each drone keeps a spot ahead of you that drifts slowly, and turns its camera on you
     const ang=P.yaw+d.off.a+Math.sin(DRONE.t*0.35+d.ph)*0.45,r=d.off.r+Math.sin(DRONE.t*0.5+d.ph*2)*3;
-    const want=new THREE.Vector3(P.x+Math.sin(ang)*r,0,P.z+Math.cos(ang)*r);want.y=G(want.x,want.z)+d.off.h+Math.sin(DRONE.t*1.3+d.ph)*0.5;
+    const want=new THREE.Vector3(P.x+Math.sin(ang)*r,0,P.z+Math.cos(ang)*r);want.y=Math.max(G(want.x,want.z),SEA_Y)+d.off.h+Math.sin(DRONE.t*1.3+d.ph)*0.5;
     if(p.distanceTo(want)>90)p.copy(want).add(new THREE.Vector3(0,8,0));
     const acc=want.sub(p).multiplyScalar(2.2).sub(d.v.clone().multiplyScalar(1.6));d.v.addScaledVector(acc,dt);if(d.v.length()>14)d.v.setLength(14);p.addScaledVector(d.v,dt);
     d.g.lookAt(P.x,P.y+1.2,P.z);d.g.rotateX(clamp(d.v.length()*0.02,0,0.25));
     for(const ro of d.rotors)ro.rotation.y+=dt*40;
     // aiming and firing back, one drone at a time so the shots come in a rhythm you can dodge
     d.fireT-=dt;
-    if(!busy&&!d.charge&&d.fireT<=0&&DRONE.volleyT<=0&&p.distanceTo(me)<36){d.charge=CHARGE;DRONE.volleyT=0.9;
+    const CH=d.boss?1.1:CHARGE;
+    if(!busy&&!d.charge&&d.fireT<=0&&(d.boss||DRONE.volleyT<=0)&&p.distanceTo(me)<(d.boss?50:36)){d.charge=CH;if(!d.boss)DRONE.volleyT=0.9;
       d.laser=new THREE.Mesh(FXG.box,DM.laser);scene.add(d.laser);}
-    if(d.charge>0){d.charge-=dt;const k=1-d.charge/CHARGE,e=d.eye.getWorldPosition(new THREE.Vector3());d.eye.scale.setScalar(1+1.6*k);
-      d.laser.position.copy(e).add(me).multiplyScalar(0.5);d.laser.lookAt(me);d.laser.scale.set(0.02,0.02,e.distanceTo(me));
-      if(d.charge<=0){d.charge=0;if(busy)dropLaser(d);else droneShot(d);d.fireT=2.6+rnd()*2.2;}}
+    if(d.charge>0){d.charge-=dt;const k=1-d.charge/CH,e=d.eye.getWorldPosition(new THREE.Vector3()),lw=d.boss?0.06:0.02;d.eye.scale.setScalar(1+1.6*k);
+      d.laser.position.copy(e).add(me).multiplyScalar(0.5);d.laser.lookAt(me);d.laser.scale.set(lw,lw,e.distanceTo(me));
+      if(d.charge<=0){d.charge=0;if(busy)dropLaser(d);else if(d.boss){droneShot(d,-2.6);droneShot(d,0);droneShot(d,2.6);}else droneShot(d);d.fireT=d.boss?2.2+rnd():2.6+rnd()*2.2;}}
     d.hitT-=dt;d.eye.material=d.hitT>0?DM.flash:d.charge>0&&(DRONE.t*16|0)%2?DM.hot:DM.eye;}
   // the bolts: hit you, the ground, or run out
   for(const b of DRONE.bolts.slice()){const m=b.m,p=m.position;let gone=false;b.life-=dt;
@@ -5573,10 +5594,11 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
   for(const f of DRONE.fx.slice()){f.t+=dt;const k=Math.min(1,f.t/f.life);f.upd(f,k,dt);if(k>=1){scene.remove(f.o);if(f.o.material&&f.o.material!==DM.flash&&f.o.geometry!==FXG.shell)f.o.material.dispose();DRONE.fx.splice(DRONE.fx.indexOf(f),1);}}
   $('bShoot').hidden=!(DRONE.active&&hasTouch);}
 // the tracker shows the fight while it is on
-function droneHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='ドローン迎撃';const s=document.createElement('span');s.className='step';
+function droneHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=DRONE.o.title||'ドローン迎撃';const s=document.createElement('span');s.className='step';
   s.textContent=(hasTouch?'「撃つ」ボタンで撃つ。':'クリックか J キーで撃つ。')+'近いドローンを自動でねらう。赤い光は曲がってよける';
   const m=document.createElement('span');m.className='meter';
-  m.textContent=`撃ち落とした ${DRONE.killed} / ${DRONE.total}　${'♥'.repeat(Math.max(0,DRONE.hp))}${'♡'.repeat(DRONE.maxHp-Math.max(0,DRONE.hp))}`;tr.append(b,s,m);}
+  const B=DRONE.boss,n=B?Math.ceil(Math.max(0,B.hp)/B.maxHp*10):0;
+  m.textContent=`${B?'大型ドローン '+'■'.repeat(n)+'□'.repeat(10-n):`撃ち落とした ${DRONE.killed} / ${DRONE.total}`}　${'♥'.repeat(Math.max(0,DRONE.hp))}${'♡'.repeat(DRONE.maxHp-Math.max(0,DRONE.hp))}`;tr.append(b,s,m);}
 
 /* ---------- the story engine: the day and the hour, events written as data, choices in conversations, event cameras.
    An event is {id, on, when, script}. `on` says what starts it: talking to someone ({talk:'tome'}), coming near a place
@@ -5623,7 +5645,7 @@ function tintUnlit(){_tint.copy(sun.color).multiplyScalar(sun.intensity*0.6);_tc
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy();   // events during which the board is yours
+const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait;   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -5693,7 +5715,10 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
   case 'vanchase':await vanChaseP();break;
   case 'lights':await lightsP(a[0]);break;                               // ['lights', {pts:[{name,x,z}…], limit}]  gather the five lights before time runs out
-  case 'credits':await creditsP();break;                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
+  case 'credits':await creditsP();break;
+  case 'drones':await dronesP(a[0]);break;                               // ['drones', {total, boss, title}]  a drone fight in the story: on until it is won
+  case 'boat':await boatP(a[0]);break;                                   // ['boat', 'island'|'town']  the fisherman's boat across the bay
+  case 'lamp':await lampP();break;                                       // ['lamp']  free until Nagi climbs the lighthouse and lights the lamp                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
 async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
@@ -5712,7 +5737,7 @@ function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);upd
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
     m.visible=!calm&&!URA.on&&ready(e);if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
-  if(calm||DRONE.active||RIDE.on)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
+  if(calm||DRONE.active||RIDE.on||BOAT.on)return;ST.scanT-=dt;if(ST.scanT>0)return;ST.scanT=0.25;
   const e=findEvent('near')||findEvent('auto');if(e)runEvent(e);}
 
 /* ---------- the summer festival of the easy-going route: lanterns over the shrine approach and the shopping street,
@@ -5786,35 +5811,95 @@ function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
    The same streets, drained of colour and sunk in fog; nobody about but the faceless shadows walking their beats and the tram
    running with no driver. Nagi looks for three things Mio left behind by flashlight (L), keeping out of the shadows' sight —
    skating is loud, walking (F) is quiet, the light carries far. Seen for too long and a cold hand sends you back to the tunnel.
-   After the third, the big shadow comes, and the only way out is the tunnel, on the board. ---------- */
+   After the third, the big shadow comes, and the only way out is the tunnel. It hunts by ear and by eye: the board it hears from
+   far off, a walker only close by, and it sees you in front of it. Its tread and growl (and your heartbeat) grow louder as it
+   comes near; the big wooden crates in the streets hide you, and it walks on by unless it saw you get in. ---------- */
 const URA_START=[-222,COAST_Z+1.1,Math.PI/2],URA_EXIT=[-226,COAST_Z+1.1,5];
 const URA_CLUES=[{id:'photo',name:'駅のホーム',x:62,z:TRAM_Z-1.5},{id:'marble',name:'駄菓子まるや',x:SHOPS.dagashi.door[0],z:SHOPS.dagashi.door[1]},{id:'diary',name:'神社の本殿',x:SHRINE.x,z:-157.5}];
 const URA_BEATS=[[-45,-20,45,-20],[0,-120,0,-35],[0,40,0,190],[-150,COAST_Z,-30,COAST_Z],[25,COAST_Z+1,150,COAST_Z+1],[40,TRAM_Z-4,100,TRAM_Z-4],[SHRINE.x,-131,SHRINE.x,-152],[-120,-140,-120,60]];
-const URA={on:false,shadows:[],sus:0,chase:null,mood:new THREE.Color('#4a5a54'),fog:new THREE.Color('#2a3430')};
+const URA={on:false,shadows:[],sus:0,chase:null,hides:[],hide:null,mood:new THREE.Color('#4a5a54'),fog:new THREE.Color('#2a3430')};
 const SHADE={skin:'#141518',hair:'#0b0b0d',style:'short',shirt:'#1b1c21',sleeves:'long',bottom:'pants',bottomCol:'#121316',shoe:'#0b0b0d'};
 const torch=new THREE.SpotLight('#fff1d0',0,30,0.42,0.55,1);scene.add(torch);scene.add(torch.target);let torchOn=false;
 const uraGlints=URA_CLUES.map(c=>{const g=glow('#bfefff',c.x,G(c.x,c.z)+0.9,c.z,1.4);return g;});
 const omochi=makeCat({col:'#f2f2ee'});omochi.g.visible=false;world.add(omochi.g);
-function uraEnter(){URA.on=true;SAVE.flags.in_ura=1;canvas.style.filter='saturate(.28) sepia(.3) hue-rotate(-12deg) brightness(1.12)';
+// hiding places for the chase: big wooden crates in the streets, only on this side of the tunnel
+const URA_HIDE_AT=[[-200,COAST_Z-3],[-160,COAST_Z-3],[-118,COAST_Z-3],[-75,COAST_Z-3],[-35,COAST_Z-3],[5,COAST_Z-3],[45,COAST_Z-3],[90,COAST_Z-3],
+  [62,TRAM_Z-6],[20,TRAM_Z-6],[-30,TRAM_Z-6],[SHOPS.dagashi.door[0]+4,SHOPS.dagashi.door[1]],[SHRINE.x+5,-140],[SHRINE.x-6,-125],
+  [-45,-20],[0,-60],[0,20],[0,120],[-120,-40],[-120,60],[-80,170],[-160,190]];
+function uraCrates(){const wood=tm('#6b5a44'),slat=tm('#4e4132');
+  for(const [x0,z0] of URA_HIDE_AT){let spot=null;
+    for(let r=0;r<=9&&!spot;r+=1.5)for(let k=0;k<8&&!spot;k++){const x=x0+Math.cos(k/8*TAU)*r,z=z0+Math.sin(k/8*TAU)*r,y=G(x,z);
+      if(y>SEA_Y+0.3&&Math.abs(y-G(x0,z0))<1.2&&!hits(x,z,1.9,y))spot={x,z,y};}
+    if(!spot)continue;const g=new THREE.Group();g.position.set(spot.x,spot.y,spot.z);g.rotation.y=rnd()*TAU;world.add(g);
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.4,1.5),wood);b.position.y=0.7;b.castShadow=true;outline(b,0.03);g.add(b);
+    for(const y of [0.25,0.7,1.15])for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(1.54,0.12,0.06),slat);l.position.set(0,y,sd*0.76);g.add(l);}
+    const lid=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.08,1.0),slat);lid.position.set(0.15,1.44,0.1);lid.rotation.y=0.3;g.add(lid);
+    const c=collide(spot.x-0.8,spot.x+0.8,spot.z-0.8,spot.z+0.8,'prop',spot.y+1.45);URA.hides.push({x:spot.x,z:spot.z,y:spot.y,g,c});}}
+function uraEnter(){if(!URA.hides.length)uraCrates();for(const h of URA.hides){h.g.visible=true;if(h.c)h.c.on=true;}URA.on=true;SAVE.flags.in_ura=1;canvas.style.filter='saturate(.28) sepia(.3) hue-rotate(-12deg) brightness(1.12)';
   if(!URA.shadows.length)URA_BEATS.forEach(([x0,z0,x1,z1],k)=>{const h=makeHuman(SHADE);world.add(h.g);
     const eye=glow('#ff3020',0,0,0,0.9);URA.shadows.push({h,a:[x0,z0],b:[x1,z1],t:(k*0.37)%1,dir:1,sus:0,eye});});
   for(const s of URA.shadows){s.h.g.visible=true;s.sus=0;}
   omochi.g.position.set(URA_START[0]+3,G(URA_START[0]+3,URA_START[1]+2)+0.02,URA_START[1]+2);omochi.g.rotation.y=Math.PI/2;omochi.g.visible=true;
   scene.fog.near=12;scene.fog.far=150;renderHUD();}
-function uraExit(){URA.on=false;SAVE.flags.in_ura=0;canvas.style.filter='';torchOn=false;torch.intensity=0;scene.fog.near=260;scene.fog.far=2600;
+function uraExit(){URA.on=false;for(const h of URA.hides){h.g.visible=false;if(h.c)h.c.on=false;}if(URA.hide)uraUnhide();SAVE.flags.in_ura=0;canvas.style.filter='';torchOn=false;torch.intensity=0;scene.fog.near=260;scene.fog.far=2600;
   for(const s of URA.shadows){s.h.g.visible=false;s.eye.visible=false;}omochi.g.visible=false;
   for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;for(const c of CATS)c.g.visible=true;$('hurt').style.opacity=0;$('lightBtn').hidden=true;renderHUD();}
 function toggleTorch(){if(!URA.on)return;torchOn=!torchOn;toast(torchOn?'ライトをつけた（遠くまで見えるけど、見つかりやすい）':'ライトを消した');}
 const clueLeft=()=>URA_CLUES.filter(c=>!SAVE.flags['clue_'+c.id]);
 function uraHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=URA.chase?'逃げろ！':'裏海街';const s=document.createElement('span');s.className='step';
-  s.textContent=URA.chase?'西のトンネルへ。スケボーで走りぬけろ':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
-  const m=document.createElement('span');m.className='meter';const L=clueLeft();m.textContent=URA.chase?'':L.length?`手がかり ${3-L.length} / 3　のこり：${L.map(c=>c.name).join('・')}`:'手がかりは そろった';tr.append(b,s,m);}
-// the chase: the big shadow comes from behind and gains on you; it pushes you back if it reaches you, and the tunnel ends it
+  s.textContent=URA.hide?'木箱の中で、じっと息をひそめる。足音が遠ざかったら、E で出る':URA.chase?'西のトンネルへ。スケボーは遠くまで聞こえる。足音が近づいたら、木箱に隠れてやり過ごす':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
+  const m=document.createElement('span');m.className='meter';const L=clueLeft(),near=URA.chase?Math.round(uraAtt(URA.chase.d||99,70)*5):0;
+  m.textContent=URA.chase?`気配 ${'■'.repeat(near)}${'□'.repeat(5-near)}`:L.length?`手がかり ${3-L.length} / 3　のこり：${L.map(c=>c.name).join('・')}`:'手がかりは そろった';tr.append(b,s,m);}
+// the chase: the big shadow comes from behind. It hunts what it hears or sees, goes to where it last knew you were, waits and
+// sniffs, then wanders closer again. Caught, you are back at the last crate you hid in (or where the chase began)
 function chaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;
   if(!URA.big){const h=makeHuman(SHADE);h.g.scale.setScalar(1.9);world.add(h.g);URA.big={h,eye:glow('#ff3020',0,0,0,2.2)};}
-  const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,0,P.z).addScaledVector(F,-24);
-  URA.big.h.g.position.set(p.x,G(p.x,p.z),p.z);URA.big.h.g.visible=URA.big.eye.visible=true;URA.chase={t:0,res,v:6};
-  if(!URA.goal){URA.goal=marker(MK.target);URA.goal.scale.set(1.6,1.6,1);}renderHUD();});}
+  const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,0,P.z).addScaledVector(F,-30);
+  URA.big.h.g.position.set(p.x,G(p.x,p.z),p.z);URA.big.h.g.visible=URA.big.eye.visible=true;
+  URA.chase={t:0,res,mode:'hunt',tx:P.x,tz:P.z,wait:0,sp:0,d:30,grace:2,save:[P.x,P.z,P.yaw],saw:false,hudT:0};
+  if(!URA.goal){URA.goal=marker(MK.target);URA.goal.scale.set(1.6,1.6,1);}
+  toast('足音が近づいてきたら、木箱に隠れてやり過ごそう',true);renderHUD();});}
+const uraAtt=(d,r)=>clamp(1-d/r,0,1)**2;
+function uraNear(){if(URA.hide)return{kind:'unhide',d:0,label:'出る　木箱から',verb:'出る'};
+  let best=null;for(const h of URA.hides){const d=Math.hypot(P.x-h.x,P.z-h.z);if(d<2.5&&(!best||d<best.d))best={kind:'hide',h,d,label:'隠れる　木箱',verb:'隠れる'};}return best;}
+function uraAct(o){const C=URA.chase;
+  if(o.kind==='hide'){URA.hide=o.h;P.v=0;P.air=false;player.g.visible=false;camInit=false;
+    if(C){C.save=[o.h.x+1.6,o.h.z,P.yaw];C.saw=C.mode==='hunt'&&C.d<12;}renderHUD();}
+  else uraUnhide();}
+function uraUnhide(){const h=URA.hide;URA.hide=null;player.g.visible=true;if(h){const a=Math.atan2(P.x-h.x,P.z-h.z);P.x=h.x+Math.sin(a)*1.7;P.z=h.z+Math.cos(a)*1.7;P.y=G(P.x,P.z);}camInit=false;renderHUD();}
+// peeking out over the lid of the crate: the view stays low and turns to the shadow
+function uraHideCam(want,look){const h=URA.hide,bg=URA.big&&URA.chase?URA.big.h.g.position:null;
+  const tx=bg?bg.x:h.x+Math.sin(P.yaw)*10,tz=bg?bg.z:h.z+Math.cos(P.yaw)*10,a=Math.atan2(tx-h.x,tz-h.z);
+  want.set(h.x+Math.sin(a)*0.35,h.y+1.62,h.z+Math.cos(a)*0.35);look.set(tx,(bg?bg.y:h.y)+2.2,tz);}
+function uraCaught(){const C=URA.chase;if(URA.hide)uraUnhide();C.grace=99;$('fade').style.opacity=1;P.v=0;
+  setTimeout(()=>{P.x=C.save[0];P.z=C.save[1];P.yaw=C.save[2];P.y=G(P.x,P.z);const a=rnd()*TAU,bg=URA.big.h.g;
+    bg.position.set(P.x+Math.sin(a)*40,0,P.z+Math.cos(a)*40);C.mode='roam';C.tx=bg.position.x;C.tz=bg.position.z;C.grace=3;camInit=false;$('fade').style.opacity=0;
+    toast('冷たい手が、肩にふれた――。気がつくと、さっきの場所にいた',true);},900);}
+function chaseStep(dt){const C=URA.chase;C.t+=dt;C.grace-=dt;const bg=URA.big.h.g,hid=!!URA.hide;
+  const dx=P.x-bg.position.x,dz=P.z-bg.position.z,dd=Math.hypot(dx,dz)||1;C.d=dd;
+  // what it knows: the board from far off, a walker close by, anyone in front of it in the fog; nobody in a crate
+  const loud=!P.foot&&P.v>2.5,facing=(Math.sin(bg.rotation.y)*dx+Math.cos(bg.rotation.y)*dz)/dd;
+  const knows=!hid&&C.grace<=0&&(dd<(loud?40:9)||(dd<20&&facing>0.3));
+  if(knows){C.mode='hunt';C.tx=P.x;C.tz=P.z;}else if(C.mode==='hunt'){C.mode='search';C.wait=0;}
+  const pick=(r0,r1)=>{const a=rnd()*TAU,r=r0+rnd()*(r1-r0);C.tx=P.x+Math.sin(a)*r;C.tz=P.z+Math.cos(a)*r;};
+  const tdx=C.tx-bg.position.x,tdz=C.tz-bg.position.z,td=Math.hypot(tdx,tdz);let sp=0;
+  if(C.mode==='hunt')sp=Math.min(9.6,7.2+C.t*0.04);
+  else if(td>1.5)sp=C.mode==='search'?4.4:3.4;
+  else{C.wait+=dt;   // at the spot: it stands and sniffs, then wanders off and closes in again
+    if(hid&&C.saw&&Math.hypot(URA.hide.x-bg.position.x,URA.hide.z-bg.position.z)<4){uraCaught();return;}
+    if(C.wait>(C.mode==='search'?2.8:1.2)){C.mode='roam';C.wait=0;pick(hid?18:14,hid?34:30);}}
+  // far behind, it does not give up: it comes out of the fog somewhere nearer
+  if(dd>70||(C.mode==='hunt'&&dd>50)){const F=[Math.sin(P.yaw),Math.cos(P.yaw)],a=(rnd()-0.5)*1.6,r=34;
+    bg.position.x=P.x+(F[0]*Math.cos(a)-F[1]*Math.sin(a))*r;bg.position.z=P.z+(F[1]*Math.cos(a)+F[0]*Math.sin(a))*r;C.mode='roam';pick(6,14);}
+  C.sp=sp;if(sp>0&&td>0.01){const k=Math.min(td,sp*dt)/td;bg.position.x+=tdx*k;bg.position.z+=tdz*k;bg.rotation.y=Math.atan2(tdx,tdz);}
+  else if(C.mode!=='hunt')bg.rotation.y+=Math.sin(C.t*1.7)*dt*1.2;   // looking round
+  bg.position.y=G(bg.position.x,bg.position.z);if(sp>0.5)poseHuman(URA.big.h,'walk',dt,{rate:2.2+sp*0.45});else poseHuman(URA.big.h,'stand',dt,{});
+  URA.big.eye.position.set(bg.position.x,bg.position.y+3.05,bg.position.z);URA.big.eye.material.opacity=0.8+0.2*Math.sin(clock*9);
+  URA.goal.visible=true;URA.goal.position.set(URA_EXIT[0],G(URA_EXIT[0],URA_EXIT[1])+3.4+Math.sin(clock*3)*0.12,URA_EXIT[1]);
+  $('hurt').style.opacity=Math.max(uraAtt(dd,40)*0.75,C.mode==='hunt'?0.3:0.1);
+  C.hudT-=dt;if(C.hudT<=0){C.hudT=0.25;uraHUD($('tracker'));}
+  if(!hid&&dd<1.7&&C.grace<=0){uraCaught();return;}
+  if(!hid&&Math.hypot(P.x-URA_EXIT[0],P.z-URA_EXIT[1])<URA_EXIT[2]){URA.chase=null;bg.visible=URA.big.eye.visible=false;URA.goal.visible=false;C.res();}}
 function updateUra(dt){
   if(!URA.on&&SAVE.flags.in_ura&&state==='play')uraEnter();   // a save made in 裏海街 opens there again
   $('lightBtn').hidden=!URA.on;
@@ -5834,22 +5919,16 @@ function updateUra(dt){
     const d=Math.hypot(P.x-g.position.x,P.z-g.position.z);
     const R=(8+(torchOn?6:0)+(loud?6:0))*(quiet?0.65:1);
     const fx=(b[0]-a[0])/L*s.dir,fz=(b[1]-a[1])/L*s.dir,toX=(P.x-g.position.x)/(d||1),toZ=(P.z-g.position.z)/(d||1);
-    const seen=!URA.chase&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
+    const seen=!URA.chase&&!URA.hide&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
     s.sus=clamp(s.sus+(seen?dt*(d<5?1.6:1):-dt*0.5),0,1);
     if(s.sus<0.05&&!URA.chase){s.t+=s.dir*dt*1.1/L;if(s.t>1){s.t=1;s.dir=-1;}if(s.t<0){s.t=0;s.dir=1;}}   // walks its beat unless it has noticed you
     const x=lerp(a[0],b[0],s.t),z=lerp(a[1],b[1],s.t);g.position.set(x,G(x,z),z);
-    g.rotation.y=s.sus>0.05?Math.atan2(P.x-x,P.z-z):Math.atan2(fx,fz);poseHuman(s.h,'stand',dt,{});
+    g.rotation.y=s.sus>0.05?Math.atan2(P.x-x,P.z-z):Math.atan2(fx,fz);if(s.sus<0.05)poseHuman(s.h,'walk',dt,{rate:4.6});else poseHuman(s.h,'stand',dt,{});
     s.eye.visible=s.sus>0.02;s.eye.position.set(x,G(x,z)+1.62,z);s.eye.material.opacity=s.sus;top=Math.max(top,s.sus);}
-  URA.sus=top;$('hurt').style.opacity=URA.chase?0.35+0.15*Math.sin(clock*6):top*0.7;
+  URA.sus=top;if(!URA.chase)$('hurt').style.opacity=top*0.7;
   if(top>=1&&!ST.run){for(const s of URA.shadows)s.sus=0;runEvent({id:'ura_caught',once:false,script:[
     ['fade','out'],['warp',...URA_START],['fade','in'],['say','','冷たい手が、肩にふれた――。','……気がつくと、トンネルの出口に立っていた。'],['say','nagi','（見つかっちゃだめだ。歩けば、足音は小さい……）']]});}
-  // the chase
-  const C=URA.chase;if(!C)return;C.t+=dt;C.v=Math.min(11.5,6.5+C.t*0.12);const bg=URA.big.h.g,dx=P.x-bg.position.x,dz=P.z-bg.position.z,dd=Math.hypot(dx,dz);
-  bg.position.x+=dx/dd*C.v*dt;bg.position.z+=dz/dd*C.v*dt;bg.position.y=G(bg.position.x,bg.position.z);bg.rotation.y=Math.atan2(dx,dz);poseHuman(URA.big.h,'stand',dt,{});
-  URA.big.eye.position.set(bg.position.x,bg.position.y+3.05,bg.position.z);URA.big.eye.material.opacity=0.8+0.2*Math.sin(clock*9);
-  URA.goal.visible=true;URA.goal.position.set(URA_EXIT[0],G(URA_EXIT[0],URA_EXIT[1])+3.4+Math.sin(clock*3)*0.12,URA_EXIT[1]);
-  if(dd<1.8){P.v*=0.3;P.bump=0.6;bg.position.x-=dx/dd*14;bg.position.z-=dz/dd*14;C.t=Math.max(0,C.t-8);toast('つかまりそう……！ 走って！');}
-  if(Math.hypot(P.x-URA_EXIT[0],P.z-URA_EXIT[1])<URA_EXIT[2]){URA.chase=null;bg.visible=URA.big.eye.visible=false;URA.goal.visible=false;C.res();}}
+  if(URA.chase)chaseStep(dt);}
 
 /* ---------- the Oceangate route "シーサイド・コンスピラシー": Kurosaki and his men in black, running after Nagi on foot,
    and the last chase after the black van along the coast road. Nobody is hit; the board is the weapon. ---------- */
@@ -6228,7 +6307,15 @@ const EVENTS=[
     ['cam',[-78.5,PIER.y+1.6,318],[-40,62,480],1.5,'cut'],['fade','in'],
     ['fireworks',60],
     ['say','','日が暮れて、海の上に最初の花火が上がった。','ドン、と胸に響く音。桟橋も、浜も、坂の上も、みんなが空を見上げている。'],
-    ['wait',4],
+    ['wait',3],
+    ['say','','そのとき――花火の光の向こうに、黒い影がいくつも浮かんだ。','ブウウン……。オーシャンゲートの監視ドローンだ。花火の上を、町を見張るように飛び回っている。'],
+    ['say','baker','ナギちゃん！ やつら、祭りの夜をねらってきたか。','これを使え。昔の仕事道具だ。スケボーに乗ったまま、クリックか J キーで撃てる。','花火が終わる前に、片づけるぞ！'],
+    ['fade','out'],['cam','off'],['warp',-40,COAST_Z+2.2,Math.PI/2],['fade','in'],
+    ['drones',{total:10,boss:1,title:'夏祭りの夜空を守れ'}],
+    ['fade','out'],['warp',-79.5,326,0],['cam',[-78.5,PIER.y+1.6,318],[-40,62,480],1.5,'cut'],['fade','in'],['fireworks',60],
+    ['say','','最後のドローンが海に落ちると、浜のほうから歓声が上がった。','花火は、なにごともなかったように、また夜空に咲きはじめた。'],
+    ['say','baker','……いい腕だ。このことは、町のみんなには内緒だぞ。'],
+    ['wait',3],
     ['if',{flags:{met_mio:1}},[['say','','ふと隣を見ると、白いワンピースの女の子が、花火を見上げていた。'],['say','mio','……きれいだね、ナギ。'],
       ['say','','次の花火が上がって、もう一度見たときには、ミオはいなかった。']]],
     ['wait',3],
@@ -6265,7 +6352,13 @@ const EVENTS=[
   {id:'o5_boss',on:{talk:'baker'},mark:true,when:{minDay:5,flags:{route:2},min:{drones_cleared:1},quest:{og_evidence:2}},script:[
     ['say','baker','ドローンは落とした。証拠もそろった。','今夜、黒崎はバンで港へ向かう。灯台をふき飛ばす起爆装置は、バンの中だ。','警察には知らせたが、間に合わん。……あのバンに追いつけるのは、町でいちばん速い、ナギちゃんのスケボーだけだ。'],
     ['ask','nagi','（どうする？）',[['まかせて！',[]],['……やるしかないよね',[]]]],
-    ['fade','out'],['time',20.6,0],['cam','off'],['vanchase'],
+    ['fade','out'],['time',20.6,0],['cam','off'],['warp',120,COAST_Z+2.2,Math.PI/2],['fade','in'],
+    ['say','','夜の海岸通り。港へ急ぐと、頭の上でプロペラの音がした。'],
+    ['say','黒崎','（スピーカーの声）しつこいガキだ。ガーディアンを出せ。……二度と、じゃまはさせん。'],
+    ['say','baker','（無線の声）ナギちゃん、大型ドローンだ！ バンを追う前に、そいつを落とせ！'],
+    ['drones',{total:6,boss:1,title:'ガーディアンを撃ち落とせ'}],
+    ['say','nagi','落とした……！ バンは、まだこの先だ！'],
+    ['fade','out'],['vanchase'],
     ['call',ogEndCam],
     ['say','','バンのうしろにぴたりとつけて、荷台の扉に手をのばした――','キキーッ！ バンが急ブレーキをかけて止まった。'],
     ['say','baker','そこまでだ、黒崎。'],
@@ -6296,7 +6389,11 @@ const EVENTS=[
     ['say','nagi','30年前の、あの夜……ミオは、ここに来たんだ。'],
     ['set','clue_diary'],['add','clues'],['call',()=>renderHUD()]]},
   {id:'ura_chase',when:{flags:{in_ura:1},min:{clues:3}},script:[
-    ['say','','手がかりが、そろった。そのとき――','町じゅうの影の住人が、いっせいにこちらを向いた。'],
+    ['say','','手がかりが、そろった。そのとき――','ブウウン……。霧の向こうから、色のない羽音が近づいてくる。目だけが赤く光る、影のドローンだ。'],
+    ['say','','足もとに、だれかの古い二丁拳銃が落ちていた。持ち手に、小さく「こむぎ」と彫ってある。'],
+    ['say','nagi','……使えってこと？ やるしかない！'],
+    ['drones',{total:8,boss:1,title:'影のドローン'}],
+    ['say','','大きな影のドローンが、霧の中に落ちて消えた。','……町じゅうの影の住人が、いっせいにこちらを向いた。'],
     ['say','','背後で、地面がきしむ音。ふり返ると、家よりも大きな影が、赤い目でナギを見下ろしていた。'],
     ['say','nagi','……っ！ 逃げなきゃ！ 西のトンネルへ！'],
     ['chase'],
@@ -6344,13 +6441,19 @@ const EVENTS=[
     ['say','nagi','ミオの声……！ よし、行こう！'],
     ['lights',{limit:300,pts:[{name:'桟橋の先',x:-80,z:334},{name:'駅のホーム',x:62,z:TRAM_Z-1.5},{name:'海の見える踏切',x:3,z:TRAM_Z-7},{name:'神社の鳥居',x:-60,z:-119.5},{name:'見晴らし台',x:0,z:-205}]}],
     ['say','','五つの灯りが、ナギの胸のあたりで、あたたかくまたたいている。'],
-    ['fade','out'],['warp',-79.5,333,0],
-    ['cam',[120,8,600],[198,62,760],0.8,'cut'],['fade','in'],
-    ['say','','釣りのおじさんの小さな船が、夜の海をすべっていく。','島の灯台が、黒い影になって近づいてくる。'],
-    ['say','','さびた扉を、じいちゃんの鍵で開けた。らせん階段をのぼって、てっぺんへ――'],
+    ['say','baker','ナギちゃん！ 間に合ったか。','島の灯台の下に、黒崎の残した機械がある。灯りをともそうとすれば、きっとじゃましてくる。','これを持っていけ。昔の仕事道具だ。'],
+    ['say','fisher','さあ、乗りな。桟橋の先の船だ。島まで、ひとっ走りだ。'],
+    ['cam','off'],['fade','out'],['warp',-80,331,Math.PI],['fade','in'],['boat','island'],
+    ['say','','島の桟橋に着いた。見上げると、灯台の下で、黒い機械が赤く光っている。'],
+    ['say','','ジジジジ……！ 機械のふたが開いて、大きなドローンが飛び立った。'],
+    ['drones',{total:6,boss:1,title:'灯台を守れ'}],
+    ['say','nagi','いまのうちに……灯台へ！'],
+    ['toast','道をのぼって灯台へ。じいちゃんの鍵で扉を開けて、てっぺんで灯りをともそう',true],
+    ['lamp'],
+    ['say','','じいちゃんの鍵で開けたさびた扉。らせん階段をのぼりきると、夜の海と、町の灯りが見えた。'],
     ['say','nagi','じいちゃん、ミオ、お母さん。……ともすよ。'],
     ['set','lighthouse_lit'],['wait',1.5],
-    ['cam',[60,30,560],[198,72,760],0.8],
+    ['call',()=>setCam([[LH.x-26,LH.gy+5,LH.z-38],[LH.x,LH.gy+1.5,LH.z],0.8])],
     ['say','','30年ぶりに、灯台に灯りがともった。','光の帯が海をわたって、町の坂を、屋根を、やさしくなでていく。'],
     ['set','tower_quiet'],
     ['say','','西の山で、電波塔の赤い光が、ふっと消えた。あのいやな音も、もう聞こえない。'],
@@ -7000,9 +7103,153 @@ function inkQuests(){const F=INK.fall,L=INK_LOOK,gx=INK_X+L.x+L.ox*2.5+L.oz*3,gz
    steps:[{type:'place',at:[gx,gz],label:'だっこする　子ヤギ',verb:'だっこ',hint:'いろは坂の「見晴らし」（S字カーブのそば）で、子ヤギをさがす',text:['メエ〜。子ヤギは、ナギの足にすり寄ってきた。','……いっしょに帰ろうね。']},
           {type:'talk',to:'ink_kenta',hint:'ふもとのケンタくんに子ヤギを返す',text:['メエ！ よかったあ……！','おねえちゃん、ありがとう！ これ、おこづかい。','今度、いろは坂のてっぺんまで連れてってね！']}],reward:300,wait:['見晴らしは、坂を上ってS字になってるとこだよ。']}];}
 
+/* ---------- 灯台の島: the island out at sea in front of the town, and its lighthouse.
+   The fisherman's boat moored at the end of the pier takes you across, and back from the jetty on the island. A path climbs
+   from the jetty along the ridge to the lighthouse on the top. Its door opens with grandpa's key (the true route) and stays
+   open once the lamp is lit; the stairs inside come out on the gallery round the lamp. Heights come from islH(); the jetty
+   deck stands above the ground, and the gallery is a collider the size of the tower with its top at the gallery floor. ---------- */
+const ISL={x:180,z:760,wait:null,map:document.createElement('canvas'),lamp:null,glass:null,dev:null,devLight:null};
+function islRaw(u,w){const e=Math.hypot(u/100,w/44)+(vnoise(u/16+7,w/16+3)-0.5)*0.14;
+  return lerp(SEA_Y-3,SEA_Y+1.5,smooth(clamp((1-e)/0.16,0,1)))+15*Math.exp(-(((u-18)/60)**2)-((w/26)**2))*smooth(clamp((1-e)/0.35,0,1));}
+const ISL_TOP=islRaw(18,0)+0.4;
+const ISL_JETTY={u0:-57,u1:-53,w0:-64,w1:-22,y:SEA_Y+1.45};
+// the lighthouse: on the top of the ridge, its door facing the town; gy is the gallery floor
+const LH={x:ISL.x+18,z:ISL.z,base:ISL_TOP,h:22};LH.gy=LH.base+LH.h+0.2;
+function islH(u,w){const h=islRaw(u,w),d=Math.hypot(u-18,w);return d<12?lerp(ISL_TOP,h,smooth(clamp((d-7.5)/4.5,0,1))):h;}
+function islG(x,z){const u=x-ISL.x,w=z-ISL.z,J=ISL_JETTY;let h=islH(u,w);if(u>J.u0&&u<J.u1&&w>J.w0&&w<J.w1)h=Math.max(h,J.y);return h;}
+ISL_ON=true;
+// the path from the jetty up the ridge to the lighthouse door (island coordinates)
+const ISL_PATH=[[-55,-24],[-50,-16],[-40,-9],[-24,-3],[-6,-1],[8,-3],[18,-5.5]];
+const islPathD=(u,w)=>{let best=1e9;for(let i=1;i<ISL_PATH.length;i++){const [ax,az]=ISL_PATH[i-1],[bx,bz]=ISL_PATH[i],dx=bx-ax,dz=bz-az,L2=dx*dx+dz*dz;
+  const t=clamp(((u-ax)*dx+(w-az)*dz)/L2,0,1);best=Math.min(best,Math.hypot(u-ax-dx*t,w-az-dz*t));}return best;};
+{ const add=(m,x,y,z)=>{m.position.set(x,y,z);world.add(m);return m;};
+  const Mi=(geo,mat,ol)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;if(ol)outline(m,ol);return m;};
+  const itm=c=>new THREE.MeshToonMaterial({color:c,gradientMap:GRAD});
+  // the ground: sand at the water's edge, rock on the steep sides, grass on the rest
+  { const pos=[],col=[],idx=[],N=113,W=57,c=new THREE.Color(),sand=new THREE.Color('#e2d3a8'),wet=new THREE.Color('#b9a77e'),grass=new THREE.Color('#5f9a52'),rock=new THREE.Color('#9a8a70');
+    for(let r=0;r<W;r++)for(let k=0;k<N;k++){const u=-112+k*2,w=-56+r*2,h=islH(u,w);pos.push(ISL.x+u,h,ISL.z+w);
+      const sl=Math.hypot(islH(u+1,w)-islH(u-1,w),islH(u,w+1)-islH(u,w-1))/2,n=vnoise(u/9,w/9);
+      if(h<SEA_Y+0.3)c.copy(wet);else if(h<SEA_Y+1.9)c.copy(sand);else if(sl>0.55)c.copy(rock);else c.copy(grass).multiplyScalar(0.85+n*0.3);
+      if(islPathD(u,w)<1.6&&h>SEA_Y+1)c.set('#c8b48a');col.push(c.r,c.g,c.b);
+      if(r&&k){const a=(r-1)*N+k-1;idx.push(a,a+N,a+1,a+1,a+N,a+N+1);}}
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));geo.setIndex(idx);geo.computeVertexNormals();
+    const m=new THREE.Mesh(geo,new THREE.MeshToonMaterial({vertexColors:true,gradientMap:GRAD}));m.receiveShadow=true;world.add(m);}
+  // the jetty: a plank deck on posts, the boat ties up on its east side
+  { const J=ISL_JETTY,deck=tmap(canvasTex(64,64,(g,w,h)=>{g.fillStyle='#a88a64';g.fillRect(0,0,w,h);g.fillStyle='rgba(60,40,20,.35)';for(let y=0;y<h;y+=8)g.fillRect(0,y,w,1.5);},true));
+    const d=add(Mi(new THREE.BoxGeometry(J.u1-J.u0,0.3,J.w1-J.w0),deck,0.02),ISL.x+(J.u0+J.u1)/2,J.y-0.15,ISL.z+(J.w0+J.w1)/2);d.receiveShadow=true;
+    const posts=[];for(let w=J.w0+1;w<J.w1-6;w+=4)for(const u of [J.u0+0.2,J.u1-0.2])posts.push({x:ISL.x+u,z:ISL.z+w});
+    inst(new THREE.CylinderGeometry(0.16,0.16,4,8),itm('#6b4a36'),posts,(e,dm)=>{dm.position.set(e.x,J.y-2,e.z);});}
+  // the lighthouse: a white tower with red bands, a door at the foot, the gallery and its railing, the lamp room and a red roof
+  { const g=new THREE.Group();g.position.set(LH.x,LH.base,LH.z);world.add(g);const white=tm('#f4f2ec'),red=tm('#d23a2c'),dark=tm('#3a3d44');
+    g.add(Mi(new THREE.CylinderGeometry(2.2,3,LH.h,20),white,0.06).translateY(LH.h/2));
+    for(const y of [7,15]){const r0=3-(3-2.2)*y/LH.h;g.add(Mi(new THREE.CylinderGeometry(r0-0.12,r0+0.02,1.6,20),red).translateY(y));}
+    g.add(Mi(new THREE.CylinderGeometry(3.3,3.3,0.25,6),tm('#b4b0a6')).translateY(0.12));
+    const door=Mi(new THREE.BoxGeometry(1.3,2.1,0.25),tm('#5a3f2c'),0.02);door.position.set(0,1.05,-2.9);g.add(door);
+    g.add(Mi(new THREE.BoxGeometry(1.6,0.2,0.35),white).translateY(2.2).translateZ(-2.9));
+    const gy=LH.gy-LH.base;g.add(Mi(new THREE.CylinderGeometry(3.6,3.0,0.3,24),dark,0.03).translateY(gy-0.15));
+    const posts=[];for(let k=0;k<24;k++){const a=k/24*TAU;posts.push({x:Math.sin(a)*3.5,z:Math.cos(a)*3.5});}
+    for(const p of posts)g.add(new THREE.Mesh(new THREE.BoxGeometry(0.07,1.0,0.07),dark).translateX(p.x).translateY(gy+0.5).translateZ(p.z));
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(3.5,0.05,6,40),dark);ring.rotation.x=Math.PI/2;ring.position.y=gy+1.0;g.add(ring);
+    ISL.glass=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,2.8,16),new THREE.MeshToonMaterial({color:'#8fa3b0',gradientMap:GRAD,transparent:true,opacity:0.75}));ISL.glass.position.y=gy+1.4;g.add(ISL.glass);
+    ISL.lamp=new THREE.Mesh(new THREE.SphereGeometry(0.6,14,10),new THREE.MeshBasicMaterial({color:'#6b6a64'}));ISL.lamp.position.y=gy+1.3;g.add(ISL.lamp);
+    g.add(Mi(new THREE.CylinderGeometry(1.75,1.75,0.3,16),dark).translateY(gy+2.95));g.add(Mi(new THREE.ConeGeometry(2,2.2,16),red,0.04).translateY(gy+4.2));
+    g.add(Mi(new THREE.SphereGeometry(0.3,10,8),dark).translateY(gy+5.4));
+    // the hatch the stairs come up through, on the town side of the gallery
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.9,0.06,0.9),tm('#5a3f2c')).translateY(gy+0.03).translateZ(-2.6));
+    collide(LH.x-3.45,LH.x+3.45,LH.z-3.45,LH.z+3.45,'lh',LH.gy);
+    NIGHT.house.position.set(LH.x,LH.gy+1.4,LH.z);NIGHT.beam.position.copy(NIGHT.house.position);}
+  // Oceangate's machine under the lighthouse: blinks red in time with the radio mast until the mast goes quiet
+  { const x=LH.x+6.5,z=LH.z-2,y=islG(x,z),g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=-0.4;world.add(g);ISL.dev=g;
+    g.add(Mi(new THREE.BoxGeometry(1.3,1.0,0.9),tm('#22252b'),0.03).translateY(0.5));g.add(Mi(new THREE.BoxGeometry(1.32,0.08,0.92),tm('#e0662a')).translateY(0.85));
+    g.add(Mi(new THREE.CylinderGeometry(0.03,0.03,1.6,6),tm('#40444c')).translateY(1.8));
+    ISL.devLight=glow('#ff4030',x,y+2.7,z,1.6);collide(x-0.9,x+0.9,z-0.9,z+0.9,'prop',y+1.05);}
+  // pines on the slopes, a bench at the top looking back at the town
+  { const R=mulberry(77),trees=[];
+    for(let k=0;k<400&&trees.length<70;k++){const u=-95+R()*190,w=-40+R()*80,h=islH(u,w);
+      if(h<SEA_Y+2.5||islPathD(u,w)<3.5||Math.hypot(u-18,w)<14||(u>-60&&u<-48&&w<-18))continue;if(trees.some(t=>Math.hypot(t.u-u,t.w-w)<4))continue;
+      trees.push({u,w,x:ISL.x+u,z:ISL.z+w,y:h,s:0.8+R()*0.6,col:new THREE.Color(['#3f7a4e','#4a8656','#386f47'][trees.length%3])});}
+    inst(new THREE.ConeGeometry(1.6,4.6,8),itm('#ffffff'),trees,(e,d)=>{d.position.set(e.x,e.y+2.6*e.s+1,e.z);d.scale.setScalar(e.s);},{cast:true});
+    inst(new THREE.CylinderGeometry(0.16,0.22,1.6,6),itm('#6b4a36'),trees,(e,d)=>{d.position.set(e.x,e.y+0.7*e.s,e.z);d.scale.setScalar(e.s);});
+    for(const t of trees)collide(t.x-0.35,t.x+0.35,t.z-0.35,t.z+0.35,'tree');
+    const bx=LH.x-7,bz=LH.z-7,b=new THREE.Group();b.position.set(bx,islG(bx,bz),bz);b.rotation.y=Math.PI;world.add(b);
+    b.add(Mi(new THREE.BoxGeometry(1.8,0.08,0.5),tm('#a88a64'),0.01).translateY(0.45));b.add(Mi(new THREE.BoxGeometry(1.8,0.4,0.06),tm('#a88a64'),0.01).translateY(0.75).translateZ(-0.24));
+    for(const x of [-0.75,0.75])b.add(Mi(new THREE.BoxGeometry(0.08,0.45,0.45),tm('#6b4a36')).translateX(x).translateY(0.22));
+    collide(bx-1,bx+1,bz-0.35,bz+0.35,'prop',islG(bx,bz)+0.5);}
+  // the map of the island
+  { const c=ISL.map;c.width=240;c.height=140;const g=c.getContext('2d');g.fillStyle='#7cc0e6';g.fillRect(0,0,240,140);
+    for(let w=-56;w<56;w+=2)for(let u=-112;u<112;u+=2){const h=islH(u,w);if(h<SEA_Y+0.1)continue;g.fillStyle=h<SEA_Y+1.9?'#e9dcb5':'#9fcf8a';g.fillRect(u+120,w+70,2,2);}
+    g.strokeStyle='#c8b48a';g.lineWidth=2.4;g.beginPath();ISL_PATH.forEach(([u,w],i)=>i?g.lineTo(u+120,w+70):g.moveTo(u+120,w+70));g.stroke();
+    const J=ISL_JETTY;g.fillStyle='#a88a64';g.fillRect(J.u0+120,J.w0+70,J.u1-J.u0,J.w1-J.w0);
+    g.fillStyle='#f4f2ec';g.beginPath();g.arc(18+120,70,3.5,0,7);g.fill();g.fillStyle='#d23a2c';g.beginPath();g.arc(18+120,70,1.8,0,7);g.fill();}
+}
+
+/* the boat: the fisherman's, moored at the end of the pier or at the island's jetty; the crossing takes a quarter of a minute */
+const BOAT={on:false,at:'town',t:0,dur:16,pts:null,yaw:0,res:null,look:0,
+  moor:{town:{x:PIER.x1+1.9,z:331,yaw:0},island:{x:ISL.x-50.6,z:ISL.z-58,yaw:0}},g:new THREE.Group()};
+{ const g=BOAT.g,Mi=(geo,mat,ol)=>{const m=new THREE.Mesh(geo,mat);m.castShadow=true;if(ol)outline(m,ol);return m;};world.add(g);
+  const hull=Mi(new THREE.CylinderGeometry(0.8,1.3,7,12,1,false,-Math.PI/2,Math.PI),tm('#f4f2ec'),0.04);hull.rotation.x=Math.PI/2;g.add(hull);   // the lower half of a cone, narrow at the bow
+  g.add(Mi(new THREE.BoxGeometry(2.62,0.16,6.2),tm('#2e5fa8')).translateY(-0.06));
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(2.3,0.08,6.6),tm('#b08a5e')).translateY(0.02));
+  const cab=Mi(new THREE.BoxGeometry(1.7,1.4,1.8),tm('#f4f2ec'),0.03);cab.position.set(0,0.72,1.6);g.add(cab);
+  g.add(Mi(new THREE.BoxGeometry(1.9,0.12,2.0),tm('#2e5fa8')).translateY(1.48).translateZ(1.6));
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(1.5,0.5,0.05),tm('#9fc4d8')).translateY(1.0).translateZ(0.69));
+  g.add(Mi(new THREE.CylinderGeometry(0.04,0.04,2.4,6),tm('#6b4a36')).translateY(2.2).translateZ(1.6));
+  g.add(Mi(new THREE.BoxGeometry(1.4,0.35,0.4),tm('#a88a64')).translateY(0.2).translateZ(-1.2));   // the bench Nagi sits on
+  const m=BOAT.moor.town;g.position.set(m.x,SEA_Y+0.25,m.z);g.rotation.y=m.yaw;}
+function boatPoint(t){const [a,b,c,d]=BOAT.pts,u=1-t;return[u*u*u*a[0]+3*u*u*t*b[0]+3*u*t*t*c[0]+t*t*t*d[0],u*u*u*a[1]+3*u*u*t*b[1]+3*u*t*t*c[1]+t*t*t*d[1]];}
+function boatP(dest){return new Promise(res=>{if(BOAT.at===dest){res();return;}const A=BOAT.moor[BOAT.at],C=BOAT.moor[dest],s=dest==='island'?1:-1;
+  BOAT.pts=[[A.x,A.z],[A.x,A.z+s*90],[C.x,C.z-s*90],[C.x,C.z]];Object.assign(BOAT,{on:true,t:0,res,dest,look:0});
+  ST.actor=null;talkNpc=null;P.foot=true;P.carry='hand';P.tr=null;P.v=0;P.air=false;P.grind=null;
+  document.body.classList.add('riding');releaseInputs();camInit=false;$('fade').style.opacity=0;
+  toast(dest==='island'?'釣りのおじさんの船で、島へ':'釣りのおじさんの船で、町へ帰る');});}
+function boatStep(dt){jumpQ=kickQ=footQ=trickQ=false;const B=BOAT,I=DLG||modal?{turn:0}:inputs();B.look=clamp(B.look+I.turn*dt*1.6,-1.3,1.3);
+  B.t+=dt;const k=smooth(clamp(B.t/B.dur,0,1)),[x,z]=boatPoint(k),[x2,z2]=boatPoint(Math.min(1,k+0.01));
+  if(k<0.999){const want=Math.atan2(x2-x,z2-z);let da=want-B.yaw;da=Math.atan2(Math.sin(da),Math.cos(da));B.yaw+=da*Math.min(1,dt*2.5);}
+  const g=B.g;g.position.set(x,SEA_Y+0.25+Math.sin(clock*1.7)*0.08,z);g.rotation.set(Math.sin(clock*1.3)*0.025,B.yaw,Math.sin(clock*1.1)*0.03);
+  const p=g.localToWorld(new THREE.Vector3(0,0.05,-1.0));P.x=p.x;P.z=p.z;P.y=p.y;P.yaw=B.yaw;P.v=0;
+  player.g.position.copy(p);player.g.rotation.set(0,P.yaw,0);player.root.rotation.set(0,0,0);poseSitter(player,dt,B.look);
+  if(B.t>=B.dur+0.6)boatArrive();}
+function boatArrive(){const B=BOAT,m=B.moor[B.dest];B.on=false;B.at=B.dest;B.moor[B.dest].yaw=B.yaw;document.body.classList.remove('riding');releaseInputs();
+  if(B.dest==='island'){P.x=ISL.x-55;P.z=ISL.z-58;P.yaw=0;}else{P.x=-80;P.z=331;P.yaw=Math.PI;}
+  P.y=G(P.x,P.z);P.v=0;camInit=false;toast(B.dest==='island'?'灯台の島に着いた。道をのぼると灯台':'桟橋に戻ってきた');const r=B.res;B.res=null;if(r)r();}
+function boatCam(want,look){const g=BOAT.g,F=new THREE.Vector3(Math.sin(BOAT.yaw+BOAT.look),0,Math.cos(BOAT.yaw+BOAT.look));
+  want.copy(g.position).addScaledVector(F,-9.5).add(new THREE.Vector3(0,4.2,0));look.copy(g.position).addScaledVector(F,18).add(new THREE.Vector3(0,1.2,0));}
+
+/* the lighthouse: in through the door, out on the gallery; the lamp is lit in the true route */
+const onGallery=()=>P.z>ISL_Z0&&P.y>LH.gy-1.2&&Math.hypot(P.x-LH.x,P.z-LH.z)<6;
+// on the gallery she walks round between the lamp room and the railing
+function islClamp(){P.x=clamp(P.x,ISL.x-125,ISL.x+125);P.z=clamp(P.z,ISL_Z0+10,ISL.z+70);if(!onGallery())return;
+  const dx=P.x-LH.x,dz=P.z-LH.z,r=Math.hypot(dx,dz)||1,rc=clamp(r,1.95,3.3);if(rc!==r){P.x=LH.x+dx/r*rc;P.z=LH.z+dz/r*rc;}}
+function lampP(){return new Promise(res=>{ISL.wait=res;ST.actor=null;talkNpc=null;$('fade').style.opacity=0;renderHUD();});}
+function islHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span');s.className='step';
+  b.textContent='灯台の灯り';s.textContent=onGallery()?'灯台のてっぺん。まん中の灯りに近づいて、灯りをともす':P.z>ISL_Z0?'道をのぼって灯台へ。じいちゃんの鍵で扉を開けて、てっぺんへ':'桟橋の先の船で、島へ';tr.append(b,s);}
+function islNear(){if(BOAT.on||URA.on)return null;let best=null;const add=(d,o)=>{if(!best||d<best.d){o.d=d;best=o;}};
+  const m=BOAT.moor[BOAT.at],bd=BOAT.at==='town'?Math.hypot(P.x-(m.x-1.6),P.z-m.z):Math.hypot(P.x-(ISL.x-55),P.z-m.z);
+  if(bd<3&&!ISL.wait)add(bd,{kind:'boat',label:BOAT.at==='town'?'乗る　島への船（釣りのおじさん）':'乗る　町へ帰る船',verb:'乗る'});
+  if(P.z>ISL_Z0){
+    if(!onGallery()){const d=Math.hypot(P.x-LH.x,P.z-(LH.z-3.6));if(d<2.4)add(d,{kind:'lhdoor',label:'入る　灯台',verb:'入る'});}
+    else{const d=Math.hypot(P.x-LH.x,P.z-(LH.z-2.6));if(d<1.3)add(d,{kind:'lhdown',label:'降りる　らせん階段',verb:'降りる'});
+      if(ISL.wait){const dl=Math.max(0,Math.hypot(P.x-LH.x,P.z-LH.z)-1.6);if(dl<1.6)add(dl-2,{kind:'lamp',label:'ともす　灯台の灯り',verb:'ともす'});}}}
+  return best;}
+function islFade(fn){$('fade').style.opacity=1;setTimeout(()=>{fn();camInit=false;$('fade').style.opacity=0;},700);}
+function islAct(o){
+  if(o.kind==='boat'){if(BOAT.at==='town')say('釣りのおじさん',['島へ行くのかい？ よし、乗りな。','灯台の下まで、道が一本のびてる。帰りたくなったら、島の桟橋の船に乗りな。'],()=>boatP('island'));else boatP('town');}
+  else if(o.kind==='lhdoor'){if(!flag('true_key')&&!flag('lighthouse_lit')){say('',['さびた鉄の扉には、大きな錠前がかかっている。','……かぎがないと、入れそうにない。']);return;}
+    islFade(()=>{P.x=LH.x;P.z=LH.z-2.6;P.y=LH.gy;P.yaw=Math.PI;P.v=0;P.air=false;toast('らせん階段をのぼって、灯台のてっぺんに出た');});}
+  else if(o.kind==='lhdown')islFade(()=>{P.x=LH.x;P.z=LH.z-4.4;P.y=G(P.x,P.z);P.yaw=Math.PI;P.v=0;P.air=false;});
+  else if(o.kind==='lamp'){const r=ISL.wait;ISL.wait=null;renderHUD();r();}}
+function islPlace(){if(BOAT.on)return'釣り船の上';if(onGallery())return'灯台のてっぺん';const u=P.x-ISL.x,w=P.z-ISL.z;if(u<-45&&w<-15)return'島の桟橋';return'灯台の島';}
+// every frame: the boat at its mooring (it goes back to the side Nagi is on), the lamp, the machine's red light
+function updateIsland(dt){const B=BOAT;
+  if(!B.on){const side=P.z>ISL_Z0?'island':'town';if(B.at!==side){B.at=side;}const m=B.moor[B.at];
+    B.g.position.set(m.x,SEA_Y+0.25+Math.sin(clock*1.7)*0.08,m.z);B.g.rotation.set(Math.sin(clock*1.3)*0.02,m.yaw,Math.sin(clock*1.1)*0.025);}
+  const lit=!!flag('lighthouse_lit');ISL.lamp.material.color.set(lit?'#fff3c4':'#6b6a64');ISL.glass.material.opacity=lit?0.35:0.75;
+  ISL.devLight.visible=!flag('tower_quiet')&&(clock*1.2%1)<0.45;ISL.dev.visible=!flag('tower_quiet');
+  if(ISL.wait&&!DLG&&!modal)islHUD($('tracker'));}
+
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
    The board rolling (louder and brighter with speed, rougher on sand), kicks, pops, landings and grinds,
-   footsteps; the sea, cicadas by day and crickets at night, a low hum in 裏海街; the tram's bell, doors, motor and the
+   footsteps; the sea, crickets at night, a low hum in 裏海街; the tram's bell, doors, motor and the
    clack of the rail joints, the level crossings; the racers' engines and tyres; the drone fight, fireworks, coins, the
    camera, the dialogue. Browsers allow no sound before the first tap or key, so it starts then; M (or the 音 button)
    turns it off and on, and that is remembered. Most of it watches the game's state each frame rather than being called. ---------- */
@@ -7016,10 +7263,8 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resu
     const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=osc?f*4:f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;src.connect(fl);fl.connect(g);g.connect(S.master);
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
-  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');
-  // cicadas: a high band of noise, buzzing on and off thirty times a second
-  { const L=S.L.cicada=loop('bandpass',4800,7),am=c.createGain(),lfo=c.createOscillator(),dep=c.createGain();
-    L.g.disconnect();L.g.connect(am);am.connect(S.master);am.gain.value=0.5;lfo.frequency.value=31;dep.gain.value=0.5;lfo.connect(dep);dep.connect(am.gain);lfo.start();}}
+  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');
+}
 function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();if(S.master)S.master.gain.setTargetAtTime(S.on?0.9:0,S.ctx.currentTime,0.05);
   $('soundBtn').textContent=S.on?'音：オン':'音：オフ';toast(S.on?'音をオンにした':'音をオフにした');}
 for(const ev of ['pointerdown','keydown','touchstart'])window.addEventListener(ev,sndInit,{passive:true});
@@ -7059,6 +7304,9 @@ const sfx={
   firework:()=>{tone(500,0.9,'sine',0.05,1300);setTimeout(()=>{sfx.boom(0.6);for(let i=0;i<7;i++)hiss(0.04,'highpass',3500,0.12,0.7,null,0.25+Math.random()*0.7);},900);},
   win:()=>[523,659,784,1046].forEach((f,i)=>tone(f,0.35,'triangle',0.13,null,i*0.12)),
   lose:()=>[392,330,262].forEach((f,i)=>tone(f,0.4,'triangle',0.11,null,i*0.16)),
+  pad:v=>{hiss(0.08,'lowpass',360,0.16*v);tone(78,0.07,'sine',0.1*v,55);},
+  thud:v=>{tone(50,0.34,'sine',0.6*v,28);hiss(0.2,'lowpass',240,0.4*v);},
+  heart:v=>{tone(56,0.13,'sine',v,38);tone(50,0.15,'sine',v*0.8,34,0.18);},
   cricket:()=>{for(let i=0;i<3;i++)tone(4300,0.035,'sine',0.025,null,i*0.06);}};
 // the drone fight and the fireworks call their own effects
 { const s0=shoot;shoot=function(...a){sfx.shot();return s0.apply(this,a);};
@@ -7066,7 +7314,7 @@ const sfx={
   const f0=burst;burst=function(p,col){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col);};}
 
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
-  const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&AREA==='town';
+  const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
   // the board: the low rumble of the wheels on the road and a fine grit, with a light tick at each joint in the paving
   const rolling=board&&!P.air&&!P.grind,sp=clamp(P.v/12,0,1);
   set(L.roll.g.gain,rolling?sp*0.075*(sand?1.4:1):0);set(L.roll.fl.frequency,sand?160+P.v*12:190+P.v*16);
@@ -7088,12 +7336,19 @@ function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,
   if(play&&pv.money!=null&&SAVE.money!==pv.money)(SAVE.money>pv.money?sfx.coin:sfx.pay)();pv.money=play?SAVE.money:null;
   const dl=$('dialog'),tx=dl.hidden?'':$('dtext').textContent;if(tx&&tx!==pv.text)sfx.blip();pv.text=tx;
   if(photoReq&&!pv.photo)sfx.shutter();pv.photo=photoReq;
-  // the world around: the sea, cicadas or crickets, 裏海街's hum
-  const town=AREA==='town',hr=SAVE.hour||12,day=hr>=8&&hr<17.5,night=hr>=19||hr<5,inside=ride?0.45:1;
-  set(L.sea.g.gain,play&&town&&!URA.on?att(Math.max(0,Math.abs(P.z-SHORE)-8),110)*(0.16+0.07*Math.sin(clock*0.5))*inside:0,0.3);
-  set(L.cicada.g.gain,play&&day&&!URA.on?(town?0.035:0.07)*inside:0,0.5);
+  // the world around: the sea, crickets at night, 裏海街's hum
+  const town=AREA==='town',hr=SAVE.hour||12,night=hr>=19||hr<5,inside=ride?0.45:1;
+  set(L.sea.g.gain,play&&town&&!URA.on?att(P.z>ISL_Z0||BOAT.on?2:Math.max(0,Math.abs(P.z-SHORE)-8),110)*(0.16+0.07*Math.sin(clock*0.5))*inside:0,0.3);
   if(play&&night&&!URA.on&&clock>S.nextCricket){S.nextCricket=clock+0.5+Math.random()*1.2;sfx.cricket();}
   set(L.ura.g.gain,play&&URA.on?0.12:0,0.5);
+  // 裏海街: the shadows' steps grow louder as they come near; the big one's heavy tread and growl, and your heartbeat when it is close
+  let gr=0;
+  if(play&&URA.on){for(const s of URA.shadows){if(s.sus>=0.05)continue;s.stepT=(s.stepT||0)-dt;
+      if(s.stepT<=0){s.stepT=0.62;const v=att(Math.hypot(s.h.g.position.x-P.x,s.h.g.position.z-P.z),34);if(v>0.01)sfx.pad(v);}}
+    const C=URA.chase;if(C&&URA.big){const v=att(C.d,90);gr=v*0.2*(C.mode==='hunt'?1.3:1);
+      C.stepT=(C.stepT||0)-dt;if(C.stepT<=0&&C.sp>0.5){C.stepT=clamp(3/C.sp,0.3,0.95);if(v>0.005)sfx.thud(v);}
+      const hv=att(C.d,34);S.heartT=(S.heartT||0)-dt;if(hv>0.02&&S.heartT<=0){S.heartT=lerp(1.0,0.36,hv);sfx.heart(0.12+hv*0.45);}}}
+  set(L.growl.g.gain,gr,0.2);set(L.growl.src.frequency,38+gr*40,0.2);
   // the trams: motor, rail joints, the bell as they leave, the doors
   for(const T of [TRAM,INKT]){const here=(T===INKT)===(AREA==='inaka'),k=T===TRAM?'t':'i';if(!here)continue;
     let d=1e9;for(const g of T.cars)d=Math.min(d,Math.hypot(g.position.x-P.x,g.position.z-P.z));if(ride&&RIDE.train===T)d=0;const v=att(d,90);
@@ -7295,7 +7550,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
@@ -7307,7 +7562,7 @@ function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){
   h.textContent=s.state===1?q.steps[s.step].hint:s.state===2?`お礼 ${q.reward}円をもらった`:`${NPCS[q.giver].name}が困っているみたい`;
   d.append(st,b,h);if(s.state===1)d.addEventListener('click',()=>{SAVE.tracked=q.id;save();renderLog();renderHUD();});L.appendChild(d);}}
 let modal=null;
-function openModal(id){modal=id;$(id).hidden=false;}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;canvas.focus();}
+function openModal(id){modal=id;$(id).hidden=false;document.body.classList.toggle('closet',id==='closet');}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;document.body.classList.remove('closet');canvas.focus();}
 $('logBtn').addEventListener('click',()=>{renderLog();openModal('log');});$('logClose').addEventListener('click',closeModal);
 $('albumBtn').addEventListener('click',()=>{renderAlbum();openModal('albumM');});$('albumClose').addEventListener('click',closeModal);
 $('shopClose').addEventListener('click',closeModal);
@@ -7335,7 +7590,7 @@ function talk(n){talkNpc=n;
   for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='deliver'&&st.to===n.id){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}}
   for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
-  if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
+  if(n.id==='baker'&&!DRONE.active&&SAVE.flags.route===2&&SAVE.seen.o4_baker&&!SAVE.flags.drones_cleared){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}
   if(n.id==='maru'){say(n.name,n.idle,()=>openShop('dagashi'));return;}
   say(n.name||'町の人',[pick(n.idle.length?n.idle:['いい天気ですね。'])]);}
@@ -7382,8 +7637,8 @@ const mapBase=document.createElement('canvas');mapBase.width=MAPW;mapBase.height
   g.fillStyle='#a88a64';g.fillRect(PIER.x0-MAP_X0,PIER.z0-MAP_Z0,PIER.x1-PIER.x0,PIER.z1-PIER.z0);
   g.fillStyle='#d8452f';g.fillRect(SHRINE.x-MAP_X0-3,SHRINE.z-MAP_Z0-2,6,4);}
 const mapc=$('mapc'),mg=mapc.getContext('2d');
-function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',cx=P.x-(ink?INK_X-INK_R:MAP_X0),cz=P.z-(ink?-INK_R:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
-  mg.drawImage(ink?INK.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
+function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',isl=!ink&&P.z>ISL_Z0,cx=P.x-(ink?INK_X-INK_R:isl?ISL.x-120:MAP_X0),cz=P.z-(ink?-INK_R:isl?ISL.z-70:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
+  mg.drawImage(ink?INK.map:isl?ISL.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
   const toM=(x,z)=>[(x-P.x)*S+mapc.width/2,(z-P.z)*S+mapc.height/2];
   for(const p of SPOTS){const [mx,my]=toM(p.x,p.z);mg.fillStyle=SAVE.spots.includes(p.id)?'#9aa6ae':'#1f7fc0';mg.beginPath();mg.arc(mx,my,5,0,7);mg.fill();}
   for(const q of QUESTS){if(!available(q))continue;const n=NPCS[q.giver],[mx,my]=toM(n.x,n.z);mg.fillStyle='#f2a33a';mg.beginPath();mg.arc(mx,my,7,0,7);mg.fill();mg.fillStyle='#fff';mg.font='900 11px sans-serif';mg.textAlign='center';mg.textBaseline='middle';mg.fillText('!',mx,my+1);}
@@ -7392,7 +7647,7 @@ function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',cx=P.x-(ink?INK
     mg.fillStyle='#e2584a';mg.beginPath();mg.arc(mx,my,out?6:8,0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=2;mg.stroke();}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
-function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(AREA==='inaka')return inkPlace();
+function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();
   if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<12)return d.name;if(Math.abs(x)>212&&z<SHORE)return x>0?'東の山':'西の山';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
   const st=Math.abs(z-207)<3&&stopAt(x);if(st&&st.id!=='station')return st.name+' 停留所';
   if(onPier(x,z))return'桟橋';if(z>SHORE)return'しおさい海岸';if(x>STATION.x0-4&&x<STATION.x1+4&&Math.abs(z-TRAM_Z)<8)return'うみまち駅';
@@ -7409,7 +7664,8 @@ function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Ob
     const lab=document.createElement('b');lab.textContent=S.label;row.appendChild(lab);const col=document.createElement('div');row.appendChild(col);
     if(items.length>1){const r=document.createElement('div');r.className='row';for(const I of items){const b=document.createElement('button');b.className='chip'+(I.id===it.id?' on':'');b.textContent=I.name;
         b.onclick=()=>{const k=(I.colors||[[]]).findIndex((c,ci)=>ownsKey(SAVE,S.slot+':'+I.id+':'+ci));setOutfit(S.slot,I.id,Math.max(0,k));};r.appendChild(b);}col.appendChild(r);}
-    if(it.colors&&it.colors.length>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';
+    const own=(it.colors||[]).filter((c,k)=>ownsKey(SAVE,S.slot+':'+it.id+':'+k)).length;
+    if(own>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';const cl=document.createElement('span');cl.className='cl';cl.textContent='色';r.appendChild(cl);
       it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
         b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
     box.appendChild(row);}}
@@ -7489,14 +7745,15 @@ function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STE
 // on the board now, with no hop-on (also when an event puts her straight on it)
 function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
 function stepPlayer(dt){
-  if(RIDE.on){rideStep(dt);return;}
+  if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
+  if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   // the slope under her: on a bridge it is the deck's, not the ground far below
   const gs=(x,z)=>{let g=G(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
   const g1=gs(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=gs(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
-  const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
+  const sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&!onPier(P.x,P.z);
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
@@ -7532,7 +7789,7 @@ function stepPlayer(dt){
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
+  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
   if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
@@ -7550,7 +7807,8 @@ function stepPlayer(dt){
 
 /* ---------- interaction ---------- */
 let near=null;
-function findNear(){if(RIDE.on)return rideNear();let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
+function findNear(){if(RIDE.on)return rideNear();if(BOAT.on)return null;let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
+  const il=islNear();if(il)add(il.d,il);if(URA.on){const u=uraNear();if(u)add(u.d-0.3,u);}
   const tn=tramNear();if(tn)add(tn.d-0.5,tn);const ik=inkNear();if(ik)add(ik.d,ik);
   // someone with a story event waiting comes first when two people stand close together
   for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
@@ -7569,7 +7827,9 @@ function act(o){if(!o)return;
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);if(st.gain){addItem(...st.gain);toast(`${ITEMS[st.gain[0]].name}を手に入れた`);}advance(o.q);});}
   else if(o.kind==='gacha')openGacha();
-  else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);}
+  else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);
+  else if(o.kind==='hide'||o.kind==='unhide')uraAct(o);
+  else if(o.kind==='boat'||o.kind==='lhdoor'||o.kind==='lhdown'||o.kind==='lamp')islAct(o);}
 
 /* ---------- camera ---------- */
 const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0;
@@ -7581,10 +7841,14 @@ function updateCamera(dt){
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
   else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
   else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
+  else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
+  else if(URA.hide){want=new THREE.Vector3();look=new THREE.Vector3();uraHideCam(want,look);rate=5;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
-    want=p.clone().addScaledVector(fw,3.3).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),0.7);want.y+=1.05;look=p.clone();look.y+=0.05;rate=4;}
+    // she stands in the space above the sheet: far enough back to fit there, the aim lowered so she sits in its middle
+    const sh=$('closet').firstChild.getBoundingClientRect(),f=clamp(sh.top/innerHeight,0.3,1),tn=Math.tan(camera.fov*Math.PI/360),dist=clamp(2.1/(2*tn*f*0.78),2.4,5.5);
+    want=p.clone().addScaledVector(fw,dist).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),dist*0.2);want.y+=1.0;look=p.clone();look.y+=1.0-dist*(1-f)*tn;rate=4;}
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
@@ -7616,15 +7880,18 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
-    updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
+    updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));}else pr.hidden=true;
     // the act button is there only when there is something to do with it: someone or something close by, or a line to read on
     const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&!ST.run),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
-  updateTram(dt);updateInaka(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
+  updateTram(dt);updateInaka(dt);updateIsland(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
   updateCamera(dt);updateSound(dt);renderer.render(scene,camera);
+  // while dressing, the heroine is drawn again on top, so a stall or a post between her and the camera never hides her
+  if(modal==='closet'){player.g.traverse(o=>o.layers.enable(1));renderer.autoClear=false;renderer.clearDepth();const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
+    camera.layers.set(1);renderer.render(scene,camera);camera.layers.set(0);renderer.shadowMap.autoUpdate=su;renderer.autoClear=true;}
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);

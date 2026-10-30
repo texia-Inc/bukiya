@@ -28,6 +28,7 @@ function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSiz
 window.addEventListener('resize',resize);resize();
 const hemi=new THREE.HemisphereLight('#e6f3ff','#8a7c66',0.62);scene.add(hemi);
 const sun=new THREE.DirectionalLight('#fff3dc',0.95);scene.add(sun);scene.add(sun.target);
+hemi.layers.enable(1);sun.layers.enable(1);   // layer 1: the heroine drawn on top while dressing
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 {const sc=sun.shadow.camera;sc.left=-16;sc.right=16;sc.top=16;sc.bottom=-16;sc.near=1;sc.far=140;}
 sun.shadow.bias=-0.0005;
@@ -96,7 +97,9 @@ function inDeckView(x,z){for(const d of RIDGE_DECKS){if(Math.sign(x)!==Math.sign
   if(dx<-6||ax<190)continue;if(Math.abs(z-d.z)<12+dx*0.6)return true;}return false;}
 const HILL_TREES=[];   // hill trees, so the camera can keep out of them
 function onPier(x,z){return x>PIER.x0&&x<PIER.x1&&z>PIER.z0&&z<PIER.z1;}
-function G(x,z){if(x>INK_X-600)return inkG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
+// the island out at sea (p5m_shima.js) has heights of its own once it is built
+const ISL_Z0=640;let ISL_ON=false;
+function G(x,z){if(x>INK_X-600)return inkG(x,z);if(z>ISL_Z0&&ISL_ON)return islG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
 
 const world=new THREE.Group();scene.add(world);
 const COLL=[];   // axis-aligned boxes the board bumps into: {x0,x1,z0,z1,on}

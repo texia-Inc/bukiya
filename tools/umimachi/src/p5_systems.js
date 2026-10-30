@@ -181,7 +181,7 @@ function toast(t,gold){const d=document.createElement('div');d.className='tst ca
 function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){const d=document.createElement('div');d.className='it';const im=document.createElement('img');im.src=ICON[id];im.alt=ITEMS[id].name;
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');const q=SAVE.tracked&&QBY(SAVE.tracked),tr=$('tracker');
-  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}}
@@ -193,7 +193,7 @@ function renderLog(){const L=$('logList');L.innerHTML='';for(const q of QUESTS){
   h.textContent=s.state===1?q.steps[s.step].hint:s.state===2?`お礼 ${q.reward}円をもらった`:`${NPCS[q.giver].name}が困っているみたい`;
   d.append(st,b,h);if(s.state===1)d.addEventListener('click',()=>{SAVE.tracked=q.id;save();renderLog();renderHUD();});L.appendChild(d);}}
 let modal=null;
-function openModal(id){modal=id;$(id).hidden=false;}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;canvas.focus();}
+function openModal(id){modal=id;$(id).hidden=false;document.body.classList.toggle('closet',id==='closet');}function closeModal(){if(!modal)return;$(modal).hidden=true;modal=null;document.body.classList.remove('closet');canvas.focus();}
 $('logBtn').addEventListener('click',()=>{renderLog();openModal('log');});$('logClose').addEventListener('click',closeModal);
 $('albumBtn').addEventListener('click',()=>{renderAlbum();openModal('albumM');});$('albumClose').addEventListener('click',closeModal);
 $('shopClose').addEventListener('click',closeModal);
@@ -221,7 +221,7 @@ function talk(n){talkNpc=n;
   for(const q of QUESTS){const st=stepOf(q);if(st&&st.type==='deliver'&&st.to===n.id){say(n.name,[`${ITEMS[st.item].name}を${st.n}つ、持ってきてくれたら うれしいな。`]);return;}}
   for(const q of QUESTS){if(q.giver===n.id&&available(q)){say(n.name,q.start,()=>accept(q));return;}}
   for(const q of QUESTS){if(q.giver===n.id&&qs(q.id).state===1&&q.wait){say(n.name,q.wait);return;}}
-  if(n.id==='baker'&&!DRONE.active&&!SAVE.drones&&qs('melon').state===2){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
+  if(n.id==='baker'&&!DRONE.active&&SAVE.flags.route===2&&SAVE.seen.o4_baker&&!SAVE.flags.drones_cleared){say(n.name,DRONE.lost?DRONE_RETRY:DRONE_TALK,startDrones);return;}
   if(n.id==='baker'){say(n.name,n.idle,()=>openShop('bakery'));return;}
   if(n.id==='maru'){say(n.name,n.idle,()=>openShop('dagashi'));return;}
   say(n.name||'町の人',[pick(n.idle.length?n.idle:['いい天気ですね。'])]);}
@@ -268,8 +268,8 @@ const mapBase=document.createElement('canvas');mapBase.width=MAPW;mapBase.height
   g.fillStyle='#a88a64';g.fillRect(PIER.x0-MAP_X0,PIER.z0-MAP_Z0,PIER.x1-PIER.x0,PIER.z1-PIER.z0);
   g.fillStyle='#d8452f';g.fillRect(SHRINE.x-MAP_X0-3,SHRINE.z-MAP_Z0-2,6,4);}
 const mapc=$('mapc'),mg=mapc.getContext('2d');
-function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',cx=P.x-(ink?INK_X-INK_R:MAP_X0),cz=P.z-(ink?-INK_R:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
-  mg.drawImage(ink?INK.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
+function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',isl=!ink&&P.z>ISL_Z0,cx=P.x-(ink?INK_X-INK_R:isl?ISL.x-120:MAP_X0),cz=P.z-(ink?-INK_R:isl?ISL.z-70:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
+  mg.drawImage(ink?INK.map:isl?ISL.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
   const toM=(x,z)=>[(x-P.x)*S+mapc.width/2,(z-P.z)*S+mapc.height/2];
   for(const p of SPOTS){const [mx,my]=toM(p.x,p.z);mg.fillStyle=SAVE.spots.includes(p.id)?'#9aa6ae':'#1f7fc0';mg.beginPath();mg.arc(mx,my,5,0,7);mg.fill();}
   for(const q of QUESTS){if(!available(q))continue;const n=NPCS[q.giver],[mx,my]=toM(n.x,n.z);mg.fillStyle='#f2a33a';mg.beginPath();mg.arc(mx,my,7,0,7);mg.fill();mg.fillStyle='#fff';mg.font='900 11px sans-serif';mg.textAlign='center';mg.textBaseline='middle';mg.fillText('!',mx,my+1);}
@@ -278,7 +278,7 @@ function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',cx=P.x-(ink?INK
     mg.fillStyle='#e2584a';mg.beginPath();mg.arc(mx,my,out?6:8,0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=2;mg.stroke();}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
-function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(AREA==='inaka')return inkPlace();
+function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();
   if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<12)return d.name;if(Math.abs(x)>212&&z<SHORE)return x>0?'東の山':'西の山';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
   const st=Math.abs(z-207)<3&&stopAt(x);if(st&&st.id!=='station')return st.name+' 停留所';
   if(onPier(x,z))return'桟橋';if(z>SHORE)return'しおさい海岸';if(x>STATION.x0-4&&x<STATION.x1+4&&Math.abs(z-TRAM_Z)<8)return'うみまち駅';
@@ -295,7 +295,8 @@ function renderCloset(){const box=$('closetSlots');box.innerHTML='';const cur=Ob
     const lab=document.createElement('b');lab.textContent=S.label;row.appendChild(lab);const col=document.createElement('div');row.appendChild(col);
     if(items.length>1){const r=document.createElement('div');r.className='row';for(const I of items){const b=document.createElement('button');b.className='chip'+(I.id===it.id?' on':'');b.textContent=I.name;
         b.onclick=()=>{const k=(I.colors||[[]]).findIndex((c,ci)=>ownsKey(SAVE,S.slot+':'+I.id+':'+ci));setOutfit(S.slot,I.id,Math.max(0,k));};r.appendChild(b);}col.appendChild(r);}
-    if(it.colors&&it.colors.length>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';
+    const own=(it.colors||[]).filter((c,k)=>ownsKey(SAVE,S.slot+':'+it.id+':'+k)).length;
+    if(own>1){const r=document.createElement('div');r.className='row';r.style.marginTop='4px';const cl=document.createElement('span');cl.className='cl';cl.textContent='色';r.appendChild(cl);
       it.colors.forEach((cs,k)=>{if(!ownsKey(SAVE,S.slot+':'+it.id+':'+k))return;const b=document.createElement('button');b.className='sw'+(k===(ci||0)?' on':'');const a=cs[0]||'#7a4a30',c2=cs[1]||a;
         b.style.background=`linear-gradient(135deg,${a} 55%,${c2} 55%)`;b.title=it.name;b.onclick=()=>{setOutfit(S.slot,it.id,k);};r.appendChild(b);});col.appendChild(r);}
     box.appendChild(row);}}
@@ -375,14 +376,15 @@ function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STE
 // on the board now, with no hop-on (also when an event puts her straight on it)
 function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
 function stepPlayer(dt){
-  if(RIDE.on){rideStep(dt);return;}
+  if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
+  if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // in a crate in 裏海街: still and out of sight
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   // the slope under her: on a bridge it is the deck's, not the ground far below
   const gs=(x,z)=>{let g=G(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
   const g1=gs(P.x+F[0]*0.6,P.z+F[1]*0.6),g0=gs(P.x-F[0]*0.6,P.z-F[1]*0.6),slope=(g1-g0)/1.2;
-  const sand=P.z>SHORE+0.5&&!onPier(P.x,P.z);
+  const sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&!onPier(P.x,P.z);
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
@@ -418,7 +420,7 @@ function stepPlayer(dt){
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
+  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
   if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
@@ -436,7 +438,8 @@ function stepPlayer(dt){
 
 /* ---------- interaction ---------- */
 let near=null;
-function findNear(){if(RIDE.on)return rideNear();let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
+function findNear(){if(RIDE.on)return rideNear();if(BOAT.on)return null;let best=null,bd=1e9;const add=(d,o)=>{if(d<bd){bd=d;best=o;}};
+  const il=islNear();if(il)add(il.d,il);if(URA.on){const u=uraNear();if(u)add(u.d-0.3,u);}
   const tn=tramNear();if(tn)add(tn.d-0.5,tn);const ik=inkNear();if(ik)add(ik.d,ik);
   // someone with a story event waiting comes first when two people stand close together
   for(const id in NPCS){const n=NPCS[id];if(!present(n))continue;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d<2.7)add(d-(findEvent('talk',id)?1.2:0),{kind:'npc',n,label:`話す　${n.name||'町の人'}`,verb:'話す'});}
@@ -455,7 +458,9 @@ function act(o){if(!o)return;
   else if(o.kind==='spot')photoReq=true;
   else if(o.kind==='place'){const st=stepOf(o.q);say('',st.text,()=>{if(st.item)addItem(st.item,-st.n);if(st.gain){addItem(...st.gain);toast(`${ITEMS[st.gain[0]].name}を手に入れた`);}advance(o.q);});}
   else if(o.kind==='gacha')openGacha();
-  else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);}
+  else if(o.kind==='tram')boardTram(o);else if(o.kind==='alight')alightTram();else if(o.kind==='bus'||o.kind==='scope')inkAct(o);
+  else if(o.kind==='hide'||o.kind==='unhide')uraAct(o);
+  else if(o.kind==='boat'||o.kind==='lhdoor'||o.kind==='lhdown'||o.kind==='lamp')islAct(o);}
 
 /* ---------- camera ---------- */
 const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0;
@@ -467,10 +472,14 @@ function updateCamera(dt){
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
   else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
   else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
+  else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
+  else if(URA.hide){want=new THREE.Vector3();look=new THREE.Vector3();uraHideCam(want,look);rate=5;}
   else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
-    want=p.clone().addScaledVector(fw,3.3).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),0.7);want.y+=1.05;look=p.clone();look.y+=0.05;rate=4;}
+    // she stands in the space above the sheet: far enough back to fit there, the aim lowered so she sits in its middle
+    const sh=$('closet').firstChild.getBoundingClientRect(),f=clamp(sh.top/innerHeight,0.3,1),tn=Math.tan(camera.fov*Math.PI/360),dist=clamp(2.1/(2*tn*f*0.78),2.4,5.5);
+    want=p.clone().addScaledVector(fw,dist).addScaledVector(new THREE.Vector3(-fw.z,0,fw.x),dist*0.2);want.y+=1.0;look=p.clone();look.y+=1.0-dist*(1-f)*tn;rate=4;}
   else if(modal==='shop'&&shopCam&&SHOPS[shopCam]){const b=SHOPS[shopCam];const fw=new THREE.Vector3(Math.sin(b.yaw),0,Math.cos(b.yaw));
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
@@ -502,15 +511,18 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
-    updateDrones(dt);stepPlayer(dt);near=DLG||modal||ST.run?null:findNear();if(actQ&&near)act(near);actQ=false;
+    updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;
     const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';const k=document.createElement('kbd');k.textContent=hasTouch?near.verb:'E';pr.append(k,document.createTextNode(near.label));}else pr.hidden=true;
     // the act button is there only when there is something to do with it: someone or something close by, or a line to read on
     const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&!ST.run),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
-  updateTram(dt);updateInaka(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
+  updateTram(dt);updateInaka(dt);updateIsland(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
   updateCamera(dt);updateSound(dt);renderer.render(scene,camera);
+  // while dressing, the heroine is drawn again on top, so a stall or a post between her and the camera never hides her
+  if(modal==='closet'){player.g.traverse(o=>o.layers.enable(1));renderer.autoClear=false;renderer.clearDepth();const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
+    camera.layers.set(1);renderer.render(scene,camera);camera.layers.set(0);renderer.shadowMap.autoUpdate=su;renderer.autoClear=true;}
   if(photoReq){photoReq=false;snap();}
   requestAnimationFrame(frame);}
 function startGame(k){SLOT=k;store.set('umimachi_slot',String(k));SAVE=loadSlot(k)||JSON.parse(JSON.stringify(S0));if(player.vrm)applyOutfit(player,SAVE.outfit);
