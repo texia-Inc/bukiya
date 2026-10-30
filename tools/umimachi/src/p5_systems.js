@@ -489,7 +489,8 @@ function updateCamera(dt){
 let state='title',clock=0,last=performance.now();
 function updateNPCs(dt){for(const id in NPCS){const n=NPCS[id],d=Math.hypot(P.x-n.x,P.z-n.z),here=present(n);n.box.on=here;n.h.g.visible=d<110&&here;if(!n.h.g.visible)continue;
     const giving=QUESTS.some(q=>q.giver===id&&available(q));
-    poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});}
+    poseHuman(n.h,n.mode,dt,{look:d<9||talkNpc===n?player.g.position:null,wave:giving&&d<14&&d>3&&n.mode!=='sit'});
+    if(n.vrm)poseMio(n,dt,d<9||talkNpc===n?_mioL.set(P.x,P.y+1.3,P.z).clone():null);}
   for(const c of CATS)poseCat(c,dt,Math.hypot(P.x-c.g.position.x,P.z-c.g.position.z)<3);}
 function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q of QUESTS){const m=qMarks[q.id],n=NPCS[q.giver];m.visible=available(q)&&state==='play'&&!calm;if(m.visible)m.position.set(n.x,n.h.g.position.y+(n.mode==='sit'?1.75:2.25)+Math.sin(clock*3)*0.08,n.z);}
   const q=SAVE.tracked&&QBY(SAVE.tracked),t=q&&targetOf(q);tMark.visible=beam.visible=!!t&&state==='play'&&!calm;
@@ -544,5 +545,8 @@ const heroineReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader)return 
   const emb=document.getElementById('heroineGLB');   // the single-file build carries the model inline
   if(emb){try{const bin=Uint8Array.from(atob(emb.textContent.trim()),c=>c.charCodeAt(0));ld.parse(bin.buffer,'',ok,fail);}catch(e){fail();}}
   else ld.load('heroine.glb',ok,undefined,fail);});
-Promise.all([fontReady,heroineReady]).then(main);
+// Mio's model, the same way (the procedural figure stays if it cannot be fetched; the single-file build does without it)
+const mioReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader||document.getElementById('heroineGLB'))return res();const t=setTimeout(res,25000);
+  new THREE.GLTFLoader().load('mio.glb',g=>{window.MIO_GLTF=g;clearTimeout(t);res();},undefined,()=>{clearTimeout(t);res();});});
+Promise.all([fontReady,heroineReady,mioReady]).then(main);
 </script>
