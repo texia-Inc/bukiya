@@ -15,7 +15,7 @@ function sndInit(){const S=SND;if(S.ctx){if(S.ctx.state==='suspended')S.ctx.resu
     const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=osc?f*4:f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;src.connect(fl);fl.connect(g);g.connect(S.master);
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
-  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');
+  S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');S.L.crowd=loop('bandpass',650,0.8);
 }
 function sndToggle(){const S=SND;S.on=!S.on;store.set('umimachi_sound',S.on?'1':'0');sndInit();if(S.master)S.master.gain.setTargetAtTime(S.on?0.9:0,S.ctx.currentTime,0.05);
   $('soundBtn').textContent=S.on?'音：オン':'音：オフ';toast(S.on?'音をオンにした':'音をオフにした');}
@@ -67,6 +67,11 @@ const sfx={
 
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
+  // the festival band at the shrine: drums and a flute, louder as you come up the approach, and the murmur of the crowd
+  { const fd=Math.hypot(P.x-SHRINE.x,P.z+141),v=play&&festOn()&&AREA==='town'?att(fd,110):0;set(L.crowd.g.gain,v*0.05,0.5);
+    if(v>0.01&&t>=(S.nextHayashi||0)){const b=S.hb=(S.hb||0)+1,at=Math.max(t,S.nextHayashi||0)-t,beat=0.3;S.nextHayashi=t+at+beat;
+      const pat=[1,0,2,0,1,1,2,0],k=pat[b%8];if(k===1){tone(78,0.28,'sine',0.42*v,48,at);hiss(0.08,'lowpass',320,0.25*v,1,null,at);}else if(k===2)hiss(0.05,'bandpass',2200,0.18*v,4,null,at);
+      if(b%2===0){const tune=[0,2,4,2,5,4,2,0,2,4,5,7,5,4,2,4],n=tune[(b/2)%16];if(n!=null)tone(880*Math.pow(2,[0,2,3,5,7,9,10,12][n]/12),beat*1.8,'triangle',0.05*v,null,at);}}}
   // the board: the low rumble of the wheels on the road and a fine grit, with a light tick at each joint in the paving
   const rolling=board&&!P.air&&!P.grind,sp=clamp(P.v/12,0,1);
   set(L.roll.g.gain,rolling?sp*0.075*(sand?1.4:1):0);set(L.roll.fl.frequency,sand?160+P.v*12:190+P.v*16);

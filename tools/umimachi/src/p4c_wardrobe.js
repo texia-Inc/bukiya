@@ -24,7 +24,7 @@ const WARDROBE=[
     {id:'ribbon',name:'制服リボン',parts:{W_tie:0},colors:[['#8fb8e0'],['#c8323a'],['#2d3a6a'],['#3f7a5a']]},
     {id:'bow',name:'リボン',parts:{W_bow:0},colors:[['#c8323a'],['#2d4f9a'],['#f0879c'],['#2b2b30']]},
     {id:'choker',name:'鈴のチョーカー',parts:{W_choker:0},colors:[['#2b2b30'],['#c8323a'],['#7a5a8f']]},
-    {id:'dogtag',name:'ドッグタグ',parts:{W_dogtag:0},colors:[['#c5c9cf']]},
+    {id:'dogtag',name:'ドッグタグ',parts:{},extra:'dogtag',colors:[['#9aa1ab']]},
     {id:'sailor',name:'セーラーえり',parts:{W_sailorcollar:0,W_sailorcollar_line:1,W_bow:2},colors:[['#2d3a6a','#f6f5f1','#c8323a'],['#f6f5f1','#2d3a6a','#2d3a6a'],['#2b2b30','#f6f5f1','#e05a6a']]},
     {id:'none',name:'なし',parts:{}}]},
   {slot:'bottoms',label:'ボトムス',items:[
@@ -40,10 +40,10 @@ const WARDROBE=[
     {id:'witchtights',name:'しましまタイツ',parts:{W_tights:{pat:'stripe'}},colors:[['#e07a2a','#4a2a6a'],['#2b2b30','#f6f5f1'],['#7a3a9a','#9ad860']]},
     {id:'none',name:'なし',parts:{}}]},
   {slot:'shoes',label:'くつ',items:[
-    {id:'sneakers',name:'スニーカー',parts:{W_shoes:'dark0'},colors:[['#f07a93'],['#2b2b30'],['#f6f5f1'],['#4f8fd8'],['#f5c84a'],['#7cc39a'],['#f2994a']]}]},
+    {id:'sneakers',name:'スニーカー',parts:{W_shoes:'upper0'},colors:[['#f07a93'],['#2b2b30'],['#f6f5f1'],['#4f8fd8'],['#f5c84a'],['#7cc39a'],['#f2994a']]}]},
   {slot:'hands',label:'手',items:[
     {id:'none',name:'なし',parts:{}},
-    {id:'paws',name:'肉球てぶくろ',parts:{W_paws:0},colors:[['#2b2b30'],['#f6f5f1'],['#e8b07a']]}]},
+    {id:'paws',name:'肉球てぶくろ',parts:{},extra:'paws',colors:[['#2b2b30'],['#f6f5f1'],['#e8b07a']]}]},
   {slot:'head',label:'あたま',items:[
     {id:'clip',name:'Xクリップ',parts:{W_clip:0},colors:[['#ef6f8a'],['#5fb0e8'],['#f5c84a'],['#f6f5f1']]},
     {id:'glasses',name:'まるメガネ',parts:{W_glasses:0},colors:[['#5a3a2a'],['#2b2b30'],['#d4a24a']]},
@@ -72,9 +72,9 @@ const WARDROBE=[
     {id:'hair',name:'髪',parts:{},hair:true,colors:[[null],['#2a2220'],['#d9b06a'],['#e88fa8'],['#8a9fd0'],['#b9b9c2']]}]},
 ];
 // Nagi's summer school uniform (tools/umimachi/design/06_turnaround_uniform_fixed.png)
-const DEFAULT_OUTFIT={tops:['uniform',0],neck:['ribbon',0],bottoms:['skirt',5],legs:['knee',2],shoes:['sneakers',6],hands:['none',0],head:['none',0],tie:['scrunchie',5],back:['none',0],waist:['none',0],hair:['hair',0]};
+const DEFAULT_OUTFIT={tops:['uniform',0],neck:['ribbon',0],bottoms:['skirt',5],legs:['knee',2],shoes:['sneakers',2],hands:['none',0],head:['none',0],tie:['scrunchie',5],back:['none',0],waist:['none',0],hair:['hair',0]};
 // the everyday outfit she used to start in stays free
-const OLD_STARTER=['tops:hoodie:0','tops:tee:0','neck:bow:0','bottoms:skirt:0','bottoms:shorts:0','legs:socks:0','shoes:sneakers:0','head:clip:0','tie:scrunchie:0','back:pack:0'];
+const OLD_STARTER=['tops:hoodie:0','tops:tee:0','neck:bow:0','bottoms:skirt:0','bottoms:shorts:0','legs:socks:0','shoes:sneakers:0','shoes:sneakers:6','head:clip:0','tie:scrunchie:0','back:pack:0'];
 const _texCache={};
 // recolour a texture on a canvas: 'hair' keeps the shading and replaces the hue, 'dark' paints only the dark areas
 function recolorTex(map,hex,mode){const key=map.uuid+mode+hex;if(_texCache[key])return _texCache[key];
@@ -101,13 +101,17 @@ function patternVerts(mesh,kind,cols){const geo=mesh.geometry,p=geo.attributes.p
     else{const n=vnoise(x*9+z*5,y*9+z*3);k=n<0.42?0:n<0.58?1:n<0.72?2:3;k=Math.min(k,C.length-1);}
     out[i*3]=C[k].r;out[i*3+1]=C[k].g;out[i*3+2]=C[k].b;}
   geo.setAttribute('color',new THREE.BufferAttribute(out,3));}
+// the sneakers: the colour goes on everything above the sole, the sole stays white (the texture's shading and laces show through)
+function upperVerts(mesh,hex){const geo=mesh.geometry,p=geo.attributes.position,c=new THREE.Color(hex),w=new THREE.Color('#f6f5f1'),out=new Float32Array(p.count*3);
+  for(let i=0;i<p.count;i++){const k=p.getY(i)<0.024?w:c;out[i*3]=k.r;out[i*3+1]=k.g;out[i*3+2]=k.b;}geo.setAttribute('color',new THREE.BufferAttribute(out,3));}
 function findItem(slot,id){const S=WARDROBE.find(s=>s.slot===slot);return S&&(S.items.find(i=>i.id===id)||S.items[0]);}
 function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Object.assign({},DEFAULT_OUTFIT,outfit||{});
   h.backBusy=['cape','batwings','angelwings'].includes((outfit.back||[])[0]);   // then the board is carried in the hand, not on the back
-  const show={};   // part name -> colour spec
+  const show={},extras={};   // part name -> colour spec; extra -> its colours
   const covered=new Set();for(const S of WARDROBE){const it=findItem(S.slot,(outfit[S.slot]||[])[0]);if(it&&it.covers)it.covers.forEach(c=>covered.add(c));}
   for(const S of WARDROBE){if(covered.has(S.slot))continue;const [id,ci]=outfit[S.slot]||[];const it=findItem(S.slot,id);if(!it)continue;const cs=(it.colors&&it.colors[ci||0])||(it.colors&&it.colors[0])||[];
-    for(const k in it.parts){const v=it.parts[k];show[k]=typeof v==='number'?cs[v]:v==='dark0'?{dark:cs[0]}:v&&v.pat?{pat:v.pat,cols:cs}:v;}
+    for(const k in it.parts){const v=it.parts[k];show[k]=typeof v==='number'?cs[v]:v==='dark0'?{dark:cs[0]}:v==='upper0'?{upper:cs[0]}:v&&v.pat?{pat:v.pat,cols:cs}:v;}
+    if(it.extra)extras[it.extra]=cs;
     if(it.hair)for(const m of V.hair){m.material.map=cs[0]?recolorTex(m.userData.map0,cs[0],'hair'):m.userData.map0;m.material.needsUpdate=true;}}
   for(const P of V.parts){const key=Object.keys(show).filter(k=>P.name===k||P.name.startsWith(k+'_')).sort((a,b)=>b.length-a.length)[0];const on=!!key;
     P.mesh.visible=on;if(P.mesh.userData.ol)P.mesh.userData.ol.visible=on;if(!on)continue;const spec=show[key];
@@ -115,9 +119,45 @@ function applyOutfit(h,outfit){const V=h.vrm;if(!V||!V.parts)return;outfit=Objec
     if(spec&&spec.pat){const cols=spec.cols;if(P.map0){m.map=patternTex(spec.pat,cols);m.vertexColors=false;}else{patternVerts(P.mesh,spec.pat,cols);m.vertexColors=true;}m.color.set('#ffffff');}
     else{m.vertexColors=false;m.map=P.map0;
       if(spec&&spec.dark){m.map=recolorTex(P.map0,spec.dark,'dark');m.color.set('#ffffff');}
+      else if(spec&&spec.upper){upperVerts(P.mesh,spec.upper);m.vertexColors=true;m.color.set('#ffffff');}
       else if(typeof spec==='string'&&P.tintable)m.color.set(spec);
       else if(P.tintable)m.color.copy(P.base);}
-    if(m.vertexColors!==was||m.map!==wasMap)m.needsUpdate=true;}}
+    if(m.vertexColors!==was||m.map!==wasMap)m.needsUpdate=true;}
+  wearExtras(h,extras);legsUnder(V,covered.has('bottoms'));}
+// under the yukata the legs are not drawn between the ankles and the hips: on the board her knees bend and spread wider than
+// the cloth can follow, and the skin came through it. The body's outline goes too, or the hidden legs would still be drawn in outline
+function legsUnder(V,on){if(!V.body){V.model.traverse(o=>{if(o.isSkinnedMesh&&o.name==='Body_(merged)')V.body=o;});if(!V.body)return;
+    const m=V.body.material,u={value:0};m.userData.hide=u;
+    m.onBeforeCompile=sh=>{sh.uniforms.uHide=u;sh.vertexShader='varying float vBy;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBy=position.y;');
+      sh.fragmentShader='uniform float uHide;\nvarying float vBy;\n'+sh.fragmentShader.replace('void main() {','void main() {\nif(uHide>0.5&&vBy>0.15&&vBy<0.88)discard;');};
+    m.customProgramCacheKey=()=>'bodylegs';m.needsUpdate=true;}
+  V.body.material.userData.hide.value=on?1:0;if(V.body.userData.ol)V.body.userData.ol.visible=!on;}
+
+/* extras: garments built here rather than in the model, fixed to a bone: the big cat-paw mittens and the dog tags on their chain.
+   Each is made in the model's own axes (+z forward, +x her left) at rest and carried by the bone from then on */
+function onBone(V,bone,p){const r=V.rest[bone],iq=r.q.clone().invert(),g=new THREE.Group();g.position.copy(p.clone().sub(r.p).applyQuaternion(iq));g.quaternion.copy(iq);V.B[bone].add(g);return g;}
+const EXTRAS={
+  paws(V){const fur=new THREE.MeshToonMaterial({color:'#2b2b30',gradientMap:GRAD}),cuff=new THREE.MeshToonMaterial({color:'#44444a',gradientMap:GRAD}),pad=tm('#f4a0b4'),gs=[];
+    const S=(g,mat,x,y,z,sx,sy,sz,ol)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;if(ol)outline(m,ol/Math.max(sx,sy,sz));g.add(m);return m;};
+    for(const [n,sx] of [['L',1],['R',-1]]){const g=onBone(V,'J_Bip_'+n+'_Hand',V.rest['J_Bip_'+n+'_Hand'].p);
+      S(g,fur,sx*0.065,0,-0.02,0.1,0.062,0.07,0.004);   // the paw
+      for(const z of [-0.075,-0.045,0.005,0.035].map(v=>v+0.005))S(g,fur,sx*0.14,0.012,z-0.0,0.032,0.034,0.026,0.003);   // the four toes on top of its end
+      const c=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.064,0.05,16).rotateZ(Math.PI/2),cuff);c.position.set(sx*0.0,0,-0.02);outline(c,0.003);g.add(c);
+      S(g,pad,sx*0.065,-0.058,-0.02,0.034,0.01,0.036);for(const [x,z] of [[0.125,-0.062],[0.138,-0.034],[0.138,-0.006],[0.125,0.022]])S(g,pad,sx*x,-0.046,z,0.014,0.007,0.013);
+      gs.push(g);}
+    return{objs:gs,tint(cs){const c=new THREE.Color(cs[0]);fur.color.copy(c);cuff.color.copy(c).lerp(new THREE.Color('#ffffff'),0.25);}};},
+  dogtag(V){const metal=new THREE.MeshToonMaterial({color:'#9aa1ab',gradientMap:GRAD}),g=onBone(V,'J_Bip_C_UpperChest',V.rest.J_Bip_C_UpperChest.p);
+    const pts=[[0,1.342,-0.076],[0.056,1.33,-0.048],[0.074,1.29,0.032],[0.06,1.25,0.104],[0.03,1.218,0.136],[0,1.208,0.144],[-0.03,1.218,0.136],[-0.06,1.25,0.104],[-0.074,1.29,0.032],[-0.056,1.33,-0.048]]
+      .map(([x,y,z])=>new THREE.Vector3(x,y,z).sub(V.rest.J_Bip_C_UpperChest.p));
+    const ch=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true),60,0.0042,5,true),metal);outline(ch,0.0018);g.add(ch);
+    const tex=canvasTex(64,96,(c,w,h)=>{c.fillStyle='#b9bec6';c.fillRect(0,0,w,h);c.fillStyle='#5a6068';c.font='900 13px monospace';c.textAlign='center';['NAGI','UMI','MACHI','0607'].forEach((t,k)=>c.fillText(t,w/2,30+k*17));
+      c.fillStyle='#ffffff';c.beginPath();c.arc(w/2,11,5,0,7);c.fill();});
+    const tm2=[metal,metal,metal,metal,new THREE.MeshToonMaterial({map:tex,gradientMap:GRAD}),metal];const top=V.rest.J_Bip_C_UpperChest.p;
+    for(const [dx,dy,dz,rz] of [[0.007,0,0.003,0.12],[-0.008,-0.012,-0.001,-0.18]]){const t=new THREE.Mesh(new THREE.BoxGeometry(0.044,0.07,0.005),tm2);outline(t,0.003);
+      t.position.set(dx,1.208-0.037+dy-top.y,0.153+dz-top.z);t.rotation.set(-0.12,0,rz);t.castShadow=true;g.add(t);}
+    return{objs:[g],tint(cs){metal.color.set(cs[0]);}};}};
+function wearExtras(h,want){const V=h.vrm;V.extras=V.extras||{};
+  for(const k in EXTRAS){let e=V.extras[k];if(want[k]&&!e)e=V.extras[k]=EXTRAS[k](V);if(!e)continue;for(const o of e.objs)o.visible=!!want[k];if(want[k])e.tint(want[k]);}}
 
 /* ---------- gacha: every item and colour (except "none") is a prize; you start with the everyday outfit ---------- */
 const RARITY={yukata:'SR',camo:'R',tee_dots:'R',tee_stars:'R',choker:'R',dogtag:'R',sailor:'R',zigzag:'R',cargo:'R',kneestripe:'R',witchtights:'R',

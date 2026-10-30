@@ -210,23 +210,108 @@ const SHRINE={x:-60,z:-124.6};
   const kasagi=M(new THREE.BoxGeometry(5.6,0.32,0.5),blk,0.025);kasagi.position.y=4.55;g.add(kasagi);
   const shimaki=M(new THREE.BoxGeometry(5.0,0.3,0.42),vermil,0.02);shimaki.position.y=4.25;g.add(shimaki);
   const nuki=M(new THREE.BoxGeometry(4.6,0.24,0.28),vermil,0.02);nuki.position.y=3.4;g.add(nuki);
-  const gaku=M(new THREE.BoxGeometry(0.6,0.75,0.08),blk,0.01);gaku.position.y=3.85;g.add(gaku);
+  const gtx=canvasTex(48,64,(c,w,h)=>{c.fillStyle='#2b2520';c.fillRect(0,0,w,h);c.strokeStyle='#d9b44a';c.lineWidth=3;c.strokeRect(3,3,w-6,h-6);c.fillStyle='#d9b44a';c.font=signFont(18,true);c.textAlign='center';c.textBaseline='middle';c.fillText('海',w/2,h*0.3);c.fillText('見',w/2,h*0.7);});
+  const gaku=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.8,0.08),[blk,blk,blk,blk,tmap(gtx),tmap(gtx)]);outline(gaku,0.01);gaku.position.y=3.85;g.add(gaku);
+  for(const sd of [-1,1]){g.add(M(new THREE.CylinderGeometry(0.34,0.38,0.32,14),blk,0.012).translateX(sd*1.9).translateY(0.16));
+    const tip=M(new THREE.BoxGeometry(0.5,0.3,0.5),blk,0.012);tip.position.set(sd*2.75,4.66,0);tip.rotation.z=sd*0.28;g.add(tip);}
+  { const rp=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.75,3.05,0.18),new THREE.Vector3(0,2.85,0.2),new THREE.Vector3(1.75,3.05,0.18)]);
+    g.add(M(new THREE.TubeGeometry(rp,16,0.07,6,false),tm('#d9c98f'),0.008));
+    const sh=canvasTex(32,64,(c,w,h)=>{c.clearRect(0,0,w,h);c.fillStyle='#ffffff';for(let k=0;k<4;k++)c.fillRect(k%2?14:4,k*16,14,14);});
+    for(const px of [-1,0,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(0.18,0.38),tmap(sh,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide}));m.position.set(px,2.66+Math.abs(px)*0.12,0.2);g.add(m);}}
   // stone path climbing to the hall
   const path=[];for(let zz=z-1.5;zz>-160;zz-=1.6)path.push({x,z:zz});
   inst(new THREE.BoxGeometry(2.2,0.18,1.4),tm('#9d978b'),path,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+0.05,e.z);},{recv:true});
   for(const [lx,lz] of [[x-2.6,z-6],[x+2.6,z-6],[x-2.6,z-24],[x+2.6,z-24]]){const l=new THREE.Group();l.position.set(lx,G(lx,lz),lz);const st=tm('#a9a397');
     l.add(M(new THREE.CylinderGeometry(0.28,0.36,0.3,8),st,0.015).translateY(0.15));l.add(M(new THREE.CylinderGeometry(0.12,0.12,0.9,8),st,0.012).translateY(0.75));
     l.add(M(new THREE.BoxGeometry(0.55,0.4,0.55),st,0.015).translateY(1.35));l.add(M(new THREE.ConeGeometry(0.55,0.4,4),st,0.015).translateY(1.75).rotateY(Math.PI/4));world.add(l);collide(lx-0.35,lx+0.35,lz-0.35,lz+0.35,'prop',G(lx,lz)+1.95);}
+  // the hall: a raised wooden floor with a vermilion railing round it, white walls between vermilion pillars, latticed doors,
+  // a hipped-and-gabled copper roof with crossed boards and logs on its ridge, and a porch over the steps with the bell and the offering box
   const hz=-162,hy=G(x,hz),hall=new THREE.Group();hall.position.set(x,hy,hz);world.add(hall);
-  hall.add(M(new THREE.BoxGeometry(7,0.7,6),tm('#b8b2a6'),0.02).translateY(0.35));
-  hall.add(M(new THREE.BoxGeometry(5.6,2.8,4.6),tm('#8a5a3a'),0.025).translateY(2.1));
-  const roof=M(prism,tm('#3a3d44'),0);roof.scale.set(7.6,1.9,6.6/1.732);roof.position.y=3.5+1.27*0.5+0.35;hall.add(roof);
-  hall.add(M(new THREE.BoxGeometry(1.4,0.7,0.6),tm('#6b4a2e'),0.015).translateY(1.05).translateZ(2.9));
-  const rope=M(new THREE.TorusGeometry(1.6,0.09,8,24,Math.PI),tm('#e9dcb0'),0);rope.rotation.z=Math.PI;rope.position.set(0,3.4,2.4);hall.add(rope);
-  collide(x-3.5,x+3.5,hz-3,hz+3,'bld');
+  const stone=tm('#b8b2a6'),wood=tm('#6b4a2e'),dark=tm('#4a3326'),white=tm('#f1eadb'),cop=tm('#4f7a6c'),gold=tm('#d9b44a');
+  const H=(geo,mat,ol,px,py,pz)=>{const m=M(geo,mat,ol);m.position.set(px||0,py||0,pz||0);hall.add(m);return m;};
+  H(new THREE.BoxGeometry(7,0.7,6),stone,0.02,0,0.35,0);
+  for(const px of [-2.9,-1,1,2.9])for(const pz of [-2.4,0,2.4])H(new THREE.CylinderGeometry(0.1,0.1,0.42,8),dark,0,px,0.91,pz);
+  H(new THREE.BoxGeometry(6.4,0.14,5.4),wood,0.015,0,1.15,0);
+  // the railing round the verandah, open in the middle of the front for the steps
+  for(const [px,pz,w,d] of [[0,-2.65,6.3,0.08],[-3.15,0,0.08,5.3],[3.15,0,0.08,5.3],[-2.05,2.65,2.2,0.08],[2.05,2.65,2.2,0.08]]){
+    H(new THREE.BoxGeometry(w,0.07,d),vermil,0.008,px,1.62,pz);H(new THREE.BoxGeometry(w,0.05,d),vermil,0,px,1.36,pz);}
+  for(const [px,pz] of [[-3.15,-2.65],[3.15,-2.65],[-3.15,2.65],[3.15,2.65],[-0.95,2.65],[0.95,2.65],[-3.15,0],[3.15,0]])H(new THREE.BoxGeometry(0.1,0.5,0.1),vermil,0.008,px,1.43,pz);
+  H(new THREE.BoxGeometry(4.6,2.3,3.8),white,0.02,0,2.37,0);
+  for(const px of [-2.3,-0.78,0.78,2.3])for(const pz of [-1.9,1.9])H(new THREE.CylinderGeometry(0.12,0.12,2.5,10),vermil,0.012,px,2.47,pz);
+  for(const px of [-2.3,2.3])H(new THREE.CylinderGeometry(0.12,0.12,2.5,10),vermil,0.012,px,2.47,0);
+  for(const py of [1.5,3.38])H(new THREE.BoxGeometry(4.75,0.18,3.95),vermil,0.012,0,py,0);
+  const lat=canvasTex(128,96,(g,w,h)=>{g.fillStyle='#f6efdf';g.fillRect(0,0,w,h);g.fillStyle='#c23a28';for(let k=0;k<=w;k+=8)g.fillRect(k,0,2,h);for(let k=0;k<=h;k+=8)g.fillRect(0,k,w,2);
+    g.fillRect(0,0,w,5);g.fillRect(0,h-5,w,5);g.fillRect(w/2-3,0,6,h);});
+  const door=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.75),tmap(lat));door.position.set(0,2.4,1.905);hall.add(door);
+  for(const sd of [-1,1]){const dd=door.clone();dd.scale.set(0.9,1,1);dd.position.x=sd*1.54;hall.add(dd);}
+  // brackets, then the roof: a hipped lower part with a gable on top
+  H(new THREE.BoxGeometry(5.2,0.32,4.4),dark,0.012,0,3.62,0);
+  H(new THREE.BoxGeometry(7.6,0.14,6.6),dark,0.015,0,3.86,0);
+  const hip=H(new THREE.CylinderGeometry(0.46,1,1,4,1).rotateY(Math.PI/4),cop,0.02,0,4.42,0);hip.scale.set(3.75/0.707,1.0,3.25/0.707);
+  const gab=H(prism,cop,0.02,0,5.4,0);gab.scale.set(3.6,1.05,1.52/1.732*1.15);
+  for(const sd of [-1,1]){const tri=H(prism,white,0,sd*1.82,5.36,0);tri.scale.set(0.04,0.8,1.3/1.732*1.15);}
+  H(new THREE.BoxGeometry(3.9,0.2,0.26),dark,0.012,0,6.47,0);
+  for(const sd of [-1,1])for(const r of [-0.55,0.55]){const c=H(new THREE.BoxGeometry(0.08,1.1,0.16),dark,0.008,sd*1.95,6.75,0);c.rotation.z=r;}
+  for(const px of [-1.1,-0.37,0.37,1.1]){H(new THREE.CylinderGeometry(0.1,0.1,0.62,10).rotateX(Math.PI/2),dark,0.008,px,6.66,0);
+    for(const sd of [-1,1])H(new THREE.CylinderGeometry(0.105,0.105,0.04,10).rotateX(Math.PI/2),gold,0,px,6.66,sd*0.31);}
+  // the porch: two pillars, a sloping roof, a beam with the sacred rope and its paper streamers
+  for(const sd of [-1,1])H(new THREE.CylinderGeometry(0.11,0.11,3.55,10),vermil,0.012,sd*1.3,1.78,3.85);
+  H(new THREE.BoxGeometry(2.9,0.2,0.24),vermil,0.01,0,3.45,3.85);
+  const por=H(new THREE.BoxGeometry(3.4,0.12,2.6),cop,0.015,0,3.86,3.05);por.rotation.x=0.26;
+  H(new THREE.BoxGeometry(3.4,0.1,0.1),dark,0,0,3.52,4.3);
+  const rp=new THREE.CatmullRomCurve3([new THREE.Vector3(-1.25,3.28,3.95),new THREE.Vector3(0,2.98,4.0),new THREE.Vector3(1.25,3.28,3.95)]);
+  H(new THREE.TubeGeometry(rp,20,0.11,8,false),tm('#d9c98f'),0.01);
+  const shide=canvasTex(32,64,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='#ffffff';for(let k=0;k<4;k++){const y=k*16;g.fillRect(k%2?14:4,y,14,14);}});
+  const shM=tmap(shide,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide});
+  for(const px of [-0.8,0,0.8]){const m=new THREE.Mesh(new THREE.PlaneGeometry(0.22,0.45),shM);m.position.set(px,2.7+Math.abs(px)*0.18,4.02);hall.add(m);}
+  // the bell on its red-and-white rope, the offering box at the foot of the steps
+  const bellRope=canvasTex(8,64,(g,w,h)=>{for(let k=0;k<8;k++){g.fillStyle=['#c8372d','#f4efe2','#7a3a8a'][k%3];g.fillRect(0,k*8,w,8);}},true);
+  H(new THREE.CylinderGeometry(0.05,0.05,2.1,8),tmap(bellRope),0,0,2.2,4.25);
+  H(new THREE.SphereGeometry(0.2,14,10),gold,0.012,0,3.28,4.25);
+  for(let k=0;k<4;k++){const tt=1.15-0.29*k;H(new THREE.BoxGeometry(1.9,tt,0.3),k?stone:wood,0.012,0,tt/2,2.75+0.3*k);}
+  const slat=canvasTex(128,64,(g,w,h)=>{g.fillStyle='#6b4a2e';g.fillRect(0,0,w,h);g.fillStyle='#4a3326';for(let k=4;k<w;k+=12)g.fillRect(k,14,6,h-14);g.fillStyle='#f4efe2';g.font=signFont(13,true);g.textAlign='center';g.fillText('奉　納',w/2,11);});
+  const box=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.75,0.6),[wood,wood,dark,wood,tmap(slat),wood]);box.castShadow=true;outline(box,0.015);box.position.set(0,0.38,4.3);hall.add(box);
+  // hanging lanterns under the eaves
+  for(const sd of [-1,1]){H(new THREE.CylinderGeometry(0.012,0.012,0.4,4),dark,0,sd*2.7,3.58,3.0);const lt=H(new THREE.CylinderGeometry(0.16,0.12,0.36,6),tm('#3d3a33'),0.008,sd*2.7,3.2,3.0);
+    H(new THREE.ConeGeometry(0.24,0.16,6),tm('#3d3a33'),0,sd*2.7,3.44,3.0);}
+  collide(x-3.5,x+3.5,hz-3,hz+3,'bld');collide(x-1,x+1,hz+3,hz+4.65,'prop',hy+1.15);
+  // the guardian dogs on their stones, one each side in front of the hall
+  const kom=(sd)=>{const kx=x+sd*3.1,kz=hz+6.2,g2=new THREE.Group();g2.position.set(kx,G(kx,kz),kz);g2.rotation.y=-sd*0.55;world.add(g2);const st=tm('#a39d90'),ds=tm('#8f897d');
+    const K=(geo,mat,px,py,pz)=>{const m=M(geo,mat,0.012);m.position.set(px,py,pz);g2.add(m);return m;};
+    K(new THREE.BoxGeometry(0.8,0.75,0.9),ds,0,0.375,0);K(new THREE.BoxGeometry(0.9,0.12,1.0),ds,0,0.81,0);
+    K(new THREE.BoxGeometry(0.42,0.36,0.6),st,0,1.05,-0.1).rotation.x=-0.1;K(new THREE.SphereGeometry(0.26,10,8),st,0,1.35,0.12).scale.set(0.9,1.15,0.8);
+    for(const px of [-0.12,0.12])K(new THREE.CylinderGeometry(0.06,0.07,0.42,6),st,px,1.08,0.26);
+    K(new THREE.SphereGeometry(0.27,10,8),ds,0,1.72,0.12).scale.set(1.05,1,0.85);K(new THREE.SphereGeometry(0.2,10,8),st,0,1.7,0.28);
+    K(new THREE.BoxGeometry(0.2,0.12,0.12),st,0,1.63,0.45);for(const px of [-0.09,0.09])K(new THREE.SphereGeometry(0.035,6,4),tm('#2b2520'),px,1.78,0.44);
+    const tail=K(new THREE.SphereGeometry(0.16,8,6),ds,0,1.38,-0.42);tail.scale.set(1,1.4,0.7);
+    collide(kx-0.5,kx+0.5,kz-0.5,kz+0.5,'prop',G(kx,kz)+0.87);};
+  kom(-1);kom(1);
+  // the water basin by the gate, under its own little roof, with ladles across it
+  { const tx=x-6.4,tz=z-2.9,ty=G(tx,tz),g2=new THREE.Group();g2.position.set(tx,ty,tz);world.add(g2);const T=(geo,mat,ol,px,py,pz)=>{const m=M(geo,mat,ol);m.position.set(px,py,pz);g2.add(m);return m;};
+    for(const px of [-0.85,0.85])for(const pz of [-0.65,0.65])T(new THREE.CylinderGeometry(0.07,0.07,2.3,8),wood,0.01,px,1.15,pz);
+    T(new THREE.BoxGeometry(1.9,0.12,1.5),dark,0.01,0,2.3,0);const rf=T(prism,cop,0.015,0,2.6,0);rf.scale.set(2.3,0.62,2.1/1.732);
+    T(new THREE.BoxGeometry(1.25,0.55,0.75),tm('#9d978b'),0.015,0,0.28,0);const w=new THREE.Mesh(new THREE.PlaneGeometry(1.05,0.55).rotateX(-Math.PI/2),tm('#5aa3c8'));w.position.set(0,0.52,0);g2.add(w);
+    for(const px of [-0.35,0,0.35]){T(new THREE.CylinderGeometry(0.012,0.012,0.7,4).rotateX(Math.PI/2),tm('#d9c08a'),0,px,0.6,0.02);T(new THREE.CylinderGeometry(0.06,0.06,0.09,8),tm('#d9c08a'),0,px,0.6,0.38);}
+    collide(tx-0.95,tx+0.95,tz-0.75,tz+0.75,'prop',ty+0.55);}
+  // the wishing-plaque rack beside the hall
+  { const ex=x+7.4,ez=hz+1,ey=G(ex,ez),g2=new THREE.Group();g2.position.set(ex,ey,ez);g2.rotation.y=-Math.PI/2;world.add(g2);const E=(geo,mat,ol,px,py,pz)=>{const m=M(geo,mat,ol);m.position.set(px,py,pz);g2.add(m);return m;};
+    for(const px of [-1.1,1.1])E(new THREE.CylinderGeometry(0.06,0.06,1.9,8),wood,0.01,px,0.95,0);
+    const rf=E(prism,tm('#3a3d44'),0.01,0,2.05,0);rf.scale.set(2.6,0.36,0.7/1.732);for(const py of [1.05,1.45])E(new THREE.BoxGeometry(2.2,0.05,0.05),wood,0,0,py,0);
+    const ema=canvasTex(32,24,(g,w,h)=>{g.fillStyle='#e2c48e';g.beginPath();g.moveTo(0,8);g.lineTo(16,0);g.lineTo(32,8);g.lineTo(32,24);g.lineTo(0,24);g.fill();g.fillStyle='#c8372d';g.fillRect(4,12,24,3);g.fillStyle='#4a3326';g.fillRect(6,17,20,2);});
+    const eM=tmap(ema,{transparent:true,alphaTest:0.5,side:THREE.DoubleSide}),list=[];for(const py of [0.9,1.3])for(let k=0;k<9;k++)list.push({x:-0.96+k*0.24+(rnd()-0.5)*0.04,y:py,r:(rnd()-0.5)*0.25});
+    inst(new THREE.PlaneGeometry(0.2,0.15),eM,list,(e,d)=>{d.position.set(e.x,e.y,0.04);d.rotation.z=e.r;});
+    collide(ex-0.25,ex+0.25,ez-1.2,ez+1.2,'prop',ey+2);}
+  // the sacred tree with a rope round it
+  { const sx=x-8.2,sz=hz+2,sy=G(sx,sz);const tr=M(new THREE.CylinderGeometry(0.55,0.8,7,10),tm('#5a4232'),0.02);tr.position.set(sx,sy+3.5,sz);world.add(tr);
+    const cn=M(new THREE.IcosahedronGeometry(3.6,1),tm('#2a5434'),0);cn.position.set(sx,sy+8.4,sz);cn.scale.set(1,0.85,1);world.add(cn);
+    const rope2=M(new THREE.TorusGeometry(0.74,0.08,8,24),tm('#d9c98f'),0.008);rope2.rotation.x=Math.PI/2;rope2.position.set(sx,sy+1.7,sz);world.add(rope2);
+    for(let k=0;k<5;k++){const a=k/5*TAU,m=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.34),shM);m.position.set(sx+Math.cos(a)*0.78,sy+1.45,sz+Math.sin(a)*0.78);m.rotation.y=-a+Math.PI/2;world.add(m);}
+    collide(sx-0.8,sx+0.8,sz-0.8,sz+0.8,'prop',sy+7);}
+  // the grove keeps clear of the stalls along the approach, the plaque rack and the sacred tree
   const big=[];for(let k=0;k<14;k++){const a=rnd()*TAU,r=7+rnd()*10;big.push({x:x+Math.cos(a)*r,z:-150+Math.sin(a)*14,s:3+rnd()*2});}
-  inst(new THREE.IcosahedronGeometry(1,1),tm('#2f5d3a'),big.filter(t=>Math.abs(t.x-x)>3.5),(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s,e.s*1.4,e.s);},{cast:true});
-  inst(new THREE.CylinderGeometry(0.25,0.35,1,7).translate(0,0.5,0),tm('#5a4232'),big.filter(t=>Math.abs(t.x-x)>3.5),(e,d)=>{d.position.set(e.x,G(e.x,e.z),e.z);d.scale.set(1,e.s*1.2,1);});
+  const grove=big.filter(t=>Math.abs(t.x-x)>8.6&&Math.hypot(t.x-(x+7.4),t.z-(hz+1))>3.5&&Math.hypot(t.x-(x-8.2),t.z-(hz+2))>4);
+  inst(new THREE.IcosahedronGeometry(1,1),tm('#2f5d3a'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*1.5,e.z);d.scale.set(e.s,e.s*1.4,e.s);},{cast:true});
+  inst(new THREE.CylinderGeometry(0.25,0.35,1,7).translate(0,0.5,0),tm('#5a4232'),grove,(e,d)=>{d.position.set(e.x,G(e.x,e.z),e.z);d.scale.set(1,e.s*1.2,1);});
 }
 const LOOKOUT={x:0,z:-212};
 { const x=LOOKOUT.x,z=LOOKOUT.z,y=G(x,-206);const g=new THREE.Group();g.position.set(x,y,-206);world.add(g);
