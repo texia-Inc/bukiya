@@ -379,6 +379,8 @@ const STEP=0.45;
 function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
+// on the board now, with no hop-on (also when an event puts her straight on it)
+function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
 function stepPlayer(dt){
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
@@ -388,7 +390,7 @@ function stepPlayer(dt){
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
-      if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else{P.foot=false;P.carry='deck';P.kickT=-1;P.kickCD=0.3;}
+      if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else rideNow();
       $('bFoot').textContent=P.foot?'乗る':'降りる';}}
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns

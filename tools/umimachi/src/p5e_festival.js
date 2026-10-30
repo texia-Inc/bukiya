@@ -53,7 +53,7 @@ function updateFestival(dt){const fest=SAVE.flags.fest_day;
 
 /* the downhill race: start on the hilltop, finish at the end of the pier. The board is yours during it; the clock shows in the tracker */
 const RACE={on:false,t:0,goal:null,res:null,mark:null,beam:null};
-function raceP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;
+function raceP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);rideNow();camInit=false;
   const lim=/racelimit=(\d+)/.exec(location.hash);   // test entry: #racelimit=5 ends the race after 5 s
   Object.assign(RACE,{on:false,t:0,goal:o.to,limit:lim?+lim[1]:o.limit||150,res,count:3.2});});}
 function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;

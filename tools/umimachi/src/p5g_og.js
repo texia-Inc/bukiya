@@ -12,11 +12,11 @@ function ogScene(on){VAN.scripted=on;OG.scene=on;if(!on)for(const h of OG.men)h.
   OG.men.forEach((h,k)=>{h.g.visible=on;if(on){const x=OG_PARK[0]-2+k*2.2,z=OG_PARK[1]-2.4-(k%2)*0.6;h.g.position.set(x,G(x,z),z);h.g.rotation.y=Math.PI*(k?0.9:1.1);}});}
 // the men run after you: get to the goal before one of them reaches you; caught, you start the run again
 function pursuitP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;OG.run={o,res,t:0};ogPlace();if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
-function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;OG.run.t=0;
+function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);rideNow();camInit=false;OG.run.t=0;
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];OG.men.forEach((h,k)=>{const x=P.x-F[0]*(15+k*2)+(k-1)*2,z=P.z-F[1]*(15+k*2);h.g.visible=true;h.g.position.set(x,G(x,z),z);});}
 // the van runs west along the coast road; catch up with its back bumper before it reaches the tunnel
 function vanChaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;VAN.scripted=true;VAN.x=175;VAN.z=COAST_Z+2.2;VAN.v=9;
-  P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;OG.van={res,t:0,near:0};$('fade').style.opacity=0;
+  P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);rideNow();camInit=false;OG.van={res,t:0,near:0};$('fade').style.opacity=0;
   if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
 const ogBusy=()=>!!(OG.run||OG.van);
 function ogHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';

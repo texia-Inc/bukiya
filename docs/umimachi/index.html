@@ -4943,7 +4943,8 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
   // tricks: the board turns under her feet — about its long axis for a kickflip, flat round for a shove-it — while the feet
   // lift off it and come back down when it has gone round
   const fp=s.flip||0,spn=s.spin||0,trk=Math.sin(Math.PI*Math.max(fp,spn));
-  h.board.position.y=lift+0.12*trk;h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3))*(1-trk):0,0,M*0.3*gr*(1-trk));
+  h.board.position.set(0,lift+0.12*trk,0.02);   // x, z too: put straight on the board (a race start), it may still be where she carried it
+  h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3))*(1-trk):0,0,M*0.3*gr*(1-trk));
   _e.copy(h.board.rotation);h.board.rotation.y+=TAU*spn;h.board.rotation.z+=TAU*fp;
   h.hips.position.set(0,lerp(hipY,lerp(0.71,0.47,gr)+lift,tk),-0.03*c*(1-sd)*(1-P.push));h.hips.rotation.set(0,yaw,LEAD*0.12*P.push);
   h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)*(1-0.6*P.push)+P.push*0.22+0.3*tk+0.8*gr,-yaw*0.2,-P.st*0.16-LEAD*0.12*P.push);
@@ -5762,7 +5763,7 @@ function updateFestival(dt){const fest=SAVE.flags.fest_day;
 
 /* the downhill race: start on the hilltop, finish at the end of the pier. The board is yours during it; the clock shows in the tracker */
 const RACE={on:false,t:0,goal:null,res:null,mark:null,beam:null};
-function raceP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;
+function raceP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);rideNow();camInit=false;
   const lim=/racelimit=(\d+)/.exec(location.hash);   // test entry: #racelimit=5 ends the race after 5 s
   Object.assign(RACE,{on:false,t:0,goal:o.to,limit:lim?+lim[1]:o.limit||150,res,count:3.2});});}
 function updateRace(dt){if(!RACE.res)return;const tr=$('tracker'),g=RACE.goal;
@@ -5857,11 +5858,11 @@ function ogScene(on){VAN.scripted=on;OG.scene=on;if(!on)for(const h of OG.men)h.
   OG.men.forEach((h,k)=>{h.g.visible=on;if(on){const x=OG_PARK[0]-2+k*2.2,z=OG_PARK[1]-2.4-(k%2)*0.6;h.g.position.set(x,G(x,z),z);h.g.rotation.y=Math.PI*(k?0.9:1.1);}});}
 // the men run after you: get to the goal before one of them reaches you; caught, you start the run again
 function pursuitP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;OG.run={o,res,t:0};ogPlace();if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
-function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;OG.run.t=0;
+function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);rideNow();camInit=false;OG.run.t=0;
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];OG.men.forEach((h,k)=>{const x=P.x-F[0]*(15+k*2)+(k-1)*2,z=P.z-F[1]*(15+k*2);h.g.visible=true;h.g.position.set(x,G(x,z),z);});}
 // the van runs west along the coast road; catch up with its back bumper before it reaches the tunnel
 function vanChaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;VAN.scripted=true;VAN.x=175;VAN.z=COAST_Z+2.2;VAN.v=9;
-  P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);P.foot=false;P.carry='deck';P.tr=null;camInit=false;OG.van={res,t:0,near:0};$('fade').style.opacity=0;
+  P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);rideNow();camInit=false;OG.van={res,t:0,near:0};$('fade').style.opacity=0;
   if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
 const ogBusy=()=>!!(OG.run||OG.van);
 function ogHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
@@ -6763,6 +6764,8 @@ const STEP=0.45;
 function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP)continue;if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
 function groundAt(x,z,y){let g=G(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
+// on the board now, with no hop-on (also when an event puts her straight on it)
+function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;$('bFoot').textContent='降りる';}
 function stepPlayer(dt){
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
   if(P.grind){grindStep(dt);return;}
@@ -6772,7 +6775,7 @@ function stepPlayer(dt){
   // stepping off and on: F (or the button) starts a short transition; on foot she runs instead of kicking
   if(footQ&&!P.air&&!busy&&!P.tr)P.tr=P.foot?{type:'on',t:0,dur:0.6}:{type:'off',t:0,dur:0.85};footQ=false;
   if(P.tr){P.tr.t+=dt/P.tr.dur;if(P.tr.t>=1){const ty=P.tr.type;P.tr=null;
-      if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else{P.foot=false;P.carry='deck';P.kickT=-1;P.kickCD=0.3;}
+      if(ty==='off'){P.foot=true;P.carry='hand';}else if(ty==='stow')P.carry='back';else rideNow();
       $('bFoot').textContent=P.foot?'乗る':'降りる';}}
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns
