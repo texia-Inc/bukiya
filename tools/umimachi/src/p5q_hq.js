@@ -31,9 +31,33 @@ function hqBuild(){if(HQ.built)return;HQ.built=true;const g=HQ.g,X=HQ_X,W=44,D=2
   const rockT=canvasTex(128,128,(c,w,h)=>{c.fillStyle='#6a5d50';c.fillRect(0,0,w,h);for(let k=0;k<160;k++){c.fillStyle=`rgba(${k%2?40:140},${k%2?32:120},${k%2?26:100},.18)`;c.fillRect(Math.random()*w,Math.random()*h,4+Math.random()*14,3+Math.random()*10);}
     c.strokeStyle='rgba(30,24,20,.45)';c.lineWidth=1.5;for(let k=0;k<7;k++){c.beginPath();let x=Math.random()*w,y=Math.random()*h;c.moveTo(x,y);for(let j=0;j<5;j++){x+=Math.random()*24-12;y+=Math.random()*20;c.lineTo(x,y);}c.stroke();}},true);rockT.repeat.set(6,2);
   const rock=tmap(rockT),rock2=tm('#574b40'),wood=tm('#7a5a3a'),dark=tm('#4a3828');
-  const ft=canvasTex(128,128,(c,w,h)=>{c.fillStyle='#8a7a66';c.fillRect(0,0,w,h);c.strokeStyle='rgba(60,46,34,.35)';c.lineWidth=3;for(let k=0;k<4;k++){c.beginPath();c.moveTo(0,k*32+16);c.lineTo(w,k*32+16);c.stroke();}
-    c.fillStyle='rgba(255,255,255,.05)';for(let k=0;k<50;k++)c.fillRect(Math.random()*w,Math.random()*h,3,2);},true);ft.repeat.set(W/4,D/4);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(W,D),tmap(ft));floor.rotation.x=-Math.PI/2;floor.position.set(X+W/2,0.001,0);floor.receiveShadow=true;g.add(floor);
+  // the floor: packed earth and gravel along the rock, a deck of planks in the middle edged with timber, stone flags inside the door
+  const dirt=canvasTex(256,256,(c,w,h)=>{c.fillStyle='#6e6252';c.fillRect(0,0,w,h);for(let k=0;k<900;k++){const r=Math.random();c.fillStyle=r<0.5?'rgba(40,32,24,.25)':r<0.8?'rgba(150,135,110,.3)':'rgba(90,90,90,.35)';
+      const s=1+Math.random()*3.5;c.beginPath();c.ellipse(Math.random()*w,Math.random()*h,s,s*0.7,Math.random()*3,0,7);c.fill();}},true);dirt.repeat.set(W/6,D/6);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(W,D),tmap(dirt));ground.rotation.x=-Math.PI/2;ground.position.set(X+W/2,0.0005,0);ground.receiveShadow=true;g.add(ground);
+  // the planks: boards of differing tone with staggered ends, grain, a knot here and there, two nails at every join
+  const ft=canvasTex(512,512,(c,w,h)=>{const bw=32;for(let x=0;x<w;x+=bw){let y=-((x/bw*137)%200);while(y<h){const L=120+((x*7+y*3)%140),t=0.85+((x*13+y)%27)/100;
+        c.fillStyle=`rgb(${Math.round(150*t)},${Math.round(110*t)},${Math.round(72*t)})`;c.fillRect(x,y,bw,L);
+        c.strokeStyle='rgba(70,45,25,.28)';c.lineWidth=1;for(let k=0;k<4;k++){c.beginPath();const gx=x+5+k*7+Math.random()*2;c.moveTo(gx,y);c.bezierCurveTo(gx+3,y+L*0.3,gx-3,y+L*0.6,gx+1,y+L);c.stroke();}
+        if(Math.random()<0.3){c.fillStyle='rgba(70,40,20,.55)';c.beginPath();c.ellipse(x+bw/2,y+L*0.5,3,5,0,0,7);c.fill();}
+        c.fillStyle='rgba(30,20,12,.7)';c.fillRect(x,y,bw,2);c.fillStyle='#3a3530';for(const nx of [7,bw-9]){c.fillRect(x+nx,y+5,2,2);}
+        y+=L;}
+      c.fillStyle='rgba(30,20,12,.65)';c.fillRect(x+bw-2,0,2,h);}
+    for(let k=0;k<40;k++){c.fillStyle='rgba(60,40,25,.08)';c.beginPath();c.arc(Math.random()*w,Math.random()*h,10+Math.random()*30,0,7);c.fill();}},true);
+  const DK=1.1;ft.repeat.set((W-2*DK)/8,(D-2*DK)/8);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(W-2*DK,D-2*DK),tmap(ft));floor.rotation.x=-Math.PI/2;floor.position.set(X+W/2,0.003,0);floor.receiveShadow=true;g.add(floor);
+  for(const [w,d,x,z] of [[W-2*DK+0.24,0.24,W/2,-D/2+DK],[W-2*DK+0.24,0.24,W/2,D/2-DK],[0.24,D-2*DK,DK,0],[0.24,D-2*DK,W-DK,0]]){const e=new THREE.Mesh(new THREE.BoxGeometry(w,0.08,d),dark);e.position.set(X+x,0.04,z);e.receiveShadow=true;g.add(e);}
+  const flags=canvasTex(128,128,(c,w,h)=>{c.fillStyle='#4e4a45';c.fillRect(0,0,w,h);for(const [x,y,a,b] of [[2,2,60,40],[64,2,62,56],[2,44,40,46],[44,60,82,30],[2,92,58,34],[62,92,64,34]]){
+      c.fillStyle=`rgb(${120+Math.random()*30|0},${115+Math.random()*25|0},${105+Math.random()*25|0})`;c.fillRect(x,y,a-3,b-3);}});
+  const genkan=new THREE.Mesh(new THREE.PlaneGeometry(2.6,3.8),tmap(flags));genkan.rotation.x=-Math.PI/2;genkan.position.set(X+1.3,0.006,0);g.add(genkan);
+  // tatami at the tea corner
+  const tat=canvasTex(64,128,(c,w,h)=>{c.fillStyle='#b9b27a';c.fillRect(0,0,w,h);c.strokeStyle='rgba(120,110,60,.5)';for(let x=0;x<w;x+=3){c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke();}
+    c.fillStyle='#2b3a4a';c.fillRect(0,0,5,h);c.fillRect(w-5,0,5,h);});
+  for(const [x,z,r] of [[4.2,9.5,0],[5.8,9.5,0],[5,12.0,Math.PI/2]]){const t=new THREE.Mesh(new THREE.PlaneGeometry(0.9,1.8),tmap(tat));t.rotation.set(-Math.PI/2,0,r);t.position.set(X+x,0.008,z);g.add(t);}
+  // left on the floor: a coil of rope, a toolbox, an oil can
+  { const rope=new THREE.Mesh(new THREE.TorusGeometry(0.32,0.06,6,18),tm('#b89a62'));rope.rotation.x=-Math.PI/2;rope.position.set(X+11.2,0.07,-12.2);g.add(rope);
+    const tb=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.28,0.3),tm('#b8372d'));tb.position.set(X+17.3,0.14,-12.3);tb.rotation.y=0.3;outline(tb,0.015);g.add(tb);
+    const can=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.15,0.4,10),tm('#3f6a4a'));can.position.set(X+30.2,0.2,12.4);outline(can,0.015);g.add(can);}
   const ceil=new THREE.Mesh(new THREE.PlaneGeometry(W,D),new THREE.MeshBasicMaterial({color:'#2e2620'}));ceil.rotation.x=Math.PI/2;ceil.position.set(X+W/2,H,0);g.add(ceil);
   // the walls: rough rock, a box each side and boulders along the foot
   for(const [x0,x1,z0,z1] of [[-1,0,-D/2,D/2],[W,W+1,-D/2,D/2],[-1,W+1,-D/2-1,-D/2],[-1,W+1,D/2,D/2+1]]){const m=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,H,z1-z0),rock);m.position.set(X+(x0+x1)/2,H/2,(z0+z1)/2);g.add(m);collide(X+x0,X+x1,z0,z1,'bld',H);}
@@ -169,15 +193,18 @@ async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(sortieScript(nests));return;}
   if(pick!=='今夜の防衛に出る')return;
-  const N=nightPlan(n),got={sh:0,dr:0};
-  await steps([['fade','out'],['call',()=>{applyD2();EX1.still=true;}],['time',21,0],['warp',TRUTH.x+4,TRUTH.z,0],['fade','in'],
-    ['say','tome','（無線の声）来たよ、ナギ。まずは空のドローン、それから浜の影だ。','町に、一匹も入れるんじゃないよ！'],
-    ['drones',{total:N.drones,boss:N.boss?1:0,title:`${n}日目の夜：影のドローン`}],['call',()=>{got.dr=DRONE.killed+(N.boss?10:0);}],
-    ['say','baker','（無線の声）上は片づいた！ 浜だ！'],
-    ['call',()=>defendP({total:N.shadows,alive:N.alive,spd:N.spd})],['call',()=>{got.sh=DEF.killed;}],
-    ['call',()=>{const s=got.sh+got.dr;SAVE.shards=shards()+s;SAVE.money+=200+n*50;D.night=n;D.last=SAVE.day;save();renderHUD();
-      toast(`影のかけら +${s}　お礼 +${200+n*50}円`,true);}],
-    ['say','tome','（無線の声）よくやったね。今夜も、町の灯りは守られた。','かけらは、基地に持って帰っておいで。'],
+  // the night's defense: the town from above (p5u_td.js)
+  const R={};
+  await steps([['fade','out'],['call',()=>{applyD2();EX1.still=true;}],['time',20.2,0],['warp',...HOME],['fade','in'],
+    ['say','tome','（無線の声）来たよ、ナギ。影が浜から上がってくる。ねらいは神社……わたしたちの灯りさ。',
+      ...(n<=1?['通りぞいの置き場所に、自警団の道具を置いておくれ。影を追いはらえば、灯りがたまる。それでまた置けるからね。','いざとなったら「灯台の光」を呼びな。']:['今夜も、たのんだよ！'])],
+    ['call',async()=>{Object.assign(R,await tdP(n));}],
+    ['if',{test:()=>R.won},[
+      ['call',()=>{const s=R.kills+R.lives*2+n*2;SAVE.shards=shards()+s;SAVE.money+=200+n*50;D.night=n;D.last=SAVE.day;save();renderHUD();
+        toast(`影のかけら +${s}　お礼 +${200+n*50}円`,true);}],
+      ['say','tome','（無線の声）よくやったね。今夜も、町の灯りは守られた。','かけらは、基地に持って帰っておいで。']],[
+      ['call',()=>{D.last=SAVE.day;save();}],
+      ['say','tome','（無線の声）……今夜は、わたしたちが手で追い返したよ。無理はおしでない。','施設をきたえて、また明日だ。']]],
     ['fade','out'],['call',()=>ex1Kurosaki(false)],['warp',...HOME],['day']]);}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
 function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fight||BOSS.on)&&lv>=2?(lv>=4?2:1):0;

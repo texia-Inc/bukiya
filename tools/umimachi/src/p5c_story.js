@@ -143,7 +143,7 @@ function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateEx1();updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);updateUra(dt);updateBase(dt);updateRescue(dt);updateHQ(dt);updateBoss(dt);updateD2End(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
+  applyLight(SAVE.hour);updateUra(dt);updateBase(dt);updateRescue(dt);updateHQ(dt);updateBoss(dt);updateTD(dt);updateD2End(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
   if(ph!==ST.phase){ST.phase=ph;renderHUD();}if(tm!==ST.tm){ST.tm=tm;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
