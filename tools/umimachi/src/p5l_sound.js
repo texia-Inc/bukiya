@@ -74,7 +74,7 @@ const sfx={
 // the drone fight and the fireworks call their own effects
 { const s0=shoot;shoot=function(...a){sfx.shot();return s0.apply(this,a);};
   const b0=boom;boom=function(p){sfx.boom(att(Math.hypot(p.x-P.x,p.z-P.z),160)+0.15);return b0(p);};
-  const f0=burst;burst=function(p,col){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col);};}
+  const f0=burst;burst=function(p,col,kind){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col,kind);};}
 
 // iPhone app: a light buzz with the bumps and rewards (works with the sound off too)
 const BUZZ={land:'light',bump:'medium',thud:'heavy',coin:'light',pay:'light',shutter:'light',win:'success',lose:'error'};let buzzT=0;

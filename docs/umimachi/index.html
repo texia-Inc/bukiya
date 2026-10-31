@@ -6229,7 +6229,7 @@ function updateStory(dt){const tw=ST.tween;updateRace(dt);updateEx1();updateFest
 
 /* ---------- the summer festival of the easy-going route: lanterns over the shrine approach and the shopping street,
    stalls at the shrine, fireworks over the sea, and the downhill race the kids call the skateboard contest ---------- */
-const FEST={lanterns:new THREE.Group(),stalls:new THREE.Group(),bursts:[],fwUntil:0,fwT:0};
+const FEST={lanterns:new THREE.Group(),stalls:new THREE.Group(),bursts:[],shells:[],fwUntil:0,fwT:0};
 // the stalls: four that sell something to eat on the spot, the goldfish pool and the cork-gun stall
 const YATAI=[
   {id:'kakigori',sd:-1,z:-132,name:'かき氷',col:'#5aa3d8',price:200,food:true,say:['いらっしゃい！ いちご、メロン、ブルーハワイ！'],eat:['ガリガリの氷に、赤いシロップ。','……つめたーい！ 頭がキーンとする。'],
@@ -6300,14 +6300,50 @@ const YATAI=[
   FEST.lights=[-129,-141,-153].map(z=>{const l=new THREE.PointLight('#ffc68a',0,26,1.2);l.position.set(x,G(x,z)+4.2,z);scene.add(l);return l;});
   FEST.glows=YATAI.map(S=>{const bx=x+S.sd*(5.6-0.5),bz=S.z;return glow('#ffd9a0',bx,G(bx,bz)+2.15,bz,2.4);});
   FEST.lglows=[];for(const sd of [-1,1])for(let z=-130.5;z>=-154.5;z-=6)FEST.lglows.push(glow('#ffb070',x+sd*3.6,G(x+sd*3.6,z)+2.2,z,1.8));}
-// fireworks: each burst is a shell of sparks that falls and fades, with a flash at its heart
-function burst(p,col){const n=140,pos=new Float32Array(n*3),vel=[];const r=mulberry((Math.random()*1e6)|0);
-  for(let k=0;k<n;k++){const u=r()*2-1,a=r()*TAU,s=Math.sqrt(1-u*u),sp=22+r()*4;vel.push(new THREE.Vector3(Math.cos(a)*s*sp,u*sp,Math.sin(a)*s*sp));pos.set([p.x,p.y,p.z],k*3);}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const m=new THREE.Points(g,new THREE.PointsMaterial({color:col,size:4,sizeAttenuation:false,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
-  scene.add(m);const f=glow(col,p.x,p.y,p.z,60);f.visible=true;FEST.bursts.push({m,vel,t:0,f});}
-function fireworks(sec){FEST.fwUntil=clock+sec;FEST.fwT=0;}
+// fireworks: shells rise from the bay on a faint streak and burst at the top. Six kinds — peony (a round ball of stars),
+// chrysanthemum (stars that drag tails), willow (gold that droops long), ring, double (two colours, one inside the other) and
+// glitter (twinkling at the end). Each star is a soft round point, its tail a short line back along its path; the colours
+// warm and flicker as they die, and the sea below gives back a dim copy of each flash.
 const FW_COL=['#ff5a4a','#ffd24a','#7ad8ff','#b78cff','#7dff9a','#ffffff','#ff9ad0'];
+const FW_KIND=['peony','peony','chrys','chrys','willow','ring','double','glitter'];
+const FW_K={peony:{n:200,sp:36,g:7,drag:1.6,life:2.6,tail:0},chrys:{n:180,sp:37,g:7,drag:1.5,life:2.8,tail:0.2},willow:{n:160,sp:26,g:10,drag:1.1,life:4.4,tail:0.45},
+  ring:{n:120,sp:38,g:6,drag:1.6,life:2.4,tail:0.1},double:{n:220,sp:36,g:7,drag:1.6,life:2.7,tail:0.08},glitter:{n:170,sp:34,g:7,drag:1.6,life:3,tail:0}};
+const FW_WARM=new THREE.Color('#ff8a3a'),FW_GOLD='#ffc46a',_fc=new THREE.Color();
+function burst(p,col,kind){kind=kind||pick(FW_KIND);const K=FW_K[kind],r=Math.random,n=K.n,c1=new THREE.Color(kind==='willow'?FW_GOLD:col),c2=new THREE.Color(pick(FW_COL));
+  const pos=new Float32Array(n*3),cols=new Float32Array(n*3),vel=[],base=[];
+  const ax=new THREE.Vector3(r()-0.5,r()*0.6+0.3,r()-0.5).normalize(),b1=new THREE.Vector3().crossVectors(ax,new THREE.Vector3(0.3,1,0.2)).normalize(),b2=new THREE.Vector3().crossVectors(ax,b1);
+  for(let k=0;k<n;k++){let v;
+    if(kind==='ring'){const a=k/n*TAU;v=b1.clone().multiplyScalar(Math.cos(a)).addScaledVector(b2,Math.sin(a)).multiplyScalar(K.sp*(0.96+r()*0.08));}
+    else{const u=r()*2-1,a=r()*TAU,q=Math.sqrt(1-u*u),sp=K.sp*(0.9+r()*0.2)*(kind==='double'&&k%2?0.5:1);v=new THREE.Vector3(Math.cos(a)*q*sp,u*sp,Math.sin(a)*q*sp);}
+    vel.push(v);pos.set([p.x,p.y,p.z],k*3);const c=kind==='double'&&k%2?c2:c1;base.push(c);cols.set([c.r,c.g,c.b],k*3);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(cols,3));
+  const m=new THREE.Points(g,new THREE.PointsMaterial({map:GLOW_TEX,vertexColors:true,size:kind==='willow'?8:10,sizeAttenuation:false,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));scene.add(m);
+  let line=null;if(K.tail){const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*6),3));lg.setAttribute('color',new THREE.BufferAttribute(new Float32Array(n*6),3));
+    line=new THREE.LineSegments(lg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));scene.add(line);}
+  const f=glow(col,p.x,p.y,p.z,110);f.visible=true;const fr=glow(col,p.x,SEA_Y+0.6,p.z-30,60);fr.visible=true;   // the flash, and its glow on the sea under it
+  FEST.bursts.push({m,line,vel,base,t:0,f,fr,K,kind});}
+function fireworks(sec){FEST.fwUntil=clock+sec;FEST.fwT=0;}
+// a shell on its way up: a bright head and a short streak behind it
+function fwLaunch(){const x=-150+Math.random()*230,z=440+Math.random()*90,top=80+Math.random()*60,vy=Math.sqrt(2*30*(top-SEA_Y));
+  const head=glow('#ffe2b0',x,SEA_Y,z,3.5);head.visible=true;const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+  const tail=new THREE.Line(lg,new THREE.LineBasicMaterial({color:'#ffcf8a',transparent:true,opacity:0.7,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));scene.add(tail);
+  FEST.shells.push({x,z,y:SEA_Y,vy,head,tail,col:pick(FW_COL)});if(typeof tone==='function')tone(600,1.0,'sine',0.012,1400);}
+function fwStep(dt){
+  if(clock<FEST.fwUntil){FEST.fwT-=dt;if(FEST.fwT<=0){FEST.fwT=0.45+Math.random()*0.8;fwLaunch();if(Math.random()<0.2)setTimeout(fwLaunch,180);if(Math.random()<0.1)setTimeout(fwLaunch,360);}}
+  for(const s of FEST.shells.slice()){s.vy-=30*dt;s.y+=s.vy*dt;s.head.position.set(s.x+Math.sin(s.y*0.3)*0.3,s.y,s.z);
+    const a=s.tail.geometry.attributes.position.array;a.set([s.x,s.y,s.z,s.x,s.y-Math.min(s.vy*0.25,14),s.z]);s.tail.geometry.attributes.position.needsUpdate=true;
+    if(s.vy<=4){burst(new THREE.Vector3(s.x,s.y,s.z),s.col);scene.remove(s.head);scene.remove(s.tail);s.head.material.dispose();s.tail.geometry.dispose();s.tail.material.dispose();FEST.shells.splice(FEST.shells.indexOf(s),1);}}
+  for(const b of FEST.bursts.slice()){b.t+=dt;const K=b.K,fr=b.t/K.life,a=b.m.geometry.attributes.position,c=b.m.geometry.attributes.color,L=b.line&&b.line.geometry.attributes;
+    const warm=clamp((fr-0.45)*1.3,0,0.85);
+    for(let k=0;k<b.vel.length;k++){const v=b.vel[k];v.multiplyScalar(Math.exp(-dt*K.drag));v.y-=K.g*dt;const i=k*3;a.array[i]+=v.x*dt;a.array[i+1]+=v.y*dt;a.array[i+2]+=v.z*dt;
+      // the colour: warming toward orange, and flickering at the end (glitter all the way, the others a little)
+      let br=1;if(b.kind==='glitter'&&fr>0.4)br=Math.random()<0.45?0:1.7;else if(fr>0.75)br=0.45+Math.random()*0.6;
+      _fc.copy(b.base[k]).lerp(FW_WARM,warm).multiplyScalar(br);c.array.set([_fc.r,_fc.g,_fc.b],i);
+      if(L){const j=k*6,tl=K.tail;L.position.array.set([a.array[i],a.array[i+1],a.array[i+2],a.array[i]-v.x*tl,a.array[i+1]-v.y*tl,a.array[i+2]-v.z*tl],j);L.color.array.set([_fc.r*0.8,_fc.g*0.8,_fc.b*0.8,0,0,0],j);}}
+    a.needsUpdate=true;c.needsUpdate=true;if(L){L.position.needsUpdate=true;L.color.needsUpdate=true;}
+    const op=clamp((K.life-b.t)/0.7,0,1);b.m.material.opacity=op;if(b.line)b.line.material.opacity=op*0.8;
+    b.f.material.opacity=clamp(1-b.t*3,0,1);b.fr.material.opacity=0.45*clamp(1-b.t*0.9,0,1);
+    if(b.t>K.life){for(const o of [b.m,b.line,b.f,b.fr]){if(!o)continue;scene.remove(o);if(o.geometry&&o.geometry!==b.f.geometry&&o.geometry!==b.fr.geometry)o.geometry.dispose();o.material.dispose();}FEST.bursts.splice(FEST.bursts.indexOf(b),1);}}}
 function updateFestival(dt){const fest=SAVE.flags.fest_day;
   // the decorations go up as the errands are done and come down after the festival; the stall keepers are only there on the day
   const season=!URA.on&&SAVE.flags.route===3&&SAVE.day<=6;
@@ -6318,12 +6354,7 @@ function updateFestival(dt){const fest=SAVE.flags.fest_day;
   const ng=FEST.red.emissiveIntensity/0.85,lit=FEST.lanterns.visible&&ng>0.02&&Math.abs(P.x-SHRINE.x)+Math.abs(P.z+141)<120;
   for(const l of FEST.lights)l.intensity=lit?ng*(festOn()?0.45:0.22):0;
   for(const g of FEST.glows){g.visible=lit&&st;g.material.opacity=ng;}for(const g of FEST.lglows){g.visible=lit;g.material.opacity=ng*0.8;}
-  if(clock<FEST.fwUntil){FEST.fwT-=dt;if(FEST.fwT<=0){FEST.fwT=0.35+Math.random()*0.7;
-      burst(new THREE.Vector3(-150+Math.random()*230,80+Math.random()*60,440+Math.random()*90),pick(FW_COL));}}
-  for(const b of FEST.bursts.slice()){b.t+=dt;const a=b.m.geometry.attributes.position;
-    for(let k=0;k<b.vel.length;k++){const v=b.vel[k];v.multiplyScalar(Math.exp(-dt*1.6));v.y-=6*dt;a.array[k*3]+=v.x*dt;a.array[k*3+1]+=v.y*dt;a.array[k*3+2]+=v.z*dt;}
-    a.needsUpdate=true;b.m.material.opacity=clamp(2.2-b.t,0,1);b.f.material.opacity=clamp(1-b.t*3,0,1);
-    if(b.t>2.4){scene.remove(b.m);scene.remove(b.f);b.m.geometry.dispose();b.m.material.dispose();b.f.material.dispose();FEST.bursts.splice(FEST.bursts.indexOf(b),1);}}}
+  fwStep(dt);}
 
 /* the downhill race: start on the hilltop, finish at the end of the pier. The board is yours during it; the clock shows in the tracker */
 const RACE={on:false,t:0,goal:null,res:null,mark:null,beam:null};
@@ -9098,12 +9129,16 @@ $('recapBtn').addEventListener('click',()=>{renderRecap();openModal('recapM');})
    turns it off and on, and that is remembered. Most of it watches the game's state each frame rather than being called. ---------- */
 const SND={ctx:null,on:store.get('umimachi_sound')!=='0',L:{},prev:{},dist:{},nextX:0,nextCricket:0};
 // back from another app, iOS often leaves the context 'interrupted' and resume() does nothing; then the next touch throws it
-// away and builds a fresh one (inside the touch, so iOS lets it play)
-function sndRevive(gesture){const S=SND,c=S.ctx;if(!c||document.hidden||c.state==='running'){S.stuck=0;return;}
+// away and builds a fresh one (inside the touch, so iOS lets it play). After the screen was locked or the app was away (S.back)
+// it can even say 'running' and stay silent, so the first touch after that always builds a fresh one
+function sndRevive(gesture){const S=SND,c=S.ctx;if(!c||document.hidden)return;
+  if(gesture&&S.back){S.back=false;try{c.close();}catch(e){}S.ctx=null;S.L={};S.prev={};S.stuck=0;sndInit();return;}
+  if(c.state==='running'){S.stuck=0;return;}
   if(gesture&&S.stuck>0){try{c.close();}catch(e){}S.ctx=null;S.L={};S.prev={};S.stuck=0;sndInit();return;}
   S.stuck=(S.stuck||0)+1;c.resume().then(()=>{if(c.state==='running')S.stuck=0;}).catch(()=>{});}
 function sndInit(){const S=SND;if(S.ctx){sndRevive(true);return;}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=S.ctx=new AC();
+  c.onstatechange=()=>{if(S.ctx===c&&c.state==='interrupted')S.back=true;};   // a call, Siri, another app's sound
   const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=sndLevel();S.master.connect(comp);
   const nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;S.noise=nb;
   // the loops: noise (or an oscillator) through a filter into a gain that the update turns up and down
@@ -9161,14 +9196,14 @@ const sfx={
 // the drone fight and the fireworks call their own effects
 { const s0=shoot;shoot=function(...a){sfx.shot();return s0.apply(this,a);};
   const b0=boom;boom=function(p){sfx.boom(att(Math.hypot(p.x-P.x,p.z-P.z),160)+0.15);return b0(p);};
-  const f0=burst;burst=function(p,col){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col);};}
+  const f0=burst;burst=function(p,col,kind){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col,kind);};}
 
 // iPhone app: a light buzz with the bumps and rewards (works with the sound off too)
 const BUZZ={land:'light',bump:'medium',thud:'heavy',coin:'light',pay:'light',shutter:'light',win:'success',lose:'error'};let buzzT=0;
 function buzz(k,force){const H=APP.haptics;if(!H||store.get('umimachi_buzz')==='0')return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
   (k==='success'||k==='error'?H.notification({type:k.toUpperCase()}):H.impact({style:k.toUpperCase()})).catch(()=>{});}
 for(const k in BUZZ)if(sfx[k]){const f=sfx[k];sfx[k]=(...a)=>{if(k!=='land'||a[0]>0.25)buzz(BUZZ[k]);return f(...a);};}
-document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden)c.suspend().catch(()=>{});else{SND.stuck=0;sndRevive(false);}});
+document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden){SND.back=true;c.suspend().catch(()=>{});}else{SND.stuck=0;sndRevive(false);}});
 window.addEventListener('pageshow',()=>sndRevive(false));window.addEventListener('focus',()=>sndRevive(false));
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
