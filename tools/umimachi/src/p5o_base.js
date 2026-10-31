@@ -9,7 +9,7 @@ const BASE_H=6;
 // the rooms as floor rectangles [lx0, lx1, lz0, lz1]: the entrance, corridor A with three alcoves, the warehouse, the monitoring
 // room off its north side, and the long east passage with the shutters
 const BASE_FLOOR=[[0,12,-6,6],[12,92,-3,3],[28,32,3,6],[48,52,-6,-3],[68,72,3,6],[92,132,-20,20],[117,123,-22,-20],[110,130,-34,-22],[132,238,12,18]];
-const BASE_START=[8,0,Math.PI/2],BASE_WARE=[95,0,Math.PI/2],BASE_TERM=[120,-31],BASE_DOOR=[120,-17,0.35],BASE_END=234;
+const BASE_START=[8,0,Math.PI/2],BASE_WARE=[95,0,Math.PI/2],BASE_TERM=[120,-31],BASE_DOOR=[120,-17,0.35],BASE_END=236.5;
 const BASE_SHUT=[{x:152,t:7},{x:177,t:9.2},{x:202,t:11.4},{x:227,t:13.6}];
 const inBaseFloor=(x,z)=>BASE_FLOOR.some(r=>x>=r[0]&&x<r[1]&&z>=r[2]&&z<r[3]);
 function baseG(){return 0;}
@@ -59,9 +59,55 @@ function baseG(){return 0;}
     const p=new THREE.Mesh(new THREE.BoxGeometry(0.3,BASE_H,6),sm);p.position.y=BASE_H/2;g.add(p);
     const e=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.3,6),stripe);e.position.y=0.15;g.add(e);
     s.g=g;s.c=collide(BASE_X+s.x-0.2,BASE_X+s.x+0.2,12,18,'bld',BASE_H);s.c.on=false;BASE.shut.push(s);}
+  // the way out at the end of the east passage: an emergency door standing open on the night, the green sign above it
+  { const X=BASE_X+237.95,fm=tm('#4a4f55'),sky=canvasTex(128,160,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#0c1530');gr.addColorStop(0.75,'#1d2f5a');gr.addColorStop(1,'#2a3a40');
+      g.fillStyle=gr;g.fillRect(0,0,w,h);g.fillStyle='#fff';for(let k=0;k<26;k++)g.fillRect(Math.random()*w,Math.random()*h*0.7,1.5,1.5);g.fillStyle='#1a2a1e';g.beginPath();g.moveTo(0,h);
+      for(let x=0;x<=w;x+=16)g.lineTo(x,h*0.8-Math.sin(x*0.07)*8-Math.random()*5);g.lineTo(w,h);g.fill();});
+    const out=new THREE.Mesh(new THREE.PlaneGeometry(2.2,2.8),new THREE.MeshBasicMaterial({map:sky,fog:false}));out.position.set(X,1.4,15);out.rotation.y=-Math.PI/2;BASE.g.add(out);
+    for(const [w,h,z,y] of [[0.18,3.1,13.8,1.55],[0.18,3.1,16.2,1.55],[2.6,0.2,15,2.9]]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.25,h,w),fm);m.position.set(X-0.05,y,z);BASE.g.add(m);}
+    const leaf=new THREE.Mesh(new THREE.BoxGeometry(2.2,2.75,0.08),tm('#6e757c'));leaf.position.set(X-1.15,1.4,12.15);leaf.castShadow=true;outline(leaf,0.02);BASE.g.add(leaf);   // swung open against the wall
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.08,0.1),tm('#c9ced3'));bar.position.set(X-1.0,1.05,12.22);BASE.g.add(bar);
+    const sign=canvasTex(256,96,(g,w,h)=>{g.fillStyle='#1e9a52';g.fillRect(0,0,w,h);g.fillStyle='#fff';g.fillRect(10,10,76,76);g.fillStyle='#1e9a52';
+      g.beginPath();g.arc(48,24,7,0,7);g.fill();g.fillRect(40,33,14,26);g.save();g.translate(47,58);g.rotate(0.5);g.fillRect(-4,0,8,22);g.restore();g.save();g.translate(47,58);g.rotate(-0.6);g.fillRect(-4,0,8,22);g.restore();
+      g.fillStyle='#fff';g.font=signFont(40,true);g.textBaseline='middle';g.fillText('非常口',100,h/2+2);});
+    const sm=new THREE.Mesh(new THREE.PlaneGeometry(1.4,0.52),new THREE.MeshBasicMaterial({map:sign}));sm.position.set(X-0.08,3.45,15);sm.rotation.y=-Math.PI/2;BASE.g.add(sm);
+    BASE.exitGlow=glow('#2fd27a',X-0.3,3.45,15,2.2);}
   // the map: the rooms in grey on dark
   const mc=BASE.map;mc.width=W;mc.height=N;const g=mc.getContext('2d');g.fillStyle='#3a3d42';g.fillRect(0,0,W,N);g.fillStyle='#b8bcc0';
   for(const [a,b,c,d] of BASE_FLOOR)g.fillRect(a-X0,c-Z0,b-a,d-c);BASE.mapX0=BASE_X+X0;BASE.mapZ0=Z0;}
+// dressing the walls: wherever a room's edge has rock behind it, a darker lower panel with a hazard band at its foot, panel seams,
+// pipes and a cable tray under the ceiling, a lamp now and then, closed doors along the corridors and signs at the turns
+{ const X=BASE_X,segs=[],O=0.5;
+  for(const [a,b,c,d] of BASE_FLOOR)for(const [x0,z0,x1,z1,nx,nz] of [[a,c,b,c,0,1],[a,d,b,d,0,-1],[a,c,a,d,1,0],[b,c,b,d,-1,0]]){
+    const L=Math.hypot(x1-x0,z1-z0);let run=null;
+    for(let u=0.5;u<L;u+=1){const x=x0+(x1-x0)*u/L,z=z0+(z1-z0)*u/L,wall=!inBaseFloor(x-nx*O,z-nz*O);
+      if(wall){if(!run)run={u0:u-0.5};run.u1=u+0.5;}if((!wall||u+1>=L)&&run){if(run.u1-run.u0>=2)segs.push({x0:x0+(x1-x0)*run.u0/L,z0:z0+(z1-z0)*run.u0/L,x1:x0+(x1-x0)*run.u1/L,z1:z0+(z1-z0)*run.u1/L,nx,nz});run=null;}}}
+  const band=canvasTex(64,16,(g,w,h)=>{for(let x=-16;x<w;x+=16){g.fillStyle='#e0b42a';g.fillRect(0,0,w,h);}g.fillStyle='#1d1e20';for(let x=-16;x<w+16;x+=16){g.beginPath();g.moveTo(x,h);g.lineTo(x+8,h);g.lineTo(x+16,0);g.lineTo(x+8,0);g.fill();}},true);
+  const lowM=new THREE.MeshToonMaterial({color:'#5e656b',gradientMap:GRAD}),pipeA=tm('#5d6a73'),pipeB=tm('#8a6b3f'),tray=tm('#3e4348'),lampM=new THREE.MeshBasicMaterial({color:'#fff1c8'});
+  const seamG=new THREE.BoxGeometry(0.07,BASE_H,0.05),seams=[],doors=[],lamps=[];
+  for(const S of segs){const L=Math.hypot(S.x1-S.x0,S.z1-S.z0),mx=(S.x0+S.x1)/2,mz=(S.z0+S.z1)/2,ry=Math.atan2(S.nx,S.nz),off=(k)=>[mx+S.nx*k,mz+S.nz*k];
+    const plane=(w,h,mat,y,k)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);const [x,z]=off(k);m.position.set(X+x,y,z);m.rotation.y=ry;BASE.g.add(m);return m;};
+    plane(L,2.3,lowM,1.15,0.012);
+    const bt=band.clone();bt.needsUpdate=true;bt.repeat.set(L/1.2,1);plane(L,0.32,new THREE.MeshBasicMaterial({map:bt}),0.16,0.018);
+    const along=new THREE.Vector3(S.x1-S.x0,0,S.z1-S.z0).normalize();
+    for(const [r,y,k,mat] of [[0.13,4.7,0.3,pipeA],[0.08,5.05,0.5,pipeB]]){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,8),mat);const [x,z]=off(k);m.position.set(X+x,y,z);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),along);BASE.g.add(m);}
+    { const m=new THREE.Mesh(new THREE.BoxGeometry(L,0.08,0.45),tray);const [x,z]=off(0.25);m.position.set(X+x,5.5,z);m.rotation.y=ry;BASE.g.add(m);}
+    for(let u=1.5;u<L-0.5;u+=3)seams.push([S.x0+(S.x1-S.x0)*u/L+S.nx*0.02,S.z0+(S.z1-S.z0)*u/L+S.nz*0.02,ry]);
+    for(let u=5;u<L-2;u+=10)lamps.push([S.x0+(S.x1-S.x0)*u/L+S.nx*0.12,S.z0+(S.z1-S.z0)*u/L+S.nz*0.12,ry]);
+    if(L>=8)for(let u=7;u<L-3;u+=17)doors.push([S.x0+(S.x1-S.x0)*u/L+S.nx*0.03,S.z0+(S.z1-S.z0)*u/L+S.nz*0.03,ry]);}
+  const im=new THREE.InstancedMesh(seamG,tm('#5a6066'),seams.length);seams.forEach(([x,z,r],k)=>{dummy.position.set(X+x,BASE_H/2,z);dummy.rotation.set(0,r,0);dummy.scale.set(1,1,1);dummy.updateMatrix();im.setMatrixAt(k,dummy.matrix);});
+  im.frustumCulled=false;BASE.g.add(im);
+  for(const [x,z,r] of lamps){const m=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.18,0.12),lampM);m.position.set(X+x,3.4,z);m.rotation.y=r;BASE.g.add(m);
+    const gl=glow('#ffe7b0',X+x,3.4,z,1.6);gl.visible=true;gl.material.opacity=0.45;scene.remove(gl);BASE.g.add(gl);}
+  const doorTex=n=>canvasTex(96,160,(g,w,h)=>{g.fillStyle='#6e757c';g.fillRect(0,0,w,h);g.strokeStyle='#4a4f55';g.lineWidth=4;g.strokeRect(2,2,w-4,h-4);
+    g.fillStyle='#22282e';g.fillRect(30,24,36,26);g.fillStyle='#c9ced3';g.fillRect(70,82,14,5);g.fillStyle='#e8e8e8';g.font='bold 14px monospace';g.fillText(n,30,120);});
+  doors.forEach(([x,z,r],k)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.4),new THREE.MeshBasicMaterial({map:doorTex('B-'+(k+1))}));m.position.set(X+x,1.2,z);m.rotation.y=r;BASE.g.add(m);});
+  // signs at the turns (each on the wall nearest its spot)
+  const signTex=(t,bg,fg)=>canvasTex(256,64,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);g.fillStyle=fg;g.font=signFont(30,true);g.textAlign='center';g.textBaseline='middle';g.fillText(t,w/2,h/2+2);});
+  for(const [t,lx,lz,bg,fg] of [['通路A',14,0,'#2b3a4a','#dfe8ef'],['第2倉庫',94,10,'#2b3a4a','#dfe8ef'],['監視室 →',112,-18,'#7a1e1e','#ffe8e0'],['立入禁止',60,0,'#e0b42a','#1d1e20'],['東通路　非常口 →',140,14,'#1e6a3a','#e8fff0']]){
+    let best=null,bd=1e9;for(const S of segs){const L=Math.hypot(S.x1-S.x0,S.z1-S.z0),ax=S.x1-S.x0,az=S.z1-S.z0,u=clamp(((lx-S.x0)*ax+(lz-S.z0)*az)/(L*L),0.1,0.9),px=S.x0+ax*u,pz=S.z0+az*u,d=Math.hypot(px-lx,pz-lz);if(d<bd){bd=d;best=[px+S.nx*0.04,pz+S.nz*0.04,Math.atan2(S.nx,S.nz)];}}
+    if(!best)continue;const m=new THREE.Mesh(new THREE.PlaneGeometry(1.8,0.45),new THREE.MeshBasicMaterial({map:signTex(t,bg,fg)}));m.position.set(X+best[0],2.95,best[1]);m.rotation.y=best[2];BASE.g.add(m);}}
 // the guards: men in black on their beats; each carries the pale fan of what he can see
 const BASE_BEATS=[[[24,0],[86,0]],[[98,-16],[127,-16],[127,9],[98,9]],[[111,10],[111,-15]],[[96,12],[128,12]]];
 const FAN=(()=>{const R=13,A=0.62,n=12,pos=[0,0,0];for(let k=0;k<=n;k++){const a=-A+2*A*k/n;pos.push(Math.sin(a)*R,0,Math.cos(a)*R);}const idx=[];for(let k=1;k<=n;k++)idx.push(0,k,k+1);
@@ -124,5 +170,5 @@ function updateBase(dt){if(AREA!=='base')return;
   scene.fog.color.set('#1c1f23');scene.background.set('#1c1f23');scene.fog.near=8;scene.fog.far=70;hemi.color.set('#dfe6ee');hemi.groundColor.set('#4a4e54');hemi.intensity=0.8;sun.intensity=0.2;
   for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
   if(!BASE.run){for(const m of BASE.strips)m.visible=true;BASE.lightMat.color.set('#fff6dc');}
-  BASE.glint.visible=!!BASE.sneak;BASE.glint.material.opacity=0.5+0.4*Math.sin(clock*3);
+  BASE.glint.visible=!!BASE.sneak;BASE.exitGlow.visible=true;BASE.exitGlow.material.opacity=0.35+0.15*Math.sin(clock*4);BASE.glint.material.opacity=0.5+0.4*Math.sin(clock*3);
   if(BASE.sneak)sneakStep(dt);if(BASE.run)runStep(dt);}

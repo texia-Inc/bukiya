@@ -35,7 +35,8 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
   NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty years
   NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=EX1R.beam!=null?EX1R.beam:clock*0.6;
-  NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
+  const mastOn=!flag('tower_quiet')||!!flag('mast_lit');   // dark from the night the lighthouse was lit until the barrier is raised again
+  NIGHT.mast.visible=on&&mastOn&&(clock*1.2%1)<0.45;(NIGHT.mastTop||(NIGHT.mastTop=world.getObjectByName('mastTop'))).visible=mastOn;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 // the unlit face takes the colour and strength of the light around it (sun and sky), so it does not glow at dusk or at night
 const _tint=new THREE.Color(),_tc=new THREE.Color();

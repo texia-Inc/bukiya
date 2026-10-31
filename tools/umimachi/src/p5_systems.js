@@ -561,9 +561,9 @@ function act(o){if(!o)return;
   else if(o.kind==='boat'||o.kind==='lhdoor'||o.kind==='lhdown'||o.kind==='lamp')islAct(o);}
 
 /* ---------- camera ---------- */
-const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0;
+const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0,CAMOFF=0;
 const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
+function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld'||c.on===false)continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
   if(Math.abs(x)>195)for(const e of HILL_TREES){if(Math.abs(e.x-x)<e.s*1.1&&Math.abs(e.z-z)<e.s*1.1&&y<e.y+e.s*2.7&&Math.hypot(e.x-x,e.z-z)<e.s*1.05)return true;}return false;}
 // where a scene's camera can stand: above the ground, out of buildings, crates and walls, out of the trees and the sea-front pines
 function camClear(x,y,z){if(y<G(x,z)+0.3||blocked(x,y,z))return false;
@@ -605,7 +605,16 @@ function updateCamera(dt){
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
     // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
     const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
-    for(let t=1;t>0.25&&blocked(want.x,want.y,want.z);t-=0.1){want=p.clone().addScaledVector(F,-back*t);want.y+=up;}
+    // on this side of the walls. How far the camera can get from her head toward a spot before a wall stops it (0…1; pressed
+    // against a wall herself, the first open step counts as the start). With a wall close behind her, it swings round to her
+    // side, where there is room, rather than squeezing in at her back; and if it still cannot get far, it rises to look down
+    { const h=p.clone();h.y+=1.3;
+      const reach=q=>{let open=false;for(let t=0.06;t<=1.001;t+=0.06){const b=blocked(lerp(h.x,q.x,t),lerp(h.y,q.y,t),lerp(h.z,q.z,t));if(!b)open=true;else if(open)return t-0.06;}return 1;};
+      const turn=(q,o)=>{const dx=q.x-p.x,dz=q.z-p.z,c=Math.cos(o),s=Math.sin(o);return new THREE.Vector3(p.x+dx*c-dz*s,q.y,p.z+dx*s+dz*c);};
+      let off=0;if(reach(want)<0.75){let best=reach(want);for(const o of [0.6,-0.6,1.2,-1.2,1.7,-1.7]){const k=reach(turn(want,o))-Math.abs(o)*0.1;if(k>best+0.05){best=k;off=o;}}}
+      CAMOFF+=(off-CAMOFF)*Math.min(1,dt*4);if(Math.abs(CAMOFF)>0.01)want=turn(want,CAMOFF);
+      const k=reach(want);if(k<1){const kk=Math.max(0.1,k);want.lerpVectors(h,want,kk);want.y+=(1-kk)*1.9;look.lerp(new THREE.Vector3(P.x,P.y+0.7,P.z).addScaledVector(F,1.4),(1-kk)*0.8);rate=14;}}
+    if(AREA==='base'||AREA==='hq')want.y=Math.min(want.y,(AREA==='base'?BASE_H:6.5)-0.5);
     want.y=Math.max(want.y,G(want.x,want.z)+0.6);}
   if(!camInit||rate===0){camPos.copy(want);camLook.copy(look);camInit=true;}   // on the tram the view rides with the car
   camPos.lerp(want,1-Math.exp(-dt*rate));camLook.lerp(look,1-Math.exp(-dt*(rate+3)));

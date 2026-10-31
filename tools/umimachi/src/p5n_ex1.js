@@ -31,6 +31,7 @@ function updateEx1(){const on=ex1On()&&!URA.on;for(const m of EX1.props)m.visibl
   if(EX1.still){for(const c of CARS)if(!(EX1.van&&c===VAN)){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
   if(EX1.marble&&EX1.marble.visible){EX1.marble.position.set(P.x,P.y+1.0,P.z);EX1.marble.material.opacity=0.55+0.4*Math.sin(clock*4);}}
 // the scene of the truth on the coast road: Kurosaki out of his drone, the shadows round about, and the town's old guard
+const MAST={x:-285,z:-40};MAST.y=H(MAST.x,MAST.z);   // the radio mast on the west hill (p3_props.js)
 const TRUTH={x:-18,z:COAST_Z-3.5};TRUTH.y=G(TRUTH.x,TRUTH.z);
 function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;EX1.van=on;VAN.scripted=on;
   if(on){const x=TRUTH.x-11,z=COAST_Z+2.2;VAN.x=x;VAN.z=z;VAN.v=0;VAN.g.visible=true;VAN.g.position.set(x,G(x,z)+0.02,z);VAN.g.rotation.y=Math.PI/2;
@@ -157,8 +158,10 @@ const EX1_EVENTS=[
     ['say','baker','（無線の声）ナギちゃん、見つかった！ シャッターが下りる前に、東の通路から外へ出ろ！'],
     ['cam','off'],
     ['baserun'],
-    ['cam',[BASE_X+BASE_END-6,2.2,10],[BASE_X+BASE_END+6,1.6,15],1.2,'cut'],
-    ['say','','最後のシャッターの下をすべりぬけると、夜の山の風が顔に当たった。','電波塔の真下。赤い光は消えたまま、鉄骨だけが夜空にそびえている。'],
+    ['cam',[BASE_X+BASE_END-6,1.8,13.2],[BASE_X+238,1.6,15],1.2,'cut'],
+    ['say','','最後のシャッターの下をすべりぬけると、通路のつきあたりに、開いたままの非常口があった。'],
+    ['fade','out'],['warp',MAST.x+8,MAST.z+4,-2.1],['cam',[MAST.x+14,MAST.y+1.6,MAST.z+12],[MAST.x+2,MAST.y+15,MAST.z+1],1.2,'cut'],['fade','in'],
+    ['say','','外に出ると、夜の山の風が顔に当たった。','電波塔の真下。赤い光は消えたまま、鉄骨だけが夜空にそびえている。'],
     ['say','','バラバラバラ……！ 頭の上で、大きなプロペラの音がした。'],
     ['say','黒崎','（スピーカーの声）……逃がすと思うか。'],
     ['fade','out'],['cam','off'],['warp',3,-196,0],['set','ex1',7]]},
