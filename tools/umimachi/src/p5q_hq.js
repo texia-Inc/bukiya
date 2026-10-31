@@ -184,12 +184,13 @@ const HQ_UP={arm:'よし、手入れは終わった。これで一発の重み�
 /* ----- the command table: out to tonight's defense ----- */
 function nightPlan(n){return{drones:Math.min(4+2*n,16),boss:n%3===0,shadows:Math.min(10+3*n,36),alive:Math.min(4+(n>>1),9),spd:0.06*n};}
 async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening'||ph==='night',done=D.last===SAVE.day,n=D.night+1;
-  const nests=D.nest||0,last=!!SAVE.flags.d2c&&!SAVE.flags.d2_done,opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&!last?['今夜の防衛に出る']:[]),...(dark&&!done&&!last&&D.night>=1&&nests<NESTS.length?[`裏海街へ出撃する（のこりの巣 ${NESTS.length-nests}）`]:[]),...(!dark?['日が暮れるまで休む']:[]),'話を聞く','やめる'];
+  const nests=D.nest||0,last=!!SAVE.flags.d2c&&!SAVE.flags.d2_done,opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&!last?['今夜の防衛に出る']:[]),...(dark&&!done&&!last&&D.night>=1&&nests<NESTS.length?[`裏海街へ出撃する（のこりの巣 ${NESTS.length-nests}）`]:[]),...(!dark?['日が暮れるまで休む']:[]),'鏡の海へ（試作）','話を聞く','やめる'];
   const i=await askP('tome',done?'今夜の町は守った。……ゆっくりお休み。':dark?`${n}日目の夜。……今夜も、来るよ。`:'やつらが来るのは、日が暮れてからだよ。',opts),pick=opts[i];
   if(pick==='日が暮れるまで休む'){await steps([['fade','out'],['time',18.6,0],['fade','in']]);return;}
   if(pick==='話を聞く'){await sayP('tome',[...(n<=1?['施設は、お金と影のかけらで強くなる。かけらは、夜の防衛で影を追いはらうと手に入るよ。']:[]),
     nightPlan(n).boss?'今夜は、大きいのが混じってる。気をつけな。':'夜ごとに、やつらの数は増えていく。施設をきたえておくんだよ。',
     D.night<1?'まずは一晩、町を守ってごらん。そうしたら、裏海街の巣を焼きに行けるようになる。':nests<NESTS.length?`裏海街には、影の巣がのこり${NESTS.length-nests}つ。巣を焼けば、向こうに残された子たちが帰れるんだよ。`:'巣はぜんぶ焼けた。……あとは、海の底の、あの大きな気配だ。']);return;}
+  if(pick==='鏡の海へ（試作）'){await steps(mirScript());return;}
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(sortieScript(nests));return;}
   if(pick!=='今夜の防衛に出る')return;
