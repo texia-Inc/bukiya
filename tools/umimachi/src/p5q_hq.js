@@ -109,12 +109,13 @@ const HQ_UP={arm:'よし、手入れは終わった。これで一発の重み�
 /* ----- the command table: out to tonight's defense ----- */
 function nightPlan(n){return{drones:Math.min(4+2*n,16),boss:n%3===0,shadows:Math.min(10+3*n,36),alive:Math.min(4+(n>>1),9),spd:0.06*n};}
 async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening'||ph==='night',done=D.last===SAVE.day,n=D.night+1;
-  const opts=[...(dark&&!done?['今夜の防衛に出る']:[]),...(!dark?['日が暮れるまで休む']:[]),'話を聞く','やめる'];
+  const nests=D.nest||0,opts=[...(dark&&!done?['今夜の防衛に出る']:[]),...(dark&&!done&&D.night>=1&&nests<NESTS.length?[`裏海街へ出撃する（のこりの巣 ${NESTS.length-nests}）`]:[]),...(!dark?['日が暮れるまで休む']:[]),'話を聞く','やめる'];
   const i=await askP('tome',done?'今夜の町は守った。……ゆっくりお休み。':dark?`${n}日目の夜。……今夜も、来るよ。`:'やつらが来るのは、日が暮れてからだよ。',opts),pick=opts[i];
   if(pick==='日が暮れるまで休む'){await steps([['fade','out'],['time',18.6,0],['fade','in']]);return;}
   if(pick==='話を聞く'){await sayP('tome',[...(n<=1?['施設は、お金と影のかけらで強くなる。かけらは、夜の防衛で影を追いはらうと手に入るよ。']:[]),
     nightPlan(n).boss?'今夜は、大きいのが混じってる。気をつけな。':'夜ごとに、やつらの数は増えていく。施設をきたえておくんだよ。',
-    'いずれは、こっちから裏海街に攻めこむ。……その準備は、まだこれからさ。']);return;}
+    D.night<1?'まずは一晩、町を守ってごらん。そうしたら、裏海街の巣を焼きに行けるようになる。':nests<NESTS.length?`裏海街には、影の巣がのこり${NESTS.length-nests}つ。巣を焼けば、向こうに残された子たちが帰れるんだよ。`:'巣はぜんぶ焼けた。……あとは、海の底の、あの大きな気配だ。']);return;}
+  if(pick&&pick.startsWith('裏海街へ出撃')){await steps(sortieScript(nests));return;}
   if(pick!=='今夜の防衛に出る')return;
   const N=nightPlan(n),got={sh:0,dr:0};
   await steps([['fade','out'],['call',()=>{applyD2();EX1.still=true;}],['time',21,0],['warp',TRUTH.x+4,TRUTH.z,0],['fade','in'],
@@ -127,7 +128,7 @@ async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening
     ['say','tome','（無線の声）よくやったね。今夜も、町の灯りは守られた。','かけらは、基地に持って帰っておいで。'],
     ['fade','out'],['call',()=>ex1Kurosaki(false)],['warp',...HOME],['day']]);}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
-function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on)&&lv>=2?(lv>=4?2:1):0;
+function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fight)&&lv>=2?(lv>=4?2:1):0;
   while(HQ.allies.length<want){const d=makeDrone();d.g.scale.setScalar(1.1);HQ.allies.push(d);toast('オーシャンゲートの援護ドローンが来た！');}
   HQ.allies.forEach((d,k)=>{d.g.visible=k<want;if(!d.g.visible)return;const sd=k?-1:1,a=P.yaw+sd*(0.55+Math.sin(clock*0.7+k)*0.15),w=new THREE.Vector3(P.x+Math.sin(a)*7,P.y+6+Math.sin(clock*2+k)*0.3,P.z+Math.cos(a)*7);
     d.g.position.lerp(w,Math.min(1,dt*3));d.g.rotation.y=a;for(const r of d.rotors)r.rotation.y+=dt*40;});
@@ -136,12 +137,15 @@ function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on)&&lv>=2?
   if(DRONE.active){const t=DRONE.list.filter(d=>!d.dead&&d.g.position.distanceTo(from)<55).sort((a,b)=>a.g.position.distanceTo(from)-b.g.position.distanceTo(from))[0];
     if(t){const p=t.g.position.clone();tracer(from,p);damage(t,p);if(!t.dead)damage(t,p);}}
   else if(DEF.on){const t=DEF.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.z-b.g.position.z)[0];
-    if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;DEF.killed++;}}}
-function hqHUD(){const D=d2();return `影のかけら ${shards()}　防衛 ${D.night}夜`;}
+    if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;DEF.killed++;}}
+  else if(NEST.fight){const t=NEST.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
+    if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;NEST.killed++;}}}
+function hqHUD(){const D=d2();return `影のかけら ${shards()}　防衛 ${D.night}夜　焼いた巣 ${D.nest||0}/${NESTS.length}`;}
 function d2Goal(f,eve,night){const D=d2();
   if(!f.d2)return '町の東の山の岩の扉から、海街自警団の基地へ';
-  if(AREA==='hq')return (eve||night)&&D.last!==SAVE.day?`作戦室のばあちゃんに話して、今夜の防衛に出る（${hqHUD()}）`:`施設の人に話して、基地を強くする（${hqHUD()}）`;
-  return (eve||night)&&D.last!==SAVE.day?'基地の作戦室で、ばあちゃんに話して防衛に出る':`基地で施設を強くする。夜は防衛（${hqHUD()}）`;}
+  if(AREA==='hq')return (eve||night)&&D.last!==SAVE.day?`作戦室のばあちゃんに話して、今夜の防衛か出撃に出る（${hqHUD()}）`:`施設の人に話して、基地を強くする（${hqHUD()}）`;
+  if((D.nest||0)>=NESTS.length&&!(eve||night))return `（追加ストーリー2のつづきは制作中です）　${hqHUD()}`;
+  return (eve||night)&&D.last!==SAVE.day?'基地の作戦室で、ばあちゃんに話して防衛か出撃に出る':`基地で施設を強くする。夜は防衛（${hqHUD()}）`;}
 // every frame: the hall's warm light, the keepers looking round, the levels, the allies
 function updateHQ(dt){if(SAVE.flags.ex1_done)applyD2();allyStep(dt);if(AREA!=='hq')return;hqBuild();
   scene.fog.color.set('#2a221c');scene.background.set('#2a221c');scene.fog.near=10;scene.fog.far=80;hemi.color.set('#ffe6c4');hemi.groundColor.set('#5a4a3a');hemi.intensity=0.95;sun.intensity=0.15;

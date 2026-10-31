@@ -9,7 +9,7 @@
 const SOTA_LOOK={skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78};
 const EX1R={sota:null,follow:false,trail:[],wisp:null,beam:null,giant:null,door:null,doorT:0};
 const rescueOn=()=>URA.on&&SAVE.flags.ex1===9;
-const lanternOn=()=>DEF.on||rescueOn();
+const lanternOn=()=>DEF.on||rescueOn()||sortieOn();
 // Mio's light in 裏海街: along the coast road to the beach where Sota is
 const RESCUE_WP=[[-200,COAST_Z+1],[-168,COAST_Z+1],[-134,COAST_Z+1],[-104,COAST_Z+2],[-86,SHORE+6],[-74,SHORE+10]];
 const SOTA_AT=[-72,SHORE+13];
@@ -25,8 +25,9 @@ function lanternFlash(){if(LAN.n<1){toast('ランタンの灯りが、まだた�
     if(d<22){URA.chase.stun=3.5;URA.chase.mode='roam';URA.chase.wait=0;const k=Math.min(6,30-d)/(d||1);bg.x-=(P.x-bg.x)*k*0.25;bg.z-=(P.z-bg.z)*k*0.25;URA.chase.tx=bg.x;URA.chase.tz=bg.z;
       toast('大きな影が、光にひるんだ！ いまのうちに');}}
   if(DEF.on)for(const s of DEF.list)if(!s.gone&&dd(s.g.position.x,s.g.position.z)<R+1){s.gone=1;DEF.killed++;}
+  nestFlash(R);
   renderHUD();}
-function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on)){LAN.n++;LAN.re=0;renderHUD();}}
+function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||NEST.fight)){LAN.n++;LAN.re=0;renderHUD();}}
   if(!LAN.lt)return;LAN.t=Math.max(0,LAN.t-dt*1.4);const k=LAN.t;
   LAN.lt.intensity=k*3;LAN.lt.position.set(P.x,P.y+1.6,P.z);LAN.fx.visible=k>0;LAN.fx.position.set(P.x,P.y+1.2,P.z);LAN.fx.scale.setScalar(2+24*(1-k));LAN.fx.material.opacity=k*0.7;}
 /* ----- Sota: found on the beach of 裏海街, then at her heels ----- */
@@ -103,7 +104,7 @@ function rockDoor(){if(EX1R.door)return EX1R.door;const g=new THREE.Group(),x=RO
   const c=collide(x-2,x+2,z-2,z+2,'prop',G(x,z)+3.2);EX1R.door={g,halves,light,c,open:0};g.visible=false;c.on=false;return EX1R.door;}
 function doorStep(dt){const D=EX1R.door;if(!D)return;const show=!!SAVE.flags.x_door&&AREA==='town'&&!URA.on;D.g.visible=show;D.c.on=show;if(!show)return;
   const want=SAVE.flags.x_door>1?1:0;D.open+=(want-D.open)*Math.min(1,dt*0.9);for(const [i,m] of D.halves.entries())m.position.x=(i?1:-1)*(0.62+D.open*1.3);}
-function updateRescue(dt){updateLantern(dt);sotaStep(dt);wispStep(dt);updateDefend(dt);giantStep(dt);if(SAVE.flags.x_door)rockDoor();doorStep(dt);
+function updateRescue(dt){updateLantern(dt);nestStep(dt);sotaStep(dt);wispStep(dt);updateDefend(dt);giantStep(dt);if(SAVE.flags.x_door)rockDoor();doorStep(dt);
   if(lanternOn())$('lightBtn').textContent=lanMeter();else if($('lightBtn').textContent!=='ライト')$('lightBtn').textContent='ライト';
   if(DEF.on)$('lightBtn').hidden=false;}
 function rescueHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='裏海街';const s=document.createElement('span');s.className='step';
