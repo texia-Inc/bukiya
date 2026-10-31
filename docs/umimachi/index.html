@@ -6013,7 +6013,8 @@ function damage(d,p){d.hp-=DRONE.dmg||1;d.hitT=0.08;sparks(p,d.boss?10:6,'#fff3c
     if(d.boss){d.spin.multiplyScalar(0.3);for(const e of DRONE.list)if(e!==d&&!e.dead){e.dead=true;e.vy=1;dropLaser(e);}boom(d.g.position.clone());finishDrones();}
     else if(!d.escort&&DRONE.killed>=DRONE.total){if(DRONE.o.boss&&!DRONE.boss)spawnBoss();else if(!DRONE.o.boss)finishDrones();}}}
 function finishDrones(){DRONE.active=false;const o=DRONE.o;
-  if(o.res){for(const d of DRONE.list)dropLaser(d);renderHUD();toast(o.boss?'大型ドローンを撃ち落とした！':'ドローンを全部撃ち落とした！',true);setTimeout(o.res,1800);return;}
+  for(const d of DRONE.list)dropLaser(d);
+  if(o.res){renderHUD();toast(o.boss?'大型ドローンを撃ち落とした！':'ドローンを全部撃ち落とした！',true);setTimeout(o.res,1800);return;}
   SAVE.money+=1000;SAVE.drones=(SAVE.drones||0)+1;SAVE.flags.drones_cleared=1;save();renderHUD();
   toast('ドローンを全部撃ち落とした！ お礼 +1000円',true);setTimeout(()=>toast('こむぎ堂の主人「いい腕だ。…このことは、町のみんなには内緒だぞ」'),1800);}
 function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
@@ -6026,7 +6027,8 @@ function updateDrones(dt){DRONE.t+=dt;const busy=!!(DLG||modal),me=chest();
     // the big one calls in two escorts at a time
     if(DRONE.boss&&!DRONE.boss.dead){DRONE.escortT-=dt;if(DRONE.escortT<=0&&alive<3){spawnDrone(true);DRONE.escortT=4.5;}}}
   for(const d of DRONE.list.slice()){const p=d.g.position;
-    if(d.dead){d.vy-=12*dt;p.y+=d.vy*dt;d.g.rotation.x+=d.spin.x*dt;d.g.rotation.y+=d.spin.y*dt;d.g.rotation.z+=d.spin.z*dt;
+    if(d.dead){if(d.laser)dropLaser(d);   // shot down while taking aim: the red line goes with it
+      d.vy-=12*dt;p.y+=d.vy*dt;d.g.rotation.x+=d.spin.x*dt;d.g.rotation.y+=d.spin.y*dt;d.g.rotation.z+=d.spin.z*dt;
       if(rnd()<dt*30)sparks(p,1,'#4a4644',1,0.08);
       if(p.y<=Math.max(G(p.x,p.z),SEA_Y)+0.25*d.g.scale.x){boom(p.clone());if(d.boss){for(let k=0;k<4;k++)setTimeout(()=>boom(p.clone().add(new THREE.Vector3(rnd()*6-3,rnd()*2,rnd()*6-3))),k*160);P.bump=0.6;}scene.remove(d.g);DRONE.list.splice(DRONE.list.indexOf(d),1);}continue;}
     // after a lost fight the rest climb away and go
