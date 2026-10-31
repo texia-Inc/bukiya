@@ -51,10 +51,11 @@ body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webki
 #bag{position:absolute;left:calc(env(safe-area-inset-left,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);display:flex;gap:6px;flex-wrap:wrap;max-width:46vw}
 .it{background:var(--card);border-radius:10px;padding:3px 7px 3px 3px;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:900;box-shadow:0 2px 0 var(--shade)}
 .it img{width:26px;height:26px}
-#prompt{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);translate:-50% 0;padding:8px 14px;font-size:14px;font-weight:700;white-space:nowrap}
+#prompt{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);translate:-50% 0;padding:8px 14px;font-size:14px;font-weight:700;width:max-content;max-width:calc(100% - 40px);text-align:center}
 #prompt kbd{font-family:var(--round);background:var(--ink);color:var(--paper);border-radius:6px;padding:1px 7px;margin-right:6px;font-size:12px}
-#toast{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;translate:-50% 0;display:flex;flex-direction:column;align-items:center;gap:6px}
-.tst{padding:8px 16px;font-weight:900;font-size:14px;animation:tin 2.8s ease forwards;white-space:nowrap}
+#toast{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;translate:-50% 0;width:max-content;max-width:calc(100vw - 32px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));display:flex;flex-direction:column;align-items:center;gap:6px;transition:top .6s ease}
+body.cine #toast{top:calc(max(9vh,env(safe-area-inset-top,0px)) + 10px)}   /* below the black bar of a scene */
+.tst{padding:8px 16px;font-weight:900;font-size:14px;line-height:1.45;animation:tin 2.8s ease forwards;text-align:center;overflow-wrap:anywhere}   /* a long one wraps instead of running off the screen */
 .tst.gold{background:#fff1c9;color:#7a4b06}
 @keyframes tin{0%{opacity:0;transform:translateY(-8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
 #dialog{position:fixed;z-index:5;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);translate:-50% 0;width:min(640px,calc(100% - 32px));padding:14px 18px 16px;pointer-events:auto;cursor:pointer}
@@ -195,7 +196,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   #tools{top:calc(env(safe-area-inset-top,0px) + 112px);gap:6px}#menuBtn{display:block}
   #tools .tool{display:none}#tools #menuBtn,#tools #lightBtn,#tools.open .tool{display:block}#tools .tool[hidden]{display:none!important}
   .tool{font-size:11px;padding:7px 9px;min-width:56px}
-  #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 290px);max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis;font-size:13px}   /* above the buttons */
+  #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 290px);font-size:13px}   /* above the buttons */
   #pad{gap:9px;right:calc(env(safe-area-inset-right,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 36px)}
   .pb{width:56px;height:56px;font-size:12px}.pb.main{width:72px;height:72px}.pb.kick{width:80px;height:80px;font-size:15px}
   .cslot{grid-template-columns:52px 1fr;gap:4px 8px}
