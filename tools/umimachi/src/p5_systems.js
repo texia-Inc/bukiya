@@ -272,7 +272,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='p
 $('photoBtn').addEventListener('click',()=>{photoReq=true;});
 // phones: the menu button folds the tools away; choosing one folds them again. Tapping the tracker folds it to its title
 $('menuBtn').addEventListener('click',()=>{const T=$('tools');T.classList.toggle('open');$('menuBtn').textContent=T.classList.contains('open')?'とじる':'メニュー';});
-for(const id of ['logBtn','albumBtn','closetBtn','photoBtn','setBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
+for(const id of ['logBtn','albumBtn','recapBtn','closetBtn','photoBtn','setBtn'])$(id).addEventListener('click',()=>{$('tools').classList.remove('open');$('menuBtn').textContent='メニュー';});
 $('tracker').addEventListener('click',()=>{$('tracker').classList.toggle('mini');});$('lightBtn').addEventListener('click',toggleTorch);
 // markers floating in the world
 const markTex=(ch,bg)=>canvasTex(64,64,(g,w,h)=>{g.fillStyle=bg;g.beginPath();g.arc(32,30,24,0,7);g.fill();g.beginPath();g.moveTo(22,48);g.lineTo(42,48);g.lineTo(32,62);g.fill();
