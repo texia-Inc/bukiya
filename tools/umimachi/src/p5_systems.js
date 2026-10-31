@@ -470,7 +470,9 @@ function groundAt(x,z,y){let g=G(x,z)+paveY(x,z);for(const c of COLL){if(!c.on||
 // on the board now, with no hop-on (also when an event puts her straight on it)
 function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
 // the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
-function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=f?'スケボー':'歩く';if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
+// (in the mirror sea the walk button throws Mio's marble)
+function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=MIR.on?(MIR.mcd>0?'…':'ビー玉'):f?'スケボー':'歩く';
+  if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
 function stepPlayer(dt){if(TD.on){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // the board is a map from above: she waits at the shrine
 
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
