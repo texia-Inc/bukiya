@@ -6184,6 +6184,7 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'ogscene':ogScene(a[0]);break;                                   // ['ogscene', true|false]  the black van parked by the east tunnel, Kurosaki and his men round it
   case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
   case 'vanchase':await vanChaseP();break;
+  case 'trail':await trailP();break;                                    // ['trail']  follow the black van to the door by the west tunnel, unseen
   case 'lights':await lightsP(a[0]);break;                               // ['lights', {pts:[{name,x,z}…], limit}]  gather the five lights before time runs out
   case 'credits':await creditsP();break;
   case 'drones':await dronesP(a[0]);break;                               // ['drones', {total, boss, title}]  a drone fight in the story: on until it is won
@@ -6204,7 +6205,7 @@ function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.
     r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});
   if(act.length>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${act.length-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
-function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
+function updateStory(dt){const tw=ST.tween;updateRace(dt);updateEx1();updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
   applyLight(SAVE.hour);updateUra(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
@@ -6623,8 +6624,8 @@ function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];
 function vanChaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;VAN.scripted=true;VAN.x=175;VAN.z=COAST_Z+2.2;VAN.v=9;
   P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);rideNow();camInit=false;OG.van={res,t:0,near:0};$('fade').style.opacity=0;
   if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
-const ogBusy=()=>!!(OG.run||OG.van);
-function ogHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
+const ogBusy=()=>!!(OG.run||OG.van||OG.trail);
+function ogHUD(tr){if(OG.trail)return trailHUD(tr);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
   if(OG.run){b.textContent='逃げろ！';s.textContent=OG.run.o.hint;const g=OG.run.o.to;m.textContent=`のこり ${Math.round(Math.hypot(P.x-g[0],P.z-g[1]))} m`;}
   else{b.textContent='黒いバンを止めろ！';s.textContent=devText('W で蹴って追いつく。バンのうしろにぴったりつけたら勝ち');const d=Math.max(0,Math.round(Math.hypot(P.x-VAN.x,P.z-VAN.z)-2.6));
     m.textContent=`バンまで ${d} m　ねばり ${'■'.repeat(Math.round(OG.van.near/0.5))}${'□'.repeat(Math.max(0,5-Math.round(OG.van.near/0.5)))}`;}
@@ -6633,9 +6634,10 @@ function ogHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElemen
 function ogEndCam(){const k=OG.men[0],x=VAN.x-1.2,z=VAN.z-1.6;k.g.visible=true;k.g.position.set(x,G(x,z),z);k.g.rotation.y=Math.atan2(P.x-x,P.z-z);poseHuman(k,'stand',0.016,{});
   setCam([[VAN.x+4,G(VAN.x,VAN.z)+2.2,VAN.z-5.5],[VAN.x,G(VAN.x,VAN.z)+1.1,VAN.z],2,'cut']);}
 function updateOG(dt){
+  if(OG.trail)trailStep(dt);
   if(OG.scene)for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}   // no traffic while the van is parked for the scene
   if(SAVE.drones&&!SAVE.flags.drones_cleared)SAVE.flags.drones_cleared=1;   // saves from before the story
-  if(SAVE.flags.ending_org&&!OG.van){VAN.scripted=true;VAN.g.visible=false;VAN.box.on=false;}   // the van was taken away
+  if(SAVE.flags.ending_org&&!OG.van&&!SAVE.flags.ex1){VAN.scripted=true;VAN.g.visible=false;VAN.box.on=false;}   // the van was taken away
   if(OG.run){const R=OG.run,o=R.o;R.t+=dt;const v=Math.min(8.4,6.2+R.t*0.08);
     for(const h of OG.men){const p=h.g.position,dx=P.x-p.x,dz=P.z-p.z,d=Math.hypot(dx,dz);p.x+=dx/d*v*dt;p.z+=dz/d*v*dt;p.y=G(p.x,p.z);h.g.rotation.y=Math.atan2(dx,dz);poseHuman(h,'walk',dt,{rate:13});
       if(d<1.3){$('fade').style.opacity=1;setTimeout(()=>{$('fade').style.opacity=0;},500);toast('つかまった……！ もう一度',true);R.t=0;ogPlace();break;}}
@@ -6649,6 +6651,74 @@ function updateOG(dt){
     OG.mark.visible=true;OG.mark.position.set(VAN.x,G(VAN.x,VAN.z)+3.6+Math.sin(clock*3)*0.12,VAN.z);ogHUD($('tracker'));
     if(C.near>=2.5){OG.van=null;OG.scene=true;OG.mark.visible=false;VAN.v=0;C.res(true);}   // traffic stays away until the scene ends (['ogscene',false])
     else if(VAN.x<-CUT_X+6){toast('逃げられた……！ もう一度',true);VAN.x=175;P.x=203;P.z=COAST_Z+2.2;P.yaw=-Math.PI/2;P.v=6;P.y=G(P.x,P.z);camInit=false;C.t=0;C.near=0;}}}
+
+/* ---------- the extra story "オーシャンゲート": the old iron door in the retaining wall by the west tunnel, and the tail.
+   The van drives slowly through town to the door. Keep it in sight, but keep out of the men's: when it stops, one gets out
+   and looks back down the road. Close by, the board is heard; in his sight for too long, and they know. ---------- */
+const OG_DOOR={x:-219,z:234.7};
+// a squat concrete block sticking out of the bank, an iron door in its face: it looks like something for the tunnel's upkeep
+{ const y=G(OG_DOOR.x,OG_DOOR.z+0.6),g=new THREE.Group();g.position.set(OG_DOOR.x,y,OG_DOOR.z);world.add(g);OG_DOOR.y=y;OG_DOOR.g=g;
+  const conc=tm('#b9b4aa'),iron=tm('#5d5a54'),rust=tm('#7a4e34');
+  const blk=M(new THREE.BoxGeometry(3.4,3.3,4.2),conc,0.03);blk.position.set(0,1.45,-2.1);g.add(blk);
+  const cap=M(new THREE.BoxGeometry(3.7,0.25,4.5),conc,0.02);cap.position.set(0,3.2,-2.1);g.add(cap);
+  const fr=M(new THREE.BoxGeometry(1.7,2.5,0.12),tm('#3e3c38'),0.02);fr.position.set(-0.4,1.25,0.04);g.add(fr);
+  const dr=M(new THREE.BoxGeometry(1.36,2.25,0.1),iron,0.015);dr.position.set(-0.4,1.15,0.1);g.add(dr);OG_DOOR.door=dr;
+  for(const yy of [0.5,1.85]){const h=M(new THREE.BoxGeometry(1.2,0.08,0.04),rust);h.position.set(-0.4,yy,0.17);g.add(h);}
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.42),tmap(canvasTex(192,90,(c,w,h)=>{c.fillStyle='#f2efe6';c.fillRect(0,0,w,h);c.fillStyle='#c8372d';c.fillRect(0,0,w,26);
+    c.fillStyle='#fff';c.font=signFont(18,true);c.textAlign='center';c.textBaseline='middle';c.fillText('管理用通路',w/2,14);c.fillStyle='#2b2520';c.font=signFont(17,true);c.fillText('関係者以外',w/2,46);c.fillText('立入禁止',w/2,70);})));
+  sign.position.set(1.05,1.6,0.02);g.add(sign);
+  collide(OG_DOOR.x-1.75,OG_DOOR.x+1.75,OG_DOOR.z-4.3,OG_DOOR.z,'prop',y+3.3);
+  OG_DOOR.lamp=glow('#ff4030',OG_DOOR.x-0.4,y+2.75,OG_DOOR.z+0.2,0.7);}
+// the van's way: east along なか通り, down 西の坂道, then west on the coast road to the door. It stops twice on the way
+const TRAIL_WP=[[96,90.2],[-112,90.2],[-118,94],[-118,150],[-118,COAST_Z-2],[-124,COAST_Z+1.8],[-160,COAST_Z+1.8],[OG_DOOR.x+4,COAST_Z+0.6],[OG_DOOR.x+0.5,OG_DOOR.z+3.2]];
+const TRAIL_STOPS=[{at:[-112,90.2],look:Math.PI/2},{at:[-118,190],look:Math.PI},{at:[-160,COAST_Z+1.8],look:Math.PI/2}];
+const TRAIL_LEN=(()=>{let s=0;const L=[0];for(let i=1;i<TRAIL_WP.length;i++){s+=Math.hypot(TRAIL_WP[i][0]-TRAIL_WP[i-1][0],TRAIL_WP[i][1]-TRAIL_WP[i-1][1]);L.push(s);}return L;})();
+TRAIL_STOPS.forEach(s=>{let best=0,bd=1e9;for(let i=1;i<TRAIL_WP.length;i++){const a=TRAIL_WP[i-1],b=TRAIL_WP[i],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz),
+  t=clamp(((s.at[0]-a[0])*dx+(s.at[1]-a[1])*dz)/(l*l),0,1),d=Math.hypot(a[0]+dx*t-s.at[0],a[1]+dz*t-s.at[1]);if(d<bd){bd=d;best=TRAIL_LEN[i-1]+l*t;}}s.s=best;});
+function trailAt(s){let i=1;while(i<TRAIL_WP.length-1&&TRAIL_LEN[i]<s)i++;const a=TRAIL_WP[i-1],b=TRAIL_WP[i],l=TRAIL_LEN[i]-TRAIL_LEN[i-1]||1,t=clamp((s-TRAIL_LEN[i-1])/l,0,1);
+  return{x:lerp(a[0],b[0],t),z:lerp(a[1],b[1],t),yaw:Math.atan2(b[0]-a[0],b[1]-a[1])};}
+// can the man see her? Nothing tall (a house, a wall, a parked car) on the line between his eyes and her
+function ogSight(x0,z0,y0,x1,z1,y1){const d=Math.hypot(x1-x0,z1-z0),n=Math.ceil(d/0.7);
+  for(let k=1;k<n;k++){const t=k/n,x=lerp(x0,x1,t),z=lerp(z0,z1,t),y=lerp(y0,y1,t);
+    for(const c of COLL){if(!c.on||c.tag==='step')continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1&&(c.top==null||c.top>y))return false;}}return true;}
+function trailP(){return new Promise(res=>{ST.actor=null;talkNpc=null;OG.trail={res,s:0,v:0,stop:-1,stopT:0,sus:0,lost:0,caught:0,hudT:0};trailPlace();$('fade').style.opacity=0;
+  if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
+function trailPlace(){const T=OG.trail;T.s=0;T.v=0;T.stop=-1;T.stopT=0;T.sus=0;T.lost=0;T.next=0;VAN.scripted=true;VAN.g.visible=true;
+  P.x=128;P.z=90.2;P.yaw=-Math.PI/2;P.v=0;P.y=G(P.x,P.z);P.foot=true;P.carry='back';camInit=false;for(const h of OG.men)h.g.visible=false;trailVan();}
+function trailVan(){const T=OG.trail,a=trailAt(T.s);VAN.x=a.x;VAN.z=a.z;VAN.g.position.set(a.x,G(a.x,a.z)+0.02,a.z);VAN.g.rotation.y=a.yaw;
+  const hl=VAN.g.userData.len/2+0.1,c=Math.abs(Math.sin(a.yaw)),s=Math.abs(Math.cos(a.yaw));Object.assign(VAN.box,{x0:a.x-(hl*c+0.9*s),x1:a.x+(hl*c+0.9*s),z0:a.z-(hl*s+0.9*c),z1:a.z+(hl*s+0.9*c),top:G(a.x,a.z)+1.9,on:true});return a;}
+function trailHUD(tr){const T=OG.trail;tr.hidden=false;tr.innerHTML='';const b=document.createElement('b'),s=document.createElement('span'),m=document.createElement('span');s.className='step';m.className='meter';
+  b.textContent='黒いバンをつけろ';s.textContent=T.stop>=0?'男がうしろを見ている！ 家や車のかげに隠れて、やり過ごす':T.lost>0?'バンが遠い！ 見失わないように追いかける':'近づきすぎず、見失わずに。スケボーの音は近くだと気づかれる';
+  const n=Math.round(T.sus*5);m.textContent=`あやしまれ度 ${'■'.repeat(n)}${'□'.repeat(5-n)}`;tr.append(b,s,m);}
+async function trailRetire(){const T=OG.trail;T.asking=true;const i=await askP('',`${T.caught}回見つかってしまった……。どうする？`,['もう少しがんばる','先に進む（リタイア）']);T.asking=false;
+  if(OG.trail!==T)return;if(i===0)return;T.s=TRAIL_LEN[TRAIL_LEN.length-1];P.x=OG_DOOR.x+16;P.z=COAST_Z-4;P.y=G(P.x,P.z);P.yaw=-Math.PI/2;camInit=false;}
+function trailStep(dt){const T=OG.trail;if(T.asking||T.pause)return;const end=TRAIL_LEN[TRAIL_LEN.length-1],man=OG.men[1];
+  for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}
+  // the van: slow in town, stopping where the man gets out to look back
+  if(T.stop>=0){T.stopT+=dt;if(T.stopT>6.5){T.stop=-1;man.g.visible=false;}}
+  else{const st=TRAIL_STOPS[T.next];const tv=st&&st.s-T.s<10?Math.max(0.6,(st.s-T.s)*0.7):end-T.s<12?Math.max(0.8,(end-T.s)*0.5):6.2;
+    T.v+=(tv-T.v)*Math.min(1,dt*1.5);T.s=Math.min(end,T.s+T.v*dt);
+    if(st&&T.s>=st.s-0.3){T.stop=T.next;T.next++;T.stopT=0;T.v=0;}}
+  const a=trailVan();for(const w of VAN.g.userData.wheels)w.rotation.x+=T.v*dt/0.3;
+  const back=[-Math.sin(a.yaw),-Math.cos(a.yaw)],hl=VAN.g.userData.len/2;
+  const dx=P.x-a.x,dz=P.z-a.z,d=Math.hypot(dx,dz),loud=!P.foot&&P.v>3;
+  let see=0;
+  if(T.stop>=0){const st=TRAIL_STOPS[T.stop],mx=a.x+back[0]*(hl+1),mz=a.z+back[1]*(hl+1),my=G(mx,mz);man.g.visible=true;
+    const look=Math.atan2(back[0],back[1])+Math.sin(T.stopT*1.1)*0.75;man.g.position.set(mx,my,mz);man.g.rotation.y=look;poseHuman(man,'stand',dt,{});
+    const ex=P.x-mx,ez=P.z-mz,ed=Math.hypot(ex,ez)||1,face=(Math.sin(look)*ex+Math.cos(look)*ez)/ed;
+    if(T.stopT>0.8&&ed<40&&face>0.55&&ogSight(mx,mz,my+1.6,P.x,P.z,P.y+(P.foot?1.2:1.0)))see=ed<15?1.6:ed<28?1:0.6;
+    if(loud&&ed<16)see=Math.max(see,0.8);}
+  else{if(d<9)see=0.5;if(loud&&d<14)see=Math.max(see,0.7);}
+  T.sus=clamp(T.sus+(see?dt*see*0.55:-dt*0.25),0,1);$('hurt').style.opacity=T.sus*0.6;
+  T.lost=d>58?T.lost+dt:0;
+  OG.mark.visible=true;OG.mark.position.set(a.x,G(a.x,a.z)+3.6+Math.sin(clock*3)*0.12,a.z);
+  T.hudT-=dt;if(T.hudT<=0){T.hudT=0.2;trailHUD($('tracker'));}
+  const fail=T.sus>=1?'気づかれた……！':T.lost>4?'見失った……！':null;
+  if(fail){T.caught++;$('fade').style.opacity=1;$('hurt').style.opacity=0;toast(fail+' もう一度',true);
+    T.pause=true;setTimeout(()=>{if(OG.trail!==T)return;trailPlace();T.pause=false;$('fade').style.opacity=0;if(T.caught%3===0)trailRetire();},700);return;}
+  if(T.s>=end-0.05){OG.trail=null;OG.mark.visible=false;$('hurt').style.opacity=0;man.g.visible=false;T.res();}}
+// once the men are inside: the van stays parked by the door until the scene is over
+function trailDone(){VAN.scripted=false;VAN.x=-30;VAN.z=COAST_Z+2.2;VAN.v=0;VAN.g.rotation.y=-Math.PI/2;for(const c of CARS){c.g.visible=true;c.box.on=true;}}
 
 /* ---------- the true route "灯台": once all three endings are seen. The old custom of the town: on a summer night the lighthouse
    was lit with fire shared from five lights of the town. While the radio mast howls, Nagi skates round the five places and
@@ -6741,6 +6811,7 @@ const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
+  if(f.ex1&&!f.ex1_done)return ex1Goal(f,eve,night,home);
   if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
   if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
@@ -6776,7 +6847,7 @@ const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from
 // a choice on the third night, marked once that way has been followed to its ending
 const wayLabel=(l,k)=>()=>l+(SAVE.flags[k]?'（見た）':'');
 // when it gets dark: where to go now (usually home to grandma)
-function darkHint(){const f=SAVE.flags;if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
+function darkHint(){const f=SAVE.flags;if(f.ex1&&!f.ex1_done){const h=ex1Dark(f);if(h)return h;}if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
   if(f.route===3&&SAVE.day===6&&!f.contest_done)return '暗くなってきた。浜辺のソウタくんが、大会で待っている';
   if(f.route===2&&!f.ending_org&&SAVE.day>=5&&f.drones_cleared&&qs('og_evidence').state===2)return '暗くなってきた。こむぎ堂の主人に話して、黒いバンを追おう';
   return '暗くなってきた。トメばあちゃんのところへ帰ろう';}
@@ -7165,7 +7236,7 @@ const EVENTS=[
   // after the true ending the evening runs on into the night (until grandma takes you home), to see the lighthouse
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
-    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['call',()=>toast(darkHint())]]]]},
+    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;toast(SAVE.flags.ex1&&!SAVE.flags.ex1_done?darkHint():'日が暮れていく。夜の町と、灯台の光を見に行こう');}]],[['call',()=>toast(darkHint())]]]]},
   // in the daytime from the second day, grandma lets you rest until the evening
   {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
     ['ask','tome','どうする？ ちょっと休んでいくかい？',[
@@ -7962,6 +8033,115 @@ function updateIsland(dt){const B=BOAT;
   ISL.devLight.visible=!flag('tower_quiet')&&(clock*1.2%1)<0.45;ISL.dev.visible=!flag('tower_quiet');
   if(ISL.wait&&!DLG&&!modal)islHUD($('tracker'));}
 
+/* ---------- the extra story "オーシャンゲート" (free, after the true ending): the lighthouse is lit, and something has noticed
+   the town. Odd things happen at night, the black vans come back, Sota goes missing, and everyone — Nagi too — thinks it is
+   Oceangate. Only at the end of it does the truth come out (see PROGRESS.md, 追加ストーリーの設定).
+   The flag ex1 is how far it has got:
+     1  the morning after: the town's odd things to look into (errand x_odd)
+     2  that evening the vans and drones are back; the drones fly at the lighthouse — or at the dark in front of it
+     3  the next morning Sota is gone; the baker sends Nagi after the van
+     4  she has followed it to the iron door by the west tunnel; at night Mio's voice comes through the marble
+     5  the rest is still being made ---------- */
+// what the night left behind: a torn net on the pier, a scorched lamp on the coast road, black footprints at the crossing
+const EX1={props:[],marble:null};
+{ const lamp=LAMPS.reduce((b,e)=>Math.abs(e.x+30)<Math.abs(b.x+30)?e:b,LAMPS[0]);EX1.lamp=[lamp.x,lamp.z];
+  const dark=new THREE.MeshBasicMaterial({color:'#121214',transparent:true,opacity:0.82,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});
+  const flat=(geo,x,z,y,r)=>{const m=new THREE.Mesh(geo,dark);m.rotation.set(-Math.PI/2,0,r||0);m.position.set(x,(y==null?G(x,z):y)+0.03,z);world.add(m);EX1.props.push(m);return m;};
+  // the net: a heap of greenish mesh with a black, torn hole
+  const nx=-78.2,nz=PIER.z1-7,net=new THREE.Mesh(new THREE.SphereGeometry(0.9,8,5,0,TAU,0,Math.PI/2),tm('#5f7a6a',{wireframe:true}));
+  net.scale.set(1.3,0.35,1);net.position.set(nx,PIER.y+0.02,nz);world.add(net);EX1.props.push(net);
+  const heap=net.clone();heap.material=tm('#3f5a4c');heap.scale.set(1.22,0.3,0.94);world.add(heap);EX1.props.push(heap);flat(new THREE.CircleGeometry(0.45,9),nx+0.2,nz,PIER.y+0.32);
+  // the lamp: soot on the pavement round its foot
+  flat(new THREE.CircleGeometry(1.5,12),lamp.x,lamp.z,null);flat(new THREE.CircleGeometry(0.9,9),lamp.x+1.1,lamp.z+0.6,null);
+  // the footprints: bare feet, walking up to the crossing and stopping at the rails
+  for(let k=0;k<9;k++){const x=-2+k*0.62+(k%2?0.18:-0.18),z=TRAM_Z-14+k*0.95;flat(new THREE.CircleGeometry(0.13,7).scale(1,1.9,1),x,z,null,0.55);}
+  for(const m of EX1.props)m.visible=false;}
+const ex1On=()=>{const s=SAVE.flags.ex1||0;return s>0&&!SAVE.flags.ex1_done;};
+function updateEx1(){const on=ex1On()&&!URA.on;for(const m of EX1.props)m.visible=on;
+  if(EX1.marble&&EX1.marble.visible){EX1.marble.position.set(P.x,P.y+1.0,P.z);EX1.marble.material.opacity=0.55+0.4*Math.sin(clock*4);}}
+function ex1Marble(on){if(!EX1.marble)EX1.marble=glow('#7fd0ff',0,0,0,1.1);EX1.marble.visible=on;}
+// Sota is gone from the beach while he is missing; Mio is no longer on the pier once she has gone into the light
+{ const s0=NPCS.sota.show;NPCS.sota.show=()=>!((SAVE.flags.ex1||0)>=3&&!SAVE.flags.sota_back)&&(!s0||s0());
+  const m0=NPCS.mio.show;NPCS.mio.show=()=>!SAVE.flags.ending_true&&m0();}
+function ex1Quests(){return[
+  {id:'x_odd',title:'町の異変',giver:'tome',when:{test:()=>false},
+   steps:[{type:'place',at:[-78.2,PIER.z1-7],label:'調べる　やぶれた網',verb:'調べる',hint:'桟橋の先、やぶれた網を調べる',text:['釣りのおじさんの網が、ずたずたに裂けている。','切り口が、黒くこげたように固まっている。……さわると、ひやりと冷たい。']},
+          {type:'place',at:EX1.lamp,label:'調べる　すすけた街灯',verb:'調べる',hint:'海岸通りの、すすけた街灯を調べる',text:['海岸通りの街灯の根もとが、黒くすすけている。','見上げると、街灯のガラスが割れていた。……外からじゃない。内側から、はじけたみたいに。']},
+          {type:'place',at:[1,TRAM_Z-10],label:'調べる　黒い足あと',verb:'調べる',hint:'海の見える踏切の手前、黒い足あとを調べる',text:['踏切の手前に、黒い足あとが続いている。','はだしの、大人の足あと。……線路の手前で、ふっと消えていた。']},
+          {type:'talk',to:'tome',hint:'トメばあちゃんに知らせる',text:['……そうかい。網も、街灯も、足あとも。','30年前の夏にも、こんなことがあった気がするよ。……いや、気のせいだね。','ナギ、夕方からは、あんまり出歩くんじゃないよ。']}],reward:300}];}
+// today's aim while the extra story runs (storyGoal in p5d_events.js asks here first)
+function ex1Goal(f,eve,night,home){const s=f.ex1;
+  if(s===1)return qs('x_odd').state<2?null:eve||night?null:'町の異変は、ばあちゃんに知らせた。夕方まで待つ（ばあちゃんに話すと夕方まで休める）';
+  if(s===3)return 'こむぎ堂の主人に話す';
+  if(s===4)return night?'夜の桟橋の先へ行ってみる':'夜になったら、桟橋の先へ行ってみる（ばあちゃんに話すと夕方まで休める）';
+  if(s===5)return eve||night?home:'（追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です）';
+  return null;}
+function ex1Dark(f){if(f.ex1===4)return '暗くなってきた。桟橋の先へ行ってみよう';return null;}
+const EX1_EVENTS=[
+  {id:'x1_morning',when:{minDay:8,flags:{ending_true:1,ex1:0}},script:[
+    ['if',{test:()=>Math.hypot(P.x-HOME[0],P.z-HOME[1])>12},[['fade','out'],['warp',...HOME],['fade','in']]],
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう、ナギ。……ゆうべは、町じゅう停電してねえ。真っ暗だったよ。'],
+    ['say','natsumi','夜中に、外で犬がずっと吠えてたの。……灯台の光だけは、ちゃんと回ってたけど。'],
+    ['say','tome','釣りのおじさんも、網がずたずたにされたって、朝からさわいでてね。'],
+    ['say','natsumi','ナギ、これ。'],['say','','お母さんは、青いビー玉をナギの手にのせた。'],
+    ['say','natsumi','ミオのビー玉。……なんだか、ナギが持っていたほうがいい気がするの。'],
+    ['set','x_marble'],
+    ['say','tome','なんだか、いやな感じがするねえ。ナギ、町の様子を見てきてくれるかい。'],
+    ['set','ex1',1],['cam','off'],['quest','x_odd']]},
+  {id:'x1_evening',when:{flags:{ex1:1},quest:{x_odd:2},phase:['evening','night']},script:[
+    ['ogscene',true],
+    ['cam',[188,G(188,COAST_Z)+2.2,COAST_Z-6],[200,G(200,COAST_Z)+1.2,COAST_Z+1.2],1.2,'cut'],
+    ['say','','夕方。海岸トンネルの前に、黒いバンが止まっていた。','黒いスーツの男たち。……町から消えたはずの、オーシャンゲートだ。'],
+    ['say','','ブウウン……。頭の上を、監視ドローンが何機も飛んでいく。','町のスピーカーから、低い声が流れた。'],
+    ['say','黒崎','（スピーカーの声）海街のみなさん。今夜から当分のあいだ、日が暮れたら外に出ないでください。','……くり返します。夜は、外に出ないでください。'],
+    ['say','nagi','（黒崎……！ また、灯台をねらってるんだ）'],
+    ['cam','off'],['ogscene',false],
+    ['fade','out'],['time',20.4,0],['warp',-40,COAST_Z+2.2,Math.PI/2],['fade','in'],
+    ['say','','夜。ドローンの群れが、海の上を島のほうへ飛んでいく。'],
+    ['say','baker','（無線の声）ナギちゃん、聞こえるか。やつら、灯台に向かってる。','おれの古い道具を持っていけ。……撃ち落とすぞ！'],
+    ['drones',{total:8,boss:1,title:'灯台へ向かうドローンを落とせ'}],
+    ['cam',[-46,G(-46,COAST_Z)+3.2,COAST_Z+5],[160,30,700],1.2,'cut'],
+    ['say','','最後の一機が落ちる、ほんの少し前――ナギは、見てしまった。','ドローンが撃っていたのは、灯台じゃなかった。','灯台の手前の、何もない海の暗がりだった。'],
+    ['say','nagi','（……いま、暗がりが、動いた？）','（……気のせい、だよね）'],
+    ['set','x_saw_dark'],['set','ex1',2],
+    ['wait',0.5],['fade','out'],['cam','off'],['warp',...HOME],['day']]},
+  {id:'x2_morning',when:{flags:{ex1:2}},script:[
+    ['cam','npc','tome',3.4],
+    ['say','','朝。坂の下のほうから、大きな声が聞こえてきた。'],
+    ['say','ソウタの母','トメさん！ ソウタが……ソウタがいないの！ 朝起きたら、布団がからっぽで……！'],
+    ['say','ソウタの母','ゆうべ、家の前に黒いバンが止まってたって、近所の人が……！'],
+    ['say','tome','……落ち着いて。町のみんなで探そう。'],
+    ['say','nagi','（黒いバン……オーシャンゲートだ。ソウタくんを、どうして……）'],
+    ['set','ex1',3],['cam','off'],['toast','こむぎ堂の主人に話そう',true]]},
+  {id:'x2_baker',on:{talk:'baker'},mark:true,when:{flags:{ex1:3}},script:[
+    ['say','baker','……ソウタが？ 黒いバンが、家の前に？','（主人は、エプロンをはずして、きちんとたたんだ）','もう黙っていられん。黒崎を止める。'],
+    ['say','baker','さっき、なか通りの東に、黒いバンが止まってるのを見た。','ナギちゃん、あれのあとをつけて、やつらの巣を見つけてくれ。'],
+    ['say','baker','いいか。近づきすぎるな。バンが止まると、男がひとり降りて、うしろを見る。','そのときは、家や車のかげに隠れろ。スケボーの音は、近くだと気づかれるぞ。'],
+    ['ask','nagi','（どうする？）',[['あとをつける',[]],['……行ってくる',[]]]],
+    ['fade','out'],['cam','off'],['trail'],
+    ['cam',[OG_DOOR.x+9,OG_DOOR.y+2.4,OG_DOOR.z+9],[OG_DOOR.x,OG_DOOR.y+1.3,OG_DOOR.z],1.2,'cut'],
+    ['say','','バンは、海岸トンネルの手前で止まった。','男たちは、トンネルの横の石垣にある、さびた鉄の扉の中へ消えていった。'],
+    ['say','nagi','（あんなところに、扉……？ 「関係者以外立入禁止」……）','（この上は、電波塔の山だ）'],
+    ['say','baker','（無線の声）よくやった、ナギちゃん。そこが、やつらの巣だ。','今日は動くな。乗りこむのは、準備をしてからだ。'],
+    ['call',trailDone],
+    ['say','nagi','（ソウタくん……。ミオなら、なにか知ってるかな）','（夜になったら、桟橋の先へ行ってみよう）'],
+    ['set','ex1',4],['cam','off']]},
+  {id:'x2_mio',on:{near:[-80,331,7]},when:{flags:{ex1:4},phase:'night'},script:[
+    ['warp',-80,331,0.55],['cam',[-83.5,PIER.y+2.2,326.5],[-62,PIER.y+2,362],1.5,'cut'],
+    ['say','','夜の桟橋の先。灯台の光が、ゆっくり海をなでていく。'],
+    ['call',()=>ex1Marble(true)],
+    ['say','','ポケットの中で、ビー玉がかすかに光った。青く、心臓の音みたいに。'],
+    ['say','ミオの声','（……ナギ……きこえる……？）'],
+    ['say','nagi','ミオ!? どこにいるの？'],
+    ['say','ミオの声','（ソウタくんは……向こう側に……）','（黒い服の人たちじゃ、な……ザザッ……）'],
+    ['say','','ザザザ……。声は、波の音にまぎれて消えた。ビー玉の光も、しずかに消えた。'],
+    ['call',()=>ex1Marble(false)],
+    ['say','nagi','向こう側……？ ソウタくんは、オーシャンゲートに連れていかれたんじゃ……ないの？'],
+    ['set','ex1',5],['cam','off'],['toast','ばあちゃんに話して、家に帰ろう',true]]},
+];
+EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...EX1_EVENTS);
+
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
    The board rolling (louder and brighter with speed, rougher on sand), kicks, pops, landings and grinds,
    footsteps; the sea, crickets at night, a low hum in 裏海街; the tram's bell, doors, motor and the
@@ -8258,7 +8438,7 @@ const QUESTS=[
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
 ];
-QUESTS.push(...inkQuests());Object.assign(ITEMS,INK_ITEMS);   // the errands in the country (p5k_inaka.js)
+QUESTS.push(...inkQuests(),...ex1Quests());Object.assign(ITEMS,INK_ITEMS);   // the errands in the country (p5k_inaka.js)
 // three save slots; slot 1 keeps the key the game has always used, so older saves open there
 const S0={money:600,inv:{},qs:{},tracked:null,spots:[],day:1,hour:DAY_START,cap:DAY_CAP,flags:{},seen:{}};
 const SLOTS=3,slotKey=k=>k===1?'umimachi_save':'umimachi_save'+k;

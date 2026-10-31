@@ -114,6 +114,7 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'ogscene':ogScene(a[0]);break;                                   // ['ogscene', true|false]  the black van parked by the east tunnel, Kurosaki and his men round it
   case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
   case 'vanchase':await vanChaseP();break;
+  case 'trail':await trailP();break;                                    // ['trail']  follow the black van to the door by the west tunnel, unseen
   case 'lights':await lightsP(a[0]);break;                               // ['lights', {pts:[{name,x,z}…], limit}]  gather the five lights before time runs out
   case 'credits':await creditsP();break;
   case 'drones':await dronesP(a[0]);break;                               // ['drones', {total, boss, title}]  a drone fight in the story: on until it is won
@@ -134,7 +135,7 @@ function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.
     r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});
   if(act.length>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${act.length-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}
 // every frame: the clock and the light, the event markers, and the events that start by place or by time
-function updateStory(dt){const tw=ST.tween;updateRace(dt);updateFestival(dt);updateOG(dt);updateLights(dt);
+function updateStory(dt){const tw=ST.tween;updateRace(dt);updateEx1();updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
   applyLight(SAVE.hour);updateUra(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);

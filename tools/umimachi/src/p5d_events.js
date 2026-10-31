@@ -15,6 +15,7 @@ const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
+  if(f.ex1&&!f.ex1_done)return ex1Goal(f,eve,night,home);
   if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
   if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
@@ -50,7 +51,7 @@ const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from
 // a choice on the third night, marked once that way has been followed to its ending
 const wayLabel=(l,k)=>()=>l+(SAVE.flags[k]?'（見た）':'');
 // when it gets dark: where to go now (usually home to grandma)
-function darkHint(){const f=SAVE.flags;if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
+function darkHint(){const f=SAVE.flags;if(f.ex1&&!f.ex1_done){const h=ex1Dark(f);if(h)return h;}if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
   if(f.route===3&&SAVE.day===6&&!f.contest_done)return '暗くなってきた。浜辺のソウタくんが、大会で待っている';
   if(f.route===2&&!f.ending_org&&SAVE.day>=5&&f.drones_cleared&&qs('og_evidence').state===2)return '暗くなってきた。こむぎ堂の主人に話して、黒いバンを追おう';
   return '暗くなってきた。トメばあちゃんのところへ帰ろう';}
@@ -439,7 +440,7 @@ const EVENTS=[
   // after the true ending the evening runs on into the night (until grandma takes you home), to see the lighthouse
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
-    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['call',()=>toast(darkHint())]]]]},
+    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;toast(SAVE.flags.ex1&&!SAVE.flags.ex1_done?darkHint():'日が暮れていく。夜の町と、灯台の光を見に行こう');}]],[['call',()=>toast(darkHint())]]]]},
   // in the daytime from the second day, grandma lets you rest until the evening
   {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
     ['ask','tome','どうする？ ちょっと休んでいくかい？',[
