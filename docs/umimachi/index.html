@@ -9466,7 +9466,7 @@ function mirRing(i){const T=MIR.trail,poly=T.slice(i);let A=0;for(let k=0;k<poly
   MIR.comboT>0?MIR.combo++:MIR.combo=1;MIR.comboT=4;
   const fast=P.v>10?0.5:0,mult=1+0.5*Math.max(0,hit-1)+fast,got=Math.round(pts*mult*(1+(MIR.combo-1)*0.25));MIR.score+=got;
   if(hit)mirPop(`${hit>1?`${hit}体同時`:''}浄化！ ×${mult.toFixed(1)}${MIR.combo>1?`　${MIR.combo}コンボ`:''}`);else mirPop('結界');
-  buzz(hit?'heavy':'light',true);if(hit)sfx.boom();renderHUD();return true;}
+  buzz(hit?'heavy':'light',true);if(hit)sfx.boom(0.6);renderHUD();return true;}
 // a new point on the line: does it close a ring? (near an old point, or the newest stretch crossing an old one)
 function mirClose(){const T=MIR.trail,n=T.length-1,p=T[n],o=T[n-1];if(n<MIR_GAP)return;
   const cross=(a,b,c,d)=>{const r=(b.x-a.x)*(d.z-c.z)-(b.z-a.z)*(d.x-c.x);if(!r)return false;const s=((c.x-a.x)*(d.z-c.z)-(c.z-a.z)*(d.x-c.x))/r,u=((c.x-a.x)*(b.z-a.z)-(c.z-a.z)*(b.x-a.x))/r;return s>=0&&s<=1&&u>=0&&u<=1;};
