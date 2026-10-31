@@ -324,9 +324,9 @@ function inkToTown(){const f=$('fade');f.style.opacity=1;
   setTimeout(()=>{Object.assign(TRAM,{x:TRAM_X1-12,dir:-1,v:6,wait:0,at:null,left:null});RIDE.train=TRAM;RIDE.s=TRAM.seatS();RIDE.x=pickSeat(TRAM,RIDE.car,RIDE.s,RIDE.x);Object.assign(INKT,{mode:'idle',x:INK_STOPX,v:0,at:INK_STOP,wait:1e9});
     setArea('town');camInit=false;toast('次は　ひがし浜　です');setTimeout(()=>{f.style.opacity=0;},250);},850);}
 // the town and the country are never both shown
-function setArea(a){if(a===AREA)return;AREA=a;const ink=a==='inaka',away=a!=='town';INK.g.visible=ink;BASE.g.visible=a==='base';if(!away){scene.fog.near=260;scene.fog.far=2600;}
+function setArea(a){if(a===AREA)return;AREA=a;const ink=a==='inaka',away=a!=='town';INK.g.visible=ink;BASE.g.visible=a==='base';HQ.g.visible=a==='hq';if(!away){scene.fog.near=260;scene.fog.far=2600;}
   for(const o of world.children){if(o===player.g)continue;if(away){o.userData.vis=o.visible;o.visible=false;}else if(o.userData.vis!==undefined){o.visible=o.userData.vis;delete o.userData.vis;}}}
-function updateInaka(dt){updateGoat(dt);if(INK.fallTex)INK.fallTex.offset.y=(clock*1.4)%1;const want=P.x>INK_X-600?'inaka':P.x<BASE_X+600?'base':'town';if(want!==AREA&&!(RIDE.on))setArea(want);inkTrainMove(dt);updateTouge(dt);}
+function updateInaka(dt){updateGoat(dt);if(INK.fallTex)INK.fallTex.offset.y=(clock*1.4)%1;const want=P.x>INK_X-600?'inaka':P.x<HQ_X+1200?'hq':P.x<BASE_X+600?'base':'town';if(want!==AREA&&!(RIDE.on))setArea(want);inkTrainMove(dt);updateTouge(dt);}
 function inkNear(){if(AREA!=='inaka')return null;let best=null;
   for(const b of INK.bus){const d=Math.hypot(P.x-INK_X-b.x,P.z-b.z);if(d<2.6&&(!best||d<best.d))best={kind:'bus',b,d,label:`乗る　バス（${b.name}・100円）`,verb:'乗る'};}
   const d=Math.hypot(P.x-INK.scope.x,P.z-INK.scope.z);if(d<2.2&&P.y>DECK.h-0.5)best={kind:'scope',d,label:'のぞく　望遠鏡',verb:'のぞく'};

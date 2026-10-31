@@ -89,7 +89,7 @@ function loseDrones(){DRONE.active=false;DRONE.lost=true;for(const d of DRONE.li
   const o=DRONE.o,atBoss=!!DRONE.boss;
   if(o.res){toast('やられた… もう一度！',true);setTimeout(()=>startDrones(o,atBoss),2600);return;}
   toast('やられた… ドローンが引き上げていく',true);setTimeout(()=>toast('こむぎ堂の主人にもう一度話しかけると、やり直せる'),1800);}
-function damage(d,p){d.hp--;d.hitT=0.08;sparks(p,d.boss?10:6,'#fff3c0',4,d.boss?0.07:0.04);if(d.boss){renderHUD();if(d.hp>0)return;}
+function damage(d,p){d.hp-=DRONE.dmg||1;d.hitT=0.08;sparks(p,d.boss?10:6,'#fff3c0',4,d.boss?0.07:0.04);if(d.boss){renderHUD();if(d.hp>0)return;}
   if(d.hp<=0){d.dead=true;d.vy=1.5;d.spin.set(rnd()*6-3,rnd()*10-5,rnd()*6-3);if(!d.escort&&!d.boss)DRONE.killed++;SAVE.money+=d.boss?500:50;
     sparks(d.g.position,10,'#ffcf6a',5,0.06);renderHUD();
     if(d.boss){d.spin.multiplyScalar(0.3);for(const e of DRONE.list)if(e!==d&&!e.dead){e.dead=true;e.vy=1;dropLaser(e);}boom(d.g.position.clone());finishDrones();}

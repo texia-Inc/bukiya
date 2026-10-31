@@ -19,14 +19,14 @@ const LAN={n:3,max:3,re:0,t:0,lt:null,fx:null};
 const lanMeter=()=>'ランタン '+'●'.repeat(LAN.n)+'○'.repeat(LAN.max-LAN.n);
 function lanternFlash(){if(LAN.n<1){toast('ランタンの灯りが、まだたまっていない');return;}LAN.n--;LAN.re=0;LAN.t=1;buzz('medium');
   if(!LAN.lt){LAN.lt=new THREE.PointLight('#ffd890',0,34,1.4);scene.add(LAN.lt);LAN.fx=glow('#ffe2a0',0,0,0,1);}
-  const R=13,dd=(x,z)=>Math.hypot(P.x-x,P.z-z);
+  const R=lanR(),dd=(x,z)=>Math.hypot(P.x-x,P.z-z);
   if(URA.on)for(const s of URA.shadows){const p=s.h.g.position;if(dd(p.x,p.z)<R){s.stun=6;s.sus=0;}}
   if(URA.chase&&URA.big){const bg=URA.big.h.g.position,d=dd(bg.x,bg.z);
     if(d<22){URA.chase.stun=3.5;URA.chase.mode='roam';URA.chase.wait=0;const k=Math.min(6,30-d)/(d||1);bg.x-=(P.x-bg.x)*k*0.25;bg.z-=(P.z-bg.z)*k*0.25;URA.chase.tx=bg.x;URA.chase.tz=bg.z;
       toast('大きな影が、光にひるんだ！ いまのうちに');}}
   if(DEF.on)for(const s of DEF.list)if(!s.gone&&dd(s.g.position.x,s.g.position.z)<R+1){s.gone=1;DEF.killed++;}
   renderHUD();}
-function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=(DEF.on?1.6:16)){LAN.n++;LAN.re=0;renderHUD();}}
+function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on)){LAN.n++;LAN.re=0;renderHUD();}}
   if(!LAN.lt)return;LAN.t=Math.max(0,LAN.t-dt*1.4);const k=LAN.t;
   LAN.lt.intensity=k*3;LAN.lt.position.set(P.x,P.y+1.6,P.z);LAN.fx.visible=k>0;LAN.fx.position.set(P.x,P.y+1.2,P.z);LAN.fx.scale.setScalar(2+24*(1-k));LAN.fx.material.opacity=k*0.7;}
 /* ----- Sota: found on the beach of 裏海街, then at her heels ----- */
@@ -53,17 +53,17 @@ function wispStep(dt){const w=EX1R.wisp;if(!w)return;w.visible=rescueOn()&&!URA.
 /* ----- the town's defense: the shadows climb out of the sea onto the beach and walk for the coast road. A flash of the
    lantern near them sends them back; five that reach the road and the town's lights go out, and it starts again ----- */
 const DEF={on:false,list:[],total:14,killed:0,lives:5,spawned:0,spawnT:0,res:null,hudT:0};
-function defendP(){return new Promise(res=>{ST.actor=null;talkNpc=null;Object.assign(DEF,{on:true,res,killed:0,lives:5,spawned:0,spawnT:1});LAN.n=LAN.max;
+function defendP(o){o=o||{};return new Promise(res=>{ST.actor=null;talkNpc=null;Object.assign(DEF,{on:true,res,killed:0,lives:5,spawned:0,spawnT:1,total:o.total||14,alive:o.alive||5,spd:o.spd||0});LAN.n=LAN.max;
   toast(hasTouch?'海から上がってくる影に近づいて、「ランタン」ボタンで追いはらえ':'海から上がってくる影に近づいて、L キーで追いはらえ',true);renderHUD();});}
 function defHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='町を守れ';const s=document.createElement('span');s.className='step';
   s.textContent='海から上がってくる影を、海岸通りに入れるな。近くでランタンを光らせると追いはらえる（灯りはすぐたまる）';
   const m=document.createElement('span');m.className='meter';m.textContent=`追いはらった ${DEF.killed} / ${DEF.total}　町の灯り ${'●'.repeat(DEF.lives)}${'○'.repeat(5-DEF.lives)}　${lanMeter()}`;tr.append(b,s,m);}
 function defSpawn(){const h=makeHuman(SHADE),x=TRUTH.x-42+rnd()*84,z=SHORE+12+rnd()*6;world.add(h.g);h.g.position.set(x,SEA_Y-1.8,z);h.g.rotation.y=Math.PI;
-  DEF.list.push({h,g:h.g,eye:glow('#ff3020',0,0,0,0.9),up:0,sp:1.5+rnd()*0.8+DEF.spawned*0.04,gone:0,fade:0});DEF.spawned++;}
+  DEF.list.push({h,g:h.g,eye:glow('#ff3020',0,0,0,0.9),up:0,sp:1.5+rnd()*0.8+DEF.spawned*0.04+DEF.spd,gone:0,fade:0});DEF.spawned++;}
 function defClear(){for(const s of DEF.list){world.remove(s.g);scene.remove(s.eye);}DEF.list.length=0;}
 function updateDefend(dt){if(!DEF.on)return;const busy=!!(DLG||modal);
   DEF.spawnT-=dt;const alive=DEF.list.filter(s=>!s.gone).length;
-  if(!busy&&DEF.spawned<DEF.total&&alive<5&&DEF.spawnT<=0){defSpawn();DEF.spawnT=1.4+rnd()*0.9;}
+  if(!busy&&DEF.spawned<DEF.total&&alive<DEF.alive&&DEF.spawnT<=0){defSpawn();DEF.spawnT=1.4+rnd()*0.9;}
   for(const s of DEF.list.slice()){const p=s.g.position;
     if(s.gone){s.fade+=dt*1.6;const k=Math.min(1,s.fade);s.g.scale.set(1-k*0.6,1-k*0.9,1-k*0.6);p.z+=dt*3;s.eye.visible=false;
       if(rnd()<dt*25)sparks(new THREE.Vector3(p.x,p.y+1,p.z),1,'#ffe2a0',2,0.05);
@@ -208,7 +208,7 @@ const EX1B_EVENTS=[
     ['say','','――追加ストーリー1「オーシャンゲート」　おしまい。'],
     ['set','ex1_done'],['set','ex1',10],
     ['ask','','追加ストーリー2「海街自警団」――山の中の基地を立てなおし、町をおそう異界の者と戦う。',[
-      ['くわしく見る',[['say','','追加ストーリー2「海街自警団」は、ただいま準備中です。','基地の施設をきたえて、武器と力を強くし、オーシャンゲートといっしょに異界の者を迎えうつ物語。','配信まで、もうしばらくお待ちください。']]],
+      ['くわしく見る',[['say','','基地の施設をきたえて、武器と力を強くし、オーシャンゲートといっしょに異界の者を迎えうつ物語。','町の東の山の岩の扉から、自警団の基地に入れます。（テスト版では、購入しなくても遊べます）']]],
       ['あとで',[]]]],
     ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
 ];
