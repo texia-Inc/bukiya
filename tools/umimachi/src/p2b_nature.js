@@ -37,7 +37,7 @@ const NEEDLE=windify(new THREE.MeshToonMaterial({color:'#ffffff',gradientMap:GRA
 /* grass: clumps of blades in 16 m squares, made when you come near and dropped when you are far away.
    Only on open ground: not on streets, lots, the tram line, the shore, the cuttings or the paved places */
 const GRASS={chunks:new Map(),S:16,mesh:null,on:true};
-function grassOK(x,z){if(x>INK_X-600)return false;
+function grassOK(x,z){if(x>INK_X-600||x<BASE_X+600)return false;
   if(z>ISL_Z0&&ISL_ON){const y=G(x,z),u=x-ISL.x,w=z-ISL.z;return y>SEA_Y+1.6&&Math.hypot(x-LH.x,z-LH.z)>9&&islPathD(u,w)>2.6&&!(u>-60&&u<-48&&w<-18);}   // not on the path up to the lighthouse or the jetty
   const y=H(x,z);if(z>SHORE-1)return Math.abs(x)>205&&y>7;if(z>COAST_Z-6.5||cutting(x,z))return false;
   const b={x0:x-0.6,x1:x+0.6,z0:z-0.6,z1:z+0.6};
@@ -124,7 +124,7 @@ function wlSpawn(L){const cd=camera.getWorldDirection(new THREE.Vector3()),a=Mat
   Object.assign(L,{alive:true,t:0,life:2.2+rnd()*1.2,x,z,y:G(x,z)+0.7+rnd()*1.6,sp:4+rnd()*2.5,ph:rnd()*TAU,loopAt:rnd()<0.25?0.6+rnd()*0.8:-1,pts:[],acc:0});
   L.y0=L.y;return true;}
 function updateWindLines(dt){WL.t+=dt;if(!WL.list.length)for(let k=0;k<7;k++)WL.list.push(wlMake());
-  const on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&P.x<INK_X-600&&state==='play',day=clamp((sun.intensity-0.15)/0.6,0,1);WL_MAT.uniforms.uOp.value=0.32*day;
+  const on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&AREA==='town'&&state==='play',day=clamp((sun.intensity-0.15)/0.6,0,1);WL_MAT.uniforms.uOp.value=0.32*day;
   const want=(typeof hasTouch!=='undefined'&&hasTouch)?2:4,d=WL.dir,side=new THREE.Vector3(-d.z,0,d.x),cam=camera.position;
   WL.list.forEach((L,k)=>{if(!L.alive){L.m.visible=false;if(on&&k<want&&day>0.05&&rnd()<dt*0.35)wlSpawn(L);return;}
     L.t+=dt;const u=L.t;let hx=L.x+d.x*L.sp*u+side.x*Math.sin(u*2.4+L.ph)*1.1,hz=L.z+d.z*L.sp*u+side.z*Math.sin(u*2.4+L.ph)*1.1,hy=L.y0+Math.sin(u*3.1+L.ph)*0.35;
