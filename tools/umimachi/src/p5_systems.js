@@ -188,7 +188,7 @@ function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){c
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
   if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
-  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(sortieOn())nestHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(BOSS.on)bossHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(sortieOn())nestHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
@@ -404,7 +404,7 @@ window.addEventListener('keydown',e=>{if(e.repeat&&e.code!=='KeyW'&&e.code!=='Ar
   if(e.code==='Escape')closeModal();if(e.code==='KeyQ'&&!DLG){if(modal==='log')closeModal();else if(!modal){renderLog();openModal('log');}}
   if(e.code==='KeyP'&&!modal&&!DLG)photoReq=true;if(e.code==='KeyF'&&!e.repeat)footQ=true;if(e.code==='KeyL'&&!e.repeat)toggleTorch();if(e.code==='KeyK'&&!e.repeat)trickQ=true;if(e.code==='KeyC'&&!DLG){if(modal==='closet')closeModal();else if(!modal)openCloset();}});
 window.addEventListener('keyup',e=>{keys[e.code]=false;});
-window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;stick.on=false;FIRE.mouse=FIRE.touch=false;});
+window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;if(stick.off)stick.off();else stick.on=false;FIRE.mouse=FIRE.touch=false;});
 // looking back while R or the 振り返る button is held
 let lookHold=false;const lookBack=()=>(keys.KeyR||lookHold)&&state==='play'&&!DLG&&!modal;
 { const b=$('bLook');b.addEventListener('pointerdown',e=>{e.preventDefault();lookHold=true;try{b.setPointerCapture(e.pointerId);}catch(_){}});
@@ -413,10 +413,15 @@ const stick={on:false,id:null,x:0,y:0};
 // the floating stick: the ring jumps to where the thumb lands on the lower left, and goes back to its corner when let go
 { const el=$('stick'),ring=$('ring'),kn=$('knob');let ox=0,oy=0;const set=(e)=>{let dx=e.clientX-ox,dy=e.clientY-oy;const L=Math.hypot(dx,dy),m=50;if(L>m){dx*=m/L;dy*=m/L;}
     stick.x=dx/m;stick.y=dy/m;kn.style.transform=`translate(${dx}px,${dy}px)`;};
-  el.addEventListener('pointerdown',e=>{if(stick.on)return;stick.on=true;stick.id=e.pointerId;try{el.setPointerCapture(e.pointerId);}catch(_){}
+  const off=()=>{stick.on=false;stick.id=null;stick.x=stick.y=0;kn.style.transform='';el.classList.remove('on');ring.style.left=ring.style.top='';};stick.off=off;
+  // a new thumb on the stick takes it over, so a lost "let go" can never leave it stuck
+  el.addEventListener('pointerdown',e=>{if(stick.on&&e.pointerId===stick.id)return;stick.on=true;stick.id=e.pointerId;try{el.setPointerCapture(e.pointerId);}catch(_){}
     const r=el.getBoundingClientRect();ox=e.clientX;oy=e.clientY;ring.style.left=(ox-r.left)+'px';ring.style.top=(oy-r.top)+'px';el.classList.add('on');set(e);});
   el.addEventListener('pointermove',e=>{if(stick.on&&e.pointerId===stick.id)set(e);});
-  for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,e=>{if(e.pointerId!==stick.id)return;stick.on=false;stick.x=stick.y=0;kn.style.transform='';el.classList.remove('on');ring.style.left=ring.style.top='';});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(ev,e=>{if(e.pointerId===stick.id)off();});
+  // and when no finger is left on the screen at all, or the app goes to the background, everything held is let go
+  const none=e=>{if(!e.touches||e.touches.length===0){off();releaseInputs();FIRE.touch=false;}};window.addEventListener('touchend',none,true);window.addEventListener('touchcancel',none,true);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){off();releaseInputs();FIRE.touch=false;}});
   $('bJump').addEventListener('pointerdown',e=>{e.preventDefault();jumpQ=true;});
   $('bFoot').addEventListener('pointerdown',e=>{e.preventDefault();footQ=true;});
   $('bTrick').addEventListener('pointerdown',e=>{e.preventDefault();trickQ=true;});
