@@ -75,7 +75,10 @@ function d2Gather(on){const at={tome:[-5,-1.5],natsumi:[-2.5,1.5],baker:[4.5,-1.
   D2END.mio=on;}
 function d2Lights(on){if(!D2END.lights)D2END.lights=Array.from({length:14},()=>glow('#bfefff',0,0,0,0.8));
   D2END.lights.forEach((l,k)=>{l.visible=on;l.userData.t=k*0.4;});D2END.up=on;}
-function updateD2End(dt){if(!D2END.up)return;D2END.lights.forEach((l,k)=>{const t=(l.userData.t+=dt*0.35),x=BOSS_AT.x+Math.sin(k*2.3)*7,z=SHORE+8+Math.cos(k*1.7)*4;
+// Omochi at Mio's feet on the beach (the cat of 裏海街's tunnel mouth); gone with her, the cat by the boats is gone too
+function mochiShow(on){omochi.g.visible=on;if(!on)return;const x=BOSS_AT.x+2.6,z=SHORE+5.6;omochi.g.position.set(x,G(x,z)+0.02,z);omochi.g.rotation.y=Math.PI*0.8;}
+const BEACH_CAT=CATS.find(c=>Math.abs(c.g.position.x+108.5)<0.1);
+function updateD2End(dt){if(SAVE.flags.mochi_gone&&BEACH_CAT)BEACH_CAT.g.visible=false;if(omochi.g.visible&&!URA.on)poseCat(omochi,dt,false);if(!D2END.up)return;D2END.lights.forEach((l,k)=>{const t=(l.userData.t+=dt*0.35),x=BOSS_AT.x+Math.sin(k*2.3)*7,z=SHORE+8+Math.cos(k*1.7)*4;
   l.position.set(x+Math.sin(t*2+k)*0.6,G(x,Math.min(z,SHORE))+0.8+(t%6)*2.2,z);l.material.opacity=Math.max(0,1-(t%6)/6);});}
 const FINAL_EVENTS=[
   {id:'d2_c1',when:{flags:{ex1_done:1,d2c:0},test:()=>(d2().nest||0)>=NESTS.length&&d2().last<SAVE.day&&!URA.on},script:[
@@ -128,8 +131,17 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['say','mio','ううん。ナツミちゃんが、ナギをこの町に連れてきてくれた。だから、わたしは帰れるの。'],
   ['say','mio','わたしも、みんなといっしょに行くね。……もう、迷子じゃないから。'],
   ['say','mio','ナギ。ビー玉、ずっと持っててね。……灯台の灯りが見えるところに、わたしはいるよ。'],
+  ['call',()=>mochiShow(true)],
+  ['cam',[BOSS_AT.x+4.1,G(BOSS_AT.x,SHORE)+1.3,SHORE+2.8],[BOSS_AT.x+1.8,G(BOSS_AT.x,SHORE)+0.8,SHORE+6.4],1.2,'cut'],
+  ['say','','足もとで、ニャア、と声がした。白い猫が、ミオを見上げている。'],
+  ['say','mio','おもち！ ……ずっと、ナギのそばにいてくれたんだね。','あの夜、わたしについてきて、それからずっと、こっちとあっちを行ったり来たりしてたの。……ナギを、わたしのところまで連れてきてくれた。'],
+  ['say','natsumi','……やっぱり、あのときのおもちだったのね。'],
+  ['ask','mio','おもちは、どうしたい？',[
+    ['ミオといっしょに行く',[['set','mochi_gone'],['say','','おもちは、ミオの腕の中にぴょんと飛びこんだ。'],['say','mio','うん。いっしょに帰ろう、おもち。']]],
+    ['ナギのそばに残る',[['set','mochi_stay'],['say','','おもちは、ナギの足にすりよって、ミオを見上げた。'],['say','mio','そっか。……ナギのこと、たのんだよ、おもち。']]]]],
   ['say','','ミオは、ふわりと笑って、朝の光の中にとけていった。'],
-  ['call',()=>{D2END.mio=false;}],['wait',1.5],
+  ['call',()=>{D2END.mio=false;if(SAVE.flags.mochi_gone)mochiShow(false);}],
+  ['cam',[BOSS_AT.x+1.5,G(BOSS_AT.x,SHORE)+2,SHORE-4.5],[BOSS_AT.x-0.5,G(BOSS_AT.x,SHORE)+1.1,SHORE+4],1.2,'cut'],['wait',1.5],
   ['say','tome','……行ったね。'],
   ['say','baker','黒崎のやつ、「借りは返した」だとさ。……素直じゃないね。'],
   ['say','tome','異界の門は閉じた。でも、灯台の灯りがあるかぎり、また何かが寄ってくるかもしれない。','海街自警団は、これからもこの町を守るよ。……ナギ、あんたもね。'],
@@ -137,5 +149,5 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['say','','――追加ストーリー2「海街自警団」　おしまい。'],
   ['credits'],
   ['set','d2_done'],
-  ['fade','out'],['call',()=>{d2Gather(false);d2Lights(false);EX1.still=false;ex1Kurosaki(false);}],['cam','off'],['warp',...HOME],['day'],
+  ['fade','out'],['call',()=>{d2Gather(false);d2Lights(false);mochiShow(false);EX1.still=false;ex1Kurosaki(false);}],['cam','off'],['warp',...HOME],['day'],
   ['call',()=>toast('基地の作戦室から、夜の防衛はこれからも続けられる',true)]];}
