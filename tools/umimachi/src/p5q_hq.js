@@ -193,15 +193,18 @@ async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(sortieScript(nests));return;}
   if(pick!=='今夜の防衛に出る')return;
-  const N=nightPlan(n),got={sh:0,dr:0};
-  await steps([['fade','out'],['call',()=>{applyD2();EX1.still=true;}],['time',21,0],['warp',TRUTH.x+4,TRUTH.z,0],['fade','in'],
-    ['say','tome','（無線の声）来たよ、ナギ。まずは空のドローン、それから浜の影だ。','町に、一匹も入れるんじゃないよ！'],
-    ['drones',{total:N.drones,boss:N.boss?1:0,title:`${n}日目の夜：影のドローン`}],['call',()=>{got.dr=DRONE.killed+(N.boss?10:0);}],
-    ['say','baker','（無線の声）上は片づいた！ 浜だ！'],
-    ['call',()=>defendP({total:N.shadows,alive:N.alive,spd:N.spd})],['call',()=>{got.sh=DEF.killed;}],
-    ['call',()=>{const s=got.sh+got.dr;SAVE.shards=shards()+s;SAVE.money+=200+n*50;D.night=n;D.last=SAVE.day;save();renderHUD();
-      toast(`影のかけら +${s}　お礼 +${200+n*50}円`,true);}],
-    ['say','tome','（無線の声）よくやったね。今夜も、町の灯りは守られた。','かけらは、基地に持って帰っておいで。'],
+  // the night's defense: the town from above (p5u_td.js)
+  const R={};
+  await steps([['fade','out'],['call',()=>{applyD2();EX1.still=true;}],['time',20.2,0],['warp',...HOME],['fade','in'],
+    ['say','tome','（無線の声）来たよ、ナギ。影が浜から上がってくる。ねらいは神社……わたしたちの灯りさ。',
+      ...(n<=1?['通りぞいの置き場所に、自警団の道具を置いておくれ。影を追いはらえば、灯りがたまる。それでまた置けるからね。','いざとなったら「灯台の光」を呼びな。']:['今夜も、たのんだよ！'])],
+    ['call',async()=>{Object.assign(R,await tdP(n));}],
+    ['if',{test:()=>R.won},[
+      ['call',()=>{const s=R.kills+R.lives*2+n*2;SAVE.shards=shards()+s;SAVE.money+=200+n*50;D.night=n;D.last=SAVE.day;save();renderHUD();
+        toast(`影のかけら +${s}　お礼 +${200+n*50}円`,true);}],
+      ['say','tome','（無線の声）よくやったね。今夜も、町の灯りは守られた。','かけらは、基地に持って帰っておいで。']],[
+      ['call',()=>{D.last=SAVE.day;save();}],
+      ['say','tome','（無線の声）……今夜は、わたしたちが手で追い返したよ。無理はおしでない。','施設をきたえて、また明日だ。']]],
     ['fade','out'],['call',()=>ex1Kurosaki(false)],['warp',...HOME],['day']]);}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
 function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fight||BOSS.on)&&lv>=2?(lv>=4?2:1):0;
