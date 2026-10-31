@@ -616,10 +616,10 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
     updateDrones(dt);stepPlayer(dt);near=DLG||modal?null:ST.run?(ISL.wait?islNear():URA.chase?uraNear():null):findNear();if(actQ&&near)act(near);actQ=false;
-    const pr=$('prompt');if(near&&!DLG&&!modal&&!ST.run){pr.hidden=false;pr.innerHTML='';if(hasTouch)pr.textContent=near.label.replace(near.verb,'').replace(/^[\s　]+/,'')||near.label;   // phones: the button already says the verb
+    const pr=$('prompt');if(near&&!DLG&&!modal&&(!ST.run||storyFree())){pr.hidden=false;pr.innerHTML='';if(hasTouch)pr.textContent=near.label.replace(near.verb,'').replace(/^[\s　]+/,'')||near.label;   // phones: the button already says the verb
       else{const k=document.createElement('kbd');k.textContent='E';pr.append(k,document.createTextNode(near.label));}}else pr.hidden=true;
     // the act button is there only when there is something to do with it: someone or something close by, or a line to read on
-    const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&!ST.run),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
+    const ba=$('bAct'),can=!!(near&&!DLG&&!modal&&(!ST.run||storyFree())),next=!!(DLG&&!DLG.choice);ba.style.visibility=can||next?'visible':'hidden';ba.textContent=next?'次へ':can?near.verb:'話す';
     placeT-=dt;if(placeT<=0){$('place').textContent=placeName();placeT=0.5;}drawMap();}
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
   updateTram(dt);updateInaka(dt);updateIsland(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
