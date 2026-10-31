@@ -6659,9 +6659,9 @@ function ogMan(o){const h=makeHuman(Object.assign({},SUIT,o||{}));h.g.visible=fa
 for(let k=0;k<3;k++)OG.men.push(ogMan(k===0?{hair:'#3a3a3a',shirt:'#f2f2ee',vest:'#1d1f24'}:{}));   // the first is Kurosaki: grey hair, white shirt
 // the scene by the parked van: the van stops on the coast road by the east tunnel and the men stand round it
 const OG_PARK=[200,COAST_Z+2.2];
-function ogScene(on){VAN.scripted=on;OG.scene=on;if(!on)for(const h of OG.men)h.g.visible=false;for(const c of CARS)if(c!==VAN){c.g.visible=!on;c.box.on=!on;}if(on){VAN.x=OG_PARK[0];VAN.z=OG_PARK[1];VAN.v=0;VAN.g.position.set(VAN.x,G(VAN.x,VAN.z)+0.02,VAN.z);VAN.g.rotation.y=-Math.PI/2;
+function ogScene(on){VAN.scripted=on;OG.scene=on;if(!on)for(const h of OG.men)h.g.visible=false;for(const c of CARS)if(c!==VAN){c.g.visible=!on;c.box.on=!on;}if(on){VAN.g.visible=true;VAN.x=OG_PARK[0];VAN.z=OG_PARK[1];VAN.v=0;VAN.g.position.set(VAN.x,G(VAN.x,VAN.z)+0.02,VAN.z);VAN.g.rotation.y=-Math.PI/2;
     const hl=VAN.g.userData.len/2+0.1;Object.assign(VAN.box,{x0:VAN.x-hl,x1:VAN.x+hl,z0:VAN.z-0.9,z1:VAN.z+0.9,top:G(VAN.x,VAN.z)+1.9,on:true});}
-  OG.men.forEach((h,k)=>{h.g.visible=on;if(on){const x=OG_PARK[0]-2+k*2.2,z=OG_PARK[1]-2.4-(k%2)*0.6;h.g.position.set(x,G(x,z),z);h.g.rotation.y=Math.PI*(k?0.9:1.1);}});}
+  OG.men.forEach((h,k)=>{h.g.visible=on;if(on){const x=OG_PARK[0]-2+k*2.2,z=OG_PARK[1]-2.4-(k%2)*0.6;h.g.position.set(x,G(x,z),z);h.g.rotation.y=Math.PI*(k?0.9:1.1);poseHuman(h,'stand',0.016,{});}});}
 // the men run after you: get to the goal before one of them reaches you; caught, you start the run again
 function pursuitP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;OG.run={o,res,t:0};ogPlace();if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
 function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);rideNow();camInit=false;OG.run.t=0;
@@ -6681,7 +6681,7 @@ function ogEndCam(){const k=OG.men[0],x=VAN.x-1.2,z=VAN.z-1.6;k.g.visible=true;k
   setCam([[VAN.x+4,G(VAN.x,VAN.z)+2.2,VAN.z-5.5],[VAN.x,G(VAN.x,VAN.z)+1.1,VAN.z],2,'cut']);}
 function updateOG(dt){
   if(OG.trail)trailStep(dt);
-  if(OG.scene)for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}   // no traffic while the van is parked for the scene
+  if(OG.scene){for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}for(const h of OG.men)poseHuman(h,'stand',dt,{});}   // no traffic while the van is parked for the scene; the men stand by it
   if(SAVE.drones&&!SAVE.flags.drones_cleared)SAVE.flags.drones_cleared=1;   // saves from before the story
   if(SAVE.flags.ending_org&&!OG.van&&!SAVE.flags.ex1){VAN.scripted=true;VAN.g.visible=false;VAN.box.on=false;}   // the van was taken away
   if(OG.run){const R=OG.run,o=R.o;R.t+=dt;const v=Math.min(8.4,6.2+R.t*0.08);
