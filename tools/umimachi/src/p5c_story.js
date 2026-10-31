@@ -99,7 +99,7 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'fade':await fadeP(a[0]==='out');break;                          // ['fade', 'out'|'in']
   case 'cam':setCam(a);break;                                           // ['cam', [x,y,z], [lookX,lookY,lookZ], rate?, 'cut'?] / ['cam','npc',id] (from the side) / ['cam','over',id] (over Nagi's shoulder) / ['cam','off']
   case 'wait':await sleepP(a[0]);break;                                 // ['wait', seconds]
-  case 'warp':P.x=a[0];P.z=a[1];if(a[2]!=null)P.yaw=a[2];P.v=0;P.vy=0;P.air=false;P.y=G(P.x,P.z);camInit=false;break;   // ['warp', x, z, yaw?]
+  case 'warp':ST.actor=null;talkNpc=null;P.x=a[0];P.z=a[1];if(a[2]!=null)P.yaw=a[2];P.v=0;P.vy=0;P.air=false;P.y=G(P.x,P.z);camInit=false;break;   // ['warp', x, z, yaw?]
   case 'money':SAVE.money+=a[0];toast(`${a[0]>0?'+':''}${a[0]}円`,true);renderHUD();break;
   case 'item':addItem(a[0],a[1]==null?1:a[1]);toast(`${ITEMS[a[0]].name}をもらった`);break;
   case 'quest':accept(QBY(a[0]));break;                                 // ['quest', id]  take on an errand

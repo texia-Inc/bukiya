@@ -124,13 +124,19 @@ const EVENTS=[
     ['set','heard_og']]},
   {id:'d2_mochi',on:{near:[-108.5,SHORE+11,3.2]},when:{minDay:2},script:[
     ['cam',[-105.6,G(-108.5,SHORE+11)+1.5,SHORE+8.4],[-108.5,G(-108.5,SHORE+11)+0.4,SHORE+11],2.5],
-    ['say','','浜に干してあるボートのそばで、白い猫が丸くなっている。首輪の小さな札に「おもち」と書いてある。'],
+    ['say','','浜に干してあるボートのそばで、白い猫が丸くなっている。首輪の小さな札に「おもち」と書いてある。','子どもが書いたような、色あせた字だった。'],
     ['ask','nagi','（どうする？）',[
       ['そっとなでる',[['say','','おもちは目を細めて、ナギの手に頭をこすりつけた。'],['add','bond_mochi']]],
       ['見ているだけにする',[['say','','おもちは片目だけ開けて、またすぐに閉じた。']]]]],
     ['say','','……と思ったら、おもちは急に顔を上げ、西のトンネルの方をじっと見つめた。'],
     ['say','nagi','どうしたの？ なにかいるの？'],
     ['set','met_mochi']]},
+  // Omochi was Mio's cat: it went with her that night and has walked between the two sides ever since, not a day older
+  {id:'mochi_natsumi',on:{talk:'natsumi'},when:{minDay:2,flags:{met_mochi:1}},script:[
+    ['say','nagi','お母さん、浜のボートのところに、白い猫がいたよ。首輪に「おもち」って書いてあった。'],
+    ['say','natsumi','……おもち？','白い猫で、首輪に札の……？ ……うそ。'],
+    ['say','natsumi','ミオが飼ってた猫もね、おもちっていったの。札の字は、ミオが自分で書いたのよ。','でも、あの夜から見なくなって……もう30年も前の話よ。同じ猫のはず、ないわよね。'],
+    ['say','nagi','（30年前……ミオの、猫？）']]},
   {id:'d2_mio',on:{near:[-80,PIER.z1-5,7]},when:{day:2,phase:'evening'},script:[
     ['cam','over','mio'],
     ['if',{seen:'d1_mio'},[['say','mio','……また来たんだ。']],[['say','','桟橋の先に、白いワンピースの女の子が立っている。'],['say','mio','……あなた、この町の子じゃないね。']]],
