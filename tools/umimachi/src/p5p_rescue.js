@@ -9,7 +9,7 @@
 const SOTA_LOOK={skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78};
 const EX1R={sota:null,follow:false,trail:[],wisp:null,beam:null,giant:null,door:null,doorT:0};
 const rescueOn=()=>URA.on&&SAVE.flags.ex1===9;
-const lanternOn=()=>DEF.on||rescueOn()||sortieOn();
+const lanternOn=()=>DEF.on||BOSS.on||rescueOn()||sortieOn();
 // Mio's light in 裏海街: along the coast road to the beach where Sota is
 const RESCUE_WP=[[-200,COAST_Z+1],[-168,COAST_Z+1],[-134,COAST_Z+1],[-104,COAST_Z+2],[-86,SHORE+6],[-74,SHORE+10]];
 const SOTA_AT=[-72,SHORE+13];
@@ -25,9 +25,9 @@ function lanternFlash(){if(LAN.n<1){toast('ランタンの灯りが、まだた�
     if(d<22){URA.chase.stun=3.5;URA.chase.mode='roam';URA.chase.wait=0;const k=Math.min(6,30-d)/(d||1);bg.x-=(P.x-bg.x)*k*0.25;bg.z-=(P.z-bg.z)*k*0.25;URA.chase.tx=bg.x;URA.chase.tz=bg.z;
       toast('大きな影が、光にひるんだ！ いまのうちに');}}
   if(DEF.on)for(const s of DEF.list)if(!s.gone&&dd(s.g.position.x,s.g.position.z)<R+1){s.gone=1;DEF.killed++;}
-  nestFlash(R);
+  nestFlash(R);bossFlash(R);
   renderHUD();}
-function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||NEST.fight)){LAN.n++;LAN.re=0;renderHUD();}}
+function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||NEST.fight||BOSS.on)){LAN.n++;LAN.re=0;renderHUD();}}
   if(!LAN.lt)return;LAN.t=Math.max(0,LAN.t-dt*1.4);const k=LAN.t;
   LAN.lt.intensity=k*3;LAN.lt.position.set(P.x,P.y+1.6,P.z);LAN.fx.visible=k>0;LAN.fx.position.set(P.x,P.y+1.2,P.z);LAN.fx.scale.setScalar(2+24*(1-k));LAN.fx.material.opacity=k*0.7;}
 /* ----- Sota: found on the beach of 裏海街, then at her heels ----- */
@@ -87,8 +87,8 @@ function giantStep(dt){const G0=EX1R.giant;if(!G0||!G0.h.g.visible)return;G0.t+=
     if(rnd()<dt*40)sparks(new THREE.Vector3(GIANT.x+(rnd()-0.5)*20,g.position.y+26+rnd()*12,GIANT.z),1,'#ffe2a0',6,0.8);if(k>=1){g.visible=G0.eye.visible=false;}}
   const s=g.scale.x;G0.eye.position.set(g.position.x,g.position.y+1.62*s,g.position.z-0.3*s);G0.eye.material.opacity=G0.mode==='rise'?0.85+0.15*Math.sin(clock*5):Math.max(0,1-G0.t);}
 // the beam swings round from wherever it was to the giant (the lamp's two cones point along x; rotation.y = θ aims (cos θ, −sin θ))
-function beamAt(){const p=NIGHT.beam.position;return Math.atan2(-(GIANT.z-p.z),GIANT.x-p.x);}
-function beamTurnP(){return new Promise(res=>{let a0=NIGHT.beam.rotation.y,a1=beamAt();a1=a0+Math.atan2(Math.sin(a1-a0),Math.cos(a1-a0));let t=0;
+function beamAt(t){t=t||GIANT;const p=NIGHT.beam.position;return Math.atan2(-(t.z-p.z),t.x-p.x);}
+function beamTurnP(tgt){return new Promise(res=>{let a0=NIGHT.beam.rotation.y,a1=beamAt(tgt);a1=a0+Math.atan2(Math.sin(a1-a0),Math.cos(a1-a0));let t=0;
   const f=()=>{t+=1/60;const k=clamp(t/2.2,0,1);EX1R.beam=lerp(a0,a1,k*k*(3-2*k));if(k<1)setTimeout(f,16);else res();};f();});}
 function giantFall(){const G0=EX1R.giant;G0.mode='fall';G0.t=0;}
 /* ----- the rock door in the east hill (Oceangate has the west one): shut, then opened at dawn, and left open for the second story ----- */
@@ -106,7 +106,7 @@ function doorStep(dt){const D=EX1R.door;if(!D)return;const show=!!SAVE.flags.x_d
   const want=SAVE.flags.x_door>1?1:0;D.open+=(want-D.open)*Math.min(1,dt*0.9);for(const [i,m] of D.halves.entries())m.position.x=(i?1:-1)*(0.62+D.open*1.3);}
 function updateRescue(dt){updateLantern(dt);nestStep(dt);sotaStep(dt);wispStep(dt);updateDefend(dt);giantStep(dt);if(SAVE.flags.x_door)rockDoor();doorStep(dt);
   if(lanternOn())$('lightBtn').textContent=lanMeter();else if($('lightBtn').textContent!=='ライト')$('lightBtn').textContent='ライト';
-  if(DEF.on)$('lightBtn').hidden=false;}
+  if(DEF.on||BOSS.on)$('lightBtn').hidden=false;}
 function rescueHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='裏海街';const s=document.createElement('span');s.className='step';
   s.textContent='ミオの青い光を追って、ソウタくんを探す。影に見つかりそうになったら、ランタンを光らせてひるませる';
   const m=document.createElement('span');m.className='meter';m.textContent=lanMeter();tr.append(b,s,m);}
