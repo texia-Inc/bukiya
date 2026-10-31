@@ -119,20 +119,21 @@ const WL_MAT=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniform
 function wlMake(){const n=WL.N,g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*2*3),3));
   g.setAttribute('a',new THREE.BufferAttribute(new Float32Array(n*2),1));const idx=[];for(let i=0;i<n-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}g.setIndex(idx);
   const m=new THREE.Mesh(g,WL_MAT);m.frustumCulled=false;m.visible=false;m.renderOrder=3;scene.add(m);return{m,pts:[],alive:false};}
-function wlSpawn(L){const cd=camera.getWorldDirection(new THREE.Vector3()),a=Math.atan2(cd.x,cd.z)+(rnd()-0.5)*1.4,r=6+rnd()*14,x=camera.position.x+Math.sin(a)*r-WL.dir.x*5,z=camera.position.z+Math.cos(a)*r-WL.dir.z*5;   // in front of the cameraif(!grassOK(x,z))return false;
-  Object.assign(L,{alive:true,t:0,life:2.2+rnd()*1.2,x,z,y:G(x,z)+0.7+rnd()*1.6,sp:4+rnd()*2.5,ph:rnd()*TAU,loopAt:rnd()<0.65?0.6+rnd()*0.8:-1,pts:[],acc:0});
+function wlSpawn(L){const cd=camera.getWorldDirection(new THREE.Vector3()),a=Math.atan2(cd.x,cd.z)+(rnd()-0.5)*1.4,r=10+rnd()*20,x=camera.position.x+Math.sin(a)*r-WL.dir.x*5,z=camera.position.z+Math.cos(a)*r-WL.dir.z*5;   /* in front of the camera */
+  if(!grassOK(x,z))return false;
+  Object.assign(L,{alive:true,t:0,life:2.2+rnd()*1.2,x,z,y:G(x,z)+0.7+rnd()*1.6,sp:4+rnd()*2.5,ph:rnd()*TAU,loopAt:rnd()<0.25?0.6+rnd()*0.8:-1,pts:[],acc:0});
   L.y0=L.y;return true;}
 function updateWindLines(dt){WL.t+=dt;if(!WL.list.length)for(let k=0;k<7;k++)WL.list.push(wlMake());
-  const on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&P.x<INK_X-600&&state==='play',day=clamp((sun.intensity-0.15)/0.6,0,1);WL_MAT.uniforms.uOp.value=0.95*day;
-  const want=(typeof hasTouch!=='undefined'&&hasTouch)?4:7,d=WL.dir,side=new THREE.Vector3(-d.z,0,d.x),cam=camera.position;
-  WL.list.forEach((L,k)=>{if(!L.alive){L.m.visible=false;if(on&&k<want&&day>0.05&&rnd()<dt*0.9)wlSpawn(L);return;}
+  const on=GRASS.on&&!(typeof URA!=='undefined'&&URA.on)&&P.x<INK_X-600&&state==='play',day=clamp((sun.intensity-0.15)/0.6,0,1);WL_MAT.uniforms.uOp.value=0.32*day;
+  const want=(typeof hasTouch!=='undefined'&&hasTouch)?2:4,d=WL.dir,side=new THREE.Vector3(-d.z,0,d.x),cam=camera.position;
+  WL.list.forEach((L,k)=>{if(!L.alive){L.m.visible=false;if(on&&k<want&&day>0.05&&rnd()<dt*0.35)wlSpawn(L);return;}
     L.t+=dt;const u=L.t;let hx=L.x+d.x*L.sp*u+side.x*Math.sin(u*2.4+L.ph)*1.1,hz=L.z+d.z*L.sp*u+side.z*Math.sin(u*2.4+L.ph)*1.1,hy=L.y0+Math.sin(u*3.1+L.ph)*0.35;
-    if(L.loopAt>0&&u>L.loopAt&&u<L.loopAt+0.7){const q=(u-L.loopAt)/0.7*TAU,R=0.55;hx-=d.x*Math.sin(q)*R*1.6;hz-=d.z*Math.sin(q)*R*1.6;hy+=(1-Math.cos(q))*R;}   // a loop, up and over
+    if(L.loopAt>0&&u>L.loopAt&&u<L.loopAt+0.7){const q=(u-L.loopAt)/0.7*TAU,R=0.4;hx-=d.x*Math.sin(q)*R*1.6;hz-=d.z*Math.sin(q)*R*1.6;hy+=(1-Math.cos(q))*R;}   // a loop, up and over
     L.acc+=dt;if(L.acc>0.045||!L.pts.length){L.acc=0;L.pts.unshift([hx,hy,hz]);if(L.pts.length>WL.N)L.pts.pop();}else L.pts[0]=[hx,hy,hz];
     if(u>L.life){L.alive=false;L.m.visible=false;return;}
     const pos=L.m.geometry.attributes.position,al=L.m.geometry.attributes.a,n=L.pts.length,life=Math.min(1,u/0.4)*Math.min(1,(L.life-u)/0.6);
     for(let i=0;i<WL.N;i++){const p=L.pts[Math.min(i,n-1)],q=L.pts[Math.min(i+1,n-1)]||p,tx=p[0]-q[0],ty=p[1]-q[1],tz=p[2]-q[2];
-      const vx=cam.x-p[0],vy=cam.y-p[1],vz=cam.z-p[2];let sx=ty*vz-tz*vy,sy=tz*vx-tx*vz,sz=tx*vy-ty*vx;const sl=Math.hypot(sx,sy,sz)||1,f=i/(WL.N-1),w=0.085*Math.sin(Math.PI*Math.min(1,f*1.15));
+      const vx=cam.x-p[0],vy=cam.y-p[1],vz=cam.z-p[2];let sx=ty*vz-tz*vy,sy=tz*vx-tx*vz,sz=tx*vy-ty*vx;const sl=Math.hypot(sx,sy,sz)||1,f=i/(WL.N-1),w=0.045*Math.sin(Math.PI*Math.min(1,f*1.15));
       sx*=w/sl;sy*=w/sl;sz*=w/sl;pos.setXYZ(i*2,p[0]+sx,p[1]+sy,p[2]+sz);pos.setXYZ(i*2+1,p[0]-sx,p[1]-sy,p[2]-sz);
       const aa=(i<n?1:0)*Math.sin(Math.PI*Math.min(1,f*1.05))*life;al.setX(i*2,aa);al.setX(i*2+1,aa);}
     pos.needsUpdate=true;al.needsUpdate=true;L.m.visible=on;});}
