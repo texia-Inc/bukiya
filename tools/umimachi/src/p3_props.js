@@ -540,7 +540,7 @@ const BEACHHOUSE={x:40,z:SHORE+10};
   inst(CEDAR,NEEDLE,ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(e.x,e.y+e.s*0.45,e.z);d.scale.set(e.s*0.85,e.s*2.7,e.s*0.85);d.rotation.set(0,e.s*5,e.lean*0.5);},{cast:true});
   const mx=-285,mz=-40,my=H(mx,mz),mast=new THREE.Group();mast.position.set(mx,my,mz);world.add(mast);
   for(let k=0;k<8;k++){const s=new THREE.Mesh(new THREE.CylinderGeometry(1.2-k*0.13,1.33-k*0.13,5,6,1,true),tm(k%2?'#f2f2ee':'#d8452f',{side:THREE.DoubleSide}));s.position.y=2.5+k*5;mast.add(s);}
-  mast.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6),new THREE.MeshBasicMaterial({color:'#ff4030'})).translateY(41));
+  const top=new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6),new THREE.MeshBasicMaterial({color:'#ff4030'}));top.name='mastTop';top.position.y=41;mast.add(top);
 }
 
 /* ---------- things to jump onto ---------- */

@@ -115,7 +115,7 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['cam',[BOSS_AT.x+14,G(BOSS_AT.x,SHORE)+2.4,SHORE+1],[BOSS_AT.x,SEA_Y+18,BOSS_AT.z],1.2,'cut'],
   ['call',()=>{BOSS.y=SEA_Y-70;}],['wait',3.5],
   ['say','','三度目の光につらぬかれて、主は、声にならない声をあげた。','そして、門といっしょに、海の底へしずんでいった。'],
-  ['say','','……そのとき、山の上の電波塔に、赤い灯りがともった。'],
+  ['set','mast_lit'],['say','','……そのとき、山の上の電波塔に、赤い灯りがともった。'],
   ['say','master','（無線の声）結界、張りなおした！ ……門が、閉じていく！'],
   ['call',()=>bossShow(false)],
   // dawn

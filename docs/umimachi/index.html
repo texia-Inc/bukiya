@@ -5024,7 +5024,7 @@ const BEACHHOUSE={x:40,z:SHORE+10};
   inst(CEDAR,NEEDLE,ced.map(e=>({...e,col:e.col.clone().multiplyScalar(0.72)})),(e,d)=>{d.position.set(e.x,e.y+e.s*0.45,e.z);d.scale.set(e.s*0.85,e.s*2.7,e.s*0.85);d.rotation.set(0,e.s*5,e.lean*0.5);},{cast:true});
   const mx=-285,mz=-40,my=H(mx,mz),mast=new THREE.Group();mast.position.set(mx,my,mz);world.add(mast);
   for(let k=0;k<8;k++){const s=new THREE.Mesh(new THREE.CylinderGeometry(1.2-k*0.13,1.33-k*0.13,5,6,1,true),tm(k%2?'#f2f2ee':'#d8452f',{side:THREE.DoubleSide}));s.position.y=2.5+k*5;mast.add(s);}
-  mast.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6),new THREE.MeshBasicMaterial({color:'#ff4030'})).translateY(41));
+  const top=new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6),new THREE.MeshBasicMaterial({color:'#ff4030'}));top.name='mastTop';top.position.y=41;mast.add(top);
 }
 
 /* ---------- things to jump onto ---------- */
@@ -6114,7 +6114,8 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
   NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty years
   NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=EX1R.beam!=null?EX1R.beam:clock*0.6;
-  NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
+  const mastOn=!flag('tower_quiet')||!!flag('mast_lit');   // dark from the night the lighthouse was lit until the barrier is raised again
+  NIGHT.mast.visible=on&&mastOn&&(clock*1.2%1)<0.45;(NIGHT.mastTop||(NIGHT.mastTop=world.getObjectByName('mastTop'))).visible=mastOn;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 // the unlit face takes the colour and strength of the light around it (sun and sky), so it does not glow at dusk or at night
 const _tint=new THREE.Color(),_tc=new THREE.Color();
@@ -6659,9 +6660,9 @@ function ogMan(o){const h=makeHuman(Object.assign({},SUIT,o||{}));h.g.visible=fa
 for(let k=0;k<3;k++)OG.men.push(ogMan(k===0?{hair:'#3a3a3a',shirt:'#f2f2ee',vest:'#1d1f24'}:{}));   // the first is Kurosaki: grey hair, white shirt
 // the scene by the parked van: the van stops on the coast road by the east tunnel and the men stand round it
 const OG_PARK=[200,COAST_Z+2.2];
-function ogScene(on){VAN.scripted=on;OG.scene=on;if(!on)for(const h of OG.men)h.g.visible=false;for(const c of CARS)if(c!==VAN){c.g.visible=!on;c.box.on=!on;}if(on){VAN.x=OG_PARK[0];VAN.z=OG_PARK[1];VAN.v=0;VAN.g.position.set(VAN.x,G(VAN.x,VAN.z)+0.02,VAN.z);VAN.g.rotation.y=-Math.PI/2;
+function ogScene(on){VAN.scripted=on;OG.scene=on;if(!on)for(const h of OG.men)h.g.visible=false;for(const c of CARS)if(c!==VAN){c.g.visible=!on;c.box.on=!on;}if(on){VAN.g.visible=true;VAN.x=OG_PARK[0];VAN.z=OG_PARK[1];VAN.v=0;VAN.g.position.set(VAN.x,G(VAN.x,VAN.z)+0.02,VAN.z);VAN.g.rotation.y=-Math.PI/2;
     const hl=VAN.g.userData.len/2+0.1;Object.assign(VAN.box,{x0:VAN.x-hl,x1:VAN.x+hl,z0:VAN.z-0.9,z1:VAN.z+0.9,top:G(VAN.x,VAN.z)+1.9,on:true});}
-  OG.men.forEach((h,k)=>{h.g.visible=on;if(on){const x=OG_PARK[0]-2+k*2.2,z=OG_PARK[1]-2.4-(k%2)*0.6;h.g.position.set(x,G(x,z),z);h.g.rotation.y=Math.PI*(k?0.9:1.1);}});}
+  OG.men.forEach((h,k)=>{h.g.visible=on;if(on){const x=OG_PARK[0]-2+k*2.2,z=OG_PARK[1]-2.4-(k%2)*0.6;h.g.position.set(x,G(x,z),z);h.g.rotation.y=Math.PI*(k?0.9:1.1);poseHuman(h,'stand',0.016,{});}});}
 // the men run after you: get to the goal before one of them reaches you; caught, you start the run again
 function pursuitP(o){return new Promise(res=>{ST.actor=null;talkNpc=null;OG.run={o,res,t:0};ogPlace();if(!OG.mark){OG.mark=marker(MK.target);OG.mark.scale.set(1.6,1.6,1);}renderHUD();});}
 function ogPlace(){const o=OG.run.o;P.x=o.from[0];P.z=o.from[1];P.yaw=o.from[2];P.v=0;P.y=G(P.x,P.z);rideNow();camInit=false;OG.run.t=0;
@@ -6681,7 +6682,7 @@ function ogEndCam(){const k=OG.men[0],x=VAN.x-1.2,z=VAN.z-1.6;k.g.visible=true;k
   setCam([[VAN.x+4,G(VAN.x,VAN.z)+2.2,VAN.z-5.5],[VAN.x,G(VAN.x,VAN.z)+1.1,VAN.z],2,'cut']);}
 function updateOG(dt){
   if(OG.trail)trailStep(dt);
-  if(OG.scene)for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}   // no traffic while the van is parked for the scene
+  if(OG.scene){for(const c of CARS)if(c!==VAN){c.g.visible=false;c.box.on=false;}for(const h of OG.men)poseHuman(h,'stand',dt,{});}   // no traffic while the van is parked for the scene; the men stand by it
   if(SAVE.drones&&!SAVE.flags.drones_cleared)SAVE.flags.drones_cleared=1;   // saves from before the story
   if(SAVE.flags.ending_org&&!OG.van&&!SAVE.flags.ex1){VAN.scripted=true;VAN.g.visible=false;VAN.box.on=false;}   // the van was taken away
   if(OG.run){const R=OG.run,o=R.o;R.t+=dt;const v=Math.min(8.4,6.2+R.t*0.08);
@@ -8096,7 +8097,7 @@ const BASE_H=6;
 // the rooms as floor rectangles [lx0, lx1, lz0, lz1]: the entrance, corridor A with three alcoves, the warehouse, the monitoring
 // room off its north side, and the long east passage with the shutters
 const BASE_FLOOR=[[0,12,-6,6],[12,92,-3,3],[28,32,3,6],[48,52,-6,-3],[68,72,3,6],[92,132,-20,20],[117,123,-22,-20],[110,130,-34,-22],[132,238,12,18]];
-const BASE_START=[8,0,Math.PI/2],BASE_WARE=[95,0,Math.PI/2],BASE_TERM=[120,-31],BASE_DOOR=[120,-17,0.35],BASE_END=234;
+const BASE_START=[8,0,Math.PI/2],BASE_WARE=[95,0,Math.PI/2],BASE_TERM=[120,-31],BASE_DOOR=[120,-17,0.35],BASE_END=236.5;
 const BASE_SHUT=[{x:152,t:7},{x:177,t:9.2},{x:202,t:11.4},{x:227,t:13.6}];
 const inBaseFloor=(x,z)=>BASE_FLOOR.some(r=>x>=r[0]&&x<r[1]&&z>=r[2]&&z<r[3]);
 function baseG(){return 0;}
@@ -8146,9 +8147,55 @@ function baseG(){return 0;}
     const p=new THREE.Mesh(new THREE.BoxGeometry(0.3,BASE_H,6),sm);p.position.y=BASE_H/2;g.add(p);
     const e=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.3,6),stripe);e.position.y=0.15;g.add(e);
     s.g=g;s.c=collide(BASE_X+s.x-0.2,BASE_X+s.x+0.2,12,18,'bld',BASE_H);s.c.on=false;BASE.shut.push(s);}
+  // the way out at the end of the east passage: an emergency door standing open on the night, the green sign above it
+  { const X=BASE_X+237.95,fm=tm('#4a4f55'),sky=canvasTex(128,160,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#0c1530');gr.addColorStop(0.75,'#1d2f5a');gr.addColorStop(1,'#2a3a40');
+      g.fillStyle=gr;g.fillRect(0,0,w,h);g.fillStyle='#fff';for(let k=0;k<26;k++)g.fillRect(Math.random()*w,Math.random()*h*0.7,1.5,1.5);g.fillStyle='#1a2a1e';g.beginPath();g.moveTo(0,h);
+      for(let x=0;x<=w;x+=16)g.lineTo(x,h*0.8-Math.sin(x*0.07)*8-Math.random()*5);g.lineTo(w,h);g.fill();});
+    const out=new THREE.Mesh(new THREE.PlaneGeometry(2.2,2.8),new THREE.MeshBasicMaterial({map:sky,fog:false}));out.position.set(X,1.4,15);out.rotation.y=-Math.PI/2;BASE.g.add(out);
+    for(const [w,h,z,y] of [[0.18,3.1,13.8,1.55],[0.18,3.1,16.2,1.55],[2.6,0.2,15,2.9]]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.25,h,w),fm);m.position.set(X-0.05,y,z);BASE.g.add(m);}
+    const leaf=new THREE.Mesh(new THREE.BoxGeometry(2.2,2.75,0.08),tm('#6e757c'));leaf.position.set(X-1.15,1.4,12.15);leaf.castShadow=true;outline(leaf,0.02);BASE.g.add(leaf);   // swung open against the wall
+    const bar=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.08,0.1),tm('#c9ced3'));bar.position.set(X-1.0,1.05,12.22);BASE.g.add(bar);
+    const sign=canvasTex(256,96,(g,w,h)=>{g.fillStyle='#1e9a52';g.fillRect(0,0,w,h);g.fillStyle='#fff';g.fillRect(10,10,76,76);g.fillStyle='#1e9a52';
+      g.beginPath();g.arc(48,24,7,0,7);g.fill();g.fillRect(40,33,14,26);g.save();g.translate(47,58);g.rotate(0.5);g.fillRect(-4,0,8,22);g.restore();g.save();g.translate(47,58);g.rotate(-0.6);g.fillRect(-4,0,8,22);g.restore();
+      g.fillStyle='#fff';g.font=signFont(40,true);g.textBaseline='middle';g.fillText('非常口',100,h/2+2);});
+    const sm=new THREE.Mesh(new THREE.PlaneGeometry(1.4,0.52),new THREE.MeshBasicMaterial({map:sign}));sm.position.set(X-0.08,3.45,15);sm.rotation.y=-Math.PI/2;BASE.g.add(sm);
+    BASE.exitGlow=glow('#2fd27a',X-0.3,3.45,15,2.2);}
   // the map: the rooms in grey on dark
   const mc=BASE.map;mc.width=W;mc.height=N;const g=mc.getContext('2d');g.fillStyle='#3a3d42';g.fillRect(0,0,W,N);g.fillStyle='#b8bcc0';
   for(const [a,b,c,d] of BASE_FLOOR)g.fillRect(a-X0,c-Z0,b-a,d-c);BASE.mapX0=BASE_X+X0;BASE.mapZ0=Z0;}
+// dressing the walls: wherever a room's edge has rock behind it, a darker lower panel with a hazard band at its foot, panel seams,
+// pipes and a cable tray under the ceiling, a lamp now and then, closed doors along the corridors and signs at the turns
+{ const X=BASE_X,segs=[],O=0.5;
+  for(const [a,b,c,d] of BASE_FLOOR)for(const [x0,z0,x1,z1,nx,nz] of [[a,c,b,c,0,1],[a,d,b,d,0,-1],[a,c,a,d,1,0],[b,c,b,d,-1,0]]){
+    const L=Math.hypot(x1-x0,z1-z0);let run=null;
+    for(let u=0.5;u<L;u+=1){const x=x0+(x1-x0)*u/L,z=z0+(z1-z0)*u/L,wall=!inBaseFloor(x-nx*O,z-nz*O);
+      if(wall){if(!run)run={u0:u-0.5};run.u1=u+0.5;}if((!wall||u+1>=L)&&run){if(run.u1-run.u0>=2)segs.push({x0:x0+(x1-x0)*run.u0/L,z0:z0+(z1-z0)*run.u0/L,x1:x0+(x1-x0)*run.u1/L,z1:z0+(z1-z0)*run.u1/L,nx,nz});run=null;}}}
+  const band=canvasTex(64,16,(g,w,h)=>{for(let x=-16;x<w;x+=16){g.fillStyle='#e0b42a';g.fillRect(0,0,w,h);}g.fillStyle='#1d1e20';for(let x=-16;x<w+16;x+=16){g.beginPath();g.moveTo(x,h);g.lineTo(x+8,h);g.lineTo(x+16,0);g.lineTo(x+8,0);g.fill();}},true);
+  const lowM=new THREE.MeshToonMaterial({color:'#5e656b',gradientMap:GRAD}),pipeA=tm('#5d6a73'),pipeB=tm('#8a6b3f'),tray=tm('#3e4348'),lampM=new THREE.MeshBasicMaterial({color:'#fff1c8'});
+  const seamG=new THREE.BoxGeometry(0.07,BASE_H,0.05),seams=[],doors=[],lamps=[];
+  for(const S of segs){const L=Math.hypot(S.x1-S.x0,S.z1-S.z0),mx=(S.x0+S.x1)/2,mz=(S.z0+S.z1)/2,ry=Math.atan2(S.nx,S.nz),off=(k)=>[mx+S.nx*k,mz+S.nz*k];
+    const plane=(w,h,mat,y,k)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);const [x,z]=off(k);m.position.set(X+x,y,z);m.rotation.y=ry;BASE.g.add(m);return m;};
+    plane(L,2.3,lowM,1.15,0.012);
+    const bt=band.clone();bt.needsUpdate=true;bt.repeat.set(L/1.2,1);plane(L,0.32,new THREE.MeshBasicMaterial({map:bt}),0.16,0.018);
+    const along=new THREE.Vector3(S.x1-S.x0,0,S.z1-S.z0).normalize();
+    for(const [r,y,k,mat] of [[0.13,4.7,0.3,pipeA],[0.08,5.05,0.5,pipeB]]){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,8),mat);const [x,z]=off(k);m.position.set(X+x,y,z);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),along);BASE.g.add(m);}
+    { const m=new THREE.Mesh(new THREE.BoxGeometry(L,0.08,0.45),tray);const [x,z]=off(0.25);m.position.set(X+x,5.5,z);m.rotation.y=ry;BASE.g.add(m);}
+    for(let u=1.5;u<L-0.5;u+=3)seams.push([S.x0+(S.x1-S.x0)*u/L+S.nx*0.02,S.z0+(S.z1-S.z0)*u/L+S.nz*0.02,ry]);
+    for(let u=5;u<L-2;u+=10)lamps.push([S.x0+(S.x1-S.x0)*u/L+S.nx*0.12,S.z0+(S.z1-S.z0)*u/L+S.nz*0.12,ry]);
+    if(L>=8)for(let u=7;u<L-3;u+=17)doors.push([S.x0+(S.x1-S.x0)*u/L+S.nx*0.03,S.z0+(S.z1-S.z0)*u/L+S.nz*0.03,ry]);}
+  const im=new THREE.InstancedMesh(seamG,tm('#5a6066'),seams.length);seams.forEach(([x,z,r],k)=>{dummy.position.set(X+x,BASE_H/2,z);dummy.rotation.set(0,r,0);dummy.scale.set(1,1,1);dummy.updateMatrix();im.setMatrixAt(k,dummy.matrix);});
+  im.frustumCulled=false;BASE.g.add(im);
+  for(const [x,z,r] of lamps){const m=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.18,0.12),lampM);m.position.set(X+x,3.4,z);m.rotation.y=r;BASE.g.add(m);
+    const gl=glow('#ffe7b0',X+x,3.4,z,1.6);gl.visible=true;gl.material.opacity=0.45;scene.remove(gl);BASE.g.add(gl);}
+  const doorTex=n=>canvasTex(96,160,(g,w,h)=>{g.fillStyle='#6e757c';g.fillRect(0,0,w,h);g.strokeStyle='#4a4f55';g.lineWidth=4;g.strokeRect(2,2,w-4,h-4);
+    g.fillStyle='#22282e';g.fillRect(30,24,36,26);g.fillStyle='#c9ced3';g.fillRect(70,82,14,5);g.fillStyle='#e8e8e8';g.font='bold 14px monospace';g.fillText(n,30,120);});
+  doors.forEach(([x,z,r],k)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.4),new THREE.MeshBasicMaterial({map:doorTex('B-'+(k+1))}));m.position.set(X+x,1.2,z);m.rotation.y=r;BASE.g.add(m);});
+  // signs at the turns (each on the wall nearest its spot)
+  const signTex=(t,bg,fg)=>canvasTex(256,64,(g,w,h)=>{g.fillStyle=bg;g.fillRect(0,0,w,h);g.fillStyle=fg;g.font=signFont(30,true);g.textAlign='center';g.textBaseline='middle';g.fillText(t,w/2,h/2+2);});
+  for(const [t,lx,lz,bg,fg] of [['通路A',14,0,'#2b3a4a','#dfe8ef'],['第2倉庫',94,10,'#2b3a4a','#dfe8ef'],['監視室 →',112,-18,'#7a1e1e','#ffe8e0'],['立入禁止',60,0,'#e0b42a','#1d1e20'],['東通路　非常口 →',140,14,'#1e6a3a','#e8fff0']]){
+    let best=null,bd=1e9;for(const S of segs){const L=Math.hypot(S.x1-S.x0,S.z1-S.z0),ax=S.x1-S.x0,az=S.z1-S.z0,u=clamp(((lx-S.x0)*ax+(lz-S.z0)*az)/(L*L),0.1,0.9),px=S.x0+ax*u,pz=S.z0+az*u,d=Math.hypot(px-lx,pz-lz);if(d<bd){bd=d;best=[px+S.nx*0.04,pz+S.nz*0.04,Math.atan2(S.nx,S.nz)];}}
+    if(!best)continue;const m=new THREE.Mesh(new THREE.PlaneGeometry(1.8,0.45),new THREE.MeshBasicMaterial({map:signTex(t,bg,fg)}));m.position.set(X+best[0],2.95,best[1]);m.rotation.y=best[2];BASE.g.add(m);}}
 // the guards: men in black on their beats; each carries the pale fan of what he can see
 const BASE_BEATS=[[[24,0],[86,0]],[[98,-16],[127,-16],[127,9],[98,9]],[[111,10],[111,-15]],[[96,12],[128,12]]];
 const FAN=(()=>{const R=13,A=0.62,n=12,pos=[0,0,0];for(let k=0;k<=n;k++){const a=-A+2*A*k/n;pos.push(Math.sin(a)*R,0,Math.cos(a)*R);}const idx=[];for(let k=1;k<=n;k++)idx.push(0,k,k+1);
@@ -8168,7 +8215,7 @@ function baseHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElem
 // sneaking: done when she reaches the desk in the monitoring room. Seen for too long, back to the last checkpoint
 function baseSneakP(){return new Promise(res=>{ST.actor=null;talkNpc=null;baseGuards();baseGuardsReset();BASE.sneak={res,cp:BASE_START,caught:0,hudT:0};
   for(const s of BASE.guards){s.h.g.visible=s.fan.visible=true;}if(!BASE.mark){BASE.mark=marker(MK.target);BASE.mark.scale.set(1.6,1.6,1);}renderHUD();});}
-function baseCaught(){const S=BASE.sneak;S.caught++;S.pause=true;$('fade').style.opacity=1;toast('見つかった……！ もう一度',true);
+function baseCaught(){const S=BASE.sneak;S.caught++;S.pause=true;sfx.caught();$('fade').style.opacity=1;toast('見つかった……！ もう一度',true);
   setTimeout(()=>{if(BASE.sneak!==S)return;P.x=BASE_X+S.cp[0];P.z=S.cp[1];P.yaw=S.cp[2];P.v=0;P.y=0;camInit=false;baseGuardsReset();$('fade').style.opacity=0;$('hurt').style.opacity=0;S.pause=false;
     if(S.caught%3===0)baseRetire(S);},800);}
 async function baseRetire(S){S.pause=true;const i=await askP('',`${S.caught}回見つかってしまった……。どうする？`,['もう少しがんばる','先に進む（リタイア）']);S.pause=false;
@@ -8211,7 +8258,7 @@ function updateBase(dt){if(AREA!=='base')return;
   scene.fog.color.set('#1c1f23');scene.background.set('#1c1f23');scene.fog.near=8;scene.fog.far=70;hemi.color.set('#dfe6ee');hemi.groundColor.set('#4a4e54');hemi.intensity=0.8;sun.intensity=0.2;
   for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
   if(!BASE.run){for(const m of BASE.strips)m.visible=true;BASE.lightMat.color.set('#fff6dc');}
-  BASE.glint.visible=!!BASE.sneak;BASE.glint.material.opacity=0.5+0.4*Math.sin(clock*3);
+  BASE.glint.visible=!!BASE.sneak;BASE.exitGlow.visible=true;BASE.exitGlow.material.opacity=0.35+0.15*Math.sin(clock*4);BASE.glint.material.opacity=0.5+0.4*Math.sin(clock*3);
   if(BASE.sneak)sneakStep(dt);if(BASE.run)runStep(dt);}
 
 /* ---------- the extra story "オーシャンゲート" (free, after the true ending): the lighthouse is lit, and something has noticed
@@ -8243,17 +8290,22 @@ const EX1={props:[],marble:null};
   for(const m of EX1.props)m.visible=false;}
 const ex1On=()=>{const s=SAVE.flags.ex1||0;return s>0&&!SAVE.flags.ex1_done;};
 function updateEx1(){const on=ex1On()&&!URA.on;for(const m of EX1.props)m.visible=on;
-  if(EX1.still){for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
+  if(EX1.still){for(const c of CARS)if(!(EX1.van&&c===VAN)){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
   if(EX1.marble&&EX1.marble.visible){EX1.marble.position.set(P.x,P.y+1.0,P.z);EX1.marble.material.opacity=0.55+0.4*Math.sin(clock*4);}}
 // the scene of the truth on the coast road: Kurosaki out of his drone, the shadows round about, and the town's old guard
+const MAST={x:-285,z:-40};MAST.y=H(MAST.x,MAST.z);   // the radio mast on the west hill (p3_props.js)
 const TRUTH={x:-18,z:COAST_Z-3.5};TRUTH.y=G(TRUTH.x,TRUTH.z);
-function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;if(!on){for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;return;}k.g.position.set(TRUTH.x-4,TRUTH.y,TRUTH.z);k.g.rotation.y=Math.PI/2;poseHuman(k,'stand',0.016,{});}
+function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;EX1.van=on;VAN.scripted=on;
+  if(on){const x=TRUTH.x-11,z=COAST_Z+2.2;VAN.x=x;VAN.z=z;VAN.v=0;VAN.g.visible=true;VAN.g.position.set(x,G(x,z)+0.02,z);VAN.g.rotation.y=Math.PI/2;
+    const hl=VAN.g.userData.len/2+0.1;Object.assign(VAN.box,{x0:x-hl,x1:x+hl,z0:z-0.9,z1:z+0.9,top:G(x,z)+1.9,on:true});}
+  if(!on){for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;return;}k.g.position.set(TRUTH.x-2.4,TRUTH.y,TRUTH.z);k.g.rotation.y=Math.PI/2;poseHuman(k,'stand',0.016,{});}
 function ex1Shadows(on){if(!EX1.shadows){EX1.shadows=[];for(let k=0;k<7;k++){const h=makeHuman(SHADE);world.add(h.g);EX1.shadows.push({h,eye:glow('#ff3020',0,0,0,0.9)});}}
   EX1.shadows.forEach((s,k)=>{const a=k/7*TAU+0.3,r=15+(k%3)*3,x=TRUTH.x+Math.cos(a)*r,z=TRUTH.z+3+Math.sin(a)*r*0.45;
     s.h.g.visible=s.eye.visible=on;if(!on)return;s.h.g.position.set(x,G(x,z),z);s.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);poseHuman(s.h,'stand',0.016,{});s.eye.position.set(x,G(x,z)+1.62,z);});}
+// (their x drawn in to 0.6, so that they all fit a phone held upright)
 const GATHER={tome:[-25,3.5],baker:[-11,3.5],okami:[-27,0.5],master:[-9,0.5],neko:[-19,6]};
 function ex1Gather(on){for(const id in GATHER){const n=NPCS[id];
-  if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=TRUTH.x+GATHER[id][0]+18,z=TRUTH.z+GATHER[id][1];n.x=x;n.z=z;n.mode='stand';
+  if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=TRUTH.x+(GATHER[id][0]+18)*0.6,z=TRUTH.z+GATHER[id][1];n.x=x;n.z=z;n.mode='stand';
     n.h.g.position.set(x,G(x,z)+paveY(x,z),z);n.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);}
   else if(n.home){const o=n.home;n.x=o.x;n.z=o.z;n.mode=o.mode;n.h.g.position.set(o.x,o.y,o.z);n.h.g.rotation.y=o.yaw;delete n.home;}
   Object.assign(n.box,{x0:n.x-n.rad,x1:n.x+n.rad,z0:n.z-n.rad,z1:n.z+n.rad});}}
@@ -8368,8 +8420,10 @@ const EX1_EVENTS=[
     ['say','baker','（無線の声）ナギちゃん、見つかった！ シャッターが下りる前に、東の通路から外へ出ろ！'],
     ['cam','off'],
     ['baserun'],
-    ['cam',[BASE_X+BASE_END-6,2.2,10],[BASE_X+BASE_END+6,1.6,15],1.2,'cut'],
-    ['say','','最後のシャッターの下をすべりぬけると、夜の山の風が顔に当たった。','電波塔の真下。赤い光は消えたまま、鉄骨だけが夜空にそびえている。'],
+    ['cam',[BASE_X+BASE_END-6,1.8,13.2],[BASE_X+238,1.6,15],1.2,'cut'],
+    ['say','','最後のシャッターの下をすべりぬけると、通路のつきあたりに、開いたままの非常口があった。'],
+    ['fade','out'],['warp',MAST.x+8,MAST.z+4,-2.1],['cam',[MAST.x+14,MAST.y+1.6,MAST.z+12],[MAST.x+2,MAST.y+15,MAST.z+1],1.2,'cut'],['fade','in'],
+    ['say','','外に出ると、夜の山の風が顔に当たった。','電波塔の真下。赤い光は消えたまま、鉄骨だけが夜空にそびえている。'],
     ['say','','バラバラバラ……！ 頭の上で、大きなプロペラの音がした。'],
     ['say','黒崎','（スピーカーの声）……逃がすと思うか。'],
     ['fade','out'],['cam','off'],['warp',3,-196,0],['set','ex1',7]]},
@@ -8381,9 +8435,9 @@ const EX1_EVENTS=[
     ['say','baker','（無線の声）黒崎の大型ドローンだ！ ナギちゃん、坂を下りながら撃ち落とせ！'],
     ['cam','off'],
     ['drones',{total:6,boss:1,title:'黒崎のドローンを落とせ'}],
-    ['fade','out'],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],['call',()=>ex1Kurosaki(true)],
+    ['fade','out'],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],['call',()=>ex1Kurosaki(true)],
     ['cam',[TRUTH.x,TRUTH.y+1.8,TRUTH.z+6.5],[TRUTH.x,TRUTH.y+1.2,TRUTH.z],1.5,'cut'],['fade','in'],
-    ['say','','大型ドローンは、海岸通りに落ちて火花を散らした。','こわれた機体から、白髪まじりの男がはい出してくる。……黒崎だ。'],
+    ['say','','大型ドローンは、海岸通りに落ちて火花を散らした。','キキッ……！ ブレーキの音。黒いバンが止まって、白髪まじりの男が降りてきた。','手には、ドローンの操縦機。……黒崎だ。'],
     ['say','nagi','ソウタくんを返して！ あなたたちが連れていったんでしょ！'],
     ['say','黒崎','……ソウタ？ 子どもなど、さらっておらん。'],
     ['say','nagi','うそ！ 黒いバンが、家の前に――'],
@@ -8574,8 +8628,8 @@ const EX1B_EVENTS=[
     ['say','nagi','手をはなさないで！ 走るよ！'],
     ['cam','off'],['call',()=>{EX1R.follow=true;}],
     ['chase'],
-    ['fade','out'],['ura',false],['call',()=>{rescueSota('stand',TRUTH.x+GATHER.tome[0]+19.2,TRUTH.z+GATHER.tome[1]+0.4,Math.PI);ex1Gather(true);ex1Kurosaki(true);}],
-    ['time',23.8,0],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],
+    ['fade','out'],['ura',false],['call',()=>{rescueSota('stand',TRUTH.x+(GATHER.tome[0]+18)*0.6+1.2,TRUTH.z+GATHER.tome[1]+0.4,Math.PI);ex1Gather(true);ex1Kurosaki(true);}],
+    ['time',23.8,0],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],
     ['cam',[TRUTH.x+6,TRUTH.y+3.6,TRUTH.z-9],[TRUTH.x+2,TRUTH.y+1,TRUTH.z+2],1.5,'cut'],['fade','in'],
     ['say','','トンネルを転がり出て、海岸通りまで走りぬけると、みんなが待っていた。'],
     ['say','tome','ナギ！ ソウタ！ ……よかった。よかったねえ。'],
@@ -8589,7 +8643,7 @@ const EX1B_EVENTS=[
     ['drones',{total:8,title:'霧の中の影のドローンを落とせ'}],
     ['say','baker','（無線の声）上は片づいた！ ナギちゃん、浜だ！'],
     ['call',defendP],
-    ['fade','out'],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],['call',giantRise],
+    ['fade','out'],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],['call',giantRise],
     ['cam',[GIANT.x-16,TRUTH.y+2.4,COAST_Z+4],[GIANT.x,SEA_Y+20,GIANT.z],1.2,'cut'],['fade','in'],
     ['wait',1.5],
     ['say','','そのとき、海が、ふくれあがった。','霧の中から、山のような影が立ち上がる。……町を見下ろす、ふたつの赤い目。'],
@@ -9007,7 +9061,7 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['cam',[BOSS_AT.x+14,G(BOSS_AT.x,SHORE)+2.4,SHORE+1],[BOSS_AT.x,SEA_Y+18,BOSS_AT.z],1.2,'cut'],
   ['call',()=>{BOSS.y=SEA_Y-70;}],['wait',3.5],
   ['say','','三度目の光につらぬかれて、主は、声にならない声をあげた。','そして、門といっしょに、海の底へしずんでいった。'],
-  ['say','','……そのとき、山の上の電波塔に、赤い灯りがともった。'],
+  ['set','mast_lit'],['say','','……そのとき、山の上の電波塔に、赤い灯りがともった。'],
   ['say','master','（無線の声）結界、張りなおした！ ……門が、閉じていく！'],
   ['call',()=>bossShow(false)],
   // dawn
@@ -9149,6 +9203,9 @@ function sndInit(){const S=SND;if(S.ctx){sndRevive(true);return;}
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
   S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');S.L.crowd=loop('bandpass',650,0.8);
+  // Oceangate's base: machines and vents in the rock, a low dissonance that rises with the guards' suspicion, the siren, the shutters
+  S.L.hum=loop('lowpass',50,1.5,'sawtooth');S.L.vent=loop('lowpass',700,0.5);S.L.tense=loop('lowpass',62,1,'sawtooth');S.L.tense2=loop('lowpass',65.5,1,'sawtooth');
+  S.L.siren=loop('lowpass',480,1,'square');S.L.shutg=loop('bandpass',260,2);
 }
 // the level: on/off and the volume from the settings
 function sndLevel(){return SND.on?0.9*SND.vol:0;}
@@ -9194,7 +9251,12 @@ const sfx={
   pad:v=>{hiss(0.08,'lowpass',360,0.16*v);tone(78,0.07,'sine',0.1*v,55);},
   thud:v=>{tone(50,0.34,'sine',0.6*v,28);hiss(0.2,'lowpass',240,0.4*v);},
   heart:v=>{tone(56,0.13,'sine',v,38);tone(50,0.15,'sine',v*0.8,34,0.18);},
-  cricket:()=>{for(let i=0;i<3;i++)tone(4300,0.035,'sine',0.025,null,i*0.06);}};
+  cricket:()=>{for(let i=0;i<3;i++)tone(4300,0.035,'sine',0.025,null,i*0.06);},
+  boot:v=>{hiss(0.05,'bandpass',1400,0.12*v,2);tone(120,0.05,'sine',0.14*v,70);},
+  notice:()=>{tone(880,0.3,'triangle',0.07,820);tone(932,0.3,'triangle',0.06,870);hiss(0.25,'bandpass',3000,0.05,4,1500);},
+  caught:()=>{tone(220,0.7,'sawtooth',0.12,90);tone(233,0.7,'sawtooth',0.1,95);hiss(0.6,'bandpass',2400,0.16,3,700);},
+  clank:v=>{tone(310,0.5,'triangle',0.06*v);tone(467,0.35,'triangle',0.04*v,null,0.02);hiss(0.08,'bandpass',2500,0.05*v,4);},
+  drip:()=>{tone(1500,0.12,'sine',0.035,700);}};
 // the drone fight and the fireworks call their own effects
 { const s0=shoot;shoot=function(...a){sfx.shot();return s0.apply(this,a);};
   const b0=boom;boom=function(p){sfx.boom(att(Math.hypot(p.x-P.x,p.z-P.z),160)+0.15);return b0(p);};
@@ -9248,6 +9310,19 @@ function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,
       C.stepT=(C.stepT||0)-dt;if(C.stepT<=0&&C.sp>0.5){C.stepT=clamp(3/C.sp,0.3,0.95);if(v>0.005)sfx.thud(v);}
       const hv=att(C.d,34);S.heartT=(S.heartT||0)-dt;if(hv>0.02&&S.heartT<=0){S.heartT=lerp(1.0,0.36,hv);sfx.heart(0.12+hv*0.45);}}}
   set(L.growl.g.gain,gr,0.2);set(L.growl.src.frequency,38+gr*40,0.2);
+  // Oceangate's base: the machines and the vents; the guards' boots nearby; a low dissonance and your heart as one grows
+  // suspicious, a sting when one notices you; in the alarm, the siren, the shutters grinding down and slamming shut
+  const inB=play&&AREA==='base',BS=inB&&BASE.sneak&&!BASE.sneak.pause;let top=0;
+  if(BS)for(const g of BASE.guards){top=Math.max(top,g.sus);g.stepT=(g.stepT||0)-dt;
+    if(g.sus<0.05&&g.wait<=0&&g.stepT<=0){g.stepT=0.55;const v=att(Math.hypot(g.x-P.x,g.z-P.z),30);if(v>0.01)sfx.boot(v);}
+    if(g.sus>0.12&&!g.noticed){g.noticed=true;sfx.notice();}else if(g.sus<0.02)g.noticed=false;}
+  set(L.hum.g.gain,inB?0.05:0,0.4);set(L.vent.g.gain,inB?0.035:0,0.4);set(L.tense.g.gain,BS?0.03+top*0.12:0,0.3);set(L.tense2.g.gain,BS?0.02+top*0.1:0,0.3);
+  if(BS&&top>0.15){S.bheart=(S.bheart||0)-dt;if(S.bheart<=0){S.bheart=lerp(1.0,0.34,top);sfx.heart(0.1+top*0.4);}}
+  if(inB&&!BASE.run&&clock>(S.nextClank||0)){S.nextClank=clock+4+Math.random()*6;if(Math.random()<0.5)sfx.clank(0.5+Math.random()*0.5);else sfx.drip();}
+  const BR=inB&&BASE.run;set(L.siren.g.gain,BR&&!BR.pause?0.05:0,0.1);if(BR)set(L.siren.src.frequency,480+260*(0.5+0.5*Math.sin(clock*3.2)),0.03);
+  let sg=0;if(BR)for(const s of BASE.shut){const k=clamp((BR.t-s.t)/2.4,0,1),v=att(Math.abs(P.x-(BASE_X+s.x)),60);if(k>0&&k<1)sg=Math.max(sg,v);
+    if(k>=1&&!s.slam){s.slam=true;sfx.thud(Math.max(0.2,v));}if(k<=0)s.slam=false;}
+  set(L.shutg.g.gain,sg*0.18,0.08);
   // the trams: motor, rail joints, the bell as they leave, the doors
   for(const T of [TRAM,INKT]){const here=(T===INKT)===(AREA==='inaka'),k=T===TRAM?'t':'i';if(!here)continue;
     let d=1e9;for(const g of T.cars)d=Math.min(d,Math.hypot(g.position.x-P.x,g.position.z-P.z));if(ride&&RIDE.train===T)d=0;const v=att(d,90);
@@ -9829,14 +9904,30 @@ function act(o){if(!o)return;
   else if(o.kind==='boat'||o.kind==='lhdoor'||o.kind==='lhdown'||o.kind==='lamp')islAct(o);}
 
 /* ---------- camera ---------- */
-const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0;
+const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,footCamYaw=0,CAMOFF=0;
 const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
+function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld'||c.on===false)continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
   if(Math.abs(x)>195)for(const e of HILL_TREES){if(Math.abs(e.x-x)<e.s*1.1&&Math.abs(e.z-z)<e.s*1.1&&y<e.y+e.s*2.7&&Math.hypot(e.x-x,e.z-z)<e.s*1.05)return true;}return false;}
+// where a scene's camera can stand: above the ground, out of buildings, crates and walls, out of the trees and the sea-front pines
+function camClear(x,y,z){if(y<G(x,z)+0.3||blocked(x,y,z))return false;
+  for(const c of COLL)if(c.on!==false&&c.tag==='prop'&&x>c.x0-0.2&&x<c.x1+0.2&&z>c.z0-0.2&&z<c.z1+0.2&&y<(c.top||1)+0.3)return false;
+  if(AREA!=='town')return true;
+  for(const e of PINES){if(Math.abs(x-e.x)<3&&Math.abs(z-e.z)<3){const g=G(e.x,e.z);if(Math.hypot(x-e.x,z-e.z)<2.7&&y>g+e.h*0.4&&y<g+e.h*1.15)return false;}}
+  for(const e of TREES){if(Math.abs(x-e.x)<e.s&&Math.abs(z-e.z)<e.s&&Math.hypot(x-e.x,z-e.z)<e.s*0.9&&y<G(e.x,e.z)+e.s*1.9)return false;}
+  return true;}
+// a scene's shot, made to fit: on a phone held upright the frame is narrow, so the camera steps back along its line (up to 1.5×)
+// to take in what a wide screen would; and on any screen, a camera that would stand in a wall or a tree, or whose view of what
+// it looks at is cut by one, moves along the same line to the nearest place that is clear. Worked out once for each shot
+function camFit(c){if(c.fit&&c.fitA===camera.aspect<0.8)return c.fit.clone();
+  const p=c.pos,l=c.look,d=p.clone().sub(l),up=camera.aspect<0.8?1.5:1,ks=[];
+  for(let k=up;k>=0.999;k-=0.1)ks.push(k);for(let k=0.9;k>=0.35;k-=0.1)ks.push(k);
+  const clearTo=q=>{for(let t=0.2;t<=1.001;t+=0.1){const x=lerp(l.x,q.x,t),y=lerp(l.y,q.y,t),z=lerp(l.z,q.z,t);if(!camClear(x,y,z))return false;}return true;};
+  let best=p.clone();for(const k of ks){const q=l.clone().addScaledVector(d,k);if(clearTo(q)){best=q;break;}}
+  c.fit=best;c.fitA=camera.aspect<0.8;return best.clone();}
 function updateCamera(dt){
   const cyaw=P.foot&&stick.on?footCamYaw:P.yaw,F=new THREE.Vector3(Math.sin(cyaw),0,Math.cos(cyaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
-  else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
+  else if(ST.cam){look=ST.cam.look.clone();want=camFit(ST.cam);rate=ST.cam.rate;}
   else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
   else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
   else if(URA.chase&&URA.chase.replay){want=new THREE.Vector3();look=new THREE.Vector3();uraReplayCam(want,look);rate=URA.chase.replay.at===URA.chase.replay.t0?0:5;}
@@ -9857,12 +9948,21 @@ function updateCamera(dt){
   else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
     // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
     const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
-    for(let t=1;t>0.25&&blocked(want.x,want.y,want.z);t-=0.1){want=p.clone().addScaledVector(F,-back*t);want.y+=up;}
+    // on this side of the walls. How far the camera can get from her head toward a spot before a wall stops it (0…1; pressed
+    // against a wall herself, the first open step counts as the start). With a wall close behind her, it swings round to her
+    // side, where there is room, rather than squeezing in at her back; and if it still cannot get far, it rises to look down
+    { const h=p.clone();h.y+=1.3;
+      const reach=q=>{let open=false;for(let t=0.06;t<=1.001;t+=0.06){const b=blocked(lerp(h.x,q.x,t),lerp(h.y,q.y,t),lerp(h.z,q.z,t));if(!b)open=true;else if(open)return t-0.06;}return 1;};
+      const turn=(q,o)=>{const dx=q.x-p.x,dz=q.z-p.z,c=Math.cos(o),s=Math.sin(o);return new THREE.Vector3(p.x+dx*c-dz*s,q.y,p.z+dx*s+dz*c);};
+      let off=0;if(reach(want)<0.75){let best=reach(want);for(const o of [0.6,-0.6,1.2,-1.2,1.7,-1.7]){const k=reach(turn(want,o))-Math.abs(o)*0.1;if(k>best+0.05){best=k;off=o;}}}
+      CAMOFF+=(off-CAMOFF)*Math.min(1,dt*4);if(Math.abs(CAMOFF)>0.01)want=turn(want,CAMOFF);
+      const k=reach(want);if(k<1){const kk=Math.max(0.1,k);want.lerpVectors(h,want,kk);want.y+=(1-kk)*1.9;look.lerp(new THREE.Vector3(P.x,P.y+0.7,P.z).addScaledVector(F,1.4),(1-kk)*0.8);rate=14;}}
+    if(AREA==='base'||AREA==='hq')want.y=Math.min(want.y,(AREA==='base'?BASE_H:6.5)-0.5);
     want.y=Math.max(want.y,G(want.x,want.z)+0.6);}
   if(!camInit||rate===0){camPos.copy(want);camLook.copy(look);camInit=true;}   // on the tram the view rides with the car
   camPos.lerp(want,1-Math.exp(-dt*rate));camLook.lerp(look,1-Math.exp(-dt*(rate+3)));
   camera.position.copy(camPos);if(P.bump>0&&!reduceMotion){camera.position.y+=(Math.random()-.5)*P.bump*0.3;}P.bump=Math.max(0,P.bump-dt);
-  camera.lookAt(camLook);const fov=modal==='closet'?closetFov():camera.aspect<0.8?72:58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
+  camera.lookAt(camLook);const fov=modal==='closet'?closetFov():camera.aspect<0.8?(ST.cam?84:72):58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
   dome.position.copy(camera.position);
   const sp=state==='title'?new THREE.Vector3(0,30,-120):p;sun.position.copy(sp).addScaledVector(sunDir,70);sun.target.position.copy(sp);sun.target.updateMatrixWorld();
 }
