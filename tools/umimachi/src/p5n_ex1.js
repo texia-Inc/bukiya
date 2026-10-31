@@ -9,7 +9,9 @@
      4  she has followed it to the iron door by the west tunnel; at night Mio's voice comes through the marble
      5  the next morning the baker sends word: tonight they go in
      6  at night, into the base: past the guards to the monitoring room, the record of 1996, the alarm and the shutters (p5o_base.js)
-     7  the rest is still being made ---------- */
+     7  out under the radio mast: down from the lookout, Kurosaki's big drone; then on the coast road the mast hums again,
+        the shadows come out of the fog, and the truth — Kurosaki, then grandma and the shopkeepers, the baker's past
+     8  the rest is still being made ---------- */
 // what the night left behind: a torn net on the pier, a scorched lamp on the coast road, black footprints at the crossing
 const EX1={props:[],marble:null};
 { const lamp=LAMPS.reduce((b,e)=>Math.abs(e.x+30)<Math.abs(b.x+30)?e:b,LAMPS[0]);EX1.lamp=[lamp.x,lamp.z];
@@ -26,7 +28,20 @@ const EX1={props:[],marble:null};
   for(const m of EX1.props)m.visible=false;}
 const ex1On=()=>{const s=SAVE.flags.ex1||0;return s>0&&!SAVE.flags.ex1_done;};
 function updateEx1(){const on=ex1On()&&!URA.on;for(const m of EX1.props)m.visible=on;
+  if(EX1.still){for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
   if(EX1.marble&&EX1.marble.visible){EX1.marble.position.set(P.x,P.y+1.0,P.z);EX1.marble.material.opacity=0.55+0.4*Math.sin(clock*4);}}
+// the scene of the truth on the coast road: Kurosaki out of his drone, the shadows round about, and the town's old guard
+const TRUTH={x:-18,z:COAST_Z-3.5};TRUTH.y=G(TRUTH.x,TRUTH.z);
+function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;if(!on){for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;return;}k.g.position.set(TRUTH.x-4,TRUTH.y,TRUTH.z);k.g.rotation.y=Math.PI/2;poseHuman(k,'stand',0.016,{});}
+function ex1Shadows(on){if(!EX1.shadows){EX1.shadows=[];for(let k=0;k<7;k++){const h=makeHuman(SHADE);world.add(h.g);EX1.shadows.push({h,eye:glow('#ff3020',0,0,0,0.9)});}}
+  EX1.shadows.forEach((s,k)=>{const a=k/7*TAU+0.3,r=15+(k%3)*3,x=TRUTH.x+Math.cos(a)*r,z=TRUTH.z+3+Math.sin(a)*r*0.45;
+    s.h.g.visible=s.eye.visible=on;if(!on)return;s.h.g.position.set(x,G(x,z),z);s.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);poseHuman(s.h,'stand',0.016,{});s.eye.position.set(x,G(x,z)+1.62,z);});}
+const GATHER={tome:[-25,3.5],baker:[-11,3.5],okami:[-27,0.5],master:[-9,0.5],neko:[-19,6]};
+function ex1Gather(on){for(const id in GATHER){const n=NPCS[id];
+  if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=TRUTH.x+GATHER[id][0]+18,z=TRUTH.z+GATHER[id][1];n.x=x;n.z=z;n.mode='stand';
+    n.h.g.position.set(x,G(x,z)+paveY(x,z),z);n.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);}
+  else if(n.home){const o=n.home;n.x=o.x;n.z=o.z;n.mode=o.mode;n.h.g.position.set(o.x,o.y,o.z);n.h.g.rotation.y=o.yaw;delete n.home;}
+  Object.assign(n.box,{x0:n.x-n.rad,x1:n.x+n.rad,z0:n.z-n.rad,z1:n.z+n.rad});}}
 function ex1Marble(on){if(!EX1.marble)EX1.marble=glow('#7fd0ff',0,0,0,1.1);EX1.marble.visible=on;}
 // Sota is gone from the beach while he is missing; Mio is no longer on the pier once she has gone into the light
 { const s0=NPCS.sota.show;NPCS.sota.show=()=>!((SAVE.flags.ex1||0)>=3&&!SAVE.flags.sota_back)&&(!s0||s0());
@@ -44,7 +59,7 @@ function ex1Goal(f,eve,night,home){const s=f.ex1;
   if(s===4)return night?'夜の桟橋の先へ行ってみる':'夜になったら、桟橋の先へ行ってみる（ばあちゃんに話すと夕方まで休める）';
   if(s===5)return eve||night?home:null;
   if(s===6)return eve||night?'こむぎ堂の主人に話す':'日が暮れたら、こむぎ堂の主人に話す（ばあちゃんに話すと夕方まで休める）';
-  if(s===7)return '（追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です）';
+  if(s===8)return '（追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です）';
   return null;}
 function ex1Dark(f){if(f.ex1===4)return '暗くなってきた。桟橋の先へ行ってみよう';if(f.ex1===6)return '暗くなってきた。こむぎ堂の主人のところへ行こう';return null;}
 const EX1_EVENTS=[
@@ -142,7 +157,48 @@ const EX1_EVENTS=[
     ['say','','最後のシャッターの下をすべりぬけると、夜の山の風が顔に当たった。','電波塔の真下。赤い光は消えたまま、鉄骨だけが夜空にそびえている。'],
     ['say','','バラバラバラ……！ 頭の上で、大きなプロペラの音がした。'],
     ['say','黒崎','（スピーカーの声）……逃がすと思うか。'],
-    ['set','ex1',7],['toast','追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です',true],
-    ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
+    ['fade','out'],['cam','off'],['warp',3,-196,0],['set','ex1',7]]},
+  {id:'x3_boss',when:{flags:{ex1:7}},script:[
+    ['cam',[2,G(0,-205)+3.2,-214],[0,0,90],1.2,'cut'],
+    ['say','','山道を一気に駆けおりると、見晴らし台に出た。','眼下に、夜の海街。島の灯台の光が、ゆっくり回っている。'],
+    ['say','','バラバラバラ……！ 電波塔の山の向こうから、大きな黒い機体が姿を現した。'],
+    ['say','黒崎','（スピーカーの声）パン屋の手先か。……じゃまをするな。今夜こそ、あの灯台を消す。'],
+    ['say','baker','（無線の声）黒崎の大型ドローンだ！ ナギちゃん、坂を下りながら撃ち落とせ！'],
+    ['cam','off'],
+    ['drones',{total:6,boss:1,title:'黒崎のドローンを落とせ'}],
+    ['fade','out'],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],['call',()=>ex1Kurosaki(true)],
+    ['cam',[TRUTH.x,TRUTH.y+1.8,TRUTH.z+6.5],[TRUTH.x,TRUTH.y+1.2,TRUTH.z],1.5,'cut'],['fade','in'],
+    ['say','','大型ドローンは、海岸通りに落ちて火花を散らした。','こわれた機体から、白髪まじりの男がはい出してくる。……黒崎だ。'],
+    ['say','nagi','ソウタくんを返して！ あなたたちが連れていったんでしょ！'],
+    ['say','黒崎','……ソウタ？ 子どもなど、さらっておらん。'],
+    ['say','nagi','うそ！ 黒いバンが、家の前に――'],
+    ['say','','ジジジジジ……！ そのとき、消えていたはずの電波塔が、ひとりでに鳴りはじめた。','町の灯りが、いっせいにふるえる。'],
+    ['call',()=>ex1Shadows(true)],
+    ['cam',[TRUTH.x,TRUTH.y+7,TRUTH.z+22],[TRUTH.x,TRUTH.y,TRUTH.z+2],1.2,'cut'],
+    ['say','','霧の中から、顔のない影が、ひとつ、またひとつと現れた。','目だけが、赤く光っている。'],
+    ['say','黒崎','……来たか。'],
+    ['cam',[TRUTH.x,TRUTH.y+1.8,TRUTH.z+6.5],[TRUTH.x,TRUTH.y+1.2,TRUTH.z],1.5,'cut'],
+    ['say','黒崎','よく聞け、小娘。あれは「異界の者」だ。','30年前のあの夜、ミオという子を連れていったのも、あいつらだ。'],
+    ['say','黒崎','あの電波塔は、この町を向こう側から隠す結界だった。','おまえがともした灯台の灯りが、向こうとこちらをつなぐ道を開いた。結界は破れて、町は見つかった。'],
+    ['say','黒崎','灯台を壊そうとしたのは、二度と道を開かせないためだ。リゾートなど、ただの言い訳さ。','ソウタという子は……おそらく、もう向こう側だ。'],
+    ['say','nagi','わたしが……灯りをともしたから……？'],
+    ['call',()=>ex1Marble(true)],
+    ['say','ミオの声','（ちがうよ、ナギ。……あの灯りがなかったら、わたしは、ずっと暗いところにいた）','（ソウタくんは、裏海街にいる。わたしが、道を教える）'],
+    ['call',()=>ex1Marble(false)],
+    ['fade','out'],['call',()=>ex1Gather(true)],['cam',[TRUTH.x,TRUTH.y+3.6,TRUTH.z+15],[TRUTH.x,TRUTH.y+1,TRUTH.z+1.5],1.5,'cut'],['fade','in'],
+    ['say','tome','黒崎。……久しぶりだね。'],
+    ['say','黒崎','……トメさん。それに、商店街の。'],
+    ['say','tome','ナギ、だまっていてごめんよ。わたしたちはね、30年前、この町を異界の者から守っていたのさ。','……あの夜、ミオちゃんだけは、守れなかったけどね。'],
+    ['say','okami','魚松の包丁はね、魚だけをさばくもんじゃないんだよ。'],
+    ['say','master','コーヒー豆より物騒なものも、ずいぶん挽いたもんだ。'],
+    ['say','neko','町内会、改め――海街自警団。30年ぶりの集まりだ。'],
+    ['say','baker','ナギちゃん、もうひとつ白状しとく。おれは昔、オーシャンゲートにいた。黒崎とは同じ班だった。','やり方についていけなくて抜けて、トメさんたちの側についたんだ。'],
+    ['say','黒崎','手を貸せ、とは言わん。……だが、今夜だけは目的は同じだ。'],
+    ['say','tome','ソウタを取り戻すよ。','ナギ。ミオちゃんの声が聞こえるのは、あんただけだ。……たのめるかい？'],
+    ['ask','nagi','（どうする？）',[['行く。ソウタくんを連れて帰る',[]],['……うん。やってみる',[]]]],
+    ['set','ex1',8],
+    ['fade','out'],['call',()=>{ex1Gather(false);ex1Shadows(false);ex1Kurosaki(false);}],['cam','off'],
+    ['toast','追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です',true],
+    ['warp',...HOME],['day']]},
 ];
 EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...EX1_EVENTS);
