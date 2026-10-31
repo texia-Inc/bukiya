@@ -8109,7 +8109,8 @@ const BASE_FLOOR=[[0,12,-6,6],[12,92,-3,3],[28,32,3,6],[48,52,-6,-3],[68,72,3,6]
 const BASE_START=[8,0,Math.PI/2],BASE_WARE=[95,0,Math.PI/2],BASE_TERM=[120,-31],BASE_DOOR=[120,-17,0.35],BASE_END=236.5;
 const BASE_SHUT=[{x:152,t:7},{x:177,t:9.2},{x:202,t:11.4},{x:227,t:13.6}];
 const inBaseFloor=(x,z)=>BASE_FLOOR.some(r=>x>=r[0]&&x<r[1]&&z>=r[2]&&z<r[3]);
-function baseG(){return 0;}
+// far out past the HQ (x below -7500: MIR_X+1500, written out since p5v_mirror.js comes later) the mirror sea has its drowned roofs
+function baseG(x,z){return x<-7500?mirG(x,z):0;}
 { const X0=-2,X1=240,Z0=-36,Z1=20,W=X1-X0,N=Z1-Z0,fl=(i,j)=>i>=0&&j>=0&&i<W&&j<N&&inBaseFloor(X0+i+0.5,Z0+j+0.5),wall=new Uint8Array(W*N);
   for(let j=0;j<N;j++)for(let i=0;i<W;i++){if(fl(i,j))continue;let n=false;for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++)if(fl(i+di,j+dj))n=true;if(n)wall[j*W+i]=1;}
   // the wall cells merged into boxes: runs along x in each row, carried on down while the next row has the same run
@@ -9407,16 +9408,40 @@ async function tdLost(){tdMsg('町の灯りが、ぜんぶ消えてしまった�
 /* ---------- 鏡の海 (a trial): in 裏海街 the sea has drained to a black mirror, flat and open, nothing to catch the board on.
    Riding leaves a line of light on it; bring the line back round to where it was and the ring closes, and every shadow inside
    it burns away at once. The shadows rise out of the mirror and come for Nagi; a touch costs a heart. Three minutes, then dawn.
-   Out from the command table (hqCommand in p5q_hq.js). Like the HQ it lies far off the map (x around MIR_X, flat ground). ---------- */
+   The drowned town shows through: hip roofs to ride up and fly off, a torii and an upturned boat to grind, the broken ends of
+   the pier for kickers. The mirror really mirrors (a second look from under the water, cut at the surface). On the way to
+   dawn: a swarm at 0:55 and 1:55, red shadows from 1:00 that cut the line, and at 2:20 a great shadow that takes three rings.
+   Out from the command table (hqCommand in p5q_hq.js). Like the HQ it lies far off the map (x around MIR_X). ---------- */
 const MIR_X=-9000,MIR_R=70;
 const MIR_LIFE=8,MIR_STEP=0.5,MIR_GAP=14,MIR_CLOSE=2.6,MIR_MAX=700;   // the line lasts 8 s; a ring needs 7 m of line and closes within 2.6 m
-const MIR_FOE={normal:{hp:1,sp:2.6,s:1,pts:10},fast:{hp:1,sp:4.3,s:0.9,pts:15},big:{hp:2,sp:1.8,s:1.6,pts:40}};
-const MIR={on:false,go:false,end:false,g:null,trail:[],foes:[],fx:[],t:0,dur:180,hearts:5,inv:0,kills:0,score:0,combo:0,comboT:0,best:0,spawnT:0,hudT:0,core:null,halo:null,head:null};
+const MIR_FOE={normal:{hp:1,sp:2.6,s:1,pts:10},fast:{hp:1,sp:4.3,s:0.9,pts:15},big:{hp:2,sp:1.8,s:1.6,pts:40},swarm:{hp:1,sp:3.3,s:0.72,pts:8},
+  red:{hp:1,sp:2.4,s:1.05,pts:30},boss:{hp:3,sp:2.1,s:3,pts:500}};
+const MIR={on:false,go:false,end:false,g:null,trail:[],foes:[],fx:[],t:0,dur:180,hearts:5,inv:0,kills:0,score:0,combo:0,comboT:0,best:0,spawnT:0,hudT:0,core:null,halo:null,head:null,
+  waves:{},boss:null,bossDown:false,redSaid:false,moon:null,floor:null,rt:null,rcam:null,clip:null};
+// the drowned town, in metres from the middle of the mirror: [x, z, heading, length, width, height]
+const MIR_ROOFS=[[-25,-20,0.3,14,7,2.2],[28,-8,1.2,12,6,1.8],[-30,22,-0.5,10,6,1.6],[22,34,0.8,16,7,2.4],[0,-46,0,18,8,2.6],[-50,-4,1.57,12,6,1.8],[45,-36,0.4,10,6,1.6],[50,30,-0.9,11,6,1.9]];
+const MIR_BOATS=[[-12,-30,0.9,8,2.6,0.8],[36,10,-0.2,7,2.4,0.7]];
+const MIR_RAMPS=[[-15,-12,Math.PI/2,6,3,1.3],[-23,-58,Math.PI/2,6,3,1.3],[12,6,-0.6,6,3,1.2],[-14,40,2.4,6,3,1.2],[40,-14,-2.2,6,3,1.3],[-22,-44,0.5,7,3,1.4],[-40,10,1.2,6,3,1.2]];
+const MIR_TORII=[[0,-12],[-8,-58]];
+// the height of the mirror's floor: hip roofs and boat hulls (a ridge with four slopes), and the planks of the kickers
+function mirG(x,z){const lx=x-MIR_X;let y=0;
+  for(const [rx,rz,a,L,W,h] of MIR_ROOFS.concat(MIR_BOATS)){const dx=lx-rx,dz=z-rz,al=dx*Math.sin(a)+dz*Math.cos(a),pe=dx*Math.cos(a)-dz*Math.sin(a);
+    const k=Math.min(1-Math.abs(pe)/(W/2),(L/2-Math.abs(al))/(W/2));if(k>0)y=Math.max(y,h*Math.min(1,k));}
+  for(const [rx,rz,a,L,W,h] of MIR_RAMPS){const dx=lx-rx,dz=z-rz,al=dx*Math.sin(a)+dz*Math.cos(a),pe=dx*Math.cos(a)-dz*Math.sin(a);
+    if(al>0&&al<L&&Math.abs(pe)<W/2)y=Math.max(y,h*al/L);}
+  return y;}
 function mirBuild(){if(MIR.g)return;const g=new THREE.Group();scene.add(g);MIR.g=g;g.visible=false;
   // the mirror: a deep blue that darkens outward, the stars caught in it
   const fl=canvasTex(512,512,(c,w,h)=>{const r=c.createRadialGradient(w/2,h/2,8,w/2,h/2,w/2);r.addColorStop(0,'#1a2a44');r.addColorStop(0.55,'#0e1a2e');r.addColorStop(1,'#04070d');c.fillStyle=r;c.fillRect(0,0,w,h);
     for(let k=0;k<420;k++){const a=Math.random()*0.8+0.2;c.fillStyle=`rgba(200,220,255,${a*0.5})`;c.fillRect(Math.random()*w,Math.random()*h,1.2,1.2);}});
-  const floor=new THREE.Mesh(new THREE.CircleGeometry(MIR_R+90,72),new THREE.MeshBasicMaterial({map:fl}));floor.rotation.x=-Math.PI/2;floor.position.set(MIR_X,0,0);g.add(floor);
+  // and what stands above it, seen again from under the surface (mirReflect renders it each frame), rippling a little
+  MIR.rt=new THREE.WebGLRenderTarget(256,256);MIR.rcam=new THREE.PerspectiveCamera();MIR.clip=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+  const fm=new THREE.ShaderMaterial({uniforms:{tBase:{value:fl},tRef:{value:MIR.rt.texture},texMat:{value:new THREE.Matrix4()},uT:{value:0},uDawn:{value:0}},
+    vertexShader:'varying vec2 vUv;varying vec4 vRef;uniform mat4 texMat;void main(){vUv=uv;vRef=texMat*vec4(position,1.0);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+    fragmentShader:'uniform sampler2D tBase;uniform sampler2D tRef;uniform float uT;uniform float uDawn;varying vec2 vUv;varying vec4 vRef;'+
+      'void main(){vec3 b=texture2D(tBase,vUv).rgb;vec4 r=vRef;r.x+=sin(vUv.y*180.0+uT*1.3)*0.005*r.w;r.y+=cos(vUv.x*150.0+uT*0.9)*0.003*r.w;'+
+      'float e=smoothstep(0.5,0.18,length(vUv-0.5));gl_FragColor=vec4(b*(1.0+uDawn*0.6)+texture2DProj(tRef,r).rgb*(0.42+0.2*e)*e*(1.0-0.35*uDawn),1.0);}'});
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(MIR_R+90,72),fm);floor.rotation.x=-Math.PI/2;floor.position.set(MIR_X,0,0);g.add(floor);MIR.floor=floor;
   // the edge of the open water: a faint blue ring
   const edge=new THREE.Mesh(new THREE.RingGeometry(MIR_R-0.15,MIR_R+0.15,96),new THREE.MeshBasicMaterial({color:'#4a7ab8',transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false}));
   edge.rotation.x=-Math.PI/2;edge.position.set(MIR_X,0.03,0);g.add(edge);
@@ -9425,30 +9450,69 @@ function mirBuild(){if(MIR.g)return;const g=new THREE.Group();scene.add(g);MIR.g
   for(let k=0;k<70;k++){const a=k/70*TAU+Math.random()*0.04,r=165+Math.random()*25,w=6+Math.random()*12,h=4+Math.random()*14+(Math.abs(Math.sin(a*1.5))*16),x=MIR_X+Math.cos(a)*r,z=Math.sin(a)*r;
     const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,6),blk);b.position.set(x,h/2,z);b.rotation.y=-a+Math.PI/2;g.add(b);
     if(Math.random()<0.35){const l=new THREE.Mesh(new THREE.PlaneGeometry(1,1.2),win);l.position.set(x-Math.cos(a)*3.1,1.5+Math.random()*(h-3),z-Math.sin(a)*3.1);l.lookAt(MIR_X,l.position.y,0);g.add(l);}}
-  const moon=new THREE.Mesh(new THREE.CircleGeometry(9,32),new THREE.MeshBasicMaterial({color:'#e6ecf5',fog:false}));moon.position.set(MIR_X,70,-230);g.add(moon);
+  const moon=new THREE.Mesh(new THREE.CircleGeometry(9,32),new THREE.MeshBasicMaterial({color:'#e6ecf5',fog:false,transparent:true}));moon.position.set(MIR_X,70,-230);g.add(moon);MIR.moon=moon;
+  // the street lamps of the drowned town, just beyond the open water, still burning
+  for(let k=0;k<16;k++){const a=k/16*TAU+0.2,r=MIR_R+4+(k%3)*3,x=MIR_X+Math.cos(a)*r,z=Math.sin(a)*r,hh=2.4+(k%2)*1.2;
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.11,hh,6),tm('#3a3f48'));pole.position.set(x,hh/2,z);pole.rotation.z=(k%4-1.5)*0.06;g.add(pole);
+    const l=glow('#ffd9a0',x,hh+0.15,z,2.4);scene.remove(l);l.visible=true;g.add(l);}
+  mirProps(g);
   // the line of light: a bright core and a soft halo, rebuilt from the trail every frame
   const rib=(w,col)=>{const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(MIR_MAX*6),3));geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(MIR_MAX*6),3));
     const idx=[];for(let i=0;i<MIR_MAX-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}geo.setIndex(idx);
     const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));m.frustumCulled=false;m.userData={w,col:new THREE.Color(col)};g.add(m);return m;};
   MIR.halo=rib(1.5,'#2a5a9a');MIR.core=rib(0.32,'#bfe6ff');MIR.head=glow('#9fd4ff',0,0,0,2.2);}
+// the roofs, the boats, the kickers and the torii: shapes to match mirG, and rails along the ridges, keels and the torii's beams
+function mirProps(g){const hip=(L,W,h)=>{const a=L/2,b=W/2,c=Math.max(0,a-b),P=[[b,0,-a],[b,0,a],[0,h,c],[0,h,-c],[-b,0,a],[-b,0,-a]],v=[];
+    const q=(i,j,k)=>v.push(...P[i],...P[j],...P[k]);q(0,2,1);q(0,3,2);q(4,3,5);q(4,2,3);q(1,2,4);q(5,3,0);
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));geo.computeVertexNormals();return geo;};
+  const put=(geo,col,x,z,a,y)=>{const m=new THREE.Mesh(geo,tm(col));m.position.set(MIR_X+x,y||0,z);m.rotation.y=a;outline(m,0.03);g.add(m);return m;};
+  const rail=(x,z,a,half,top)=>{const s=Math.sin(a),c=Math.cos(a);RAILS.push({x0:MIR_X+x-s*half,z0:z-c*half,x1:MIR_X+x+s*half,z1:z+c*half,top});};
+  for(const [x,z,a,L,W,h] of MIR_ROOFS){put(hip(L,W,h),'#3d4452',x,z,a);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.18,Math.max(0.4,L-W)),tm('#262b34'));cap.position.set(MIR_X+x,h+0.04,z);cap.rotation.y=a;g.add(cap);if(L-W>2)rail(x,z,a,(L-W)/2-0.3,h+0.1);}
+  for(const [x,z,a,L,W,h] of MIR_BOATS){put(hip(L,W,h),'#5a4634',x,z,a);if(L-W>2)rail(x,z,a,(L-W)/2-0.2,h+0.05);}
+  for(const [x,z,a,L,W,h] of MIR_RAMPS){const geo=new THREE.BoxGeometry(W,h,L),p=geo.attributes.position;for(let i=0;i<p.count;i++)if(p.getY(i)>0&&p.getZ(i)<0)p.setY(i,-h/2);geo.computeVertexNormals();
+    put(geo,'#6b5a44',x+Math.sin(a)*L/2,z+Math.cos(a)*L/2,a,h/2);}
+  for(const [x,z] of MIR_TORII){const red='#b8442e';
+    // tall enough to ride under, and nothing here stops the board (not even the posts: catching on things is no fun out here);
+    // the kicker beside it sends her up onto the beam
+    for(const sx of [-2.4,2.4]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.28,2.5,10),tm(red));p.position.set(MIR_X+x+sx,1.25,z);outline(p,0.02);g.add(p);}
+    const k=new THREE.Mesh(new THREE.BoxGeometry(6.6,0.26,0.45),tm('#2a2224'));k.position.set(MIR_X+x,2.48,z);outline(k,0.02);g.add(k);
+    const n=new THREE.Mesh(new THREE.BoxGeometry(6.0,0.16,0.3),tm(red));n.position.set(MIR_X+x,2.05,z);g.add(n);
+    RAILS.push({x0:MIR_X+x-3.1,z0:z,x1:MIR_X+x+3.1,z1:z,top:2.62});}}
+// the reflection: the scene again from the camera's mirror image under the surface, everything below the surface cut away
+function mirReflect(){if(!MIR.on||AREA!=='mir'||!MIR.rt)return;const sz=renderer.getDrawingBufferSize(new THREE.Vector2()),w=Math.max(64,sz.x>>1),h=Math.max(64,sz.y>>1);
+  if(MIR.rt.width!==w||MIR.rt.height!==h)MIR.rt.setSize(w,h);
+  const c=camera,v=MIR.rcam;c.updateMatrixWorld();const d=c.getWorldDirection(new THREE.Vector3()),t=c.position.clone().add(d);t.y=-t.y;
+  const up=new THREE.Vector3(0,1,0).applyQuaternion(c.quaternion);up.y=-up.y;v.position.set(c.position.x,-c.position.y,c.position.z);v.up.copy(up);v.lookAt(t);
+  v.fov=c.fov;v.aspect=c.aspect;v.near=c.near;v.far=c.far;v.updateProjectionMatrix();v.updateMatrixWorld();
+  const M=MIR.floor.material.uniforms.texMat.value;M.set(0.5,0,0,0.5,0,0.5,0,0.5,0,0,0.5,0.5,0,0,0,1);M.multiply(v.projectionMatrix).multiply(v.matrixWorldInverse).multiply(MIR.floor.matrixWorld);
+  MIR.floor.visible=false;const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;renderer.clippingPlanes=[MIR.clip];
+  renderer.setRenderTarget(MIR.rt);renderer.clear();renderer.render(scene,v);renderer.setRenderTarget(null);
+  renderer.clippingPlanes=[];renderer.shadowMap.autoUpdate=su;MIR.floor.visible=true;MIR.floor.material.uniforms.uT.value=clock;}
 function mirRibbon(m){const pos=m.geometry.attributes.position.array,col=m.geometry.attributes.color.array,T=MIR.trail,n=T.length,w=m.userData.w/2,c=m.userData.col;
   for(let i=0;i<n;i++){const p=T[i],q=T[Math.min(n-1,i+1)],o=T[Math.max(0,i-1)],dx=q.x-o.x,dz=q.z-o.z,l=Math.hypot(dx,dz)||1,nx=-dz/l*w,nz=dx/l*w;
     // young line is bright, and it fades out over its last two seconds
     const age=MIR.t-p.t,k=clamp((MIR_LIFE-age)/2,0,1)*(age<0.3?1.6:1),j=i*6;
-    pos[j]=p.x+nx;pos[j+1]=0.05;pos[j+2]=p.z+nz;pos[j+3]=p.x-nx;pos[j+4]=0.05;pos[j+5]=p.z-nz;
+    pos[j]=p.x+nx;pos[j+1]=p.y;pos[j+2]=p.z+nz;pos[j+3]=p.x-nx;pos[j+4]=p.y;pos[j+5]=p.z-nz;
     for(let e=0;e<2;e++){col[j+e*3]=c.r*k;col[j+e*3+1]=c.g*k;col[j+e*3+2]=c.b*k;}}
   m.geometry.setDrawRange(0,Math.max(0,n-1)*6);m.geometry.attributes.position.needsUpdate=true;m.geometry.attributes.color.needsUpdate=true;}
-function mirEnter(){mirBuild();Object.assign(MIR,{on:true,go:false,end:false,t:0,hearts:DRONE.maxHp,inv:0,kills:0,score:0,combo:0,comboT:0,spawnT:1.5,best:(d2().mirBest||0)});
+function mirEnter(){mirBuild();Object.assign(MIR,{on:true,go:false,end:false,t:0,hearts:DRONE.maxHp,inv:0,kills:0,score:0,combo:0,comboT:0,spawnT:1.5,best:(d2().mirBest||0),waves:{},boss:null,bossDown:false,bossSaid:false,redSaid:false});
   MIR.trail.length=0;mirClearFoes();MIR.g.visible=true;scene.fog.near=40;scene.fog.far=230;canvas.style.filter='saturate(.6) hue-rotate(8deg)';renderHUD();}
 function mirExit(){MIR.on=false;MIR.go=false;mirClearFoes();for(const f of MIR.fx)MIR.g.remove(f.m);MIR.fx.length=0;MIR.trail.length=0;if(MIR.g)MIR.g.visible=false;if(MIR.head)MIR.head.visible=false;
   scene.fog.near=260;scene.fog.far=2600;canvas.style.filter='';$('hurt').style.opacity=0;renderHUD();}
-function mirClearFoes(){for(const f of MIR.foes){MIR.g.remove(f.g);scene.remove(f.eye);}MIR.foes.length=0;}
+function mirClearFoes(){for(const f of MIR.foes){MIR.g.remove(f.g);scene.remove(f.eye);if(f.aura)scene.remove(f.aura);}MIR.foes.length=0;MIR.boss=null;}
 // a shadow rises out of the mirror somewhere ahead of her or to the side, never right on top of her
-function mirSpawn(){const t=MIR.t,kind=t>80&&rnd()<0.18?'big':t>40&&rnd()<0.3?'fast':'normal',F=MIR_FOE[kind];
-  let x,z;for(let k=0;k<8;k++){const a=P.yaw+(rnd()-0.5)*2.6,r=15+rnd()*12;x=P.x+Math.sin(a)*r;z=P.z+Math.cos(a)*r;if(Math.hypot(x-MIR_X,z)<MIR_R-4)break;}
-  const l=Math.hypot(x-MIR_X,z);if(l>MIR_R-4){x=MIR_X+(x-MIR_X)/l*(MIR_R-4);z=z/l*(MIR_R-4);}
-  const h=makeHuman(SHADE);h.g.scale.setScalar(F.s);h.g.position.set(x,-1.6*F.s,z);MIR.g.add(h.g);
-  MIR.foes.push({h,g:h.g,kind,hp:F.hp,sp:F.sp*(0.9+rnd()*0.2),up:0,gone:0,fade:0,eye:glow(kind==='big'?'#ff6020':'#ff3020',0,0,0,0.9*F.s)});}
+function mirWhere(spread,r0,r1){let x,z;for(let k=0;k<8;k++){const a=P.yaw+(rnd()-0.5)*spread,r=r0+rnd()*(r1-r0);x=P.x+Math.sin(a)*r;z=P.z+Math.cos(a)*r;if(Math.hypot(x-MIR_X,z)<MIR_R-4)break;}
+  const l=Math.hypot(x-MIR_X,z);if(l>MIR_R-4){x=MIR_X+(x-MIR_X)/l*(MIR_R-4);z=z/l*(MIR_R-4);}return[x,z];}
+function mirSpawn(){const t=MIR.t,kind=t>80&&rnd()<0.15?'big':t>60&&rnd()<0.22?'red':t>40&&rnd()<0.25?'fast':'normal';mirAdd(kind,...mirWhere(2.6,15,27));
+  if(kind==='red'&&!MIR.redSaid){MIR.redSaid=true;toast('赤い影は、光の線を切る！ 先に囲んでしまえ',true);}}
+function mirAdd(kind,x,z){const F=MIR_FOE[kind],h=makeHuman(SHADE);h.g.scale.setScalar(F.s);h.g.position.set(x,mirG(x,z)-1.6*F.s,z);MIR.g.add(h.g);
+  const f={h,g:h.g,kind,hp:F.hp,sp:F.sp*(0.9+rnd()*0.2),up:0,gone:0,fade:0,stun:0,eye:glow(kind==='big'||kind==='boss'?'#ff6020':'#ff3020',0,0,0,0.9*F.s)};
+  // the red ones and the great one carry a glow of their own, so they are told apart at a distance
+  if(kind==='red'||kind==='boss'){f.aura=glow(kind==='red'?'#ff2a2a':'#8a3cff',0,0,0,kind==='red'?2.6:9);f.aura.visible=true;}
+  MIR.foes.push(f);return f;}
+// a swarm: small ones coming up together from one side
+function mirSwarm(n){const [cx,cz]=mirWhere(1.6,22,28);for(let k=0;k<n;k++)mirAdd('swarm',cx+(rnd()-0.5)*6,cz+(rnd()-0.5)*6);toast('影の群れが来る！ 大きく囲め',true);sfx.notice&&sfx.notice();}
 function mirPop(t){TRICK.name=t;TRICK.shown=1.8;trickHUD();}
 // the ring closed: the points from i on make its edge
 function mirRing(i){const T=MIR.trail,poly=T.slice(i);let A=0;for(let k=0;k<poly.length;k++){const a=poly[k],b=poly[(k+1)%poly.length];A+=a.x*b.z-b.x*a.z;}A=Math.abs(A)/2;
@@ -9456,17 +9520,24 @@ function mirRing(i){const T=MIR.trail,poly=T.slice(i);let A=0;for(let k=0;k<poly
   const inside=(x,z)=>{let c=false;for(let a=0,b=poly.length-1;a<poly.length;b=a++){const p=poly[a],q=poly[b];if((p.z>z)!==(q.z>z)&&x<(q.x-p.x)*(z-p.z)/(q.z-p.z)+p.x)c=!c;}return c;};
   let hit=0,pts=0;
   for(const f of MIR.foes){if(f.gone||f.up<0.5||!inside(f.g.position.x,f.g.position.z))continue;f.hp--;hit++;
-    const p=f.g.position.clone();p.y+=1;sparks(p,14,'#cfeeff',6,0.1);if(f.hp<=0){f.gone=1;MIR.kills++;pts+=MIR_FOE[f.kind].pts;}}
+    const p=f.g.position.clone();p.y+=1;sparks(p,14,'#cfeeff',6,0.1);
+    if(f.hp<=0){f.gone=1;MIR.kills++;pts+=MIR_FOE[f.kind].pts;mirOrb(p,f.kind==='boss'?8:1);if(f.kind==='boss'){MIR.bossDown=true;MIR.t=Math.max(MIR.t,MIR.dur-3);}}
+    else if(f.kind==='boss'){f.stun=1.6;const dx=p.x-P.x,dz=p.z-P.z,l=Math.hypot(dx,dz)||1;f.g.position.x+=dx/l*4;f.g.position.z+=dz/l*4;
+      sparks(p.clone().setY(p.y+2),30,'#d8c0ff',9,0.16);setTimeout(()=>mirPop(`大きな影がひるんだ！　のこり ${f.hp}回`),300);}}
   // the light rises from the whole ring, and the ground inside it flashes
   const sh=new THREE.Shape(poly.map(p=>new THREE.Vector2(p.x,-p.z))),fill=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:'#7fc8ff',transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
   fill.rotation.x=-Math.PI/2;fill.position.y=0.06;MIR.g.add(fill);MIR.fx.push({m:fill,t:0,dur:0.9,kind:'fill'});
-  const wp=[],wi=[];poly.forEach((p,k)=>{wp.push(p.x,0,p.z,p.x,1,p.z);if(k){const a=(k-1)*2;wi.push(a,a+1,a+2,a+1,a+3,a+2);}});const a=(poly.length-1)*2;wi.push(a,a+1,0,a+1,1,0);
+  const wp=[],wi=[];poly.forEach((p,k)=>{wp.push(p.x,p.y-0.05,p.z,p.x,p.y+0.95,p.z);if(k){const a=(k-1)*2;wi.push(a,a+1,a+2,a+1,a+3,a+2);}});const a=(poly.length-1)*2;wi.push(a,a+1,0,a+1,1,0);
   const wg=new THREE.BufferGeometry();wg.setAttribute('position',new THREE.Float32BufferAttribute(wp,3));wg.setIndex(wi);
   const wall=new THREE.Mesh(wg,new THREE.MeshBasicMaterial({color:'#a8dcff',transparent:true,opacity:0.7,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));MIR.g.add(wall);MIR.fx.push({m:wall,t:0,dur:1.1,kind:'wall'});
   MIR.comboT>0?MIR.combo++:MIR.combo=1;MIR.comboT=4;
   const fast=P.v>10?0.5:0,mult=1+0.5*Math.max(0,hit-1)+fast,got=Math.round(pts*mult*(1+(MIR.combo-1)*0.25));MIR.score+=got;
-  if(hit)mirPop(`${hit>1?`${hit}体同時`:''}浄化！ ×${mult.toFixed(1)}${MIR.combo>1?`　${MIR.combo}コンボ`:''}`);else mirPop('結界');
+  if(MIR.bossDown&&!MIR.bossSaid){MIR.bossSaid=true;mirPop('大きな影を、追いはらった！');}
+  else if(hit)mirPop(`${hit>1?`${hit}体同時`:''}浄化！ ×${mult.toFixed(1)}${MIR.combo>1?`　${MIR.combo}コンボ`:''}`);else mirPop('結界');
   buzz(hit?'heavy':'light',true);if(hit)sfx.boom(0.6);renderHUD();return true;}
+// the children the shadows held: little lights going up out of where they were
+function mirOrb(p,n){for(let k=0;k<n;k++){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX,color:'#fff0c0',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
+  s.scale.setScalar(0.9);s.position.set(p.x+(rnd()-0.5)*n*0.4,p.y,p.z+(rnd()-0.5)*n*0.4);MIR.g.add(s);MIR.fx.push({m:s,t:-k*0.15,dur:2.2,kind:'orb',vx:(rnd()-0.5)*0.6});}}
 // a new point on the line: does it close a ring? (near an old point, or the newest stretch crossing an old one)
 function mirClose(){const T=MIR.trail,n=T.length-1,p=T[n],o=T[n-1];if(n<MIR_GAP)return;
   const cross=(a,b,c,d)=>{const r=(b.x-a.x)*(d.z-c.z)-(b.z-a.z)*(d.x-c.x);if(!r)return false;const s=((c.x-a.x)*(d.z-c.z)-(c.z-a.z)*(d.x-c.x))/r,u=((c.x-a.x)*(b.z-a.z)-(c.z-a.z)*(b.x-a.x))/r;return s>=0&&s<=1&&u>=0&&u<=1;};
@@ -9474,43 +9545,58 @@ function mirClose(){const T=MIR.trail,n=T.length-1,p=T[n],o=T[n-1];if(n<MIR_GAP)
 function mirHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='鏡の海（試作）';const s=document.createElement('span');s.className='step';
   s.textContent=MIR.go?'スケボーで走ると光の線が残る。線をぐるっとつないで、影を囲め':'……';
   const m=document.createElement('span');m.className='meter';const left=Math.max(0,Math.ceil(MIR.dur-MIR.t));
-  m.textContent=`のこり ${left/60|0}:${String(left%60).padStart(2,'0')}　${'♥'.repeat(Math.max(0,MIR.hearts))}${'♡'.repeat(Math.max(0,DRONE.maxHp-MIR.hearts))}　浄化 ${MIR.kills}　スコア ${MIR.score}`;tr.append(b,s,m);}
+  m.textContent=`のこり ${left/60|0}:${String(left%60).padStart(2,'0')}　${'♥'.repeat(Math.max(0,MIR.hearts))}${'♡'.repeat(Math.max(0,DRONE.maxHp-MIR.hearts))}　浄化 ${MIR.kills}　スコア ${MIR.score}${MIR.boss&&!MIR.boss.gone?`　大きな影 ${'■'.repeat(Math.max(0,MIR.boss.hp))}`:''}`;tr.append(b,s,m);}
 function mirMap(){const V=150,S=mapc.width/V,W=mapc.width,H=mapc.height,toM=(x,z)=>[(x-P.x)*S+W/2,(z-P.z)*S+H/2];mg.fillStyle='#05080e';mg.fillRect(0,0,W,H);
   const [cx,cz]=toM(MIR_X,0);mg.fillStyle='#0f1c30';mg.beginPath();mg.arc(cx,cz,MIR_R*S,0,TAU);mg.fill();mg.strokeStyle='#4a7ab8';mg.lineWidth=1.5;mg.stroke();
   mg.strokeStyle='#9fd4ff';mg.lineWidth=2;mg.beginPath();MIR.trail.forEach((p,k)=>{const [x,y]=toM(p.x,p.z);k?mg.lineTo(x,y):mg.moveTo(x,y);});mg.stroke();
-  mg.fillStyle='#ff4030';for(const f of MIR.foes){if(f.gone)continue;const [x,y]=toM(f.g.position.x,f.g.position.z);mg.beginPath();mg.arc(x,y,f.kind==='big'?4:2.6,0,TAU);mg.fill();}
+  mg.fillStyle='#4a5260';for(const [x0,z0,a,L,W] of MIR_ROOFS.concat(MIR_BOATS,MIR_RAMPS)){const [x,y]=toM(MIR_X+x0,z0);mg.save();mg.translate(x,y);mg.rotate(-a);mg.fillRect(-W/2*S,-L/2*S,W*S,L*S);mg.restore();}
+  for(const f of MIR.foes){if(f.gone)continue;const [x,y]=toM(f.g.position.x,f.g.position.z);mg.fillStyle=f.kind==='boss'?'#b070ff':f.kind==='red'?'#ff8070':'#ff4030';mg.beginPath();mg.arc(x,y,f.kind==='boss'?6:f.kind==='big'?4:f.kind==='swarm'?2:2.6,0,TAU);mg.fill();}
   mg.save();mg.translate(W/2,H/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#fff';mg.beginPath();mg.moveTo(0,-7);mg.lineTo(5,5);mg.lineTo(-5,5);mg.closePath();mg.fill();mg.restore();}
 // the camera rides higher and farther back here, so the line and the ring round the shadows are in view
 function mirCam(want,look){const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)),p=new THREE.Vector3(P.x,P.y,P.z);
   want.copy(p).addScaledVector(F,-(7+P.v*0.25));want.y+=5.5+P.v*0.15;look.copy(p).addScaledVector(F,4);look.y+=0.6;}
 function mirStep(dt){const busy=!!(DLG||modal);
   if(MIR.head)MIR.head.visible=MIR.go&&!P.foot;if(MIR.head)MIR.head.position.set(P.x,0.3,P.z);
-  for(const f of MIR.fx.slice()){f.t+=dt;const k=f.t/f.dur;if(f.kind==='wall'){f.m.scale.y=1+k*6;f.m.material.opacity=0.7*(1-k);}else f.m.material.opacity=0.5*(1-k);
-    if(k>=1){MIR.g.remove(f.m);f.m.geometry.dispose();MIR.fx.splice(MIR.fx.indexOf(f),1);}}
+  for(const f of MIR.fx.slice()){f.t+=dt;const k=Math.max(0,f.t/f.dur);
+    if(f.kind==='orb'){f.m.position.y+=dt*(f.t>0?2.4:0);f.m.position.x+=f.vx*dt;f.m.material.opacity=f.t<0?0:Math.min(1,f.t*3)*(1-k);}
+    else if(f.kind==='wall'){f.m.scale.y=1+k*6;f.m.material.opacity=0.7*(1-k);}else f.m.material.opacity=0.5*(1-k);
+    if(k>=1){MIR.g.remove(f.m);if(f.kind!=='orb')f.m.geometry.dispose();f.m.material.dispose();MIR.fx.splice(MIR.fx.indexOf(f),1);}}
   if(MIR.go&&!busy&&!MIR.end){MIR.t+=dt;MIR.comboT-=dt;MIR.inv-=dt;
     // the line: a point every half metre while she rides (in the air too), the old end fading away
-    const T=MIR.trail,l=T[T.length-1];if(!P.foot&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>MIR_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;T.push({x:P.x,z:P.z,t:MIR.t});mirClose();}
+    const T=MIR.trail,l=T[T.length-1];if(!P.foot&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>MIR_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;T.push({x:P.x,y:mirG(P.x,P.z)+0.05,z:P.z,t:MIR.t});mirClose();}
     while(T.length&&MIR.t-T[0].t>MIR_LIFE)T.shift();while(T.length>MIR_MAX)T.shift();
-    MIR.spawnT-=dt;const alive=MIR.foes.filter(f=>!f.gone).length,want=Math.min(18,4+Math.floor(MIR.t/12));
+    MIR.spawnT-=dt;const alive=MIR.foes.filter(f=>!f.gone).length,want=Math.min(16,4+Math.floor(MIR.t/14));
     if(MIR.spawnT<=0&&alive<want){mirSpawn();MIR.spawnT=1.1+rnd()*0.6;}
+    // the night's turns: two swarms, and the great one before dawn
+    const W=MIR.waves;if(MIR.t>55&&!W.s1){W.s1=1;mirSwarm(9);}if(MIR.t>115&&!W.s2){W.s2=1;mirSwarm(12);}
+    if(MIR.t>140&&!W.boss){W.boss=1;MIR.boss=mirAdd('boss',...mirWhere(1.2,26,30));toast('大きな影が来る！ 3回囲んで、追いはらえ',true);buzz('heavy',true);}
     if(MIR.t>=MIR.dur)mirFinish(true);}
+  // a line drawn in the middle of a combo burns gold
+  const gold=MIR.combo>=3&&MIR.comboT>0;MIR.core.userData.col.set(gold?'#ffe6a0':'#bfe6ff');MIR.halo.userData.col.set(gold?'#8a5a18':'#2a5a9a');
   mirRibbon(MIR.core);mirRibbon(MIR.halo);
   for(const f of MIR.foes.slice()){const p=f.g.position,S=MIR_FOE[f.kind].s;
-    if(f.gone){f.fade+=dt*2;const k=Math.min(1,f.fade);f.g.scale.set(S*(1-k*0.6),S*(1-k*0.9),S*(1-k*0.6));f.eye.visible=false;if(rnd()<dt*25)sparks(new THREE.Vector3(p.x,p.y+1,p.z),1,'#cfeeff',2,0.05);
-      if(k>=1){MIR.g.remove(f.g);scene.remove(f.eye);MIR.foes.splice(MIR.foes.indexOf(f),1);}continue;}
-    if(f.up<1){f.up=Math.min(1,f.up+dt*0.8);p.y=lerp(-1.6*S,0,f.up);poseHuman(f.h,'stand',dt,{});}
+    if(f.gone){f.fade+=dt*2;const k=Math.min(1,f.fade);f.g.scale.set(S*(1-k*0.6),S*(1-k*0.9),S*(1-k*0.6));f.eye.visible=false;if(f.aura)f.aura.visible=false;if(rnd()<dt*25)sparks(new THREE.Vector3(p.x,p.y+1,p.z),1,'#cfeeff',2,0.05);
+      if(k>=1){MIR.g.remove(f.g);scene.remove(f.eye);if(f.aura)scene.remove(f.aura);MIR.foes.splice(MIR.foes.indexOf(f),1);}continue;}
+    const gy=mirG(p.x,p.z);f.stun-=dt;
+    if(f.up<1){f.up=Math.min(1,f.up+dt*(f.kind==='boss'?0.35:0.8));p.y=lerp(gy-1.6*S,gy,f.up);poseHuman(f.h,'stand',dt,{});}
+    else if(f.stun>0){p.y=gy;poseHuman(f.h,'stand',dt,{});}
     else if(!busy&&!MIR.end){let dx=P.x-p.x,dz=P.z-p.z;const d=Math.hypot(dx,dz)||1;dx/=d;dz/=d;
+      // a red one walking over the line breaks it there: everything older than that point is gone
+      if(f.kind==='red'){const T=MIR.trail;for(let j=T.length-1;j>=0;j--)if(Math.hypot(T[j].x-p.x,T[j].z-p.z)<0.9){T.splice(0,j+1);sparks(new THREE.Vector3(p.x,gy+0.2,p.z),10,'#ff6a5a',4,0.08);break;}}
       // they keep a little apart, so a crowd of them is a crowd and not one heap
       for(const o of MIR.foes)if(o!==f&&!o.gone){const ex=p.x-o.g.position.x,ez=p.z-o.g.position.z,e=Math.hypot(ex,ez);if(e<1.4&&e>0){dx+=ex/e*0.6;dz+=ez/e*0.6;}}
-      const m=Math.hypot(dx,dz)||1;p.x+=dx/m*f.sp*dt;p.z+=dz/m*f.sp*dt;p.y=0;f.g.rotation.y=Math.atan2(P.x-p.x,P.z-p.z);poseHuman(f.h,'walk',dt,{rate:3.8});
-      if(d<0.75+0.35*S&&MIR.inv<=0){MIR.inv=1.3;MIR.hearts--;buzz('heavy',true);P.v*=0.4;f.gone=1;renderHUD();if(MIR.hearts<=0){mirFinish(false);break;}toast('冷たい手が、ふれた！');}}
-    f.eye.visible=true;f.eye.position.set(p.x,p.y+1.62*S,p.z);f.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);}
+      const m=Math.hypot(dx,dz)||1;p.x+=dx/m*f.sp*dt;p.z+=dz/m*f.sp*dt;p.y=mirG(p.x,p.z);f.g.rotation.y=Math.atan2(P.x-p.x,P.z-p.z);poseHuman(f.h,'walk',dt,{rate:3.8});
+      if(d<0.75+0.35*S&&MIR.inv<=0){MIR.inv=1.3;MIR.hearts--;buzz('heavy',true);P.v*=0.4;
+        // a small one is spent by the touch; a big one stays, and throws her back
+        if(f.kind==='big'||f.kind==='boss'){const kx=P.x-p.x,kz=P.z-p.z,kl=Math.hypot(kx,kz)||1;P.x+=kx/kl*2.5;P.z+=kz/kl*2.5;P.v=0;f.stun=0.8;}else f.gone=1;renderHUD();if(MIR.hearts<=0){mirFinish(false);break;}toast('冷たい手が、ふれた！');}}
+    f.eye.visible=true;f.eye.position.set(p.x,p.y+1.62*S,p.z);f.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);
+    if(f.aura){f.aura.position.set(p.x,p.y+1.1*S,p.z);f.aura.material.opacity=(f.kind==='boss'?0.45:0.35)+0.15*Math.sin(clock*4+p.z);}}
   $('hurt').style.opacity=MIR.go?Math.max(MIR.inv>0.7?0.5:0,MIR.hearts===1?0.3+0.1*Math.sin(clock*5):0):0;
   MIR.hudT-=dt;if(MIR.hudT<=0){MIR.hudT=0.25;renderHUD();}}
 function mirFinish(won){if(MIR.end)return;MIR.end=true;for(const f of MIR.foes)f.gone=1;MIR.trail.length=0;
-  const D=d2(),best=MIR.score>(D.mirBest||0),got=Math.floor(MIR.kills/2)+(won?10:0);if(best)D.mirBest=MIR.score;SAVE.shards=shards()+got;save();
+  const D=d2(),best=MIR.score>(D.mirBest||0),got=Math.floor(MIR.kills/2)+(won?10:0)+(MIR.bossDown?15:0);if(best)D.mirBest=MIR.score;SAVE.shards=shards()+got;save();
   runEvent({id:'mir_end',once:false,script:[['wait',1.2],
-    ['say','',won?'夜が明けてきた。鏡の海の影が、朝の光にとけていく。':'影の手に、のみこまれた……。',`浄化した影 ${MIR.kills}体　スコア ${MIR.score}${best?'（自己ベスト！）':`（ベスト ${D.mirBest||0}）`}`,`影のかけら +${got}`],
+    ['say','',won?(MIR.bossDown?'大きな影がくずれて、東の空が白んできた。鏡の海の影が、朝の光にとけていく。':'夜が明けてきた。鏡の海の影が、朝の光にとけていく。'):'影の手に、のみこまれた……。',`浄化した影 ${MIR.kills}体　スコア ${MIR.score}${best?'（自己ベスト！）':`（ベスト ${D.mirBest||0}）`}`,`影のかけら +${got}`],
     ['fade','out'],['call',mirExit],['warp',HQ_X+HQ_IN[0],HQ_IN[1],HQ_IN[2]],['call',()=>{P.foot=true;P.carry='back';padLabels();}],['fade','in'],
     ['say','tome','おかえり。……試しの夜は、どうだったかい。']]});}
 // out from the command table
@@ -9520,7 +9606,12 @@ function mirScript(){const first=!SAVE.seen.mir_first;SAVE.seen.mir_first=1;retu
   ['say','tome','（無線の声）……ここが、裏海街の海さ。水がひいて、まるで鏡みたいだろう。',
     ...(first?['スケボーで走ると、ランタンの光が足もとに線になって残る。','その線で、影をぐるっと囲んでごらん。線がつながったら、中の影はまとめて消えるよ。','たくさん囲むほど、いっぺんに追いはらえる。……三分、もちこたえな。']:['今夜も、光の線で囲んでやりな。'])],
   ['cam','off'],['call',()=>{MIR.go=true;toast('走って、線で囲め！',true);}]];}
-function updateMirror(dt){if(MIR.on){footQ=false;if(P.foot&&!P.tr&&!ST.run)rideNow();mirStep(dt);}
+// the sky on the way to dawn: from the second minute the east pales, the moon goes thin, the mirror catches the light
+const MIR_DAWN={top:new THREE.Color('#5a6f98'),bg:new THREE.Color('#b87a6c'),hemi:new THREE.Color('#ffd8c0')};
+function mirDawn(){const k=MIR.end&&MIR.bossDown?1:smooth(clamp((MIR.t/MIR.dur-0.35)/0.65,0,1));
+  dome.material.color.lerp(MIR_DAWN.top,k*0.6);scene.background.lerp(MIR_DAWN.bg,k*0.45);scene.fog.color.lerp(MIR_DAWN.bg,k*0.3);hemi.color.lerp(MIR_DAWN.hemi,k*0.4);hemi.intensity+=k*0.15;
+  if(MIR.moon)MIR.moon.material.opacity=1-k*0.8;if(MIR.floor)MIR.floor.material.uniforms.uDawn.value=k;}
+function updateMirror(dt){if(MIR.on){footQ=false;if(P.foot&&!P.tr&&!ST.run)rideNow();mirStep(dt);mirDawn();}
   else if(AREA==='mir'&&!ST.run){P.x=HQ_X+HQ_IN[0];P.z=HQ_IN[1];P.yaw=HQ_IN[2];P.y=0;camInit=false;}}   // a save made out there wakes up back at the base
 
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
@@ -10211,7 +10302,7 @@ function stepPlayer(dt){if(TD.on){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;} 
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){P.x=MIR_X+dx/l*MIR_R;P.z=P.z/l*MIR_R;}}else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
+  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){const ox=dx/l,oz=P.z/l,d=F[0]*ox+F[1]*oz;P.x=MIR_X+ox*MIR_R;P.z=oz*MIR_R;if(d>0){const tx=F[0]-ox*d,tz=F[1]-oz*d;P.yaw=Math.hypot(tx,tz)>0.15?Math.atan2(tx,tz):Math.atan2(-oz,ox);}}}   // at the edge of the open water she slides round along itelse if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
   if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
@@ -10345,7 +10436,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
   updateTram(dt);updateInaka(dt);updateIsland(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
-  updateCamera(dt);updateSound(dt);renderer.render(scene,camera);
+  updateCamera(dt);updateSound(dt);mirReflect();renderer.render(scene,camera);
   // while dressing, the heroine is drawn again on top, so a stall or a post between her and the camera never hides her
   if(modal==='closet'){player.g.traverse(o=>o.layers.enable(1));renderer.autoClear=false;renderer.clearDepth();const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
     // a plain colour behind her (the sky colour unless one is picked); in the big view the town can stay behind her instead

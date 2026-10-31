@@ -522,7 +522,7 @@ function stepPlayer(dt){if(TD.on){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;} 
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){P.x=MIR_X+dx/l*MIR_R;P.z=P.z/l*MIR_R;}}else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
+  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){const ox=dx/l,oz=P.z/l,d=F[0]*ox+F[1]*oz;P.x=MIR_X+ox*MIR_R;P.z=oz*MIR_R;if(d>0){const tx=F[0]-ox*d,tz=F[1]-oz*d;P.yaw=Math.hypot(tx,tz)>0.15?Math.atan2(tx,tz):Math.atan2(-oz,ox);}}}   // at the edge of the open water she slides round along itelse if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
   if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
@@ -656,7 +656,7 @@ function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
   else{player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw,0);poseSkater(player,dt,{v:0,turn:0,push:false,brake:false,air:false});}
   updateTram(dt);updateInaka(dt);updateIsland(dt);updateCars(dt);updateFolk(dt,P.x,P.z,false);updateNPCs(dt);updateMarkers();
   waveTex.offset.set((clock*0.004)%1,(clock*0.006)%1);foamTex.offset.x=(clock*0.02)%1;
-  updateCamera(dt);updateSound(dt);renderer.render(scene,camera);
+  updateCamera(dt);updateSound(dt);mirReflect();renderer.render(scene,camera);
   // while dressing, the heroine is drawn again on top, so a stall or a post between her and the camera never hides her
   if(modal==='closet'){player.g.traverse(o=>o.layers.enable(1));renderer.autoClear=false;renderer.clearDepth();const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
     // a plain colour behind her (the sky colour unless one is picked); in the big view the town can stay behind her instead

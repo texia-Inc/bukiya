@@ -12,7 +12,8 @@ const BASE_FLOOR=[[0,12,-6,6],[12,92,-3,3],[28,32,3,6],[48,52,-6,-3],[68,72,3,6]
 const BASE_START=[8,0,Math.PI/2],BASE_WARE=[95,0,Math.PI/2],BASE_TERM=[120,-31],BASE_DOOR=[120,-17,0.35],BASE_END=236.5;
 const BASE_SHUT=[{x:152,t:7},{x:177,t:9.2},{x:202,t:11.4},{x:227,t:13.6}];
 const inBaseFloor=(x,z)=>BASE_FLOOR.some(r=>x>=r[0]&&x<r[1]&&z>=r[2]&&z<r[3]);
-function baseG(){return 0;}
+// far out past the HQ (x below -7500: MIR_X+1500, written out since p5v_mirror.js comes later) the mirror sea has its drowned roofs
+function baseG(x,z){return x<-7500?mirG(x,z):0;}
 { const X0=-2,X1=240,Z0=-36,Z1=20,W=X1-X0,N=Z1-Z0,fl=(i,j)=>i>=0&&j>=0&&i<W&&j<N&&inBaseFloor(X0+i+0.5,Z0+j+0.5),wall=new Uint8Array(W*N);
   for(let j=0;j<N;j++)for(let i=0;i<W;i++){if(fl(i,j))continue;let n=false;for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++)if(fl(i+di,j+dj))n=true;if(n)wall[j*W+i]=1;}
   // the wall cells merged into boxes: runs along x in each row, carried on down while the next row has the same run
