@@ -91,7 +91,7 @@ function hillY(ax,z){if(ax<=200)return 0;const t=smooth(clamp((ax-200)/115,0,1))
   return(40*t+Math.max(0,ax-315)*0.12)*(z<SHORE?1:0.7*(1-smooth(clamp((z-SHORE)/(130+(ax-200)*0.25),0,1))));}
 function H(x,z){let y=z<COAST_Z?(COAST_Z-z)*HILL:z<SHORE?0:-(z-SHORE)*0.035;const ax=Math.abs(x);if(ax>200&&!cutting(x,z))y+=hillY(ax,z);return y;}
 // the country at the end of the tram line lies far to the east (p5k_inaka.js); its heights come from a baked grid
-const INK_X=3000;
+const INK_X=3000,BASE_X=-3000;   // the country far to the east, Oceangate's base far to the west
 const PIER={x0:-82.5,x1:-77.5,z0:250,z1:338,y:0.45};
 const RIDGE_DECKS=[{x:318,z:60,yaw:-Math.PI/2,name:'東の峠 見晴らし'},{x:-318,z:-10,yaw:Math.PI/2,name:'西の峠 見晴らし'}];
 // the slope between a ridge deck and the town is kept clear of trees so the view stays open
@@ -101,7 +101,7 @@ const HILL_TREES=[];   // hill trees, so the camera can keep out of them
 function onPier(x,z){return x>PIER.x0&&x<PIER.x1&&z>PIER.z0&&z<PIER.z1;}
 // the island out at sea (p5m_shima.js) has heights of its own once it is built
 const ISL_Z0=640;let ISL_ON=false;
-function G(x,z){if(x>INK_X-600)return inkG(x,z);if(z>ISL_Z0&&ISL_ON)return islG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
+function G(x,z){if(x>INK_X-600)return inkG(x,z);if(x<BASE_X+600)return baseG(x,z);if(z>ISL_Z0&&ISL_ON)return islG(x,z);let y=H(x,z);if(onPier(x,z)){const t=smooth(clamp((z-PIER.z0)/7,0,1));y=Math.max(y,lerp(H(x,PIER.z0),PIER.y,t));}return y;}
 
 const world=new THREE.Group();scene.add(world);
 const COLL=[];   // axis-aligned boxes the board bumps into: {x0,x1,z0,z1,on}

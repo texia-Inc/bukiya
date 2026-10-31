@@ -188,7 +188,7 @@ function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){c
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
   if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
-  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
+  if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
@@ -297,8 +297,8 @@ const mapBase=document.createElement('canvas');mapBase.width=MAPW;mapBase.height
   g.fillStyle='#a88a64';g.fillRect(PIER.x0-MAP_X0,PIER.z0-MAP_Z0,PIER.x1-PIER.x0,PIER.z1-PIER.z0);
   g.fillStyle='#d8452f';g.fillRect(SHRINE.x-MAP_X0-3,SHRINE.z-MAP_Z0-2,6,4);}
 const mapc=$('mapc'),mg=mapc.getContext('2d');
-function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',isl=!ink&&P.z>ISL_Z0,cx=P.x-(ink?INK_X-INK_R:isl?ISL.x-120:MAP_X0),cz=P.z-(ink?-INK_R:isl?ISL.z-70:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
-  mg.drawImage(ink?INK.map:isl?ISL.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
+function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',bs=AREA==='base',isl=!ink&&!bs&&P.z>ISL_Z0,cx=P.x-(ink?INK_X-INK_R:bs?BASE.mapX0:isl?ISL.x-120:MAP_X0),cz=P.z-(ink?-INK_R:bs?BASE.mapZ0:isl?ISL.z-70:MAP_Z0);mg.fillStyle=ink?'#bcd9a8':bs?'#3a3d42':'#7cc0e6';mg.fillRect(0,0,mapc.width,mapc.height);
+  mg.drawImage(ink?INK.map:bs?BASE.map:isl?ISL.map:mapBase,cx-V/2,cz-V/2,V,V,0,0,mapc.width,mapc.height);
   const toM=(x,z)=>[(x-P.x)*S+mapc.width/2,(z-P.z)*S+mapc.height/2];
   for(const p of SPOTS){const [mx,my]=toM(p.x,p.z);mg.fillStyle=SAVE.spots.includes(p.id)?'#9aa6ae':'#1f7fc0';mg.beginPath();mg.arc(mx,my,5,0,7);mg.fill();}
   for(const q of QUESTS){if(!available(q))continue;const n=NPCS[q.giver],[mx,my]=toM(n.x,n.z);mg.fillStyle='#f2a33a';mg.beginPath();mg.arc(mx,my,7,0,7);mg.fill();mg.fillStyle='#fff';mg.font='900 11px sans-serif';mg.textAlign='center';mg.textBaseline='middle';mg.fillText('!',mx,my+1);}
@@ -309,8 +309,8 @@ function drawMap(){const V=150,S=mapc.width/V,ink=AREA==='inaka',isl=!ink&&P.z>I
     mg.fillStyle=QCOL[k%QCOL.length];mg.beginPath();mg.arc(mx,my,big?(out?7:9):(out?5:6.5),0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=big?2.5:1.5;mg.stroke();
     if(act.length>1){mg.fillStyle='#fff';mg.font=`900 ${big?11:9}px sans-serif`;mg.textAlign='center';mg.textBaseline='middle';mg.fillText(k+1,mx,my+1);}}
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
-  mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}
-function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();if(x>EKI.x0&&x<EKI.x1&&z>EKI.z0&&z<EKI.z1)return'うみまち駅前';
+  if(!bs){mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}}
+function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();if(AREA==='base')return'オーシャンゲートの基地';if(x>EKI.x0&&x<EKI.x1&&z>EKI.z0&&z<EKI.z1)return'うみまち駅前';
   if(Math.hypot(x-LOOKOUT.x,z-LOOKOUT.z)<16)return'見晴らし台';for(const d of RIDGE_DECKS)if(Math.hypot(x-d.x,z-d.z)<12)return d.name;if(Math.abs(x)>212&&z<SHORE)return x>0?'東の山':'西の山';if(x>-80&&x<-40&&z>-178&&z<-118)return'海街神社';
   const st=Math.abs(z-207)<3&&stopAt(x);if(st&&st.id!=='station')return st.name+' 停留所';
   if(onPier(x,z))return'桟橋';if(z>SHORE)return'しおさい海岸';if(x>STATION.x0-4&&x<STATION.x1+4&&Math.abs(z-TRAM_Z)<8)return'うみまち駅';
@@ -513,7 +513,7 @@ function stepPlayer(dt){
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
-  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
+  if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
   if(trickQ&&!busy)trickStart();trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;

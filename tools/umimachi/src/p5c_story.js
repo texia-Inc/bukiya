@@ -45,7 +45,7 @@ function tintUnlit(){_tint.copy(sun.color).multiplyScalar(sun.intensity*0.6);_tc
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait;   // events during which the board is yours
+const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait||baseBusy();   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -114,7 +114,9 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'ogscene':ogScene(a[0]);break;                                   // ['ogscene', true|false]  the black van parked by the east tunnel, Kurosaki and his men round it
   case 'pursuit':await pursuitP(a[0]);break;                            // ['pursuit', {from:[x,z,yaw], to:[x,z,r], hint}]  the men run after you
   case 'vanchase':await vanChaseP();break;
-  case 'trail':await trailP();break;                                    // ['trail']  follow the black van to the door by the west tunnel, unseen
+  case 'trail':await trailP();break;
+  case 'basesneak':await baseSneakP();break;                             // ['basesneak']  in the base: past the guards to the monitoring room
+  case 'baserun':await baseRunP();break;                                 // ['baserun']  the alarm: out along the east passage before the shutters shut                                    // ['trail']  follow the black van to the door by the west tunnel, unseen
   case 'lights':await lightsP(a[0]);break;                               // ['lights', {pts:[{name,x,z}…], limit}]  gather the five lights before time runs out
   case 'credits':await creditsP();break;
   case 'drones':await dronesP(a[0]);break;                               // ['drones', {total, boss, title}]  a drone fight in the story: on until it is won
@@ -138,7 +140,7 @@ function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateEx1();updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);updateUra(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
+  applyLight(SAVE.hour);updateUra(dt);updateBase(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
   if(ph!==ST.phase){ST.phase=ph;renderHUD();}if(tm!==ST.tm){ST.tm=tm;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));

@@ -7,7 +7,9 @@
      2  that evening the vans and drones are back; the drones fly at the lighthouse — or at the dark in front of it
      3  the next morning Sota is gone; the baker sends Nagi after the van
      4  she has followed it to the iron door by the west tunnel; at night Mio's voice comes through the marble
-     5  the rest is still being made ---------- */
+     5  the next morning the baker sends word: tonight they go in
+     6  at night, into the base: past the guards to the monitoring room, the record of 1996, the alarm and the shutters (p5o_base.js)
+     7  the rest is still being made ---------- */
 // what the night left behind: a torn net on the pier, a scorched lamp on the coast road, black footprints at the crossing
 const EX1={props:[],marble:null};
 { const lamp=LAMPS.reduce((b,e)=>Math.abs(e.x+30)<Math.abs(b.x+30)?e:b,LAMPS[0]);EX1.lamp=[lamp.x,lamp.z];
@@ -40,9 +42,11 @@ function ex1Goal(f,eve,night,home){const s=f.ex1;
   if(s===1)return qs('x_odd').state<2?null:eve||night?null:'町の異変は、ばあちゃんに知らせた。夕方まで待つ（ばあちゃんに話すと夕方まで休める）';
   if(s===3)return 'こむぎ堂の主人に話す';
   if(s===4)return night?'夜の桟橋の先へ行ってみる':'夜になったら、桟橋の先へ行ってみる（ばあちゃんに話すと夕方まで休める）';
-  if(s===5)return eve||night?home:'（追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です）';
+  if(s===5)return eve||night?home:null;
+  if(s===6)return eve||night?'こむぎ堂の主人に話す':'日が暮れたら、こむぎ堂の主人に話す（ばあちゃんに話すと夕方まで休める）';
+  if(s===7)return '（追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です）';
   return null;}
-function ex1Dark(f){if(f.ex1===4)return '暗くなってきた。桟橋の先へ行ってみよう';return null;}
+function ex1Dark(f){if(f.ex1===4)return '暗くなってきた。桟橋の先へ行ってみよう';if(f.ex1===6)return '暗くなってきた。こむぎ堂の主人のところへ行こう';return null;}
 const EX1_EVENTS=[
   {id:'x1_morning',when:{minDay:8,flags:{ending_true:1,ex1:0}},script:[
     ['if',{test:()=>Math.hypot(P.x-HOME[0],P.z-HOME[1])>12},[['fade','out'],['warp',...HOME],['fade','in']]],
@@ -104,6 +108,41 @@ const EX1_EVENTS=[
     ['say','','ザザザ……。声は、波の音にまぎれて消えた。ビー玉の光も、しずかに消えた。'],
     ['call',()=>ex1Marble(false)],
     ['say','nagi','向こう側……？ ソウタくんは、オーシャンゲートに連れていかれたんじゃ……ないの？'],
-    ['set','ex1',5],['cam','off'],['toast','ばあちゃんに話して、家に帰ろう',true]]},
+    ['set','ex1',5],['call',()=>{SAVE.flags.x_d=SAVE.day;}],['cam','off'],['toast','ばあちゃんに話して、家に帰ろう',true]]},
+  {id:'x3_morning',when:{flags:{ex1:5},test:()=>SAVE.day>(SAVE.flags.x_d||0)},script:[
+    ['cam','npc','tome',3.4],
+    ['say','tome','おはよう、ナギ。……ソウタは、まだ見つからないよ。町の男の人たちが、夜通し浜を探してくれたんだけどねえ。'],
+    ['say','natsumi','ナギ、こむぎ堂のおじさんから伝言よ。「今夜、迎えに行く。日が暮れたら、店に来てくれ」って。','……ナギ、何をしようとしてるの？'],
+    ['ask','nagi','（どうする？）',[
+      ['ソウタくんを、探しに行く',[['say','natsumi','……そう。お母さんも30年前、きっと同じ顔をしてたのね。','気をつけて。ぜったい、帰ってくるのよ。']]],
+      ['……なんでもない',[['say','natsumi','うそ。顔に書いてある。……気をつけてね。']]]]],
+    ['set','ex1',6],['cam','off'],['toast','日が暮れたら、こむぎ堂の主人に話そう',true]]},
+  {id:'x3_baker',on:{talk:'baker'},mark:true,when:{flags:{ex1:6},phase:['evening','night']},script:[
+    ['say','baker','来たか。……ソウタは、まだ見つからん。','今夜、やつらの巣に乗りこむ。おれは入口で見張って、無線で中を案内する。'],
+    ['say','baker','中には見張りがいる。やつらに見えるのは、前のほうだけだ。床に落ちてる、うすい明かりの中だな。','かどの向こうや、箱のかげは見えん。ただし、スケボーの音は近いと聞こえるぞ。'],
+    ['ask','nagi','（行く？）',[['行こう',[]],['……うん',[]]]],
+    ['fade','out'],['time',21,0],['cam','off'],['warp',OG_DOOR.x+2,OG_DOOR.z+3,Math.PI],
+    ['cam',[OG_DOOR.x+7,OG_DOOR.y+2.4,OG_DOOR.z+8],[OG_DOOR.x,OG_DOOR.y+1.3,OG_DOOR.z],1.2,'cut'],['fade','in'],
+    ['say','','夜の海岸トンネル。主人が細い針金を鍵穴に差しこむと、鉄の扉がカチリと開いた。'],
+    ['fade','out'],['cam','off'],['warp',BASE_X+BASE_START[0],BASE_START[1],BASE_START[2]],['fade','in'],
+    ['say','','扉の向こうは、山の中をくりぬいた、長い通路だった。','ブウン……と、どこかで機械がうなっている。'],
+    ['say','baker','（無線の声）いいか、いちばん奥の監視室をめざせ。やつらが何を見張ってるのか、たしかめるんだ。'],
+    ['basesneak'],
+    ['cam',[BASE_X+117.5,1.9,-28],[BASE_X+120.5,1.5,-33.5],1.2,'cut'],
+    ['say','','監視室。壁いっぱいのモニターに、町が映っていた。','灯台、桟橋、神社……そして、海の上の、何もない暗がり。'],
+    ['say','','机の上に、古いファイルが一冊。表紙に「境界監視記録」とある。'],
+    ['say','','「1996年8月15日 23時04分　境界侵入を確認。」','「海街在住の少女一名、行方不明。」','「同夜、灯台の灯り消失。結界塔の建設を急ぐこと。」'],
+    ['say','nagi','1996年……30年前の、あの夜……。少女って、ミオのこと？','（どうして、オーシャンゲートがミオのことを……）'],
+    ['say','','そのとき――ウウウウウウ！ 基地じゅうに、警報が鳴りひびいた。'],
+    ['say','黒崎','（スピーカーの声）侵入者だ。全隔壁、閉鎖。','……また、あのパン屋の差し金か。'],
+    ['say','baker','（無線の声）ナギちゃん、見つかった！ シャッターが下りる前に、東の通路から外へ出ろ！'],
+    ['cam','off'],
+    ['baserun'],
+    ['cam',[BASE_X+BASE_END-6,2.2,10],[BASE_X+BASE_END+6,1.6,15],1.2,'cut'],
+    ['say','','最後のシャッターの下をすべりぬけると、夜の山の風が顔に当たった。','電波塔の真下。赤い光は消えたまま、鉄骨だけが夜空にそびえている。'],
+    ['say','','バラバラバラ……！ 頭の上で、大きなプロペラの音がした。'],
+    ['say','黒崎','（スピーカーの声）……逃がすと思うか。'],
+    ['set','ex1',7],['toast','追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です',true],
+    ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
 ];
 EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...EX1_EVENTS);
