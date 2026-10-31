@@ -119,6 +119,9 @@ body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.c
 .q span{font-size:12px;color:var(--ink-soft)}
 .q .st{font-size:11px;font-weight:900;letter-spacing:.08em}
 .q .st.done{color:var(--leaf)}.q .st.act{color:var(--rose)}.q .st.new{color:var(--sun)}
+.rsec{margin:8px 0 0;font-size:13px;color:var(--ink-soft);font-weight:900;letter-spacing:.05em}
+.rpart{border-top:1px dashed rgba(43,37,32,.18);padding:6px 0}.rpart summary{cursor:pointer;font-weight:900;font-size:15px;color:var(--ink);padding:4px 0}
+.rpart p{margin:6px 0 0;font-size:13.5px;line-height:1.85;color:var(--ink)}
 .album{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
 .album figure{margin:0;background:#fff;padding:6px 6px 8px;border-radius:6px;box-shadow:0 2px 0 var(--shade);transform:rotate(-1deg)}
 .album figure:nth-child(2n){transform:rotate(1.2deg)}
@@ -213,6 +216,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
     <button class="tool" id="menuBtn">メニュー</button>
     <button class="tool" id="logBtn">おつかい帳</button>
     <button class="tool" id="albumBtn">アルバム</button>
+    <button class="tool" id="recapBtn">これまでの物語</button>
     <button class="tool" id="closetBtn">着がえ</button>
     <button class="tool" id="photoBtn">写真を撮る</button>
     <button class="tool" id="lightBtn" hidden>ライト</button>
@@ -269,6 +273,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   </dl>
   <button class="btn" id="helpClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
+<div class="modal" id="recapM" hidden><div class="sheet card"><h2>これまでの物語</h2><p class="sub">見てきた物語を、もう一度読み返せます。題をおすと開きます。</p><div id="recapBody"></div><button class="btn ghost" id="recapClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub" id="albumSub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をクリックすると保存できます。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="closet" hidden><div class="sheet card" id="closetSheet"><h2>着がえ<button class="btn" id="closetBig">大きく見る</button></h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギはドラッグで回せる。ピンチ（マウスはホイール）で拡大</p><div id="closetSlots"></div>
   <div class="bar"><button class="btn ghost" id="closetReset">いつもの服に戻す</button><button class="btn" id="closetClose">これで出かける</button></div></div>

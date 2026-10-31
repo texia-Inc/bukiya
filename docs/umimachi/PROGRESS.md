@@ -254,6 +254,7 @@
 | `tools/umimachi/src/p5l_sound.js` | 効果音（Web Audio で作る） |
 | `tools/umimachi/src/p5m_shima.js` | 灯台の島（地形、灯台と回廊、釣り船での行き来） |
 | `tools/umimachi/src/p5o_base.js` | オーシャンゲートの基地（見張りをかわす潜入と、シャッターの通路） |
+| `tools/umimachi/src/p5t_recap.js` | メニューの「これまでの物語」（見た場面だけ、話の順にあらすじを読み返せる） |
 | `tools/umimachi/src/p5s_final.js` | 追加ストーリー2の山場（異界の主との戦い、夜明けとミオの帰り道） |
 | `tools/umimachi/src/p5r_nest.js` | 追加ストーリー2の裏海街への出撃（影の巣を焼く） |
 | `tools/umimachi/src/p5q_hq.js` | 追加ストーリー2（海街自警団の基地、施設のレベル上げ、毎晩の防衛、援護ドローン） |

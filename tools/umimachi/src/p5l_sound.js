@@ -7,12 +7,16 @@
    turns it off and on, and that is remembered. Most of it watches the game's state each frame rather than being called. ---------- */
 const SND={ctx:null,on:store.get('umimachi_sound')!=='0',L:{},prev:{},dist:{},nextX:0,nextCricket:0};
 // back from another app, iOS often leaves the context 'interrupted' and resume() does nothing; then the next touch throws it
-// away and builds a fresh one (inside the touch, so iOS lets it play)
-function sndRevive(gesture){const S=SND,c=S.ctx;if(!c||document.hidden||c.state==='running'){S.stuck=0;return;}
+// away and builds a fresh one (inside the touch, so iOS lets it play). After the screen was locked or the app was away (S.back)
+// it can even say 'running' and stay silent, so the first touch after that always builds a fresh one
+function sndRevive(gesture){const S=SND,c=S.ctx;if(!c||document.hidden)return;
+  if(gesture&&S.back){S.back=false;try{c.close();}catch(e){}S.ctx=null;S.L={};S.prev={};S.stuck=0;sndInit();return;}
+  if(c.state==='running'){S.stuck=0;return;}
   if(gesture&&S.stuck>0){try{c.close();}catch(e){}S.ctx=null;S.L={};S.prev={};S.stuck=0;sndInit();return;}
   S.stuck=(S.stuck||0)+1;c.resume().then(()=>{if(c.state==='running')S.stuck=0;}).catch(()=>{});}
 function sndInit(){const S=SND;if(S.ctx){sndRevive(true);return;}
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;const c=S.ctx=new AC();
+  c.onstatechange=()=>{if(S.ctx===c&&c.state==='interrupted')S.back=true;};   // a call, Siri, another app's sound
   const comp=c.createDynamicsCompressor();comp.connect(c.destination);S.master=c.createGain();S.master.gain.value=sndLevel();S.master.connect(comp);
   const nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;S.noise=nb;
   // the loops: noise (or an oscillator) through a filter into a gain that the update turns up and down
@@ -70,14 +74,14 @@ const sfx={
 // the drone fight and the fireworks call their own effects
 { const s0=shoot;shoot=function(...a){sfx.shot();return s0.apply(this,a);};
   const b0=boom;boom=function(p){sfx.boom(att(Math.hypot(p.x-P.x,p.z-P.z),160)+0.15);return b0(p);};
-  const f0=burst;burst=function(p,col){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col);};}
+  const f0=burst;burst=function(p,col,kind){setTimeout(()=>sfx.boom(0.35),Math.min(1500,Math.hypot(p.x-P.x,p.z-P.z)*3));for(let i=0;i<6;i++)hiss(0.04,'highpass',3500,0.06,0.7,null,0.4+Math.random()*0.8);return f0(p,col,kind);};}
 
 // iPhone app: a light buzz with the bumps and rewards (works with the sound off too)
 const BUZZ={land:'light',bump:'medium',thud:'heavy',coin:'light',pay:'light',shutter:'light',win:'success',lose:'error'};let buzzT=0;
 function buzz(k,force){const H=APP.haptics;if(!H||store.get('umimachi_buzz')==='0')return;const now=performance.now();if(now-buzzT<90&&!force)return;buzzT=now;
   (k==='success'||k==='error'?H.notification({type:k.toUpperCase()}):H.impact({style:k.toUpperCase()})).catch(()=>{});}
 for(const k in BUZZ)if(sfx[k]){const f=sfx[k];sfx[k]=(...a)=>{if(k!=='land'||a[0]>0.25)buzz(BUZZ[k]);return f(...a);};}
-document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden)c.suspend().catch(()=>{});else{SND.stuck=0;sndRevive(false);}});
+document.addEventListener('visibilitychange',()=>{const c=SND.ctx;if(!c)return;if(document.hidden){SND.back=true;c.suspend().catch(()=>{});}else{SND.stuck=0;sndRevive(false);}});
 window.addEventListener('pageshow',()=>sndRevive(false));window.addEventListener('focus',()=>sndRevive(false));
 function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,L=S.L,pv=S.prev,set=(n,v,tc)=>n.setTargetAtTime(v,t,tc||0.08);
   const play=state==='play',ride=RIDE.on,board=play&&!P.foot&&!ride,sand=P.z>SHORE+0.5&&P.z<ISL_Z0&&AREA==='town';
