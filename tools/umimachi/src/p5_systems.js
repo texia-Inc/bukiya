@@ -155,7 +155,7 @@ const QUESTS=[
    start:['この町の古い写真集を見ていたら、今の景色も残したくなってね。','見晴らし台、神社の鳥居、海が見える踏切、駅のホーム、桟橋の先。この5か所の写真を撮ってきてくれないか。','カメラのマークのところで P キーか「写真を撮る」だ。'],
    steps:[{type:'photos',hint:'カメラのマークの5か所で写真を撮る'},{type:'talk',to:'neko',hint:'古書うみねこの店主に写真を見せる',text:['ほう…どれもいい写真だ。この町の夏が写っている。','お礼に、これを。またいい景色を見つけたら教えておくれ。']}],reward:800},
 ];
-QUESTS.push(...inkQuests());Object.assign(ITEMS,INK_ITEMS);   // the errands in the country (p5k_inaka.js)
+QUESTS.push(...inkQuests(),...ex1Quests());Object.assign(ITEMS,INK_ITEMS);   // the errands in the country (p5k_inaka.js)
 // three save slots; slot 1 keeps the key the game has always used, so older saves open there
 const S0={money:600,inv:{},qs:{},tracked:null,spots:[],day:1,hour:DAY_START,cap:DAY_CAP,flags:{},seen:{}};
 const SLOTS=3,slotKey=k=>k===1?'umimachi_save':'umimachi_save'+k;

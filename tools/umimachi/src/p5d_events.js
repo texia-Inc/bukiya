@@ -15,6 +15,7 @@ const leaveMio=()=>{SAVE.flags.mio_left=SAVE.day;};
 function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id=>!!SAVE.seen[id],eve=ph==='evening',night=ph==='night';
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
+  if(f.ex1&&!f.ex1_done)return ex1Goal(f,eve,night,home);
   if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
   if(endingsSeen()>=3&&!f.ending_true)return 'トメばあちゃんに話す';
@@ -50,7 +51,7 @@ const nightView=[[-58,G(-58,-118)+15,-112],[-285,H(-285,-40)+34,-40]];   // from
 // a choice on the third night, marked once that way has been followed to its ending
 const wayLabel=(l,k)=>()=>l+(SAVE.flags[k]?'（見た）':'');
 // when it gets dark: where to go now (usually home to grandma)
-function darkHint(){const f=SAVE.flags;if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
+function darkHint(){const f=SAVE.flags;if(f.ex1&&!f.ex1_done){const h=ex1Dark(f);if(h)return h;}if(f.true_key)return '暗くなってきた。桟橋の釣りのおじさんに話そう';
   if(f.route===3&&SAVE.day===6&&!f.contest_done)return '暗くなってきた。浜辺のソウタくんが、大会で待っている';
   if(f.route===2&&!f.ending_org&&SAVE.day>=5&&f.drones_cleared&&qs('og_evidence').state===2)return '暗くなってきた。こむぎ堂の主人に話して、黒いバンを追おう';
   return '暗くなってきた。トメばあちゃんのところへ帰ろう';}
@@ -198,7 +199,7 @@ const EVENTS=[
       ['fade','out'],['ogscene',true],['time',23,0],['warp',186,COAST_Z-2.6,Math.PI/2],
       ['cam',[188,G(188,COAST_Z)+2.2,COAST_Z-6],[200,G(200,COAST_Z)+1.2,COAST_Z+1.2],1.2,'cut'],['fade','in'],
       ['say','','海岸トンネルの手前に、ライトを消した黒いバンが止まっている。','黒いスーツの男たちが、荷台から重そうな箱を下ろしていた。'],
-      ['say','黒崎','電波塔の出力は、明日の夜に最大まで上げる。町の連中は、何も気づかん。','島の灯台は、あさっての夜に片づける。あれさえなくなれば、リゾートの工事はすぐに始められる。'],
+      ['say','黒崎','電波塔の出力は、明日の夜に最大まで上げる。町の連中は、何も気づかん。','島の灯台は、あさっての夜に片づける。町には、リゾートの工事だと言っておけ。','……あの灯りだけは、二度とともさせるな。'],
       ['say','nagi','（灯台を……片づける？ 壊すってこと……？）'],
       ['say','','ガタン。足もとのスケボーが、音を立てた。'],
       ['say','黒崎','――だれだ！ つかまえろ！'],
@@ -358,7 +359,7 @@ const EVENTS=[
     ['say','','トンネルを転がり出ると、空が白みはじめていた。','気がつくと、ナギは桟橋の先に立っていた。となりに、ミオがいる。'],
     ['say','mio','……帰ってこられたね、ナギ。'],
     ['say','nagi','ミオ。この写真……ミオと、わたしのお母さんだよね。'],
-    ['say','mio','うん。30年前の夏、わたしとナツミは、いつもいっしょだった。','あの夜、電波塔が鳴って、トンネルの向こうの扉が開いた。わたしは向こう側に入ったまま、帰れなくなったの。','灯台の灯りが消えたのも、あの夜。……灯りがもう一度ともったら、わたしも帰れるのかもしれない。'],
+    ['say','mio','うん。30年前の夏、わたしとナツミは、いつもいっしょだった。','あの夜、電波塔がずっと鳴ってた。そして、トンネルの向こうの扉が開いたの。わたしは向こう側に入ったまま、帰れなくなったの。','灯台の灯りが消えたのも、あの夜。……灯りがもう一度ともったら、わたしも帰れるのかもしれない。'],
     ['ask','nagi','（なんて言う？）',[
       ['わたしが、灯りをともしてみせる',[['say','mio','……ありがとう。ナツミも、きっと同じことを言ったね。'],['set','promise_mio'],['add','bond_mio',2]]],
       ['……ずっと、ひとりだったの？',[['say','mio','ううん。ときどき、ナツミの娘が遊びに来るのを見てた。……ずっと前から、知ってたよ。'],['add','bond_mio']]]]],
@@ -385,7 +386,7 @@ const EVENTS=[
     ['say','tome','ナギには話してなかったね。あの島の灯台の灯り守りは、ナギのじいちゃんだったんだよ。','30年前のあの夜、じいちゃんはミオちゃんを探しに出て、灯りをともせなかった。それっきり、灯台に上れなくなってねえ。'],
     ['say','tome','灯台の灯りはね、昔はお盆の夜に、町の五つの灯りから火を分けてもらってともしたんだ。','見晴らし台、神社の鳥居、海の見える踏切、駅のホーム、それから桟橋の先。'],
     ['say','','ばあちゃんは、古い鍵をナギの手にのせた。'],
-    ['say','tome','じいちゃんの形見の、灯台の鍵だよ。……ナギに、たのめるかい？'],
+    ['say','tome','じいちゃんの形見の、灯台の鍵だよ。','……ほんとうはね、あの灯りをともすのが、こわくもあるんだ。ともしちゃいけないって言う人もいてね。','でも、ミオちゃんを、あの夜のまま向こうに置いておくのは、もうたくさんだよ。……ナギに、たのめるかい？'],
     ['ask','nagi','（どうする？）',[['わたしが、灯りをともす',[]],['……うん。やってみる',[]]]],
     ['say','tome','夜になったら、桟橋の釣りのおじさんに船を出してもらいな。あの人は、じいちゃんの古い友だちさ。'],
     ['set','true_key'],['call',()=>{if(SAVE.cap<18.9)SAVE.cap=18.9;}],['cam','off'],['toast','夜、桟橋の釣りのおじさんに話そう',true]]},
@@ -412,9 +413,10 @@ const EVENTS=[
     ['call',()=>setCam([[LH.x-26,LH.gy+5,LH.z-38],[LH.x,LH.gy+1.5,LH.z],0.8])],
     ['say','','30年ぶりに、灯台に灯りがともった。','光の帯が海をわたって、町の坂を、屋根を、やさしくなでていく。'],
     ['set','tower_quiet'],
-    ['say','','西の山で、電波塔の赤い光が、ふっと消えた。あのいやな音も、もう聞こえない。'],
+    ['say','','西の山で、電波塔の赤い光が、ふっと消えた。あのいやな音も、もう聞こえない。','……そのとき、海の向こうの暗がりで、何かがこちらを見た気がした。'],
     ['if',{min:{bond_mio:1}},[['say','mio','……ありがとう、ナギ。'],['say','','光の中に、白いワンピースの女の子が立っていた。']],[['say','','光の中に、白いワンピースの女の子が立っていた。']]],
-    ['say','mio','やっと、帰れる。','ナツミに伝えて。……あの夜のこと、ナツミのせいじゃないよって。ずっと、友だちだよって。'],
+    ['say','mio','やっと、光までたどりつけた。','ナツミに伝えて。……あの夜のこと、ナツミのせいじゃないよって。ずっと、友だちだよって。'],
+    ['say','mio','でもね、向こうには、まだ帰れない子たちがいるの。','わたしは、もう少しだけ、あっちに残る。……また、光の中で会おうね。'],
     ['say','','ミオは笑って、光の帯の中へ歩いていった。'],
     ['wait',1],['fade','out'],['cam','off'],
     ['set','mom_here'],['warp',...HOME],['day',7],
@@ -438,7 +440,7 @@ const EVENTS=[
   // after the true ending the evening runs on into the night (until grandma takes you home), to see the lighthouse
   {id:'dark',once:false,when:{test:()=>SAVE.hour>=18.85&&SAVE.flags.dark_day!==SAVE.day&&!SAVE.flags.in_ura},script:[
     ['call',()=>{SAVE.flags.dark_day=SAVE.day;}],
-    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;}],['toast','日が暮れていく。夜の町と、灯台の光を見に行こう']],[['call',()=>toast(darkHint())]]]]},
+    ['if',{flags:{ending_true:1}},[['call',()=>{SAVE.cap=23.9;toast(SAVE.flags.ex1&&!SAVE.flags.ex1_done?darkHint():'日が暮れていく。夜の町と、灯台の光を見に行こう');}]],[['call',()=>toast(darkHint())]]]]},
   // in the daytime from the second day, grandma lets you rest until the evening
   {id:'rest',on:{talk:'tome'},once:false,when:{minDay:2,phase:['morning','day'],test:()=>!SAVE.flags.in_ura},script:[
     ['ask','tome','どうする？ ちょっと休んでいくかい？',[
