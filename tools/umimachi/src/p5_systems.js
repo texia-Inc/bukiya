@@ -161,7 +161,7 @@ const S0={money:600,inv:{},qs:{},tracked:null,spots:[],day:1,hour:DAY_START,cap:
 const SLOTS=3,slotKey=k=>k===1?'umimachi_save':'umimachi_save'+k;
 function loadSlot(k){try{const s=JSON.parse(store.get(slotKey(k))||'null');if(s&&typeof s.money==='number')return Object.assign(JSON.parse(JSON.stringify(S0)),s);}catch(e){}return null;}
 let SLOT=clamp(+(store.get('umimachi_slot')||1)||1,1,SLOTS),SAVE=loadSlot(SLOT)||JSON.parse(JSON.stringify(S0));
-function save(){SAVE.at=Date.now();store.set(slotKey(SLOT),JSON.stringify(SAVE));}
+function save(){if(ST.run&&ST.snap){store.set(slotKey(SLOT),ST.snap);return;}SAVE.at=Date.now();store.set(slotKey(SLOT),JSON.stringify(SAVE));}
 const qs=id=>SAVE.qs[id]||(SAVE.qs[id]={state:0,step:0});
 const QBY=id=>QUESTS.find(q=>q.id===id);
 function invN(id){return SAVE.inv[id]||0;}
