@@ -572,13 +572,14 @@ function camClear(x,y,z){if(y<G(x,z)+0.3||blocked(x,y,z))return false;
   for(const e of PINES){if(Math.abs(x-e.x)<3&&Math.abs(z-e.z)<3){const g=G(e.x,e.z);if(Math.hypot(x-e.x,z-e.z)<2.7&&y>g+e.h*0.4&&y<g+e.h*1.15)return false;}}
   for(const e of TREES){if(Math.abs(x-e.x)<e.s&&Math.abs(z-e.z)<e.s&&Math.hypot(x-e.x,z-e.z)<e.s*0.9&&y<G(e.x,e.z)+e.s*1.9)return false;}
   return true;}
-// a scene's shot, made to fit: on a phone held upright the frame is narrow, so the camera steps back along its line (up to 1.5×)
+// a scene's shot, made to fit: on a phone held upright the frame is narrow, so a shot of people close by steps back along its line (up to 1.5×, at most 6 m; a view into the distance stays)
 // to take in what a wide screen would; and on any screen, a camera that would stand in a wall or a tree, or whose view of what
 // it looks at is cut by one, moves along the same line to the nearest place that is clear. Worked out once for each shot
 function camFit(c){if(c.fit&&c.fitA===camera.aspect<0.8)return c.fit.clone();
-  const p=c.pos,l=c.look,d=p.clone().sub(l),up=camera.aspect<0.8?1.5:1,ks=[];
+  const p=c.pos,l=c.look,d=p.clone().sub(l),D=d.length(),up=camera.aspect<0.8&&D<16?Math.min(1.5,1+6/D):1,ks=[];   // only shots of people close by, and never more than 6 m further
   for(let k=up;k>=0.999;k-=0.1)ks.push(k);for(let k=0.9;k>=0.35;k-=0.1)ks.push(k);
-  const clearTo=q=>{for(let t=0.2;t<=1.001;t+=0.1){const x=lerp(l.x,q.x,t),y=lerp(l.y,q.y,t),z=lerp(l.z,q.z,t);if(!camClear(x,y,z))return false;}return true;};
+  // (a view into the distance only needs the few metres round the camera clear, not the whole way)
+  const t0=D<16?0.2:Math.max(0.2,1-3/D),clearTo=q=>{for(let t=t0;t<=1.001;t+=Math.min(0.1,(1-t0)/4)){const x=lerp(l.x,q.x,t),y=lerp(l.y,q.y,t),z=lerp(l.z,q.z,t);if(!camClear(x,y,z))return false;}return true;};
   let best=p.clone();for(const k of ks){const q=l.clone().addScaledVector(d,k);if(clearTo(q)){best=q;break;}}
   c.fit=best;c.fitA=camera.aspect<0.8;return best.clone();}
 function updateCamera(dt){

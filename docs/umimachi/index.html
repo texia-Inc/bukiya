@@ -8630,7 +8630,7 @@ const EX1B_EVENTS=[
     ['chase'],
     ['fade','out'],['ura',false],['call',()=>{rescueSota('stand',TRUTH.x+(GATHER.tome[0]+18)*0.6+1.2,TRUTH.z+GATHER.tome[1]+0.4,Math.PI);ex1Gather(true);ex1Kurosaki(true);}],
     ['time',23.8,0],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],
-    ['cam',[TRUTH.x+6,TRUTH.y+3.6,TRUTH.z-9],[TRUTH.x+2,TRUTH.y+1,TRUTH.z+2],1.5,'cut'],['fade','in'],
+    ['cam',[TRUTH.x+11,TRUTH.y+3,TRUTH.z+3.5],[TRUTH.x-1,TRUTH.y+1.1,TRUTH.z+1.5],1.5,'cut'],['fade','in'],
     ['say','','トンネルを転がり出て、海岸通りまで走りぬけると、みんなが待っていた。'],
     ['say','tome','ナギ！ ソウタ！ ……よかった。よかったねえ。'],
     ['say','sota','ばあちゃん……！'],
@@ -8652,7 +8652,7 @@ const EX1B_EVENTS=[
     ['say','ミオの声','（ナギ、ランタンを灯台に向けて！ 灯台の灯りを、あいつに！）'],
     ['ask','nagi','（どうする？）',[['ランタンを、灯台にかかげる',[]],['……おねがい、ミオ！',[]]]],
     ['call',()=>{LAN.n=LAN.max;lanternFlash();ex1Marble(false);}],
-    ['cam',[TRUTH.x-6,TRUTH.y+3,TRUTH.z-4],[(GIANT.x+ISL.x)/2,30,(GIANT.z+ISL.z)/2],1.2,'cut'],
+    ['cam',[TRUTH.x-6,TRUTH.y+3,TRUTH.z+3],[(GIANT.x+ISL.x)/2,30,(GIANT.z+ISL.z)/2],1.2,'cut'],
     ['call',beamTurnP],
     ['say','','島の灯台の光が、ぐるりと向きを変えた。まっすぐ、大きな影の胸へ。'],
     ['call',giantFall],
@@ -8721,16 +8721,18 @@ function applyD2(){if(DRONE.active)return;DRONE.maxHp=[5,6,7,8,10][hqLv('dojo')-
   const m=[3,4,4,5,6][hqLv('lamp')-1];if(LAN.max!==m){LAN.max=m;LAN.n=Math.min(LAN.n,m);}}
 /* ----- the hall: a cave in the hill, timber props, strings of bulbs, the five rooms round it ----- */
 function hqBuild(){if(HQ.built)return;HQ.built=true;const g=HQ.g,X=HQ_X,W=44,D=28,H=6.5;
-  const rock=tm('#6a5d50'),rock2=tm('#574b40'),wood=tm('#7a5a3a'),dark=tm('#4a3828');
+  const rockT=canvasTex(128,128,(c,w,h)=>{c.fillStyle='#6a5d50';c.fillRect(0,0,w,h);for(let k=0;k<160;k++){c.fillStyle=`rgba(${k%2?40:140},${k%2?32:120},${k%2?26:100},.18)`;c.fillRect(Math.random()*w,Math.random()*h,4+Math.random()*14,3+Math.random()*10);}
+    c.strokeStyle='rgba(30,24,20,.45)';c.lineWidth=1.5;for(let k=0;k<7;k++){c.beginPath();let x=Math.random()*w,y=Math.random()*h;c.moveTo(x,y);for(let j=0;j<5;j++){x+=Math.random()*24-12;y+=Math.random()*20;c.lineTo(x,y);}c.stroke();}},true);rockT.repeat.set(6,2);
+  const rock=tmap(rockT),rock2=tm('#574b40'),wood=tm('#7a5a3a'),dark=tm('#4a3828');
   const ft=canvasTex(128,128,(c,w,h)=>{c.fillStyle='#8a7a66';c.fillRect(0,0,w,h);c.strokeStyle='rgba(60,46,34,.35)';c.lineWidth=3;for(let k=0;k<4;k++){c.beginPath();c.moveTo(0,k*32+16);c.lineTo(w,k*32+16);c.stroke();}
     c.fillStyle='rgba(255,255,255,.05)';for(let k=0;k<50;k++)c.fillRect(Math.random()*w,Math.random()*h,3,2);},true);ft.repeat.set(W/4,D/4);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(W,D),tmap(ft));floor.rotation.x=-Math.PI/2;floor.position.set(X+W/2,0.001,0);floor.receiveShadow=true;g.add(floor);
   const ceil=new THREE.Mesh(new THREE.PlaneGeometry(W,D),new THREE.MeshBasicMaterial({color:'#2e2620'}));ceil.rotation.x=Math.PI/2;ceil.position.set(X+W/2,H,0);g.add(ceil);
   // the walls: rough rock, a box each side and boulders along the foot
   for(const [x0,x1,z0,z1] of [[-1,0,-D/2,D/2],[W,W+1,-D/2,D/2],[-1,W+1,-D/2-1,-D/2],[-1,W+1,D/2,D/2+1]]){const m=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,H,z1-z0),rock);m.position.set(X+(x0+x1)/2,H/2,(z0+z1)/2);g.add(m);collide(X+x0,X+x1,z0,z1,'bld',H);}
-  // (none by the door, nor in front of the rooms)
+  // (none by the door and its notice board, nor in front of the rooms or the tea corner)
   for(let k=0;k<34;k++){const side=k%4,t=(k*0.137+0.05)%1,s=0.8+((k*7)%5)*0.25,b=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),k%3?rock:rock2);
-    const x=side<2?(side?W-0.2:0.2):t*W,z=side<2?(t-0.5)*D:(side===2?-D/2+0.2:D/2-0.2);if(side===0&&Math.abs(z)<2.5||side>=2&&x>9.5&&x<31)continue;b.position.set(X+x,s*0.4,z);b.rotation.set(k,k*2,k*3);b.castShadow=true;g.add(b);}
+    const x=side<2?(side?W-0.2:0.2):t*W,z=side<2?(t-0.5)*D:(side===2?-D/2+0.2:D/2-0.2);if(side===0&&(Math.abs(z)<2.5||z>-7.2&&z<-2.8)||side>=2&&x>9.5&&x<31||side===3&&x<8)continue;b.position.set(X+x,s*0.4,z);b.rotation.set(k,k*2,k*3);b.castShadow=true;g.add(b);}
   // timber props and beams across the ceiling
   for(let x=6;x<W;x+=9){for(const z of [-D/2+0.5,D/2-0.5]){const p=new THREE.Mesh(new THREE.BoxGeometry(0.45,H,0.45),wood);p.position.set(X+x,H/2,z);outline(p,0.02);g.add(p);}
     const b=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.45,D),dark);b.position.set(X+x,H-0.3,0);g.add(b);}
@@ -8769,7 +8771,56 @@ function hqBuild(){if(HQ.built)return;HQ.built=true;const g=HQ.g,X=HQ_X,W=44,D=2
   for(const k in FAC){const F=FAC[k],n=NPCS[F.npc],h=makeHuman(n.h.o);g.add(h.g);h.g.position.set(X+F.at[0],0,F.at[1]);h.g.rotation.y=F.yaw;HQ.people[k]=h;
     collide(X+F.at[0]-0.4,X+F.at[0]+0.4,F.at[1]-0.4,F.at[1]+0.4,'npc');
     const c=document.createElement('canvas');c.width=256;c.height=64;const t=new THREE.CanvasTexture(c);const s=new THREE.Mesh(new THREE.PlaneGeometry(2.6,0.65),new THREE.MeshBasicMaterial({map:t,transparent:true}));
-    const sx=k==='cmd'?43.6:F.at[0],sz=k==='cmd'?0:F.at[1]+(F.at[1]<0?-3.9:3.9);s.position.set(X+sx,3.3,sz);s.rotation.y=k==='cmd'?-Math.PI/2:F.at[1]<0?0:Math.PI;g.add(s);HQ.signs[k]={c,t};hqSign(k);}
+    const sx=k==='cmd'?43.6:F.at[0],sz=k==='cmd'?0:F.at[1]+(F.at[1]<0?-3.9:3.9);s.position.set(X+sx,k==='cmd'?5.5:3.3,sz);s.rotation.y=k==='cmd'?-Math.PI/2:F.at[1]<0?0:Math.PI;g.add(s);HQ.signs[k]={c,t};hqSign(k);}
+  // the things that make it theirs: plank panelling round the foot of the rock, the banner over the command table, bunting
+  // along the bulbs, red lanterns, a notice board by the door (the summer of 1996), a tea corner, a blackboard, barrels and crates
+  { const plank=canvasTex(128,64,(c,w,h)=>{c.fillStyle='#8a6440';c.fillRect(0,0,w,h);for(let x=0;x<w;x+=16){c.fillStyle=x%32?'#7d5a38':'#93693f';c.fillRect(x,0,15,h);c.fillStyle='rgba(40,25,15,.5)';c.fillRect(x+15,0,1,h);}
+      for(let k=0;k<20;k++){c.fillStyle='rgba(50,30,15,.25)';c.fillRect(Math.random()*w,Math.random()*h,1,6+Math.random()*10);}},true);
+    const panel=(x0,z0,x1,z1,ry)=>{const L=Math.hypot(x1-x0,z1-z0),t=plank.clone();t.needsUpdate=true;t.repeat.set(L/2,1);const m=new THREE.Mesh(new THREE.PlaneGeometry(L,2.2),tmap(t));
+      m.position.set(X+(x0+x1)/2,1.1,(z0+z1)/2);m.rotation.y=ry;g.add(m);const rail=new THREE.Mesh(new THREE.BoxGeometry(L,0.12,0.1),dark);rail.position.set(X+(x0+x1)/2,2.22,(z0+z1)/2);rail.rotation.y=ry;g.add(rail);};
+    panel(0,-D/2+0.03,W,-D/2+0.03,0);panel(0,D/2-0.03,W,D/2-0.03,Math.PI);panel(W-0.03,-D/2,W-0.03,D/2,-Math.PI/2);panel(0.03,-D/2,0.03,-1.6,Math.PI/2);panel(0.03,1.6,0.03,D/2,Math.PI/2);
+    // the banner
+    const ban=canvasTex(384,160,(c,w,h)=>{c.fillStyle='#f1e9d6';c.fillRect(0,0,w,h);c.fillStyle='#1d3f6e';c.fillRect(0,0,w,14);c.fillRect(0,h-14,w,14);
+      c.fillStyle='#1d3f6e';c.beginPath();c.moveTo(48,128);c.lineTo(60,40);c.lineTo(72,128);c.fill();c.fillStyle='#f2c230';c.beginPath();c.arc(60,36,9,0,7);c.fill();c.fillStyle='rgba(242,194,48,.35)';c.beginPath();c.moveTo(60,36);c.lineTo(10,20);c.lineTo(10,52);c.fill();
+      c.fillStyle='#1b1b1b';c.font=signFont(54,true);c.textAlign='center';c.textBaseline='middle';c.fillText('海街自警団',w/2+30,h/2+4);});
+    const bn=new THREE.Mesh(new THREE.PlaneGeometry(6.4,2.7),new THREE.MeshToonMaterial({map:ban,gradientMap:GRAD,side:THREE.DoubleSide}));bn.position.set(X+W-0.08,3.6,0);bn.rotation.y=-Math.PI/2;g.add(bn);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,7,8),wood);pole.rotation.x=Math.PI/2;pole.position.set(X+W-0.12,5.0,0);g.add(pole);
+    // bunting under the bulb strings
+    const tri=new THREE.BufferGeometry();tri.setAttribute('position',new THREE.Float32BufferAttribute([-0.28,0,0,0.28,0,0,0,-0.5,0],3));tri.computeVertexNormals();
+    const fl=[];for(let x=2.8;x<W-1;x+=1.6)for(const z of [-6,6])fl.push([x,z]);const fm=new THREE.InstancedMesh(tri,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),fl.length);
+    const FC=['#d24a3a','#f2f2ee','#2e6fb8','#f2c230','#3a9a5a'].map(c=>new THREE.Color(c));
+    fl.forEach(([x,z],k)=>{dummy.position.set(X+x,H-1.0-Math.sin((x%9)/9*Math.PI)*0.5,z);dummy.rotation.set(0,0,0);dummy.scale.set(1,1,1);dummy.updateMatrix();fm.setMatrixAt(k,dummy.matrix);fm.setColorAt(k,FC[k%5]);});
+    fm.frustumCulled=false;g.add(fm);
+    // red paper lanterns along the long walls
+    const red=tm('#c8372d'),cap=tm('#1d1d1d');
+    for(let x=6;x<W-2;x+=8)for(const z of [-D/2+0.6,D/2-0.6]){const l=new THREE.Group();l.position.set(X+x,4.0,z);g.add(l);
+      const b=new THREE.Mesh(new THREE.SphereGeometry(0.32,12,8),red);b.scale.set(1,1.3,1);l.add(b);for(const y of [0.42,-0.42]){const c=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.17,0.08,10),cap);c.position.y=y;l.add(c);}
+      const gl=glow('#ffb070',X+x,4.0,z,2.4);gl.visible=true;gl.material.opacity=0.5;scene.remove(gl);g.add(gl);}
+    // the notice board by the door: the old guard in the summer of 1996, a missing-child poster gone yellow, notes
+    const nb=canvasTex(256,160,(c,w,h)=>{c.fillStyle='#b48a5a';c.fillRect(0,0,w,h);c.strokeStyle='#5a3d22';c.lineWidth=8;c.strokeRect(4,4,w-8,h-8);
+      c.save();c.translate(70,70);c.rotate(-0.06);c.fillStyle='#f4efe2';c.fillRect(-52,-40,104,80);c.fillStyle='#8a8070';c.fillRect(-46,-34,92,52);c.fillStyle='#4a4038';for(let k=0;k<6;k++){c.beginPath();c.arc(-36+k*14,-4,5,0,7);c.fill();c.fillRect(-40+k*14,1,9,14);}
+      c.fillStyle='#2b2520';c.font='bold 11px sans-serif';c.textAlign='center';c.fillText('1996 夏　自警団',0,32);c.restore();
+      c.save();c.translate(178,74);c.rotate(0.05);c.fillStyle='#efe2a8';c.fillRect(-46,-56,92,112);c.fillStyle='#2b2520';c.font=signFont(16,true);c.textAlign='center';c.fillText('さがしています',0,-36);
+      c.fillStyle='#9a9080';c.fillRect(-22,-28,44,46);c.fillStyle='#2b2520';c.font='bold 12px sans-serif';c.fillText('ミオ（10さい）',0,34);c.font='10px sans-serif';c.fillText('白いワンピース',0,50);c.restore();
+      c.fillStyle='#f2c230';c.fillRect(20,124,46,26);c.fillStyle='#8fd0ff';c.fillRect(110,128,40,22);});
+    const nbm=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.0),new THREE.MeshToonMaterial({map:nb,gradientMap:GRAD}));nbm.position.set(X+0.06,2.4,-5);nbm.rotation.y=Math.PI/2;g.add(nbm);
+    // the tea corner: a low table, a teapot and cups, cushions
+    const tbl=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.4,1.3),wood);tbl.position.set(X+5,0.2,9.5);tbl.castShadow=true;outline(tbl,0.02);g.add(tbl);collide(X+4,X+6,8.85,10.15,'prop',0.4);
+    const pot=new THREE.Mesh(new THREE.SphereGeometry(0.17,12,8),tm('#3a5a4a'));pot.scale.y=0.8;pot.position.set(X+4.7,0.53,9.5);g.add(pot);
+    for(const [dx,dz] of [[0.3,0.3],[0.55,-0.2],[-0.1,-0.3]]){const cu=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.05,0.1,10),tm('#efe6d8'));cu.position.set(X+5+dx,0.45,9.5+dz);g.add(cu);}
+    for(const [dx,dz] of [[0,-1.1],[0,1.1],[-1.4,0]]){const zb=new THREE.Mesh(new THREE.BoxGeometry(0.75,0.1,0.75),tm('#7a3b4a'));zb.position.set(X+5+dx,0.05,9.5+dz);g.add(zb);}
+    // the blackboard by the command table
+    const bb=canvasTex(256,160,(c,w,h)=>{c.fillStyle='#2f4a3a';c.fillRect(0,0,w,h);c.strokeStyle='#8a6440';c.lineWidth=10;c.strokeRect(5,5,w-10,h-10);c.fillStyle='#eef2e8';c.font=signFont(22,true);c.fillText('今夜の配置',22,40);
+      c.font=signFont(17,true);c.fillText('浜……自警団',30,74);c.fillText('空……オーシャンゲート',30,102);c.fillText('裏海街……ナギ',30,130);});
+    const bbm=new THREE.Mesh(new THREE.PlaneGeometry(2.6,1.6),new THREE.MeshBasicMaterial({map:bb}));bbm.position.set(X+W-0.1,2.0,-8);bbm.rotation.y=-Math.PI/2;g.add(bbm);
+    // barrels and crates in the corners
+    const brl=tm('#6b4a2e'),hoop=tm('#3a3a3a');
+    for(const [x,z] of [[41.5,-11.5],[40.2,-12.3],[3,-11.8],[41.6,11.6]]){const b=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.45,1.1,12),brl);b.position.set(X+x,0.55,z);b.castShadow=true;outline(b,0.02);g.add(b);
+      for(const y of [0.25,0.85]){const h=new THREE.Mesh(new THREE.CylinderGeometry(0.51,0.51,0.06,12),hoop);h.position.set(X+x,y,z);g.add(h);}collide(X+x-0.5,X+x+0.5,z-0.5,z+0.5,'prop',1.1);}
+    for(const [x,z,sz] of [[38.5,-12.4,1.2],[38.6,-12.4,0.8],[4.6,-12.2,1.1],[39.2,12.2,1.1]]){const b=new THREE.Mesh(new THREE.BoxGeometry(sz,sz,sz),tm('#8a6a44'));b.position.set(X+x,sz/2+(sz<1?1.2:0),z);b.castShadow=true;outline(b,0.02);g.add(b);if(sz>=1)collide(X+x-sz/2,X+x+sz/2,z-sz/2,z+sz/2,'prop',sz);}
+    // a mat in front of each room
+    for(const k in FAC){const F=FAC[k];const m=new THREE.Mesh(new THREE.PlaneGeometry(k==='cmd'?4:4.5,k==='cmd'?5:2.6),tm(['#7a3b3b','#3b5a7a','#5a6a3a','#6a4a7a','#7a6a3b'][Object.keys(FAC).indexOf(k)]));
+      m.rotation.x=-Math.PI/2;m.position.set(X+F.at[0]+(k==='cmd'?-1:0),0.012,F.at[1]+(k==='cmd'?0:F.at[1]<0?-1.3:1.3));g.add(m);}}
   // the map
   const mc=HQ.map;mc.width=W+8;mc.height=D+8;const m2=mc.getContext('2d');m2.fillStyle='#3d342c';m2.fillRect(0,0,mc.width,mc.height);m2.fillStyle='#b8a890';m2.fillRect(4,4,W,D);
   m2.fillStyle='#e2a84a';for(const k in FAC){const F=FAC[k];m2.fillRect(4+F.at[0]-1.5,4+F.at[1]+D/2-1.5,3,3);}HQ.mapX0=X-4;HQ.mapZ0=-D/2-4;}
@@ -9915,13 +9966,14 @@ function camClear(x,y,z){if(y<G(x,z)+0.3||blocked(x,y,z))return false;
   for(const e of PINES){if(Math.abs(x-e.x)<3&&Math.abs(z-e.z)<3){const g=G(e.x,e.z);if(Math.hypot(x-e.x,z-e.z)<2.7&&y>g+e.h*0.4&&y<g+e.h*1.15)return false;}}
   for(const e of TREES){if(Math.abs(x-e.x)<e.s&&Math.abs(z-e.z)<e.s&&Math.hypot(x-e.x,z-e.z)<e.s*0.9&&y<G(e.x,e.z)+e.s*1.9)return false;}
   return true;}
-// a scene's shot, made to fit: on a phone held upright the frame is narrow, so the camera steps back along its line (up to 1.5×)
+// a scene's shot, made to fit: on a phone held upright the frame is narrow, so a shot of people close by steps back along its line (up to 1.5×, at most 6 m; a view into the distance stays)
 // to take in what a wide screen would; and on any screen, a camera that would stand in a wall or a tree, or whose view of what
 // it looks at is cut by one, moves along the same line to the nearest place that is clear. Worked out once for each shot
 function camFit(c){if(c.fit&&c.fitA===camera.aspect<0.8)return c.fit.clone();
-  const p=c.pos,l=c.look,d=p.clone().sub(l),up=camera.aspect<0.8?1.5:1,ks=[];
+  const p=c.pos,l=c.look,d=p.clone().sub(l),D=d.length(),up=camera.aspect<0.8&&D<16?Math.min(1.5,1+6/D):1,ks=[];   // only shots of people close by, and never more than 6 m further
   for(let k=up;k>=0.999;k-=0.1)ks.push(k);for(let k=0.9;k>=0.35;k-=0.1)ks.push(k);
-  const clearTo=q=>{for(let t=0.2;t<=1.001;t+=0.1){const x=lerp(l.x,q.x,t),y=lerp(l.y,q.y,t),z=lerp(l.z,q.z,t);if(!camClear(x,y,z))return false;}return true;};
+  // (a view into the distance only needs the few metres round the camera clear, not the whole way)
+  const t0=D<16?0.2:Math.max(0.2,1-3/D),clearTo=q=>{for(let t=t0;t<=1.001;t+=Math.min(0.1,(1-t0)/4)){const x=lerp(l.x,q.x,t),y=lerp(l.y,q.y,t),z=lerp(l.z,q.z,t);if(!camClear(x,y,z))return false;}return true;};
   let best=p.clone();for(const k of ks){const q=l.clone().addScaledVector(d,k);if(clearTo(q)){best=q;break;}}
   c.fit=best;c.fitA=camera.aspect<0.8;return best.clone();}
 function updateCamera(dt){
