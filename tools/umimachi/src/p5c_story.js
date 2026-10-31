@@ -123,9 +123,11 @@ async function step(s){const [op,...a]=s;switch(op){
   case 'boat':await boatP(a[0]);break;                                   // ['boat', 'island'|'town']  the fisherman's boat across the bay
   case 'lamp':await lampP();break;                                       // ['lamp']  free until Nagi climbs the lighthouse and lights the lamp                              // ['vanchase']  catch the black van on the coast road                   // ['ura', true|false]  enter or leave 裏海街                               // ['fireworks', seconds]
   case 'stop':return'stop';}}
-async function runEvent(e,npc){ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
+// while an event runs, the save is the game as it was when it began (ST.snap): leave in the middle, to the title or by closing
+// the app, and it starts again from the top, never half done with its flags set and the rest gone
+async function runEvent(e,npc){if(!ST.run)ST.snap=JSON.stringify(SAVE);ST.run=e;ST.actor=npc||null;talkNpc=ST.actor;$('prompt').hidden=true;
   try{await steps(e.script);}catch(err){console.error('event',e.id,err);}
-  SAVE.seen[e.id]=1;ST.run=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
+  SAVE.seen[e.id]=1;ST.run=null;ST.snap=null;ST.actor=null;talkNpc=null;setCam(['off']);if($('fade').style.opacity==='1')fadeP(false);save();renderHUD();}
 function renderClock(){const h=((SAVE.hour%24)+24)%24,hh=Math.floor(h),mm=Math.floor((h-hh)*6)*10;
   $('clock').textContent=`${SAVE.day}日目・${PHASE_NAME[phaseOf(SAVE.hour)]} ${hh}:${String(mm).padStart(2,'0')}`;}
 // what to do next, when no errand is being followed: the tracker shows today's aim (storyGoal in p5d_events.js)
