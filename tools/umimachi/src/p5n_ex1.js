@@ -11,7 +11,7 @@
      6  at night, into the base: past the guards to the monitoring room, the record of 1996, the alarm and the shutters (p5o_base.js)
      7  out under the radio mast: down from the lookout, Kurosaki's big drone; then on the coast road the mast hums again,
         the shadows come out of the fog, and the truth — Kurosaki, then grandma and the shopkeepers, the baker's past
-     8  the rest is still being made ---------- */
+     8…10  the lantern, 裏海街, the town's long night and the dawn (p5p_rescue.js) ---------- */
 // what the night left behind: a torn net on the pier, a scorched lamp on the coast road, black footprints at the crossing
 const EX1={props:[],marble:null};
 { const lamp=LAMPS.reduce((b,e)=>Math.abs(e.x+30)<Math.abs(b.x+30)?e:b,LAMPS[0]);EX1.lamp=[lamp.x,lamp.z];
@@ -59,9 +59,9 @@ function ex1Goal(f,eve,night,home){const s=f.ex1;
   if(s===4)return night?'夜の桟橋の先へ行ってみる':'夜になったら、桟橋の先へ行ってみる（ばあちゃんに話すと夕方まで休める）';
   if(s===5)return eve||night?home:null;
   if(s===6)return eve||night?'こむぎ堂の主人に話す':'日が暮れたら、こむぎ堂の主人に話す（ばあちゃんに話すと夕方まで休める）';
-  if(s===8)return '（追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です）';
+  if(s===9)return night?'西のトンネルへ（海岸通りのいちばん西）':'夜になったら、西のトンネルへ（ばあちゃんに話すと夕方まで休める）';
   return null;}
-function ex1Dark(f){if(f.ex1===4)return '暗くなってきた。桟橋の先へ行ってみよう';if(f.ex1===6)return '暗くなってきた。こむぎ堂の主人のところへ行こう';return null;}
+function ex1Dark(f){if(f.ex1===4)return '暗くなってきた。桟橋の先へ行ってみよう';if(f.ex1===6)return '暗くなってきた。こむぎ堂の主人のところへ行こう';if(f.ex1===9)return '暗くなってきた。西のトンネルへ行こう';return null;}
 const EX1_EVENTS=[
   {id:'x1_morning',when:{minDay:8,flags:{ending_true:1,ex1:0}},script:[
     ['if',{test:()=>Math.hypot(P.x-HOME[0],P.z-HOME[1])>12},[['fade','out'],['warp',...HOME],['fade','in']]],
@@ -198,7 +198,6 @@ const EX1_EVENTS=[
     ['ask','nagi','（どうする？）',[['行く。ソウタくんを連れて帰る',[]],['……うん。やってみる',[]]]],
     ['set','ex1',8],
     ['fade','out'],['call',()=>{ex1Gather(false);ex1Shadows(false);ex1Kurosaki(false);}],['cam','off'],
-    ['toast','追加ストーリー「オーシャンゲート」のつづきは、ただいま制作中です',true],
     ['warp',...HOME],['day']]},
 ];
 EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...EX1_EVENTS);

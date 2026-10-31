@@ -36,12 +36,12 @@ function uraEnter(){if(!URA.hides.length)uraCrates();for(const h of URA.hides){h
 function uraExit(){URA.on=false;for(const h of URA.hides){h.g.visible=false;if(h.c)h.c.on=false;}if(URA.hide)uraUnhide();SAVE.flags.in_ura=0;canvas.style.filter='';torchOn=false;torch.intensity=0;scene.fog.near=260;scene.fog.far=2600;
   for(const s of URA.shadows){s.h.g.visible=false;s.eye.visible=false;}omochi.g.visible=false;
   for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;for(const c of CATS)c.g.visible=true;$('hurt').style.opacity=0;$('lightBtn').hidden=true;renderHUD();}
-function toggleTorch(){if(!URA.on)return;torchOn=!torchOn;toast(torchOn?'ライトをつけた（遠くまで見えるけど、見つかりやすい）':'ライトを消した');}
+function toggleTorch(){if(lanternOn()){lanternFlash();return;}if(!URA.on)return;torchOn=!torchOn;toast(torchOn?'ライトをつけた（遠くまで見えるけど、見つかりやすい）':'ライトを消した');}
 const clueLeft=()=>URA_CLUES.filter(c=>!SAVE.flags['clue_'+c.id]);
 function uraHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=URA.chase?'逃げろ！':'裏海街';const s=document.createElement('span');s.className='step';
   s.textContent=URA.hide?'木箱の中で、じっと息をひそめる。足音が遠ざかったら、'+(hasTouch?'「出る」ボタンで外へ':'E で出る'):URA.chase?'西のトンネルへ。スケボーは遠くまで聞こえる。足音が近づいたら、木箱に隠れてやり過ごす':'影の住人に見つからないように、手がかりを探す。歩くと静か、スケボーとライトは目立つ';
   const m=document.createElement('span');m.className='meter';const L=clueLeft(),near=URA.chase?Math.round(uraAtt(URA.chase.d||99,70)*5):0;
-  m.textContent=URA.chase?`気配 ${'■'.repeat(near)}${'□'.repeat(5-near)}`:L.length?`手がかり ${3-L.length} / 3　のこり：${L.map(c=>c.name).join('・')}`:'手がかりは そろった';tr.append(b,s,m);}
+  m.textContent=URA.chase?`気配 ${'■'.repeat(near)}${'□'.repeat(5-near)}`:L.length?`手がかり ${3-L.length} / 3　のこり：${L.map(c=>c.name).join('・')}`:'手がかりは そろった';if(rescueOn())m.textContent+='　'+lanMeter();tr.append(b,s,m);}
 // the chase: the big shadow comes from behind. It hunts what it hears or sees, goes to where it last knew you were, waits and
 // sniffs, then wanders closer again. Caught, you are back at the last crate you hid in (or where the chase began)
 function chaseP(){return new Promise(res=>{ST.actor=null;talkNpc=null;
@@ -105,11 +105,12 @@ function chaseStep(dt){const C=URA.chase;if(C.replay){uraReplayStep(dt);return;}
   const dx=P.x-bg.position.x,dz=P.z-bg.position.z,dd=Math.hypot(dx,dz)||1;C.d=dd;
   // what it knows: the board from far off, a walker close by, anyone in front of it in the fog; nobody in a crate
   const loud=!P.foot&&P.v>2.5,facing=(Math.sin(bg.rotation.y)*dx+Math.cos(bg.rotation.y)*dz)/dd;
-  const knows=!hid&&C.grace<=0&&(dd<(loud?40:9)||(dd<20&&facing>0.3));
+  const knows=!hid&&C.grace<=0&&!(C.stun>0)&&(dd<(loud?40:9)||(dd<20&&facing>0.3));
   if(knows){C.mode='hunt';C.tx=P.x;C.tz=P.z;}else if(C.mode==='hunt'){C.mode='search';C.wait=0;}
   const pick=(r0,r1)=>{const a=rnd()*TAU,r=r0+rnd()*(r1-r0);C.tx=P.x+Math.sin(a)*r;C.tz=P.z+Math.cos(a)*r;};
   const tdx=C.tx-bg.position.x,tdz=C.tz-bg.position.z,td=Math.hypot(tdx,tdz);let sp=0;
-  if(C.mode==='hunt')sp=Math.min(9.6,7.2+C.t*0.04);
+  if(C.stun>0)C.stun-=dt;   // stunned by the lantern: it stands where it is
+  else if(C.mode==='hunt')sp=Math.min(9.6,7.2+C.t*0.04);
   else if(td>1.5)sp=C.mode==='search'?4.4:3.4;
   else{C.wait+=dt;   // at the spot: it stands and sniffs, then wanders off and closes in again
     if(hid&&C.saw&&Math.hypot(URA.hide.x-bg.position.x,URA.hide.z-bg.position.z)<4){uraCaught();return;}
@@ -120,13 +121,13 @@ function chaseStep(dt){const C=URA.chase;if(C.replay){uraReplayStep(dt);return;}
   C.sp=sp;if(sp>0&&td>0.01){const k=Math.min(td,sp*dt)/td;bg.position.x+=tdx*k;bg.position.z+=tdz*k;bg.rotation.y=Math.atan2(tdx,tdz);}
   else if(C.mode!=='hunt')bg.rotation.y+=Math.sin(C.t*1.7)*dt*1.2;   // looking round
   bg.position.y=G(bg.position.x,bg.position.z);if(sp>0.5)poseHuman(URA.big.h,'walk',dt,{rate:2.2+sp*0.45});else poseHuman(URA.big.h,'stand',dt,{});
-  URA.big.eye.position.set(bg.position.x,bg.position.y+3.05,bg.position.z);URA.big.eye.material.opacity=0.8+0.2*Math.sin(clock*9);
+  URA.big.eye.position.set(bg.position.x,bg.position.y+3.05,bg.position.z);URA.big.eye.material.opacity=C.stun>0?0.15:0.8+0.2*Math.sin(clock*9);
   URA.goal.visible=true;URA.goal.position.set(URA_EXIT[0],G(URA_EXIT[0],URA_EXIT[1])+3.4+Math.sin(clock*3)*0.12,URA_EXIT[1]);
   $('hurt').style.opacity=Math.max(uraAtt(dd,40)*0.75,C.mode==='hunt'?0.3:0.1);
   C.hudT-=dt;if(C.hudT<=0){C.hudT=0.25;uraHUD($('tracker'));}
   C.rec.push({t:C.t,x:P.x,y:P.y,z:P.z,yaw:P.yaw,v:P.v,foot:P.foot,bx:bg.position.x,by:bg.position.y,bz:bg.position.z,br:bg.rotation.y,sp:C.sp});
   while(C.rec.length&&C.t-C.rec[0].t>3)C.rec.shift();
-  if(!hid&&dd<1.7&&C.grace<=0){uraCaught();return;}
+  if(!hid&&dd<1.7&&C.grace<=0&&!(C.stun>0)){uraCaught();return;}
   if(!hid&&Math.hypot(P.x-URA_EXIT[0],P.z-URA_EXIT[1])<URA_EXIT[2]){URA.chase=null;bg.visible=URA.big.eye.visible=false;URA.goal.visible=false;C.res();}}
 function updateUra(dt){
   if(!URA.on&&SAVE.flags.in_ura&&state==='play')uraEnter();   // a save made in 裏海街 opens there again
@@ -137,7 +138,7 @@ function updateUra(dt){
   for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
   for(const m of NIGHT.lamps){m.visible=Math.random()>0.08;m.material.opacity=0.55+Math.random()*0.3;}
   for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;for(const c of CATS)c.g.visible=false;
-  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id];g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
+  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id]&&!rescueOn();g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
   // the flashlight, held at the chest and pointing where she goes
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw));torch.intensity=torchOn?2.4:0;
   torch.position.set(P.x,P.y+1.1,P.z).addScaledVector(F,0.7);torch.target.position.set(P.x,P.y+0.4,P.z).addScaledVector(F,9);torch.target.updateMatrixWorld();
@@ -147,11 +148,12 @@ function updateUra(dt){
     const d=Math.hypot(P.x-g.position.x,P.z-g.position.z);
     const R=(8+(torchOn?6:0)+(loud?6:0))*(quiet?0.65:1);
     const fx=(b[0]-a[0])/L*s.dir,fz=(b[1]-a[1])/L*s.dir,toX=(P.x-g.position.x)/(d||1),toZ=(P.z-g.position.z)/(d||1);
-    const seen=!URA.chase&&!URA.hide&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
+    if(s.stun>0){s.stun-=dt;s.sus=0;}g.scale.set(1,s.stun>0?0.82:1,1);   // stunned by the lantern: it sags and sees nothing
+    const seen=!(s.stun>0)&&!URA.chase&&!URA.hide&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
     s.sus=clamp(s.sus+(seen?dt*(d<5?1.6:1):-dt*0.5),0,1);
-    if(s.sus<0.05&&!URA.chase){s.t+=s.dir*dt*1.1/L;if(s.t>1){s.t=1;s.dir=-1;}if(s.t<0){s.t=0;s.dir=1;}}   // walks its beat unless it has noticed you
+    if(s.sus<0.05&&!URA.chase&&!(s.stun>0)){s.t+=s.dir*dt*1.1/L;if(s.t>1){s.t=1;s.dir=-1;}if(s.t<0){s.t=0;s.dir=1;}}   // walks its beat unless it has noticed you
     const x=lerp(a[0],b[0],s.t),z=lerp(a[1],b[1],s.t);g.position.set(x,G(x,z),z);
-    g.rotation.y=s.sus>0.05?Math.atan2(P.x-x,P.z-z):Math.atan2(fx,fz);if(s.sus<0.05)poseHuman(s.h,'walk',dt,{rate:4.6});else poseHuman(s.h,'stand',dt,{});
+    g.rotation.y=s.sus>0.05?Math.atan2(P.x-x,P.z-z):Math.atan2(fx,fz);if(s.sus<0.05&&!(s.stun>0))poseHuman(s.h,'walk',dt,{rate:4.6});else poseHuman(s.h,'stand',dt,{});
     s.eye.visible=s.sus>0.02;s.eye.position.set(x,G(x,z)+1.62,z);s.eye.material.opacity=s.sus;top=Math.max(top,s.sus);}
   URA.sus=top;if(!URA.chase)$('hurt').style.opacity=top*0.7;
   if(top>=1&&!ST.run){for(const s of URA.shadows)s.sus=0;runEvent({id:'ura_caught',once:false,script:[

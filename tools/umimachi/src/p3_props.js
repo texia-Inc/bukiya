@@ -150,6 +150,7 @@ function pineLayers(list){inst(new THREE.CylinderGeometry(0.18,0.3,1,7).translat
 pineLayers(PINES);
 // forest on the hills around the town
 const TREES=[];for(let n=0;n<900;n++){const x=-330+rnd()*660,z=-258+rnd()*430;if(!(z<-182||Math.abs(x)>202))continue;if(x>-82&&x<-38&&z>-180&&z<-122)continue;if(Math.abs(x)<34&&z>-236)continue;if(inDeckView(x,z))continue;TREES.push({x,z,s:2.2+rnd()*2.6,col:C3(pick(['#3f7a45','#4f8a4a','#356a3c','#5a9450']))});}
+for(let i=TREES.length-1;i>=0;i--)if(Math.hypot(TREES[i].x-228,TREES[i].z+60)<15)TREES.splice(i,1);   // the rock door's clearing
 for(const k of [0,1])inst(CANOPY[k],LEAF,TREES.filter((e,i)=>i%2===k),(e,d)=>{d.position.set(e.x,G(e.x,e.z)+e.s*0.95,e.z);d.scale.set(e.s*0.8,e.s*0.92,e.s*0.8);d.rotation.y=e.x;},{cast:false});
 // far mountains round the back and the sides of the town: the land the town sits in, so from the sea or the lighthouse
 // the hills do not just stop. Hazy blue-green and far enough for the fog to soften them
@@ -530,8 +531,8 @@ const BEACHHOUSE={x:40,z:SHORE+10};
   const woods=[];for(let k=0;k<460;k++){const sg=rnd()<0.5?-1:1,x=sg*(205+Math.pow(rnd(),0.8)*140),z=-205+rnd()*425;
     if(Math.abs(z-TRAM_Z)<8.5||(z>230&&z<250))continue;
     woods.push({x,z,y:H(x,z),s:2+rnd()*2.4,cedar:rnd()<0.33,lean:(rnd()-.5)*0.2,col:C3(pick(['#3f6e3c','#4b7d43','#5a8a4a','#365f36','#6a944f']))});}
-  // keep the ridge decks clear, and give every trunk a collider
-  for(let i=woods.length-1;i>=0;i--){const e=woods[i];if(RIDGE_DECKS.some(d=>Math.hypot(e.x-d.x,e.z-d.z)<11)||inDeckView(e.x,e.z))woods.splice(i,1);}
+  // keep the ridge decks and the rock door of 海街自警団 (228,-60; p5p_rescue.js) clear, and give every trunk a collider
+  for(let i=woods.length-1;i>=0;i--){const e=woods[i];if(RIDGE_DECKS.some(d=>Math.hypot(e.x-d.x,e.z-d.z)<11)||inDeckView(e.x,e.z)||Math.hypot(e.x-228,e.z+60)<15)woods.splice(i,1);}
   for(const e of woods){const r=0.12*e.s;collide(e.x-r,e.x+r,e.z-r,e.z+r,'tree');HILL_TREES.push(e);}
   const broad=woods.filter(e=>!e.cedar),ced=woods.filter(e=>e.cedar);
   inst(new THREE.CylinderGeometry(0.16,0.26,1,6).translate(0,0.5,0),tm('#6b4a36'),woods.map(e=>({...e,col:null})),(e,d)=>{d.position.set(e.x,e.y-0.3,e.z);d.scale.set(e.s*0.5,e.s*1.2,e.s*0.5);});

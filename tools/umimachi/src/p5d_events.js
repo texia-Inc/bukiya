@@ -331,21 +331,21 @@ const EVENTS=[
     ['fade','out'],['cam','off'],['warp',...HOME],['day']]},
 
   /* ----- the horror route "トンネルの向こう" (route 1), the third night: 裏海街. Three things Mio left behind, then the chase ----- */
-  {id:'ura_photo',on:{near:[62,TRAM_Z-1.5,2.4]},when:{flags:{in_ura:1,clue_photo:0}},script:[
+  {id:'ura_photo',on:{near:[62,TRAM_Z-1.5,2.4]},when:{flags:{in_ura:1,ex1:0,clue_photo:0}},script:[
     ['say','','駅のベンチに、色あせた写真が一枚、置いてあった。','浜辺で笑う、ふたりの女の子。ひとりは白いワンピース。もうひとりは……'],
     ['say','nagi','……お母さん？ 若いころの、お母さんだ。','裏に何か書いてある。「ミオと、ナツミ。1996年 夏」'],
     ['set','clue_photo'],['add','clues'],['call',()=>renderHUD()]]},
-  {id:'ura_marble',on:{near:[SHOPS.dagashi.door[0],SHOPS.dagashi.door[1],2.4]},when:{flags:{in_ura:1,clue_marble:0}},script:[
+  {id:'ura_marble',on:{near:[SHOPS.dagashi.door[0],SHOPS.dagashi.door[1],2.4]},when:{flags:{in_ura:1,ex1:0,clue_marble:0}},script:[
     ['say','','まるやの店先。ラムネの空きびんの中に、青いビー玉がひとつ。','手にとると、遠くで子どもの笑い声がした気がした。'],
     ['say','','「ナツミちゃん、ビー玉とれた！ ……ずっと、いっしょに遊ぼうね」'],
     ['say','nagi','いまの声……ミオ？'],
     ['set','clue_marble'],['add','clues'],['call',()=>renderHUD()]]},
-  {id:'ura_diary',on:{near:[SHRINE.x,-157.5,2.6]},when:{flags:{in_ura:1,clue_diary:0}},script:[
+  {id:'ura_diary',on:{near:[SHRINE.x,-157.5,2.6]},when:{flags:{in_ura:1,ex1:0,clue_diary:0}},script:[
     ['say','','本殿の石段に、雨にぬれた日記の切れはしが落ちていた。'],
     ['say','','「8月15日。今夜、電波塔が鳴ったら、トンネルの向こうへ行ってみる。」','「灯台の灯りが消えたのは、きっと向こう側にだれかがいるから。わたしが、たしかめてくる。」','「ナツミには、ないしょ。――ミオ」'],
     ['say','nagi','30年前の、あの夜……ミオは、ここに来たんだ。'],
     ['set','clue_diary'],['add','clues'],['call',()=>renderHUD()]]},
-  {id:'ura_chase',when:{flags:{in_ura:1},min:{clues:3}},script:[
+  {id:'ura_chase',when:{flags:{in_ura:1,ex1:0},min:{clues:3}},script:[
     ['say','','手がかりが、そろった。そのとき――','ブウウン……。霧の向こうから、色のない羽音が近づいてくる。目だけが赤く光る、影のドローンだ。'],
     ['say','','足もとに、だれかの古い二丁拳銃が落ちていた。持ち手に、小さく「こむぎ」と彫ってある。'],
     ['say','nagi','……使えってこと？ やるしかない！'],
