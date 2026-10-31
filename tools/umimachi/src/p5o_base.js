@@ -81,7 +81,7 @@ function baseHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElem
 // sneaking: done when she reaches the desk in the monitoring room. Seen for too long, back to the last checkpoint
 function baseSneakP(){return new Promise(res=>{ST.actor=null;talkNpc=null;baseGuards();baseGuardsReset();BASE.sneak={res,cp:BASE_START,caught:0,hudT:0};
   for(const s of BASE.guards){s.h.g.visible=s.fan.visible=true;}if(!BASE.mark){BASE.mark=marker(MK.target);BASE.mark.scale.set(1.6,1.6,1);}renderHUD();});}
-function baseCaught(){const S=BASE.sneak;S.caught++;S.pause=true;$('fade').style.opacity=1;toast('見つかった……！ もう一度',true);
+function baseCaught(){const S=BASE.sneak;S.caught++;S.pause=true;sfx.caught();$('fade').style.opacity=1;toast('見つかった……！ もう一度',true);
   setTimeout(()=>{if(BASE.sneak!==S)return;P.x=BASE_X+S.cp[0];P.z=S.cp[1];P.yaw=S.cp[2];P.v=0;P.y=0;camInit=false;baseGuardsReset();$('fade').style.opacity=0;$('hurt').style.opacity=0;S.pause=false;
     if(S.caught%3===0)baseRetire(S);},800);}
 async function baseRetire(S){S.pause=true;const i=await askP('',`${S.caught}回見つかってしまった……。どうする？`,['もう少しがんばる','先に進む（リタイア）']);S.pause=false;

@@ -8168,7 +8168,7 @@ function baseHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElem
 // sneaking: done when she reaches the desk in the monitoring room. Seen for too long, back to the last checkpoint
 function baseSneakP(){return new Promise(res=>{ST.actor=null;talkNpc=null;baseGuards();baseGuardsReset();BASE.sneak={res,cp:BASE_START,caught:0,hudT:0};
   for(const s of BASE.guards){s.h.g.visible=s.fan.visible=true;}if(!BASE.mark){BASE.mark=marker(MK.target);BASE.mark.scale.set(1.6,1.6,1);}renderHUD();});}
-function baseCaught(){const S=BASE.sneak;S.caught++;S.pause=true;$('fade').style.opacity=1;toast('見つかった……！ もう一度',true);
+function baseCaught(){const S=BASE.sneak;S.caught++;S.pause=true;sfx.caught();$('fade').style.opacity=1;toast('見つかった……！ もう一度',true);
   setTimeout(()=>{if(BASE.sneak!==S)return;P.x=BASE_X+S.cp[0];P.z=S.cp[1];P.yaw=S.cp[2];P.v=0;P.y=0;camInit=false;baseGuardsReset();$('fade').style.opacity=0;$('hurt').style.opacity=0;S.pause=false;
     if(S.caught%3===0)baseRetire(S);},800);}
 async function baseRetire(S){S.pause=true;const i=await askP('',`${S.caught}回見つかってしまった……。どうする？`,['もう少しがんばる','先に進む（リタイア）']);S.pause=false;
@@ -9149,6 +9149,9 @@ function sndInit(){const S=SND;if(S.ctx){sndRevive(true);return;}
     src.start(0,osc?0:Math.random()*1.5);return{src,fl,g};};
   S.L.roll=loop('lowpass',260,0.9);S.L.grit=loop('bandpass',1700,1.4);S.L.grind=loop('bandpass',3200,5);S.L.sea=loop('lowpass',420,0.4);
   S.L.motor=loop('lowpass',70,1.2,'sawtooth');S.L.engine=loop('lowpass',90,2,'sawtooth');S.L.tyre=loop('bandpass',2300,4);S.L.ura=loop('lowpass',55,1,'triangle');S.L.growl=loop('lowpass',38,3,'sawtooth');S.L.crowd=loop('bandpass',650,0.8);
+  // Oceangate's base: machines and vents in the rock, a low dissonance that rises with the guards' suspicion, the siren, the shutters
+  S.L.hum=loop('lowpass',50,1.5,'sawtooth');S.L.vent=loop('lowpass',700,0.5);S.L.tense=loop('lowpass',62,1,'sawtooth');S.L.tense2=loop('lowpass',65.5,1,'sawtooth');
+  S.L.siren=loop('lowpass',480,1,'square');S.L.shutg=loop('bandpass',260,2);
 }
 // the level: on/off and the volume from the settings
 function sndLevel(){return SND.on?0.9*SND.vol:0;}
@@ -9194,7 +9197,12 @@ const sfx={
   pad:v=>{hiss(0.08,'lowpass',360,0.16*v);tone(78,0.07,'sine',0.1*v,55);},
   thud:v=>{tone(50,0.34,'sine',0.6*v,28);hiss(0.2,'lowpass',240,0.4*v);},
   heart:v=>{tone(56,0.13,'sine',v,38);tone(50,0.15,'sine',v*0.8,34,0.18);},
-  cricket:()=>{for(let i=0;i<3;i++)tone(4300,0.035,'sine',0.025,null,i*0.06);}};
+  cricket:()=>{for(let i=0;i<3;i++)tone(4300,0.035,'sine',0.025,null,i*0.06);},
+  boot:v=>{hiss(0.05,'bandpass',1400,0.12*v,2);tone(120,0.05,'sine',0.14*v,70);},
+  notice:()=>{tone(880,0.3,'triangle',0.07,820);tone(932,0.3,'triangle',0.06,870);hiss(0.25,'bandpass',3000,0.05,4,1500);},
+  caught:()=>{tone(220,0.7,'sawtooth',0.12,90);tone(233,0.7,'sawtooth',0.1,95);hiss(0.6,'bandpass',2400,0.16,3,700);},
+  clank:v=>{tone(310,0.5,'triangle',0.06*v);tone(467,0.35,'triangle',0.04*v,null,0.02);hiss(0.08,'bandpass',2500,0.05*v,4);},
+  drip:()=>{tone(1500,0.12,'sine',0.035,700);}};
 // the drone fight and the fireworks call their own effects
 { const s0=shoot;shoot=function(...a){sfx.shot();return s0.apply(this,a);};
   const b0=boom;boom=function(p){sfx.boom(att(Math.hypot(p.x-P.x,p.z-P.z),160)+0.15);return b0(p);};
@@ -9248,6 +9256,19 @@ function updateSound(dt){const S=SND,c=S.ctx;if(!c)return;const t=c.currentTime,
       C.stepT=(C.stepT||0)-dt;if(C.stepT<=0&&C.sp>0.5){C.stepT=clamp(3/C.sp,0.3,0.95);if(v>0.005)sfx.thud(v);}
       const hv=att(C.d,34);S.heartT=(S.heartT||0)-dt;if(hv>0.02&&S.heartT<=0){S.heartT=lerp(1.0,0.36,hv);sfx.heart(0.12+hv*0.45);}}}
   set(L.growl.g.gain,gr,0.2);set(L.growl.src.frequency,38+gr*40,0.2);
+  // Oceangate's base: the machines and the vents; the guards' boots nearby; a low dissonance and your heart as one grows
+  // suspicious, a sting when one notices you; in the alarm, the siren, the shutters grinding down and slamming shut
+  const inB=play&&AREA==='base',BS=inB&&BASE.sneak&&!BASE.sneak.pause;let top=0;
+  if(BS)for(const g of BASE.guards){top=Math.max(top,g.sus);g.stepT=(g.stepT||0)-dt;
+    if(g.sus<0.05&&g.wait<=0&&g.stepT<=0){g.stepT=0.55;const v=att(Math.hypot(g.x-P.x,g.z-P.z),30);if(v>0.01)sfx.boot(v);}
+    if(g.sus>0.12&&!g.noticed){g.noticed=true;sfx.notice();}else if(g.sus<0.02)g.noticed=false;}
+  set(L.hum.g.gain,inB?0.05:0,0.4);set(L.vent.g.gain,inB?0.035:0,0.4);set(L.tense.g.gain,BS?0.03+top*0.12:0,0.3);set(L.tense2.g.gain,BS?0.02+top*0.1:0,0.3);
+  if(BS&&top>0.15){S.bheart=(S.bheart||0)-dt;if(S.bheart<=0){S.bheart=lerp(1.0,0.34,top);sfx.heart(0.1+top*0.4);}}
+  if(inB&&!BASE.run&&clock>(S.nextClank||0)){S.nextClank=clock+4+Math.random()*6;if(Math.random()<0.5)sfx.clank(0.5+Math.random()*0.5);else sfx.drip();}
+  const BR=inB&&BASE.run;set(L.siren.g.gain,BR&&!BR.pause?0.05:0,0.1);if(BR)set(L.siren.src.frequency,480+260*(0.5+0.5*Math.sin(clock*3.2)),0.03);
+  let sg=0;if(BR)for(const s of BASE.shut){const k=clamp((BR.t-s.t)/2.4,0,1),v=att(Math.abs(P.x-(BASE_X+s.x)),60);if(k>0&&k<1)sg=Math.max(sg,v);
+    if(k>=1&&!s.slam){s.slam=true;sfx.thud(Math.max(0.2,v));}if(k<=0)s.slam=false;}
+  set(L.shutg.g.gain,sg*0.18,0.08);
   // the trams: motor, rail joints, the bell as they leave, the doors
   for(const T of [TRAM,INKT]){const here=(T===INKT)===(AREA==='inaka'),k=T===TRAM?'t':'i';if(!here)continue;
     let d=1e9;for(const g of T.cars)d=Math.min(d,Math.hypot(g.position.x-P.x,g.position.z-P.z));if(ride&&RIDE.train===T)d=0;const v=att(d,90);
