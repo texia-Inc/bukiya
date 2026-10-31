@@ -9909,7 +9909,10 @@ function stepPlayer(dt){
   const onFoot=P.foot||!!(P.tr&&P.tr.type!=='stow');
   // on foot with the touch stick, she walks the way the stick points on the screen (away from the camera = forward) and turns
   // smoothly to face it; a small push walks, a full push runs. On the board the stick still steers like the keys.
-  if(onFoot&&stick.on&&!busy&&!ST.run){const m=Math.hypot(stick.x,stick.y);I.turn=0;I.back=false;I.fwd=false;
+  // holding the run button, though, the stick steers like the board's: left and right turn her, and she runs on at full speed
+  // with the camera behind her (pointing the way on the screen while running made her circle as the camera came round)
+  if(onFoot&&stick.on&&!busy&&!ST.run&&kickHold){I.fwd=true;I.mag=1;I.back=false;I.turn=Math.abs(stick.x)>0.12?clamp(stick.x*0.6,-0.6,0.6):0;footCamYaw=P.yaw;}
+  else if(onFoot&&stick.on&&!busy&&!ST.run){const m=Math.hypot(stick.x,stick.y);I.turn=0;I.back=false;I.fwd=false;
     if(m>0.25){const cy=footCamYaw,want=cy-Math.atan2(stick.x,-stick.y);let d=want-P.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));
       P.yaw+=clamp(d,-7*dt,7*dt);I.fwd=true;I.mag=clamp((m-0.25)/0.55,0.35,1);}
     // the camera swings round behind her only slowly, so "right on the screen" stays put long enough to walk there
