@@ -34,7 +34,7 @@ function applyLight(h){h=((h%24)+24)%24;let k=0;while(k<LIGHT.length-2&&LIGHT[k+
   sun.color.copy(LC[4]);sun.intensity=v(6);const el=v(7);sunDir.set(SUN_H.x*Math.cos(el),Math.sin(el),SUN_H.y*Math.cos(el));
   const g=v(8),on=g>0.01;for(const m of NIGHT_MATS)m.emissiveIntensity=g*0.85;for(const m of NIGHT.lamps){m.visible=on;m.material.opacity=g;}
   NIGHT.house.visible=NIGHT.beam.visible=on&&!!flag('lighthouse_lit');   // the lighthouse has been dark for thirty years
-  NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=clock*0.6;
+  NIGHT.house.material.opacity=g;NIGHT.beam.userData.m.opacity=0.3*g;NIGHT.beam.rotation.y=EX1R.beam!=null?EX1R.beam:clock*0.6;
   NIGHT.mast.visible=on&&!flag('tower_quiet')&&(clock*1.2%1)<0.45;NIGHT.mast.material.opacity=g;NIGHT.stars.material.opacity=clamp(g*1.3-0.3,0,1);}
 
 // the unlit face takes the colour and strength of the light around it (sun and sky), so it does not glow at dusk or at night
@@ -45,7 +45,7 @@ function tintUnlit(){_tint.copy(sun.color).multiplyScalar(sun.intensity*0.6);_tc
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait||baseBusy();   // events during which the board is yours
+const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait||baseBusy()||DEF.on;   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -140,7 +140,7 @@ function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateEx1();updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);updateUra(dt);updateBase(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
+  applyLight(SAVE.hour);updateUra(dt);updateBase(dt);updateRescue(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
   if(ph!==ST.phase){ST.phase=ph;renderHUD();}if(tm!==ST.tm){ST.tm=tm;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
