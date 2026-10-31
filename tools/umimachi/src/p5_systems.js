@@ -573,7 +573,7 @@ function updateCamera(dt){
   else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
   else if(URA.chase&&URA.chase.replay){want=new THREE.Vector3();look=new THREE.Vector3();uraReplayCam(want,look);rate=URA.chase.replay.at===URA.chase.replay.t0?0:5;}
   else if(URA.hide){want=new THREE.Vector3();look=new THREE.Vector3();uraHideCam(want,look);rate=5;}
-  else if(talkNpc){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
+  else if(talkNpc&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)<8){const n=talkNpc,m=new THREE.Vector3((P.x+n.x)/2,P.y,(P.z+n.z)/2),d=new THREE.Vector3(n.x-P.x,0,n.z-P.z).normalize(),side=new THREE.Vector3(-d.z,0,d.x);
     want=m.clone().addScaledVector(side,3.4).addScaledVector(d,-0.6);want.y+=1.5;if(blocked(want.x,want.y,want.z))want=m.clone().addScaledVector(side,-3.4).setY(m.y+1.5);look=m.clone();look.y+=1.15;rate=3;}
   else if(modal==='closet'){const fw=player.hips.getWorldDirection(new THREE.Vector3());fw.y=0;fw.normalize();
     // she stands in the space above the sheet: far enough back to fit there, the aim lowered so she sits in its middle
