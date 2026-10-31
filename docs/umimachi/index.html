@@ -8243,17 +8243,21 @@ const EX1={props:[],marble:null};
   for(const m of EX1.props)m.visible=false;}
 const ex1On=()=>{const s=SAVE.flags.ex1||0;return s>0&&!SAVE.flags.ex1_done;};
 function updateEx1(){const on=ex1On()&&!URA.on;for(const m of EX1.props)m.visible=on;
-  if(EX1.still){for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
+  if(EX1.still){for(const c of CARS)if(!(EX1.van&&c===VAN)){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
   if(EX1.marble&&EX1.marble.visible){EX1.marble.position.set(P.x,P.y+1.0,P.z);EX1.marble.material.opacity=0.55+0.4*Math.sin(clock*4);}}
 // the scene of the truth on the coast road: Kurosaki out of his drone, the shadows round about, and the town's old guard
 const TRUTH={x:-18,z:COAST_Z-3.5};TRUTH.y=G(TRUTH.x,TRUTH.z);
-function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;if(!on){for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;return;}k.g.position.set(TRUTH.x-4,TRUTH.y,TRUTH.z);k.g.rotation.y=Math.PI/2;poseHuman(k,'stand',0.016,{});}
+function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;EX1.van=on;VAN.scripted=on;
+  if(on){const x=TRUTH.x-11,z=COAST_Z+2.2;VAN.x=x;VAN.z=z;VAN.v=0;VAN.g.visible=true;VAN.g.position.set(x,G(x,z)+0.02,z);VAN.g.rotation.y=Math.PI/2;
+    const hl=VAN.g.userData.len/2+0.1;Object.assign(VAN.box,{x0:x-hl,x1:x+hl,z0:z-0.9,z1:z+0.9,top:G(x,z)+1.9,on:true});}
+  if(!on){for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;return;}k.g.position.set(TRUTH.x-2.4,TRUTH.y,TRUTH.z);k.g.rotation.y=Math.PI/2;poseHuman(k,'stand',0.016,{});}
 function ex1Shadows(on){if(!EX1.shadows){EX1.shadows=[];for(let k=0;k<7;k++){const h=makeHuman(SHADE);world.add(h.g);EX1.shadows.push({h,eye:glow('#ff3020',0,0,0,0.9)});}}
   EX1.shadows.forEach((s,k)=>{const a=k/7*TAU+0.3,r=15+(k%3)*3,x=TRUTH.x+Math.cos(a)*r,z=TRUTH.z+3+Math.sin(a)*r*0.45;
     s.h.g.visible=s.eye.visible=on;if(!on)return;s.h.g.position.set(x,G(x,z),z);s.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);poseHuman(s.h,'stand',0.016,{});s.eye.position.set(x,G(x,z)+1.62,z);});}
+// (their x drawn in to 0.6, so that they all fit a phone held upright)
 const GATHER={tome:[-25,3.5],baker:[-11,3.5],okami:[-27,0.5],master:[-9,0.5],neko:[-19,6]};
 function ex1Gather(on){for(const id in GATHER){const n=NPCS[id];
-  if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=TRUTH.x+GATHER[id][0]+18,z=TRUTH.z+GATHER[id][1];n.x=x;n.z=z;n.mode='stand';
+  if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=TRUTH.x+(GATHER[id][0]+18)*0.6,z=TRUTH.z+GATHER[id][1];n.x=x;n.z=z;n.mode='stand';
     n.h.g.position.set(x,G(x,z)+paveY(x,z),z);n.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);}
   else if(n.home){const o=n.home;n.x=o.x;n.z=o.z;n.mode=o.mode;n.h.g.position.set(o.x,o.y,o.z);n.h.g.rotation.y=o.yaw;delete n.home;}
   Object.assign(n.box,{x0:n.x-n.rad,x1:n.x+n.rad,z0:n.z-n.rad,z1:n.z+n.rad});}}
@@ -8381,9 +8385,9 @@ const EX1_EVENTS=[
     ['say','baker','（無線の声）黒崎の大型ドローンだ！ ナギちゃん、坂を下りながら撃ち落とせ！'],
     ['cam','off'],
     ['drones',{total:6,boss:1,title:'黒崎のドローンを落とせ'}],
-    ['fade','out'],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],['call',()=>ex1Kurosaki(true)],
+    ['fade','out'],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],['call',()=>ex1Kurosaki(true)],
     ['cam',[TRUTH.x,TRUTH.y+1.8,TRUTH.z+6.5],[TRUTH.x,TRUTH.y+1.2,TRUTH.z],1.5,'cut'],['fade','in'],
-    ['say','','大型ドローンは、海岸通りに落ちて火花を散らした。','こわれた機体から、白髪まじりの男がはい出してくる。……黒崎だ。'],
+    ['say','','大型ドローンは、海岸通りに落ちて火花を散らした。','キキッ……！ ブレーキの音。黒いバンが止まって、白髪まじりの男が降りてきた。','手には、ドローンの操縦機。……黒崎だ。'],
     ['say','nagi','ソウタくんを返して！ あなたたちが連れていったんでしょ！'],
     ['say','黒崎','……ソウタ？ 子どもなど、さらっておらん。'],
     ['say','nagi','うそ！ 黒いバンが、家の前に――'],
@@ -8574,8 +8578,8 @@ const EX1B_EVENTS=[
     ['say','nagi','手をはなさないで！ 走るよ！'],
     ['cam','off'],['call',()=>{EX1R.follow=true;}],
     ['chase'],
-    ['fade','out'],['ura',false],['call',()=>{rescueSota('stand',TRUTH.x+GATHER.tome[0]+19.2,TRUTH.z+GATHER.tome[1]+0.4,Math.PI);ex1Gather(true);ex1Kurosaki(true);}],
-    ['time',23.8,0],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],
+    ['fade','out'],['ura',false],['call',()=>{rescueSota('stand',TRUTH.x+(GATHER.tome[0]+18)*0.6+1.2,TRUTH.z+GATHER.tome[1]+0.4,Math.PI);ex1Gather(true);ex1Kurosaki(true);}],
+    ['time',23.8,0],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],
     ['cam',[TRUTH.x+6,TRUTH.y+3.6,TRUTH.z-9],[TRUTH.x+2,TRUTH.y+1,TRUTH.z+2],1.5,'cut'],['fade','in'],
     ['say','','トンネルを転がり出て、海岸通りまで走りぬけると、みんなが待っていた。'],
     ['say','tome','ナギ！ ソウタ！ ……よかった。よかったねえ。'],
@@ -8589,7 +8593,7 @@ const EX1B_EVENTS=[
     ['drones',{total:8,title:'霧の中の影のドローンを落とせ'}],
     ['say','baker','（無線の声）上は片づいた！ ナギちゃん、浜だ！'],
     ['call',defendP],
-    ['fade','out'],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],['call',giantRise],
+    ['fade','out'],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],['call',giantRise],
     ['cam',[GIANT.x-16,TRUTH.y+2.4,COAST_Z+4],[GIANT.x,SEA_Y+20,GIANT.z],1.2,'cut'],['fade','in'],
     ['wait',1.5],
     ['say','','そのとき、海が、ふくれあがった。','霧の中から、山のような影が立ち上がる。……町を見下ろす、ふたつの赤い目。'],
@@ -9854,10 +9858,26 @@ const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,f
 const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
   if(Math.abs(x)>195)for(const e of HILL_TREES){if(Math.abs(e.x-x)<e.s*1.1&&Math.abs(e.z-z)<e.s*1.1&&y<e.y+e.s*2.7&&Math.hypot(e.x-x,e.z-z)<e.s*1.05)return true;}return false;}
+// where a scene's camera can stand: above the ground, out of buildings, crates and walls, out of the trees and the sea-front pines
+function camClear(x,y,z){if(y<G(x,z)+0.3||blocked(x,y,z))return false;
+  for(const c of COLL)if(c.on!==false&&c.tag==='prop'&&x>c.x0-0.2&&x<c.x1+0.2&&z>c.z0-0.2&&z<c.z1+0.2&&y<(c.top||1)+0.3)return false;
+  if(AREA!=='town')return true;
+  for(const e of PINES){if(Math.abs(x-e.x)<3&&Math.abs(z-e.z)<3){const g=G(e.x,e.z);if(Math.hypot(x-e.x,z-e.z)<2.7&&y>g+e.h*0.4&&y<g+e.h*1.15)return false;}}
+  for(const e of TREES){if(Math.abs(x-e.x)<e.s&&Math.abs(z-e.z)<e.s&&Math.hypot(x-e.x,z-e.z)<e.s*0.9&&y<G(e.x,e.z)+e.s*1.9)return false;}
+  return true;}
+// a scene's shot, made to fit: on a phone held upright the frame is narrow, so the camera steps back along its line (up to 1.5×)
+// to take in what a wide screen would; and on any screen, a camera that would stand in a wall or a tree, or whose view of what
+// it looks at is cut by one, moves along the same line to the nearest place that is clear. Worked out once for each shot
+function camFit(c){if(c.fit&&c.fitA===camera.aspect<0.8)return c.fit.clone();
+  const p=c.pos,l=c.look,d=p.clone().sub(l),up=camera.aspect<0.8?1.5:1,ks=[];
+  for(let k=up;k>=0.999;k-=0.1)ks.push(k);for(let k=0.9;k>=0.35;k-=0.1)ks.push(k);
+  const clearTo=q=>{for(let t=0.2;t<=1.001;t+=0.1){const x=lerp(l.x,q.x,t),y=lerp(l.y,q.y,t),z=lerp(l.z,q.z,t);if(!camClear(x,y,z))return false;}return true;};
+  let best=p.clone();for(const k of ks){const q=l.clone().addScaledVector(d,k);if(clearTo(q)){best=q;break;}}
+  c.fit=best;c.fitA=camera.aspect<0.8;return best.clone();}
 function updateCamera(dt){
   const cyaw=P.foot&&stick.on?footCamYaw:P.yaw,F=new THREE.Vector3(Math.sin(cyaw),0,Math.cos(cyaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
-  else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
+  else if(ST.cam){look=ST.cam.look.clone();want=camFit(ST.cam);rate=ST.cam.rate;}
   else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
   else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
   else if(URA.chase&&URA.chase.replay){want=new THREE.Vector3();look=new THREE.Vector3();uraReplayCam(want,look);rate=URA.chase.replay.at===URA.chase.replay.t0?0:5;}
@@ -9883,7 +9903,7 @@ function updateCamera(dt){
   if(!camInit||rate===0){camPos.copy(want);camLook.copy(look);camInit=true;}   // on the tram the view rides with the car
   camPos.lerp(want,1-Math.exp(-dt*rate));camLook.lerp(look,1-Math.exp(-dt*(rate+3)));
   camera.position.copy(camPos);if(P.bump>0&&!reduceMotion){camera.position.y+=(Math.random()-.5)*P.bump*0.3;}P.bump=Math.max(0,P.bump-dt);
-  camera.lookAt(camLook);const fov=modal==='closet'?closetFov():camera.aspect<0.8?72:58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
+  camera.lookAt(camLook);const fov=modal==='closet'?closetFov():camera.aspect<0.8?(ST.cam?84:72):58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
   dome.position.copy(camera.position);
   const sp=state==='title'?new THREE.Vector3(0,30,-120):p;sun.position.copy(sp).addScaledVector(sunDir,70);sun.target.position.copy(sp);sun.target.updateMatrixWorld();
 }

@@ -565,10 +565,26 @@ const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let camInit=false,f
 const reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function blocked(x,y,z){for(const c of COLL){if(c.tag!=='bld')continue;if(x>c.x0-0.3&&x<c.x1+0.3&&z>c.z0-0.3&&z<c.z1+0.3&&y<(c.top||99)+2.5)return true;}
   if(Math.abs(x)>195)for(const e of HILL_TREES){if(Math.abs(e.x-x)<e.s*1.1&&Math.abs(e.z-z)<e.s*1.1&&y<e.y+e.s*2.7&&Math.hypot(e.x-x,e.z-z)<e.s*1.05)return true;}return false;}
+// where a scene's camera can stand: above the ground, out of buildings, crates and walls, out of the trees and the sea-front pines
+function camClear(x,y,z){if(y<G(x,z)+0.3||blocked(x,y,z))return false;
+  for(const c of COLL)if(c.on!==false&&c.tag==='prop'&&x>c.x0-0.2&&x<c.x1+0.2&&z>c.z0-0.2&&z<c.z1+0.2&&y<(c.top||1)+0.3)return false;
+  if(AREA!=='town')return true;
+  for(const e of PINES){if(Math.abs(x-e.x)<3&&Math.abs(z-e.z)<3){const g=G(e.x,e.z);if(Math.hypot(x-e.x,z-e.z)<2.7&&y>g+e.h*0.4&&y<g+e.h*1.15)return false;}}
+  for(const e of TREES){if(Math.abs(x-e.x)<e.s&&Math.abs(z-e.z)<e.s&&Math.hypot(x-e.x,z-e.z)<e.s*0.9&&y<G(e.x,e.z)+e.s*1.9)return false;}
+  return true;}
+// a scene's shot, made to fit: on a phone held upright the frame is narrow, so the camera steps back along its line (up to 1.5×)
+// to take in what a wide screen would; and on any screen, a camera that would stand in a wall or a tree, or whose view of what
+// it looks at is cut by one, moves along the same line to the nearest place that is clear. Worked out once for each shot
+function camFit(c){if(c.fit&&c.fitA===camera.aspect<0.8)return c.fit.clone();
+  const p=c.pos,l=c.look,d=p.clone().sub(l),up=camera.aspect<0.8?1.5:1,ks=[];
+  for(let k=up;k>=0.999;k-=0.1)ks.push(k);for(let k=0.9;k>=0.35;k-=0.1)ks.push(k);
+  const clearTo=q=>{for(let t=0.2;t<=1.001;t+=0.1){const x=lerp(l.x,q.x,t),y=lerp(l.y,q.y,t),z=lerp(l.z,q.z,t);if(!camClear(x,y,z))return false;}return true;};
+  let best=p.clone();for(const k of ks){const q=l.clone().addScaledVector(d,k);if(clearTo(q)){best=q;break;}}
+  c.fit=best;c.fitA=camera.aspect<0.8;return best.clone();}
 function updateCamera(dt){
   const cyaw=P.foot&&stick.on?footCamYaw:P.yaw,F=new THREE.Vector3(Math.sin(cyaw),0,Math.cos(cyaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
-  else if(ST.cam){want=ST.cam.pos.clone();look=ST.cam.look.clone();rate=ST.cam.rate;}
+  else if(ST.cam){look=ST.cam.look.clone();want=camFit(ST.cam);rate=ST.cam.rate;}
   else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
   else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
   else if(URA.chase&&URA.chase.replay){want=new THREE.Vector3();look=new THREE.Vector3();uraReplayCam(want,look);rate=URA.chase.replay.at===URA.chase.replay.t0?0:5;}
@@ -594,7 +610,7 @@ function updateCamera(dt){
   if(!camInit||rate===0){camPos.copy(want);camLook.copy(look);camInit=true;}   // on the tram the view rides with the car
   camPos.lerp(want,1-Math.exp(-dt*rate));camLook.lerp(look,1-Math.exp(-dt*(rate+3)));
   camera.position.copy(camPos);if(P.bump>0&&!reduceMotion){camera.position.y+=(Math.random()-.5)*P.bump*0.3;}P.bump=Math.max(0,P.bump-dt);
-  camera.lookAt(camLook);const fov=modal==='closet'?closetFov():camera.aspect<0.8?72:58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
+  camera.lookAt(camLook);const fov=modal==='closet'?closetFov():camera.aspect<0.8?(ST.cam?84:72):58;camera.fov+=(fov+(reduceMotion?0:P.v*0.6)-camera.fov)*Math.min(1,3*dt);camera.updateProjectionMatrix();
   dome.position.copy(camera.position);
   const sp=state==='title'?new THREE.Vector3(0,30,-120):p;sun.position.copy(sp).addScaledVector(sunDir,70);sun.target.position.copy(sp);sun.target.updateMatrixWorld();
 }

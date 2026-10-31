@@ -28,17 +28,21 @@ const EX1={props:[],marble:null};
   for(const m of EX1.props)m.visible=false;}
 const ex1On=()=>{const s=SAVE.flags.ex1||0;return s>0&&!SAVE.flags.ex1_done;};
 function updateEx1(){const on=ex1On()&&!URA.on;for(const m of EX1.props)m.visible=on;
-  if(EX1.still){for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
+  if(EX1.still){for(const c of CARS)if(!(EX1.van&&c===VAN)){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;}   // nobody else on the coast road during the scene
   if(EX1.marble&&EX1.marble.visible){EX1.marble.position.set(P.x,P.y+1.0,P.z);EX1.marble.material.opacity=0.55+0.4*Math.sin(clock*4);}}
 // the scene of the truth on the coast road: Kurosaki out of his drone, the shadows round about, and the town's old guard
 const TRUTH={x:-18,z:COAST_Z-3.5};TRUTH.y=G(TRUTH.x,TRUTH.z);
-function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;if(!on){for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;return;}k.g.position.set(TRUTH.x-4,TRUTH.y,TRUTH.z);k.g.rotation.y=Math.PI/2;poseHuman(k,'stand',0.016,{});}
+function ex1Kurosaki(on){const k=OG.men[0];k.g.visible=on;EX1.still=on;EX1.van=on;VAN.scripted=on;
+  if(on){const x=TRUTH.x-11,z=COAST_Z+2.2;VAN.x=x;VAN.z=z;VAN.v=0;VAN.g.visible=true;VAN.g.position.set(x,G(x,z)+0.02,z);VAN.g.rotation.y=Math.PI/2;
+    const hl=VAN.g.userData.len/2+0.1;Object.assign(VAN.box,{x0:x-hl,x1:x+hl,z0:z-0.9,z1:z+0.9,top:G(x,z)+1.9,on:true});}
+  if(!on){for(const c of CARS){c.g.visible=true;c.box.on=true;}for(const k in folkMesh)folkMesh[k].visible=true;return;}k.g.position.set(TRUTH.x-2.4,TRUTH.y,TRUTH.z);k.g.rotation.y=Math.PI/2;poseHuman(k,'stand',0.016,{});}
 function ex1Shadows(on){if(!EX1.shadows){EX1.shadows=[];for(let k=0;k<7;k++){const h=makeHuman(SHADE);world.add(h.g);EX1.shadows.push({h,eye:glow('#ff3020',0,0,0,0.9)});}}
   EX1.shadows.forEach((s,k)=>{const a=k/7*TAU+0.3,r=15+(k%3)*3,x=TRUTH.x+Math.cos(a)*r,z=TRUTH.z+3+Math.sin(a)*r*0.45;
     s.h.g.visible=s.eye.visible=on;if(!on)return;s.h.g.position.set(x,G(x,z),z);s.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);poseHuman(s.h,'stand',0.016,{});s.eye.position.set(x,G(x,z)+1.62,z);});}
+// (their x drawn in to 0.6, so that they all fit a phone held upright)
 const GATHER={tome:[-25,3.5],baker:[-11,3.5],okami:[-27,0.5],master:[-9,0.5],neko:[-19,6]};
 function ex1Gather(on){for(const id in GATHER){const n=NPCS[id];
-  if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=TRUTH.x+GATHER[id][0]+18,z=TRUTH.z+GATHER[id][1];n.x=x;n.z=z;n.mode='stand';
+  if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=TRUTH.x+(GATHER[id][0]+18)*0.6,z=TRUTH.z+GATHER[id][1];n.x=x;n.z=z;n.mode='stand';
     n.h.g.position.set(x,G(x,z)+paveY(x,z),z);n.h.g.rotation.y=Math.atan2(TRUTH.x-x,TRUTH.z-z);}
   else if(n.home){const o=n.home;n.x=o.x;n.z=o.z;n.mode=o.mode;n.h.g.position.set(o.x,o.y,o.z);n.h.g.rotation.y=o.yaw;delete n.home;}
   Object.assign(n.box,{x0:n.x-n.rad,x1:n.x+n.rad,z0:n.z-n.rad,z1:n.z+n.rad});}}
@@ -166,9 +170,9 @@ const EX1_EVENTS=[
     ['say','baker','（無線の声）黒崎の大型ドローンだ！ ナギちゃん、坂を下りながら撃ち落とせ！'],
     ['cam','off'],
     ['drones',{total:6,boss:1,title:'黒崎のドローンを落とせ'}],
-    ['fade','out'],['warp',TRUTH.x+4,TRUTH.z,-Math.PI/2],['call',()=>ex1Kurosaki(true)],
+    ['fade','out'],['warp',TRUTH.x+2.4,TRUTH.z,-Math.PI/2],['call',()=>ex1Kurosaki(true)],
     ['cam',[TRUTH.x,TRUTH.y+1.8,TRUTH.z+6.5],[TRUTH.x,TRUTH.y+1.2,TRUTH.z],1.5,'cut'],['fade','in'],
-    ['say','','大型ドローンは、海岸通りに落ちて火花を散らした。','こわれた機体から、白髪まじりの男がはい出してくる。……黒崎だ。'],
+    ['say','','大型ドローンは、海岸通りに落ちて火花を散らした。','キキッ……！ ブレーキの音。黒いバンが止まって、白髪まじりの男が降りてきた。','手には、ドローンの操縦機。……黒崎だ。'],
     ['say','nagi','ソウタくんを返して！ あなたたちが連れていったんでしょ！'],
     ['say','黒崎','……ソウタ？ 子どもなど、さらっておらん。'],
     ['say','nagi','うそ！ 黒いバンが、家の前に――'],
