@@ -8,6 +8,8 @@
    she threw it; ride round and back onto that line, or throw it back across her own older line, and the ring closes the same way.
    Tricks help too: those of a jump, landed clean, take seconds off the marble's wait (a fall adds one), and line drawn while
    grinding burns gold, holds the whole line from fading while she is on the rail, and a ring with gold in it scores half again.
+   In the air after a trick, and on a rail, the shadows cannot touch her; a big one landed (worth three seconds or more) knocks
+   the shadows round her back and stuns them, a way out of a crowd.
    Out from the command table (hqCommand in p5q_hq.js). Like the HQ it lies far off the map (x around MIR_X). ---------- */
 const MIR_X=-9000,MIR_R=70;
 const MIR_LIFE=8,MIR_STEP=0.5,MIR_GAP=14,MIR_CLOSE=2.6,MIR_MAX=700;   // the line lasts 8 s; a ring needs 7 m of line and closes within 2.6 m
@@ -131,9 +133,19 @@ function mirAdd(kind,x,z){const F=MIR_FOE[kind],{h,eye,aura}=mirFigure();h.g.sca
 // a swarm: small ones coming up together from one side
 function mirSwarm(n){const [cx,cz]=mirWhere(1.6,22,28);for(let k=0;k<n;k++)mirAdd('swarm',cx+(rnd()-0.5)*6,cz+(rnd()-0.5)*6);toast('影の群れが来る！ 大きく囲め',true);sfx.notice&&sfx.notice();}
 function mirPop(t){TRICK.name=t;TRICK.sub='';TRICK.shown=1.8;trickHUD();}
+// a jump with a trick in it, or a rail: up there the cold hands cannot reach her
+const mirSafe=()=>!!(P.grind||P.air&&(P.trick||TRICK.bank>0));
+// a big trick landed: a ring of light goes out from her board, throwing the shadows near her back and stunning them
+function mirWave(){const R=7;
+  for(const f of MIR.foes){if(f.gone||f.up<1)continue;const p=f.g.position,dx=p.x-P.x,dz=p.z-P.z,d=Math.hypot(dx,dz)||1;if(d>R)continue;
+    const push=f.kind==='boss'?2:R-d+2;p.x+=dx/d*push;p.z+=dz/d*push;const l=Math.hypot(p.x-MIR_X,p.z);if(l>MIR_R-1){p.x=MIR_X+(p.x-MIR_X)/l*(MIR_R-1);p.z=p.z/l*(MIR_R-1);}
+    f.stun=Math.max(f.stun,f.kind==='boss'?0.8:1.2);sparks(new THREE.Vector3(p.x,p.y+1,p.z),6,'#cfeeff',4,0.06);}
+  const w=new THREE.Mesh(new THREE.RingGeometry(0.8,1,48),new THREE.MeshBasicMaterial({color:'#bfe6ff',transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+  w.rotation.x=-Math.PI/2;w.position.set(P.x,mirG(P.x,P.z)+0.08,P.z);MIR.g.add(w);MIR.fx.push({m:w,t:0,dur:0.5,kind:'wave'});buzz('heavy',true);TRICK.sub='影をはじき飛ばした！';TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();}
 // a jump landed (trickLand): its tricks take seconds off the marble's wait; a fall puts one back on
 function mirTrickLand(clean,b){if(!clean){MIR.mcd=Math.max(MIR.mcd,0)+1;renderHUD();return;}
-  if(b<=0||MIR.mcd<=0)return;MIR.mcd=Math.max(0,MIR.mcd-b);TRICK.sub=MIR.mcd>0?`ビー玉 −${b}秒`:`ビー玉 −${b}秒　投げられる！`;TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
+  if(b>0)MIR.inv=Math.max(MIR.inv,0.5);if(b>=3)mirWave();   // a moment's grace to land in, and a big one knocks them back
+  if(b<=0||MIR.mcd<=0)return;MIR.mcd=Math.max(0,MIR.mcd-b);TRICK.sub=(TRICK.sub?TRICK.sub+'　':'')+(MIR.mcd>0?`ビー玉 −${b}秒`:`ビー玉 −${b}秒　投げられる！`);TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
 // the ring closed: the points from i on make its edge
 function mirRing(poly){let A=0;for(let k=0;k<poly.length;k++){const a=poly[k],b=poly[(k+1)%poly.length];A+=a.x*b.z-b.x*a.z;}A=Math.abs(A)/2;
   if(A<10)return false;
@@ -200,7 +212,7 @@ function mirStep(dt){const busy=!!(DLG||modal);
   if(MIR.head)MIR.head.visible=MIR.go&&!P.foot;if(MIR.head)MIR.head.position.set(P.x,0.3,P.z);
   for(const f of MIR.fx.slice()){f.t+=dt;const k=Math.max(0,f.t/f.dur);
     if(f.kind==='orb'){f.m.position.y+=dt*(f.t>0?2.4:0);f.m.position.x+=f.vx*dt;f.m.material.opacity=f.t<0?0:Math.min(1,f.t*3)*(1-k);}
-    else if(f.kind==='wall'){f.m.scale.y=1+k*6;f.m.material.opacity=0.7*(1-k);}else f.m.material.opacity=0.5*(1-k);
+    else if(f.kind==='wall'){f.m.scale.y=1+k*6;f.m.material.opacity=0.7*(1-k);}else if(f.kind==='wave'){f.m.scale.setScalar(1+k*6);f.m.material.opacity=0.6*(1-k);}else f.m.material.opacity=0.5*(1-k);
     if(k>=1){MIR.g.remove(f.m);if(f.kind!=='orb')f.m.geometry.dispose();f.m.material.dispose();MIR.fx.splice(MIR.fx.indexOf(f),1);}}
   if(MIR.go&&!busy&&!MIR.end){MIR.t+=dt;MIR.comboT-=dt;MIR.inv-=dt;MIR.mcd-=dt;mirMarble(dt);
     // the line: a point every half metre while she rides (in the air too), the old end fading away
@@ -229,7 +241,7 @@ function mirStep(dt){const busy=!!(DLG||modal);
       // they keep a little apart, so a crowd of them is a crowd and not one heap
       for(const o of MIR.foes)if(o!==f&&!o.gone){const ex=p.x-o.g.position.x,ez=p.z-o.g.position.z,e=Math.hypot(ex,ez);if(e<1.4&&e>0){dx+=ex/e*0.6;dz+=ez/e*0.6;}}
       const m=Math.hypot(dx,dz)||1;p.x+=dx/m*f.sp*dt;p.z+=dz/m*f.sp*dt;p.y=mirG(p.x,p.z);f.g.rotation.y=Math.atan2(P.x-p.x,P.z-p.z);poseHuman(f.h,'walk',dt,{rate:3.8});
-      if(d<0.75+0.35*S&&MIR.inv<=0){MIR.inv=1.3;MIR.hearts--;buzz('heavy',true);P.v*=0.4;
+      if(d<0.75+0.35*S&&MIR.inv<=0&&!mirSafe()){MIR.inv=1.3;MIR.hearts--;buzz('heavy',true);P.v*=0.4;
         // a small one is spent by the touch; a big one stays, and throws her back
         if(f.kind==='big'||f.kind==='boss'){const kx=P.x-p.x,kz=P.z-p.z,kl=Math.hypot(kx,kz)||1;P.x+=kx/kl*2.5;P.z+=kz/kl*2.5;P.v=0;f.stun=0.8;}else f.gone=1;renderHUD();if(MIR.hearts<=0){mirFinish(false);break;}toast('冷たい手が、ふれた！');}}
     f.eye.visible=true;f.eye.position.set(p.x,p.y+1.62*S,p.z);f.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);
@@ -248,7 +260,7 @@ function mirScript(){const first=!SAVE.seen.mir_first;SAVE.seen.mir_first=1;retu
   ['cam',[MIR_X+10,5,38],[MIR_X,0.8,28],1.2,'cut'],['fade','in'],
   ['say','tome','（無線の声）……ここが、裏海街の海さ。水がひいて、まるで鏡みたいだろう。',
     ...(first?['スケボーで走ると、ランタンの光が足もとに線になって残る。','その線で、影をぐるっと囲んでごらん。線がつながったら、中の影はまとめて消えるよ。','たくさん囲むほど、いっぺんに追いはらえる。','ミオのビー玉も持っておいき。投げると、転がった先まで青い光の線がのびる。その線につなげても、囲めるよ。',
-     '技を決めて着地すると、ビー玉が早くたまる。屋根のてっぺんや鳥居をすべると、線が金色になって消えにくくなるし、金の線で囲めば点も上がるさ。','……三分、もちこたえな。']:['今夜も、光の線で囲んでやりな。ビー玉も、技も使うんだよ。'])],
+     '技を出して飛んでいるあいだと、手すりをすべっているあいだは、影にさわられない。大きな技を決めて着地すれば、まわりの影をはじき飛ばせるよ。','技を決めて着地すると、ビー玉が早くたまる。屋根のてっぺんや鳥居をすべると、線が金色になって消えにくくなるし、金の線で囲めば点も上がるさ。','……三分、もちこたえな。']:['今夜も、光の線で囲んでやりな。ビー玉も、技も使うんだよ。'])],
   ['cam','off'],['call',()=>{MIR.go=true;toast('走って、線で囲め！',true);}]];}
 // the sky on the way to dawn: from the second minute the east pales, the moon goes thin, the mirror catches the light
 const MIR_DAWN={top:new THREE.Color('#5a6f98'),bg:new THREE.Color('#b87a6c'),hemi:new THREE.Color('#ffd8c0')};
