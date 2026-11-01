@@ -16,6 +16,7 @@ function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
   if(f.ex1&&!f.ex1_done)return ex1Goal(f,eve,night,home);
+  if(f.d3&&!f.d3_done)return d3Goal(f,eve,night);
   if(f.ex1_done&&dlc2Owned())return d2Goal(f,eve,night);
   if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
