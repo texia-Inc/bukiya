@@ -226,6 +226,10 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   #dialog p{font-size:15px;line-height:1.6;min-height:3.2em}#dialog .who{margin-bottom:4px}
   .pb.shoot{height:50px}
 }
+/* in a fight the purse, the clock and the bag step aside (the tracker shows the fight), and on a short screen its
+   long how-to folds to two lines */
+body.battle #wrow,body.battle #place,body.battle #bag{display:none!important}
+@media (pointer:coarse) and (orientation:landscape){body.battle #tracker .step{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
 @media (prefers-reduced-motion: reduce){.tst{animation-duration:3.5s}#dialog .nx{animation:none}}
 </style>
 </head>
@@ -234,7 +238,7 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
 <canvas id="c" tabindex="0" aria-label="海街の3D画面"></canvas>
 <div class="hud" id="hud" hidden>
   <div id="topL">
-    <div style="display:flex;gap:8px;align-items:center"><div id="wallet" class="card"><small>さいふ</small><span id="money">0</span>円</div><span id="clock" class="card">1日目・昼</span></div>
+    <div id="wrow" style="display:flex;gap:8px;align-items:center"><div id="wallet" class="card"><small>さいふ</small><span id="money">0</span>円</div><span id="clock" class="card">1日目・昼</span></div>
     <div id="place">しおかぜ商店街</div>
     <div id="tracker" class="card" hidden></div>
   </div>
@@ -10021,7 +10025,8 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');l
         r.title=goal;r.onclick=e=>{e.stopPropagation();SAVE.tracked=null;save();renderHUD();};box.appendChild(r);}
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
-  else goalHUD(tr);renderBag();}
+  else goalHUD(tr);renderBag();
+  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||BOSS.on||DEF.on||sortieOn()||rescueOn()||URA.chase));}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
 // the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
 const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);

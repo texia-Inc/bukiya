@@ -200,7 +200,8 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');l
         r.title=goal;r.onclick=e=>{e.stopPropagation();SAVE.tracked=null;save();renderHUD();};box.appendChild(r);}
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
-  else goalHUD(tr);renderBag();}
+  else goalHUD(tr);renderBag();
+  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||BOSS.on||DEF.on||sortieOn()||rescueOn()||URA.chase));}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
 // the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
 const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);
