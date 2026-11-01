@@ -3,7 +3,9 @@
    held at the moment: nothing a kickflip, back a heelflip, forward a varial flip, turning a 360 shove-it (a 540 with height to
    spare); press again in the air and the next one follows (two kickflips are a double flip). Come down on a rail and you grind
    along it — a 50-50 straight on, a boardslide coming in at an angle; Space pops you off. Each trick shows its name; land with
-   the board still turning and you fall. In 鏡の海 the tricks of a jump, landed, take seconds off the marble's wait. ---------- */
+   the board still turning and you fall. In a fight they count: in the air after a trick, and on a rail, nothing can touch her;
+   the tricks of a jump, landed, are worth seconds (the marble's wait in 鏡の海; elsewhere the lantern fills that much sooner and
+   her shots burn twice as hard for as long), and a big one (three seconds or more) knocks the shadows round her back. ---------- */
 // the rails: handrails both sides of the slope down to the sea (broken at the cross streets) and the pier railings
 const RAILS=[];
 for(const sx of [-1,1])for(const [a,b] of [[-196,-128],[-112,-28],[-12,82],[98,162],[178,204]])RAILS.push({x0:sx*4.75,z0:a,x1:sx*4.75,z1:b,h:0.5});
@@ -18,7 +20,7 @@ const railY=(r,x,z)=>r.top!=null?r.top:G(x,z)+r.h;
 
 // bank: the seconds the tricks of this jump are worth (paid on a clean landing), last: the trick before, next: one pressed while
 // another was still turning
-const TRICK={name:'',sub:'',shown:0,airT:0,grab:0,bank:0,last:null,next:null};
+const TRICK={name:'',sub:'',shown:0,airT:0,grab:0,bank:0,last:null,next:null,boostT:0,fx:[]};
 const TRICK_NAME={flip:'キックフリップ',heel:'ヒールフリップ',varial:'バリアルフリップ',spin:'360ショービット',s540:'540ショービット',double:'ダブルフリップ',
   grind:'50-50グラインド',slide:'ボードスライド',grab:'インディーグラブ'};
 // how far each turns the board (z: over, about its length; y: round, flat), how long it takes, and its worth in seconds
@@ -30,7 +32,24 @@ function trickHUD(){const el=$('trick');if(TRICK.shown<=0||state!=='play'){el.hi
   if(TRICK.sub){const b=document.createElement('div');b.className='ts';b.textContent=TRICK.sub;el.appendChild(b);}}
 // landing with the board still turning is a fall; what the jump's tricks were worth is paid now (only 鏡の海 has a use for it)
 function trickLand(clean){const b=TRICK.bank;TRICK.bank=0;TRICK.last=TRICK.next=null;
-  const mir=MIR.on&&MIR.go&&!MIR.end;if(!clean)toast(mir?'失敗……　ビー玉の待ちが1秒のびた':'失敗……',false);if(mir)mirTrickLand(clean,b);}
+  const mir=MIR.on&&MIR.go&&!MIR.end;if(!clean)toast(mir?'失敗……　ビー玉の待ちが1秒のびた':'失敗……',false);if(mir)mirTrickLand(clean,b);else if(clean&&b>0&&trickFight())trickPay(b);}
+// the fights out in the town (the drones, the shadows of the nests, the shore, the lord of the other side)
+const trickFight=()=>!!(DRONE.active||NEST.fight||DEF.on||BOSS.on);
+// a jump with a trick in it, or a rail: up there the cold hands, the drones' shots and the dark orbs cannot reach her
+const trickSafe=()=>!!(P.grind||P.air&&(P.trick||TRICK.bank>0));
+// a jump's tricks landed in a fight: the lantern fills sooner, the shots burn harder for a while, and a big one knocks the
+// shadows back (each fight walks its own list)
+function trickPay(b){if(LAN.n<LAN.max)LAN.re+=b;TRICK.boostT=clock+b;const subs=DRONE.active||NEST.fight?[`光 ×2（${b}秒）`]:[];if(LAN.n<LAN.max)subs.push(`ランタン −${b}秒`);
+  if(b>=3){const n=trickWave(NEST.fight?NEST.list:DEF.on?DEF.list:BOSS.on?BOSS.list:[]);if(n)subs.unshift('影をはじき飛ばした！');}
+  TRICK.sub=subs.join('　');TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
+// how hard her shots hit just now
+const trickDmg=()=>clock<(TRICK.boostT||0)?2:1;
+// a ring of light out from her board: the shadows in the list near her are thrown back and stand stunned for a moment
+function trickWave(list){const R=7;let n=0;
+  for(const s of list){if(s.gone||s.up<1)continue;const p=s.g.position,dx=p.x-P.x,dz=p.z-P.z,d=Math.hypot(dx,dz)||1;if(d>R)continue;
+    p.x+=dx/d*(R-d+2);p.z+=dz/d*(R-d+2);s.stun=1.2;n++;sparks(new THREE.Vector3(p.x,p.y+1,p.z),6,'#ffe2a0',4,0.06);}
+  const w=new THREE.Mesh(new THREE.RingGeometry(0.8,1,48),new THREE.MeshBasicMaterial({color:'#ffe2a0',transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+  w.rotation.x=-Math.PI/2;w.position.set(P.x,P.y+0.08,P.z);scene.add(w);TRICK.fx.push({m:w,t:0});buzz('heavy',true);return n;}
 // the seconds of air she has left: what decides whether there is time for a 540
 function airLeft(){const h=Math.max(0,P.y-groundAt(P.x,P.z,P.y));return(P.vy+Math.sqrt(Math.max(0,P.vy*P.vy+27*h)))/13.5;}
 // starting a trick in the air: which one from what is held; pressed while one is turning, it goes next
@@ -66,4 +85,5 @@ function grindStep(dt){const g=P.grind,r=g.r;
   player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw+(g.rot||0),0);player.root.rotation.set(0,0,0);
   poseSkater(player,dt,{v:P.v,turn:0,push:false,brake:false,air:false,grind:true});}
 function updateTricks(dt){if(TRICK.shown>0){TRICK.shown-=dt;if(TRICK.shown<=0)$('trick').hidden=true;}
+  for(const f of TRICK.fx.slice()){f.t+=dt/0.5;f.m.scale.setScalar(1+f.t*6);f.m.material.opacity=0.6*(1-f.t);if(f.t>=1){scene.remove(f.m);f.m.geometry.dispose();f.m.material.dispose();TRICK.fx.splice(TRICK.fx.indexOf(f),1);}}
   $('bTrick').hidden=!hasTouch||state!=='play'||P.foot;}

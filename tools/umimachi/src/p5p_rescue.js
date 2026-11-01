@@ -71,6 +71,7 @@ function updateDefend(dt){if(!DEF.on)return;const busy=!!(DLG||modal);
       if(k>=1){world.remove(s.g);scene.remove(s.eye);DEF.list.splice(DEF.list.indexOf(s),1);}continue;}
     const gy=Math.max(G(p.x,p.z),SEA_Y-0.4);
     if(s.up<1){s.up=Math.min(1,s.up+dt*0.7);p.y=lerp(SEA_Y-1.8,gy,s.up);poseHuman(s.h,'stand',dt,{});}
+    else if(s.stun>0){s.stun-=dt;p.y=gy;poseHuman(s.h,'stand',dt,{});}   // knocked back by a trick (trickWave)
     else if(!busy){p.z-=s.sp*dt;p.y=Math.max(G(p.x,p.z)+paveY(p.x,p.z),SEA_Y-0.4);poseHuman(s.h,'walk',dt,{rate:3.6});}
     s.eye.visible=true;s.eye.position.set(p.x,p.y+1.62,p.z);s.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);
     if(p.z<COAST_Z-1){s.gone=1;s.fade=0.5;DEF.lives--;buzz('heavy',true);toast(DEF.lives>0?`影が町に入った！ 町の灯り のこり${DEF.lives}`:'町の灯りが、消えてしまった……',true);
