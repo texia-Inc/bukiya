@@ -138,13 +138,14 @@ function updateUra(dt){
   for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
   for(const m of NIGHT.lamps){m.visible=Math.random()>0.08;m.material.opacity=0.55+Math.random()*0.3;}
   for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;for(const c of CATS)c.g.visible=false;
-  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id]&&!rescueOn()&&!sortieOn();g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
+  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id]&&!rescueOn()&&!sortieOn()&&!RUN.on;g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
   // the flashlight, held at the chest and pointing where she goes
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw));torch.intensity=torchOn?2.4:0;
   torch.position.set(P.x,P.y+1.1,P.z).addScaledVector(F,0.7);torch.target.position.set(P.x,P.y+0.4,P.z).addScaledVector(F,9);torch.target.updateMatrixWorld();
   const me=new THREE.Vector3(P.x,P.y,P.z),loud=!P.foot&&P.v>4.5,quiet=P.foot&&P.v<4;
   let top=0;
-  for(const s of URA.shadows){const g=s.h.g,a=s.a,b=s.b,L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+  for(const s of URA.shadows){s.h.g.visible=!RUN.on;if(RUN.on){s.eye.visible=false;s.sus=0;continue;}   // a night out: the shadows of the beats are the night's own
+    const g=s.h.g,a=s.a,b=s.b,L=Math.hypot(b[0]-a[0],b[1]-a[1]);
     const d=Math.hypot(P.x-g.position.x,P.z-g.position.z);
     const R=(8+(torchOn?6:0)+(loud?6:0))*(quiet?0.65:1);
     const fx=(b[0]-a[0])/L*s.dir,fz=(b[1]-a[1])/L*s.dir,toX=(P.x-g.position.x)/(d||1),toZ=(P.z-g.position.z)/(d||1);

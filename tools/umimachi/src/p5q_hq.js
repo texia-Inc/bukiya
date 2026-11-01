@@ -11,10 +11,10 @@ const dlc2Owned=()=>true;
 const HQ_IN=[3,0,Math.PI/2],HQ_EXIT=[1.2,0];
 // the rooms: who keeps them, where they stand, and what a level does
 const FAC={
-  arm:{name:'武器庫',npc:'baker',at:[14,-9.6],yaw:0,use:'ランタンの光で巣を焼く力と、ドローンを撃つ力が上がる',what:lv=>`撃つ力 ×${[1,1.5,2,2.5,3][lv-1]}`},
+  arm:{name:'武器庫',npc:'baker',at:[14,-9.6],yaw:0,use:'光の結界で、影の核をけずる力が上がる（ドローンを撃つ力も）',what:lv=>`撃つ力 ×${[1,1.5,2,2.5,3][lv-1]}`},
   dojo:{name:'鍛錬場',npc:'okami',at:[26,-9.6],yaw:0,use:'出撃や戦いで、やられるまでのハート♥が増える',what:lv=>`ハート♥ ${[5,6,7,8,10][lv-1]}`},
-  lamp:{name:'灯りの工房',npc:'neko',at:[14,9.6],yaw:Math.PI,use:'ランタンを光らせる回数、光の広さ、たまる早さが上がる',what:lv=>`ランタン ${[3,4,4,5,6][lv-1]}回・光の広さ ${[13,14.5,16,17.5,19][lv-1]}m・${[16,14,12,10,8][lv-1]}秒でひとつたまる`},
-  radio:{name:'通信室',npc:'master',at:[26,9.6],yaw:Math.PI,use:'出撃や戦いで、オーシャンゲートのドローンが影を追いはらってくれる',what:lv=>lv<2?'援護なし':`オーシャンゲートの援護ドローン ${lv>=4?2:1}機（${[0,0,4,3,3,2][lv]}秒ごと）`},
+  lamp:{name:'灯りの工房',npc:'neko',at:[14,9.6],yaw:Math.PI,use:'光ゲージが大きくなる。ランタン（影を足止めする光）も強くなる',what:lv=>`光ゲージ ${100+20*(lv-1)}・ランタン ${[3,4,4,5,6][lv-1]}回・光の広さ ${[13,14.5,16,17.5,19][lv-1]}m`},
+  radio:{name:'通信室',npc:'master',at:[26,9.6],yaw:Math.PI,use:'出撃や戦いで、オーシャンゲートのドローンが影をうってくれる',what:lv=>lv<2?'援護なし':`オーシャンゲートの援護ドローン ${lv>=4?2:1}機（${[0,0,4,3,3,2][lv]}秒ごと）`},
   cmd:{name:'作戦室',npc:'tome',at:[38.5,0],yaw:-Math.PI/2}};
 const FAC_COST=[null,null,{m:300,s:3},{m:800,s:8},{m:1600,s:15},{m:3000,s:25}];   // to reach level 2…5
 const d2=()=>SAVE.d2||(SAVE.d2={lv:{arm:1,dojo:1,lamp:1,radio:1},night:0,last:0});
@@ -175,7 +175,7 @@ async function hqTalk(o){
     const i=await askP(F.npc,`${F.name} Lv${lv}：${F.use}。いまは ${F.what(lv)}`+(c?`。次は ${F.what(lv+1)}`:'')+`　（さいふ ${SAVE.money}円・影のかけら ${shards()}）`,opts),pick=opts[i];
     if(pick==='やめる')return;
     if(pick==='いまの強さを聞く'){await sayP(F.npc,[`いまは ${F.what(lv)}。`+(c?`次のレベルで ${F.what(lv+1)} になる。`:'これ以上は、上げようがないね。')]);continue;}
-    if(SAVE.money<c.m||shards()<c.s){await sayP(F.npc,[SAVE.money<c.m?'お金が足りないね。町のおつかいや、出撃のお礼でかせいでおいで。':'影のかけらが足りない。裏海街へ出撃して、巣を焼くと手に入るよ。']);continue;}
+    if(SAVE.money<c.m||shards()<c.s){await sayP(F.npc,[SAVE.money<c.m?'お金が足りないね。町のおつかいや、出撃のお礼でかせいでおいで。':'影のかけらが足りない。裏海街へ出撃して、影をたおすと手に入るよ。']);continue;}
     SAVE.money-=c.m;SAVE.shards=shards()-c.s;d2().lv[o.k]=lv+1;hqSign(o.k);applyD2();save();renderHUD();buzz('medium');
     toast(`${F.name}が Lv${lv+1} になった！ ${F.what(lv+1)}`,true);await sayP(F.npc,[HQ_UP[o.k]]);}}
 const HQ_UP={arm:'よし、手入れは終わった。これで一発の重みがちがうぞ。',dojo:'いい汗かいたね！ これで、ちょっとやそっとじゃ倒れないよ。',
@@ -184,21 +184,21 @@ const HQ_UP={arm:'よし、手入れは終わった。これで一発の重み�
 function nightPlan(n){return{drones:Math.min(4+2*n,16),boss:n%3===0,shadows:Math.min(10+3*n,36),alive:Math.min(4+(n>>1),9),spd:0.06*n};}
 async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening'||ph==='night',done=D.last===SAVE.day,f=SAVE.flags;
   const nests=D.nest||0,last=!!f.d2c&&!f.d2_done,sortie=!last&&!f.d2_done&&nests<NESTS.length;
-  const opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&sortie?[`裏海街へ出撃する（のこりの巣 ${NESTS.length-nests}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),
+  const opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&sortie?[`裏海街へ出撃する（帰ってきた子 ${nests}/${NESTS.length}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),
     ...(!dark?['日が暮れるまで休む']:[]),'鏡の海で練習（物語は進まない）','話を聞く','やめる'];
-  const msg=!dark?'やつらが動くのは、日が暮れてからだよ。':d3Tonight()?'鏡の海が、呼んでるね。':done&&!f.d2_done?'今夜は、もう十分だ。……ゆっくりお休み。':last?'今夜が、最後の戦いだよ。':sortie?'今夜も、裏海街の巣を焼きに行くかい？':'今夜は、静かな夜だね。';
+  const msg=!dark?'やつらが動くのは、日が暮れてからだよ。':d3Tonight()?'鏡の海が、呼んでるね。':done&&!f.d2_done?'今夜は、もう十分だ。……ゆっくりお休み。':last?'今夜が、最後の戦いだよ。':sortie?'今夜も、裏海街へ行くかい？':'今夜は、静かな夜だね。';
   const i=await askP('tome',msg,opts),pick=opts[i];
   if(pick==='日が暮れるまで休む'){await steps([['fade','out'],['time',18.6,0],['fade','in']]);return;}
   if(pick==='話を聞く'){await sayP('tome',f.d2_done?['施設をきたえても、もう戦う相手はいないけどね。……鏡の海で、すべるのは自由さ。']:[
-    '施設は、お金と影のかけらで強くなる。かけらは、裏海街に出撃して巣を焼くと手に入るよ。',
-    '武器庫は巣を焼く力、鍛錬場はハート、灯りの工房はランタン、通信室は援護のドローン。……どれも、出撃と戦いで効いてくる。',
-    nests<NESTS.length?`裏海街には、影の巣がのこり${NESTS.length-nests}つ。巣を焼けば、向こうに残された子たちが帰れるんだよ。日が暮れたら、ここから出撃しな。`:'巣はぜんぶ焼けた。……あとは、海の底の、あの大きな気配だ。']);return;}
+    '施設は、お金と影のかけらで強くなる。かけらは、裏海街で影をたおすと手に入る。やられても、拾ったかけらは持って帰れるよ。',
+    '武器庫は核をけずる力、鍛錬場はハート、灯りの工房は光ゲージ、通信室は援護のドローン。……どれも、出撃で効いてくる。',
+    nests<NESTS.length?`向こうに残された子は、あと${NESTS.length-nests}人。三つの核をこわせば、ひとり帰ってこられる。日が暮れたら、ここから出撃しな。`:'子どもたちは、みんな帰ってきた。……あとは、海の底の、あの大きな気配だ。']);return;}
   if(pick==='鏡の海で練習（物語は進まない）'){await steps(mirScript());return;}
   if(pick&&pick===d3Label()&&d3Tonight()){await steps(mirScript(D3_RULE[d3n()+1]));return;}
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
-  if(pick&&pick.startsWith('裏海街へ出撃')){await steps(sortieScript(nests));return;}}
+  if(pick&&pick.startsWith('裏海街へ出撃')){await steps(runScript());return;}}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
-function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fight||BOSS.on)&&lv>=2?(lv>=4?2:1):0;
+function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fight||BOSS.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
   while(HQ.allies.length<want){const d=makeDrone();d.g.scale.setScalar(1.1);HQ.allies.push(d);toast('オーシャンゲートの援護ドローンが来た！');}
   HQ.allies.forEach((d,k)=>{d.g.visible=k<want;if(!d.g.visible)return;const sd=k?-1:1,a=P.yaw+sd*(0.55+Math.sin(clock*0.7+k)*0.15),w=new THREE.Vector3(P.x+Math.sin(a)*7,P.y+6+Math.sin(clock*2+k)*0.3,P.z+Math.cos(a)*7);
     d.g.position.lerp(w,Math.min(1,dt*3));d.g.rotation.y=a;for(const r of d.rotors)r.rotation.y+=dt*40;});
@@ -210,17 +210,19 @@ function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fi
     if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;DEF.killed++;}}
   else if(BOSS.on){const t=BOSS.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
     if(t&&!BOSS.striking){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;bossGain();}}
+  else if(RUN.go){const t=RUN.foes.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
+    if(t&&t.g.position.distanceTo(player.g.position)<30){tracer(from,t.g.position.clone().setY(t.g.position.y+1));runKill(t);}}
   else if(NEST.fight){const t=NEST.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
     if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;NEST.killed++;}}}
-function hqHUD(){const D=d2();return `影のかけら ${shards()}　焼いた巣 ${D.nest||0}/${NESTS.length}`;}
+function hqHUD(){const D=d2();return `影のかけら ${shards()}　帰ってきた子 ${D.nest||0}/${NESTS.length}`;}
 function d2Goal(f,eve,night){const D=d2(),nests=D.nest||0,dark=eve||night,tonight=dark&&D.last!==SAVE.day;
   if(!f.d2)return '町の東の山の岩の扉から、海街自警団の基地へ';
   if(f.d2c&&!f.d2_done)return tonight?(AREA==='hq'?'作戦室のばあちゃんに話して、最後の戦いへ':'基地の作戦室で、ばあちゃんに話して最後の戦いへ'):'日が暮れたら、基地の作戦室で、ばあちゃんに話して最後の戦いへ';
   if(f.d2_done)return AREA==='hq'?'施設をきたえたり、作戦室から鏡の海で練習したりできる':null;
-  if(nests>=NESTS.length)return '巣はぜんぶ焼けた。家で休んで、あしたの朝を待つ';
+  if(nests>=NESTS.length)return '子どもたちは、みんな帰ってきた。家で休んで、あしたの朝を待つ';
   const fac=`施設の人に話すと、お金と影のかけらで出撃が楽になる（${hqHUD()}）`;
-  if(AREA==='hq')return tonight?`作戦室のばあちゃんに話して、裏海街へ出撃（のこりの巣 ${NESTS.length-nests}）`:fac+'。日が暮れたら作戦室から出撃';
-  return tonight?`基地の作戦室で、ばあちゃんに話して裏海街へ出撃（のこりの巣 ${NESTS.length-nests}）`:`日が暮れたら、基地の作戦室から裏海街へ出撃（のこりの巣 ${NESTS.length-nests}）`;}
+  if(AREA==='hq')return tonight?`作戦室のばあちゃんに話して、裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`:fac+'。日が暮れたら作戦室から出撃';
+  return tonight?`基地の作戦室で、ばあちゃんに話して裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`:`日が暮れたら、基地の作戦室から裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`;}
 // every frame: the hall's warm light, the keepers looking round, the levels, the allies
 function updateHQ(dt){if(SAVE.flags.ex1_done)applyD2();allyStep(dt);if(AREA!=='hq')return;hqBuild();
   scene.fog.color.set('#2a221c');scene.background.set('#2a221c');scene.fog.near=10;scene.fog.far=80;hemi.color.set('#ffe6c4');hemi.groundColor.set('#5a4a3a');hemi.intensity=0.95;sun.intensity=0.15;
@@ -240,8 +242,8 @@ const HQ_EVENTS=[
     ['cam',[HQ_X+26,2.4,4],[HQ_X+26,1.3,12],1.2,'cut'],
     ['say','master','通信室だ。黒崎の連中と、ここでつながってる。','設備をよくすれば、夜にはオーシャンゲートのドローンが援護に来てくれる。'],
     ['cam',[HQ_X+34,2.6,3],[HQ_X+40,1.3,0],1.2,'cut'],
-    ['say','tome','そして、ここが作戦室。','裏海街には、異界の者の「巣」が五つある。巣に、向こうに残された子たちが閉じこめられてるんだよ。ミオちゃんが言ってたとおりにね。'],
-    ['say','tome','日が暮れたら、わたしに声をかけな。ここから裏海街へ出撃して、巣をひとつずつ焼くんだ。','巣を焼くと「影のかけら」が手に入る。お金とかけらで施設をきたえれば、出撃が楽になるよ。'],
+    ['say','tome','そして、ここが作戦室。','裏海街は、影に飲まれかけてる。町のあちこちに「影の核」ができて、向こうに残された子たちが閉じこめられてるんだよ。ミオちゃんが言ってたとおりにね。'],
+    ['say','tome','日が暮れたら、わたしに声をかけな。ここから裏海街へ出撃して、核をこわすんだ。','影をたおすと「影のかけら」が手に入る。お金とかけらで施設をきたえれば、出撃が楽になるよ。'],
     ['set','d2'],['cam','off'],['call',()=>toast('日が暮れたら、作戦室のばあちゃんに話して裏海街へ出撃。施設はお金とかけらで強くなる',true)]]},
 ];
 EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...HQ_EVENTS);

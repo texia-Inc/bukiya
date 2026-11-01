@@ -25,7 +25,7 @@ function lanternFlash(){if(LAN.n<1){toast('ランタンの灯りが、まだた�
     if(d<22){URA.chase.stun=3.5;URA.chase.mode='roam';URA.chase.wait=0;const k=Math.min(6,30-d)/(d||1);bg.x-=(P.x-bg.x)*k*0.25;bg.z-=(P.z-bg.z)*k*0.25;URA.chase.tx=bg.x;URA.chase.tz=bg.z;
       toast('大きな影が、光にひるんだ！ いまのうちに');}}
   if(DEF.on)for(const s of DEF.list)if(!s.gone&&dd(s.g.position.x,s.g.position.z)<R+1){s.gone=1;DEF.killed++;}
-  nestFlash(R);bossFlash(R);
+  nestFlash(R);bossFlash(R);runFlash(R);
   renderHUD();}
 function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||NEST.fight||BOSS.on)){LAN.n++;LAN.re=0;renderHUD();}}
   if(!LAN.lt)return;LAN.t=Math.max(0,LAN.t-dt*1.4);const k=LAN.t;

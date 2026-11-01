@@ -188,7 +188,7 @@ function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){c
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
   if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
-  if(MIR.on)mirHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(BOSS.on)bossHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(sortieOn())nestHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
+  if(MIR.on)mirHUD(tr);else if(RUN.on)runHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(BOSS.on)bossHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(sortieOn())nestHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
@@ -309,6 +309,7 @@ function drawMap(){if(AREA==='mir'){mirMap();return;}const V=150,S=mapc.width/V,
     let [mx,my]=toM(t[0],t[1]);const W=mapc.width,pad=10,out=mx<pad||my<pad||mx>W-pad||my>W-pad;mx=clamp(mx,pad,W-pad);my=clamp(my,pad,W-pad);
     mg.fillStyle=QCOL[k%QCOL.length];mg.beginPath();mg.arc(mx,my,big?(out?7:9):(out?5:6.5),0,7);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=big?2.5:1.5;mg.stroke();
     if(act.length>1){mg.fillStyle='#fff';mg.font=`900 ${big?11:9}px sans-serif`;mg.textAlign='center';mg.textBaseline='middle';mg.fillText(k+1,mx,my+1);}}
+  if(RUN.on)runMap(toM);
   mg.save();mg.translate(mapc.width/2,mapc.height/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#2b2520';mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6,7);mg.lineTo(0,3);mg.lineTo(-6,7);mg.closePath();mg.fill();mg.restore();
   if(!bs){mg.fillStyle='rgba(43,37,32,.7)';mg.font='700 11px sans-serif';mg.textAlign='left';mg.fillText('山',6,14);mg.fillText('海',6,mapc.height-6);}}
 function placeName(){const x=P.x,z=P.z;if(RIDE.on)return'うみまち線の車内';if(BOAT.on||z>ISL_Z0)return islPlace();if(AREA==='inaka')return inkPlace();if(AREA==='base')return'オーシャンゲートの基地';if(AREA==='hq')return'海街自警団の基地';if(AREA==='mir')return'裏海街　鏡の海';if(x>EKI.x0&&x<EKI.x1&&z>EKI.z0&&z<EKI.z1)return'うみまち駅前';
@@ -467,7 +468,7 @@ function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.Ar
 const STEP=0.45;
 function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP||c.tag==='step')continue;   /* steps never stop you: you rise onto them one at a time */if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
-function groundAt(x,z,y){let g=G(x,z)+paveY(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return g;}
+function groundAt(x,z,y){let g=G(x,z)+paveY(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return RUN.on?Math.max(g,runRoof(x,z,y)):g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
 function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3;padLabels();}
 // the board button says 歩く / スケボー (乗る and 降りる belong to the tram, the bus and the boat); on foot the big button runs
@@ -513,10 +514,10 @@ function stepPlayer(dt){
   // each kick: the back foot plants, shoves, and the board surges forward; holding the key keeps kicking
   P.kickCD-=dt;if(P.kickT>=0){P.kickT+=dt/0.48;if(P.kickT>=1)P.kickT=-1;}
   if(!onFoot&&(kickQ||I.fwd)&&!P.air&&!busy&&!P.man&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.42;P.kicked=false;}kickQ=false;
-  if(P.kickT>0.35&&!P.kicked){P.kicked=true;P.v=Math.min(P.v+1.3+3.3*Math.max(0,1-P.v/13),13.5);}
+  if(P.kickT>0.35&&!P.kicked){P.kicked=true;const kb=runSpd();P.v=Math.min(P.v+(1.3+3.3*Math.max(0,1-P.v/(13*kb)))*kb,13.5*kb);}
   P.push=P.kickT>=0;
   P.brake=I.back&&!onFoot&&!P.man;if(P.brake&&!P.air)a-=P.v>0.2?4.2:0;if(P.man)a-=0.3;
-  P.v=clamp(P.v+a*dt,0,16);if(Math.abs(P.v)<0.04&&!I.fwd)P.v=0;
+  P.v=clamp(P.v+a*dt,0,16*runSpd());if(Math.abs(P.v)<0.04&&!I.fwd)P.v=0;
   P.turn+=(I.turn-P.turn)*Math.min(1,8*dt);
   P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
   const nx=P.x+F[0]*P.v*dt,nz=P.z+F[1]*P.v*dt,R=0.3;
@@ -529,6 +530,7 @@ function stepPlayer(dt){
   if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){const ox=dx/l,oz=P.z/l,fx=Math.sin(P.yaw),fz=Math.cos(P.yaw),d=fx*ox+fz*oz;P.x=MIR_X+ox*MIR_R;P.z=oz*MIR_R;if(d>0){const tx=fx-ox*d,tz=fz-oz*d;P.yaw=Math.hypot(tx,tz)>0.15?Math.atan2(tx,tz):Math.atan2(-oz,ox);}}}
   else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
+  if(jumpQ&&P.air&&!busy&&!onFoot&&runJump())jumpQ=false;   // in 裏海街's nights out, a second jump in the air
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}if(P.man){P.man=null;$('manBar').hidden=true;}}jumpQ=false;
   if(trickQ&&!busy)trickStart(I);trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;if(P.man&&!P.air)manStep(dt,I,onFoot,busy);
   if(!P.air&&P.y-gy>0.3){P.air=true;P.vy=0;}
@@ -614,7 +616,8 @@ function updateCamera(dt){
     want=new THREE.Vector3(b.fx,b.base,b.fz).addScaledVector(fw,7);want.y+=2.4;look=new THREE.Vector3(b.fx,b.base+2.4,b.fz);rate=3;}
   else if(MIR.on&&!ST.run){want=new THREE.Vector3();look=new THREE.Vector3();mirCam(want,look);rate=4;}
   else if(lookBack()){want=p.clone().addScaledVector(F,-0.45);want.y+=1.55;look=p.clone().addScaledVector(F,-20);look.y+=1.2;rate=0;}   // her eyes turned back: from just behind her head, down the way she came (her body stays out of the picture)
-  else{const back=3.3+P.v*0.12,up=1.45+P.v*0.035;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
+  // out on a night in 裏海街 the camera rides farther back, so the rings are in view
+  else{const rk=RUN.go?1.6:1,back=(3.3+P.v*0.12)*rk,up=(1.45+P.v*0.035)*rk*1.2;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
     // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
     const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
     // on this side of the walls. How far the camera can get from her head toward a spot before a wall stops it (0…1; pressed
