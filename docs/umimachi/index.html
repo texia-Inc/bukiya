@@ -213,7 +213,19 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   .cslot{grid-template-columns:52px 1fr;gap:4px 8px}
   #ring{opacity:.22}#bag .it{font-size:11px;padding:2px 6px 2px 2px}#bag .it img{width:20px;height:20px}
 }
-@media (pointer:coarse) and (orientation:landscape){#prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:40vw}}   /* landscape: the middle of the bottom is free */
+/* phones held sideways: the screen is short, so the cards stay narrow and low, 振り返る moves beside the buttons (it sat on the
+   tracker), and the talk box gets shorter */
+@media (pointer:coarse) and (orientation:landscape){
+  #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:40vw}   /* the middle of the bottom is free */
+  #topL{max-width:min(42vw,320px);gap:5px}#tracker{font-size:11px;padding:5px 9px;line-height:1.4}#tracker .others{margin-top:4px;padding-top:3px}
+  #map{width:84px;height:84px}#tools{top:calc(env(safe-area-inset-top,0px) + 102px)}
+  #pad{bottom:calc(env(safe-area-inset-bottom,0px) + 18px)}
+  #bLook{left:auto;right:calc(env(safe-area-inset-right,0px) + 170px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px)}
+  #ring{left:calc(env(safe-area-inset-left,0px) + 96px);top:calc(100% - 118px - env(safe-area-inset-bottom,0px))}
+  #dialog{bottom:calc(env(safe-area-inset-bottom,0px) + 10px);padding:10px 16px 12px;width:min(620px,calc(100% - 32px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)))}
+  #dialog p{font-size:15px;line-height:1.6;min-height:3.2em}#dialog .who{margin-bottom:4px}
+  .pb.shoot{height:50px}
+}
 @media (prefers-reduced-motion: reduce){.tst{animation-duration:3.5s}#dialog .nx{animation:none}}
 </style>
 </head>
