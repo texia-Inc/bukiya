@@ -6,6 +6,8 @@
    dawn: a swarm at 0:55 and 1:55, red shadows from 1:00 that cut the line, and at 2:20 a great shadow that takes three rings.
    Mio's blue marble helps: thrown (the 歩く button turns into ビー玉 out here), it rolls ahead and leaves a blue line from where
    she threw it; ride round and back onto that line, or throw it back across her own older line, and the ring closes the same way.
+   Tricks help too: those of a jump, landed clean, take seconds off the marble's wait (a fall adds one), and line drawn while
+   grinding burns gold, holds the whole line from fading while she is on the rail, and a ring with gold in it scores half again.
    Out from the command table (hqCommand in p5q_hq.js). Like the HQ it lies far off the map (x around MIR_X). ---------- */
 const MIR_X=-9000,MIR_R=70;
 const MIR_LIFE=8,MIR_STEP=0.5,MIR_GAP=14,MIR_CLOSE=2.6,MIR_MAX=700;   // the line lasts 8 s; a ring needs 7 m of line and closes within 2.6 m
@@ -57,6 +59,7 @@ function mirBuild(){if(MIR.g)return;const g=new THREE.Group();scene.add(g);MIR.g
     const idx=[];for(let i=0;i<MIR_MAX-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}geo.setIndex(idx);
     const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));m.frustumCulled=false;m.userData={w,col:new THREE.Color(col)};g.add(m);return m;};
   MIR.halo=rib(1.5,'#2a5a9a');MIR.core=rib(0.32,'#bfe6ff');MIR.head=glow('#9fd4ff',0,0,0,2.2);
+  MIR.halo.userData.gold=new THREE.Color('#8a5a18');MIR.core.userData.gold=new THREE.Color('#ffe6a0');
   MIR.mhalo=rib(1.3,'#2a2f9a');MIR.mcore=rib(0.28,'#9fb4ff');
   // the marble itself: a little blue glass ball with its own glow
   const ball=new THREE.Mesh(new THREE.SphereGeometry(0.16,14,10),new THREE.MeshBasicMaterial({color:'#7fb2ff'}));const bg=glow('#6f9cff',0,0,0,1.6);scene.remove(bg);bg.visible=true;bg.position.set(0,0,0);ball.add(bg);
@@ -90,10 +93,11 @@ function mirReflect(){if(!MIR.on||AREA!=='mir'||!MIR.rt)return;const sz=renderer
   const sv=NIGHT.stars.visible;NIGHT.stars.visible=false;MIR.floor.visible=false;const su=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;renderer.clippingPlanes=[MIR.clip];
   renderer.setRenderTarget(MIR.rt);renderer.clear();renderer.render(scene,v);renderer.setRenderTarget(null);
   renderer.clippingPlanes=[];renderer.shadowMap.autoUpdate=su;MIR.floor.visible=true;NIGHT.stars.visible=sv;MIR.floor.material.uniforms.uT.value=clock;}
-function mirRibbon(m,T){T=T||MIR.trail;const pos=m.geometry.attributes.position.array,col=m.geometry.attributes.color.array,n=T.length,w=m.userData.w/2,c=m.userData.col;
+function mirRibbon(m,T){T=T||MIR.trail;const pos=m.geometry.attributes.position.array,col=m.geometry.attributes.color.array,n=T.length,w=m.userData.w/2;
   for(let i=0;i<n;i++){const p=T[i],q=T[Math.min(n-1,i+1)],o=T[Math.max(0,i-1)],dx=q.x-o.x,dz=q.z-o.z,l=Math.hypot(dx,dz)||1,nx=-dz/l*w,nz=dx/l*w;
-    // young line is bright, and it fades out over its last two seconds
-    const age=MIR.t-p.t,k=clamp((MIR_LIFE-age)/2,0,1)*(age<0.3?1.6:1),j=i*6;
+    // young line is bright; it keeps its light as long as it still counts, and goes out only in its last moment (a line dimming
+    // for seconds looked used up while it could still close a ring)
+    const age=MIR.t-p.t,k=clamp((MIR_LIFE-age)/0.4,0,1)*(age<0.3?1.6:1),j=i*6,c=p.g&&m.userData.gold||m.userData.col;
     pos[j]=p.x+nx;pos[j+1]=p.y;pos[j+2]=p.z+nz;pos[j+3]=p.x-nx;pos[j+4]=p.y;pos[j+5]=p.z-nz;
     for(let e=0;e<2;e++){col[j+e*3]=c.r*k;col[j+e*3+1]=c.g*k;col[j+e*3+2]=c.b*k;}}
   m.geometry.setDrawRange(0,Math.max(0,n-1)*6);m.geometry.attributes.position.needsUpdate=true;m.geometry.attributes.color.needsUpdate=true;}
@@ -114,7 +118,10 @@ function mirAdd(kind,x,z){const F=MIR_FOE[kind],h=makeHuman(SHADE);h.g.scale.set
   MIR.foes.push(f);return f;}
 // a swarm: small ones coming up together from one side
 function mirSwarm(n){const [cx,cz]=mirWhere(1.6,22,28);for(let k=0;k<n;k++)mirAdd('swarm',cx+(rnd()-0.5)*6,cz+(rnd()-0.5)*6);toast('影の群れが来る！ 大きく囲め',true);sfx.notice&&sfx.notice();}
-function mirPop(t){TRICK.name=t;TRICK.shown=1.8;trickHUD();}
+function mirPop(t){TRICK.name=t;TRICK.sub='';TRICK.shown=1.8;trickHUD();}
+// a jump landed (trickLand): its tricks take seconds off the marble's wait; a fall puts one back on
+function mirTrickLand(clean,b){if(!clean){MIR.mcd=Math.max(MIR.mcd,0)+1;renderHUD();return;}
+  if(b<=0||MIR.mcd<=0)return;MIR.mcd=Math.max(0,MIR.mcd-b);TRICK.sub=MIR.mcd>0?`ビー玉 −${b}秒`:`ビー玉 −${b}秒　投げられる！`;TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
 // the ring closed: the points from i on make its edge
 function mirRing(poly){let A=0;for(let k=0;k<poly.length;k++){const a=poly[k],b=poly[(k+1)%poly.length];A+=a.x*b.z-b.x*a.z;}A=Math.abs(A)/2;
   if(A<10)return false;
@@ -132,9 +139,9 @@ function mirRing(poly){let A=0;for(let k=0;k<poly.length;k++){const a=poly[k],b=
   const wg=new THREE.BufferGeometry();wg.setAttribute('position',new THREE.Float32BufferAttribute(wp,3));wg.setIndex(wi);
   const wall=new THREE.Mesh(wg,new THREE.MeshBasicMaterial({color:'#a8dcff',transparent:true,opacity:0.7,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));MIR.g.add(wall);MIR.fx.push({m:wall,t:0,dur:1.1,kind:'wall'});
   MIR.comboT>0?MIR.combo++:MIR.combo=1;MIR.comboT=4;
-  const fast=P.v>10?0.5:0,mult=1+0.5*Math.max(0,hit-1)+fast,got=Math.round(pts*mult*(1+(MIR.combo-1)*0.25));MIR.score+=got;
+  const fast=P.v>10?0.5:0,gold=poly.some(p=>p.g)?1.5:1,mult=(1+0.5*Math.max(0,hit-1)+fast)*gold,got=Math.round(pts*mult*(1+(MIR.combo-1)*0.25));MIR.score+=got;
   if(MIR.bossDown&&!MIR.bossSaid){MIR.bossSaid=true;mirPop('大きな影を、追いはらった！');}
-  else if(hit)mirPop(`${hit>1?`${hit}体同時`:''}浄化！ ×${mult.toFixed(1)}${MIR.combo>1?`　${MIR.combo}コンボ`:''}`);else mirPop('結界');
+  else if(hit)mirPop(`${hit>1?`${hit}体同時`:''}${gold>1?'金の線で':''}浄化！ ×${mult.toFixed(1)}${MIR.combo>1?`　${MIR.combo}コンボ`:''}`);else mirPop('結界');
   buzz(hit?'heavy':'light',true);if(hit)sfx.boom(0.6);renderHUD();return true;}
 // the children the shadows held: little lights going up out of where they were
 function mirOrb(p,n){for(let k=0;k<n;k++){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX,color:'#fff0c0',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
@@ -185,7 +192,9 @@ function mirStep(dt){const busy=!!(DLG||modal);
     if(k>=1){MIR.g.remove(f.m);if(f.kind!=='orb')f.m.geometry.dispose();f.m.material.dispose();MIR.fx.splice(MIR.fx.indexOf(f),1);}}
   if(MIR.go&&!busy&&!MIR.end){MIR.t+=dt;MIR.comboT-=dt;MIR.inv-=dt;MIR.mcd-=dt;mirMarble(dt);
     // the line: a point every half metre while she rides (in the air too), the old end fading away
-    const T=MIR.trail,l=T[T.length-1];if(!P.foot&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>MIR_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;T.push({x:P.x,y:mirG(P.x,P.z)+0.05,z:P.z,t:MIR.t});mirClose();}
+    const T=MIR.trail,l=T[T.length-1];if(!P.foot&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>MIR_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;T.push({x:P.x,y:mirG(P.x,P.z)+0.05,z:P.z,t:MIR.t,g:P.grind?1:0});mirClose();}
+    // on a rail the whole line stops fading (each point for four seconds at most)
+    if(P.grind)for(const p of T)if((p.ext||0)<4){p.t+=dt;p.ext=(p.ext||0)+dt;}
     while(T.length&&MIR.t-T[0].t>MIR_LIFE)T.shift();while(T.length>MIR_MAX)T.shift();
     MIR.spawnT-=dt;const alive=MIR.foes.filter(f=>!f.gone).length,want=Math.min(16,4+Math.floor(MIR.t/14));
     if(MIR.spawnT<=0&&alive<want){mirSpawn();MIR.spawnT=1.1+rnd()*0.6;}
@@ -226,7 +235,8 @@ function mirScript(){const first=!SAVE.seen.mir_first;SAVE.seen.mir_first=1;retu
   ['fade','out'],['call',()=>{applyD2();mirEnter();}],['time',23.3,0],['warp',MIR_X,30,Math.PI],['call',rideNow],
   ['cam',[MIR_X+10,5,38],[MIR_X,0.8,28],1.2,'cut'],['fade','in'],
   ['say','tome','（無線の声）……ここが、裏海街の海さ。水がひいて、まるで鏡みたいだろう。',
-    ...(first?['スケボーで走ると、ランタンの光が足もとに線になって残る。','その線で、影をぐるっと囲んでごらん。線がつながったら、中の影はまとめて消えるよ。','たくさん囲むほど、いっぺんに追いはらえる。','ミオのビー玉も持っておいき。投げると、転がった先まで青い光の線がのびる。その線につなげても、囲めるよ。','……三分、もちこたえな。']:['今夜も、光の線で囲んでやりな。ビー玉も使うんだよ。'])],
+    ...(first?['スケボーで走ると、ランタンの光が足もとに線になって残る。','その線で、影をぐるっと囲んでごらん。線がつながったら、中の影はまとめて消えるよ。','たくさん囲むほど、いっぺんに追いはらえる。','ミオのビー玉も持っておいき。投げると、転がった先まで青い光の線がのびる。その線につなげても、囲めるよ。',
+     '技を決めて着地すると、ビー玉が早くたまる。屋根のてっぺんや鳥居をすべると、線が金色になって消えにくくなるし、金の線で囲めば点も上がるさ。','……三分、もちこたえな。']:['今夜も、光の線で囲んでやりな。ビー玉も、技も使うんだよ。'])],
   ['cam','off'],['call',()=>{MIR.go=true;toast('走って、線で囲め！',true);}]];}
 // the sky on the way to dawn: from the second minute the east pales, the moon goes thin, the mirror catches the light
 const MIR_DAWN={top:new THREE.Color('#5a6f98'),bg:new THREE.Color('#b87a6c'),hemi:new THREE.Color('#ffd8c0')};

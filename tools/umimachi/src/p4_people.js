@@ -243,7 +243,7 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
   const tk=P.tk,gr=P.gr,lift=0.3*tk+0.08*gr;
   // tricks: the board turns under her feet — about its long axis for a kickflip, flat round for a shove-it — while the feet
   // lift off it and come back down when it has gone round
-  const fp=s.flip||0,spn=s.spin||0,trk=Math.sin(Math.PI*Math.max(fp,spn));
+  const fp=s.flip||0,spn=s.spin||0,trk=Math.sin(Math.PI*(s.tkp!=null?s.tkp:Math.max(fp,spn)));
   h.board.position.set(0,lift+0.12*trk,0.02);   // x, z too: put straight on the board (a race start), it may still be where she carried it
   h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3))*(1-trk):0,0,M*0.3*gr*(1-trk));
   _e.copy(h.board.rotation);h.board.rotation.y+=TAU*spn;h.board.rotation.z+=TAU*fp;
