@@ -244,8 +244,10 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
   // tricks: the board turns under her feet — about its long axis for a kickflip, flat round for a shove-it — while the feet
   // lift off it and come back down when it has gone round
   const fp=s.flip||0,spn=s.spin||0,trk=Math.sin(Math.PI*(s.tkp!=null?s.tkp:Math.max(fp,spn)));
-  h.board.position.set(0,lift+0.12*trk,0.02);   // x, z too: put straight on the board (a race start), it may still be where she carried it
-  h.board.rotation.set(s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3))*(1-trk):0,0,M*0.3*gr*(1-trk));
+  // a manual: nose up (tail up for a nose manual), rocking with her balance, arms out
+  P.mn=(P.mn||0)+((s.man||0)-(P.mn||0))*Math.min(1,10*dt);const mn=P.mn,mb=s.bal||0;
+  h.board.position.set(0,lift+0.12*trk+0.03*Math.abs(mn),0.02);   // x, z too: put straight on the board (a race start), it may still be where she carried it
+  h.board.rotation.set((s.air&&P.pop?-0.42*Math.sin(Math.PI*Math.min(1,P.airT/0.3))*(1-trk):0)-mn*(0.2+0.06*mb),0,M*0.3*gr*(1-trk));
   _e.copy(h.board.rotation);h.board.rotation.y+=TAU*spn;h.board.rotation.z+=TAU*fp;
   h.hips.position.set(0,lerp(hipY,lerp(0.71,0.47,gr)+lift,tk),-0.03*c*(1-sd)*(1-P.push));h.hips.rotation.set(0,yaw,LEAD*0.12*P.push);
   h.torso.rotation.set((0.1+0.6*c)*(1-0.6*sd)*(1-0.6*P.push)+P.push*0.22+0.3*tk+0.8*gr,-yaw*0.2,-P.st*0.16-LEAD*0.12*P.push);
@@ -254,7 +256,7 @@ function poseSkater(h,dt,s){const P=h.pose;h.t+=dt;h.hold=null;h.kneeOut=0.18;
   // the outside arm lifts in a turn and both counter-swing the kicking leg
   const sp=clamp(s.v/12,0,1),air=s.air?1:0,kk=s.kick!=null&&s.kick>=0?s.kick:(h.t*1.0)%1,swing=Math.sin(kk*Math.PI*2)*0.38*P.push;
   for(const a of h.arms){const lead=a.sx===LEAD;
-    const out=0.16+0.26*sp+0.55*air+(a.sx*P.st>0?-0.1:0.28)*Math.abs(P.st)+(lead?0.6*gr:0);
+    const out=0.16+0.26*sp+0.55*air+0.5*Math.abs(mn)+(a.sx*P.st>0?-0.1:0.28)*Math.abs(P.st)+(lead?0.6*gr:0);
     const fw=(lead?-0.3-0.12*sp-0.5*gr:0.25+0.08*sp)+0.35*c+(lead?-swing:swing)+Math.sin(h.t*1.7+(lead?0:1.4))*0.04;
     a.sh.rotation.set(fw,0,a.sx*out);a.el.rotation.x=-(0.5+0.35*sp+0.2*P.push-0.15*air);}
   const hy=h.hips.position.y-0.07,hz=h.hips.position.z,cy=Math.cos(yaw),sy=Math.sin(yaw);

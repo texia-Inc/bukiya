@@ -512,10 +512,10 @@ function stepPlayer(dt){if(TD.on){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;} 
     if(P.foot&&P.carry==='back'&&player.backBusy&&!P.tr)P.carry='hand';}
   // each kick: the back foot plants, shoves, and the board surges forward; holding the key keeps kicking
   P.kickCD-=dt;if(P.kickT>=0){P.kickT+=dt/0.48;if(P.kickT>=1)P.kickT=-1;}
-  if(!onFoot&&(kickQ||I.fwd)&&!P.air&&!busy&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.42;P.kicked=false;}kickQ=false;
+  if(!onFoot&&(kickQ||I.fwd)&&!P.air&&!busy&&!P.man&&P.kickCD<=0&&P.kickT<0){P.kickT=0;P.kickCD=0.42;P.kicked=false;}kickQ=false;
   if(P.kickT>0.35&&!P.kicked){P.kicked=true;P.v=Math.min(P.v+1.3+3.3*Math.max(0,1-P.v/13),13.5);}
   P.push=P.kickT>=0;
-  P.brake=I.back&&!onFoot;if(I.back&&!P.air&&!onFoot)a-=P.v>0.2?4.2:0;
+  P.brake=I.back&&!onFoot&&!P.man;if(P.brake&&!P.air)a-=P.v>0.2?4.2:0;if(P.man)a-=0.3;
   P.v=clamp(P.v+a*dt,0,16);if(Math.abs(P.v)<0.04&&!I.fwd)P.v=0;
   P.turn+=(I.turn-P.turn)*Math.min(1,8*dt);
   P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
@@ -529,18 +529,19 @@ function stepPlayer(dt){if(TD.on){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;} 
   if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){const ox=dx/l,oz=P.z/l,fx=Math.sin(P.yaw),fz=Math.cos(P.yaw),d=fx*ox+fz*oz;P.x=MIR_X+ox*MIR_R;P.z=oz*MIR_R;if(d>0){const tx=fx-ox*d,tz=fz-oz*d;P.yaw=Math.hypot(tx,tz)>0.15?Math.atan2(tx,tz):Math.atan2(-oz,ox);}}}
   else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
-  if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}}jumpQ=false;
-  if(trickQ&&!busy)trickStart(I);trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;
+  if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}if(P.man){P.man=null;$('manBar').hidden=true;}}jumpQ=false;
+  if(trickQ&&!busy)trickStart(I);trickQ=false;if(P.air&&!onFoot)trickAir(dt);if(P.grind)return;if(P.man&&!P.air)manStep(dt,I,onFoot,busy);
   if(!P.air&&P.y-gy>0.3){P.air=true;P.vy=0;}
   if(P.air){P.vy-=13.5*dt;P.y+=P.vy*dt;if(P.y<=gy){if(P.vy<-9)P.bump=0.25;P.y=gy;P.air=false;P.vy=0;
       if(!onFoot){if(P.trick){P.trick=null;P.v*=0.3;P.bump=0.5;trickLand(false);}else trickLand(true);}}}else P.y+=(gy-P.y)*Math.min(1,18*dt);
   player.g.position.set(P.x,P.y,P.z);
   const pitch=P.air?-P.vy*0.03:Math.atan(-slope);
-  player.g.rotation.set(0,P.yaw,0);
+  // a body varial turns her right round over the board, which stays put
+  const tk=P.trick,bs=tk&&tk.type==='body'?tk.t*tk.dir:0;player.g.rotation.set(0,P.yaw+TAU*bs,0);
   if(onFoot){player.root.rotation.set(0,0,0);poseRunner(player,dt,{v:P.v,turn:P.turn,air:P.air,vy:P.vy,tr:P.tr,carry:P.carry});}
   else{player.root.rotation.set(pitch*0.8,0,clamp(P.turn*P.v*0.03,-0.25,0.25));
     if(P.tr&&P.tr.type==='stow')P.tr=null;
-    const tk=P.trick;poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy,flip:tk?tk.t*TRICK_KIND[tk.type].z:0,spin:tk?tk.t*TRICK_KIND[tk.type].y:0,tkp:tk?tk.t:0});}
+    poseSkater(player,dt,{v:P.v,turn:P.turn,push:P.push,kick:P.kickT,brake:P.brake&&P.v>0.3,air:P.air,vy:P.vy,flip:tk?tk.t*TRICK_KIND[tk.type].z:0,spin:tk?(bs?-bs:tk.t*TRICK_KIND[tk.type].y):0,tkp:tk?tk.t:0,man:P.man?(P.man.nose?-1:1):0,bal:P.man?P.man.bal:0});}
 }
 
 /* ---------- interaction ---------- */

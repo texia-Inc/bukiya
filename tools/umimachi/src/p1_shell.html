@@ -147,6 +147,9 @@ body.closet #bLook,body.riding #bLook,body.cine #bLook{visibility:hidden}
 #trick{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 86px);translate:-50% 0;text-align:center;pointer-events:none;text-shadow:0 2px 0 rgba(0,0,0,.35)}
 #trick .tn{font-weight:900;font-size:22px;color:#ffd24a}
 #trick .ts{font-weight:900;font-size:14px;color:#bfe6ff;margin-top:2px}
+#manBar{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 142px);translate:-50% 0;width:180px;height:10px;border-radius:5px;background:linear-gradient(90deg,#e0605088,#ffffff44 30%,#ffffff44 70%,#e0605088);border:2px solid #fff8;pointer-events:none}
+#manBar i{position:absolute;top:-5px;width:6px;height:16px;margin-left:-3px;border-radius:3px;background:#ffd24a}
+#manBar.warn i{background:#ff6a50}
 #pad{position:absolute;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;gap:12px;align-items:end;pointer-events:auto}
 body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{display:none}
 .pb.kick{grid-column:2;grid-row:1/3;width:92px;height:92px;font-size:17px}
@@ -254,6 +257,7 @@ body.battle #wrow,body.battle #place,body.battle #bag{display:none!important}
   <button class="pb" id="bLook" hidden>振り<br>返る</button>
   <div id="stick" hidden><div id="ring"><div id="knob"></div></div></div>
   <div id="trick" hidden></div>
+  <div id="manBar" hidden><i></i></div>
   <div id="pad" hidden>
     <button class="pb" id="bJump">ジャンプ</button>
     <button class="pb" id="bTrick" hidden>技</button>
@@ -281,7 +285,7 @@ body.battle #wrow,body.battle #place,body.battle #bag{display:none!important}
     <dt class="pc">E</dt><dd class="pc">話す・お店に入る・会話を進める</dd>
     <dt class="pc">Space</dt><dd class="pc">ジャンプ</dd>
     <dt class="pc">C</dt><dd class="pc">着がえ。服は駄菓子まるやの店先のカプセルトイ（ガチャ）で集める</dd>
-    <dt class="pc">K</dt><dd class="pc">技（空中で）。そのままでキックフリップ、S を押しながらヒールフリップ、W でバリアルフリップ、曲がりながら360ショービット（高く飛べば540）。空中でもう一度押すと続けて出る。手すりに着地するとグラインド（ななめに乗るとボードスライド）</dd>
+    <dt class="pc">K</dt><dd class="pc">技（空中で）。そのままでキックフリップ、S を押しながらヒールフリップ、W でバリアルフリップ、曲がりながら360ショービット（高く飛べば540）、S を押して曲がりながらボディバリアル。空中でもう一度押すと続けて出る。地面で押すとマニュアル（W を押しながらでノーズマニュアル）。W と S でバランスをとる。着地の直前に押すと、そのままマニュアルにつながる。手すりに着地するとグラインド（ななめに乗るとボードスライド）</dd>
     <dt class="pc">F</dt><dd class="pc">スケボーを降りる・乗る（降りたら W / ↑ で走れる）</dd>
     <dt class="pc">Q ・ P</dt><dd class="pc">おつかい帳 ・ 写真を撮る</dd>
     <dt class="pc">L</dt><dd class="pc">ライトをつける・消す（「トンネルの向こう」で）</dd>
@@ -290,7 +294,7 @@ body.battle #wrow,body.battle #place,body.battle #bag{display:none!important}
     <dt class="pc">J ・ クリック</dt><dd class="pc">撃つ（こむぎ堂の主人に頼まれる「ドローン迎撃」のときだけ）</dd>
     <dt class="tc">ける</dt><dd class="tc">右下の大きなボタン。押すたびにひと蹴りで加速。坂は勝手に転がる。歩いているときは「走る」</dd>
     <dt class="tc">スティック</dt><dd class="tc">画面の左半分をなぞって曲がる。手前に引くとブレーキ</dd>
-    <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。スティックを後ろでヒールフリップ、前でバリアルフリップ、左右で360ショービット。もう一度押すと続けて出る。手すりに乗るとグラインド</dd>
+    <dt class="tc">ジャンプ</dt><dd class="tc">空中で「技」を押すとキックフリップ。スティックを後ろでヒールフリップ、前でバリアルフリップ、左右で360ショービット、後ろ＋左右でボディバリアル。もう一度押すと続けて出る。地面で押すとマニュアル（前に倒しながらでノーズマニュアル）。スティックの前後でバランスをとる。着地の直前に押すと、そのままマニュアルにつながる。手すりに乗るとグラインド</dd>
     <dt class="tc">話す</dt><dd class="tc">人やお店の近くで出るボタン。会話は画面をタップして進める</dd>
     <dt class="tc">歩く</dt><dd class="tc">スケボーを降りて歩く。「スケボー」でまた乗る</dd>
     <dt class="tc">振り返る</dt><dd class="tc">左のボタンを押しているあいだ、うしろを見る</dd>
