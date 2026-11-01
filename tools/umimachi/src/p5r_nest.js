@@ -28,7 +28,7 @@ function nestHUD(tr){tr.hidden=false;tr.innerHTML='';const N=NESTS[NEST.i],b=doc
 // the lantern's flash at the nest: the shadows near it go, and the nest burns if it is within the light
 function nestFlash(R){if(!NEST.on)return;const dd=p=>Math.hypot(P.x-p.x,P.z-p.z);
   for(const s of NEST.list)if(!s.gone&&dd(s.g.position)<R+1){s.gone=1;NEST.killed++;}
-  if(NEST.fight&&dd(NEST.g.position)<R+2){NEST.hp-=DRONE.dmg||1;const p=NEST.g.position.clone();p.y+=1.4;sparks(p,18,'#ffe2a0',6,0.12);buzz('heavy',true);
+  if(NEST.fight&&dd(NEST.g.position)<R+2){NEST.hp-=(DRONE.dmg||1)*trickDmg();const p=NEST.g.position.clone();p.y+=1.4;sparks(p,18,'#ffe2a0',6,0.12);buzz('heavy',true);
     if(NEST.hp<=0)nestBurnt();else toast(`巣が光に焼かれていく……（のこり ${Math.ceil(NEST.hp)}）`);}
   renderHUD();}
 function nestBurnt(){const p=NEST.g.position.clone();p.y+=1;boom(p);for(let k=0;k<4;k++)setTimeout(()=>sparks(p.clone().add(new THREE.Vector3(rnd()*3-1.5,rnd()*2,rnd()*3-1.5)),16,'#ffe2a0',7,0.12),k*180);
@@ -63,8 +63,9 @@ function nestStep(dt){if(!sortieOn()){if(NEST.on&&!URA.on)nestClear();return;}
       if(f>=1){world.remove(s.g);scene.remove(s.eye);NEST.list.splice(NEST.list.indexOf(s),1);}continue;}
     const gy=G(p.x,p.z);
     if(s.up<1){s.up=Math.min(1,s.up+dt*0.9);p.y=lerp(gy-1.6,gy,s.up);poseHuman(s.h,'stand',dt,{});}
+    else if(s.stun>0){s.stun-=dt;p.y=gy;poseHuman(s.h,'stand',dt,{});}   // knocked back by a trick (trickWave)
     else if(!busy){const dx=P.x-p.x,dz=P.z-p.z,l=Math.hypot(dx,dz)||1;if(l>0.9){p.x+=dx/l*s.sp*dt;p.z+=dz/l*s.sp*dt;}p.y=G(p.x,p.z);s.g.rotation.y=Math.atan2(dx,dz);poseHuman(s.h,'walk',dt,{rate:3.8});
-      if(l<1.15&&NEST.inv<=0){NEST.inv=1.3;NEST.hearts--;buzz('heavy',true);P.v*=0.3;s.gone=1;renderHUD();if(NEST.hearts<=0){nestFall();break;}toast('冷たい手が、ふれた！');}}
+      if(l<1.15&&NEST.inv<=0&&!trickSafe()){NEST.inv=1.3;NEST.hearts--;buzz('heavy',true);P.v*=0.3;s.gone=1;renderHUD();if(NEST.hearts<=0){nestFall();break;}toast('冷たい手が、ふれた！');}}
     s.eye.visible=true;s.eye.position.set(p.x,p.y+1.62,p.z);s.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);}
   if(NEST.fight)$('hurt').style.opacity=Math.max(NEST.inv>0.7?0.5:0,NEST.hearts===1?0.3+0.1*Math.sin(clock*5):0);
   NEST.hudT-=dt;if(NEST.hudT<=0){NEST.hudT=0.25;renderHUD();}}

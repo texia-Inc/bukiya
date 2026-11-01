@@ -31,7 +31,7 @@ async function bossStrike(){BOSS.striking=true;BOSS.ready=false;const T={x:BOSS_
   toast(BOSS.hp>0?`灯台の光が、主をつらぬいた！（のこり ${BOSS.hp}）`:'灯台の光が、主をつらぬいた！',true);
   setTimeout(()=>{EX1R.beam=null;BOSS.striking=false;if(BOSS.hp<=0&&BOSS.on){BOSS.on=false;bossClear();const r=BOSS.res;r();}},1800);}
 function bossClear(){for(const s of BOSS.list){world.remove(s.g);scene.remove(s.eye);}BOSS.list.length=0;for(const o of BOSS.orbs)scene.remove(o.m);BOSS.orbs.length=0;$('hurt').style.opacity=0;}
-function bossHurt(){if(BOSS.inv>0)return;BOSS.inv=1.3;BOSS.hearts--;buzz('heavy',true);P.v*=0.4;renderHUD();
+function bossHurt(){if(BOSS.inv>0||trickSafe())return;BOSS.inv=1.3;BOSS.hearts--;buzz('heavy',true);P.v*=0.4;renderHUD();
   if(BOSS.hearts>0){toast('やられた！');return;}
   // down: back on her feet a little way up the beach; the master keeps its wounds
   BOSS.falls++;$('fade').style.opacity=1;BOSS.striking=true;
@@ -51,6 +51,7 @@ function updateBoss(dt){bossPose(dt);if(!BOSS.on)return;const busy=!!(DLG||modal
     if(s.gone){s.fade+=dt*1.8;const f=Math.min(1,s.fade);s.g.scale.set(1-f*0.6,1-f*0.9,1-f*0.6);s.eye.visible=false;if(f>=1){world.remove(s.g);scene.remove(s.eye);BOSS.list.splice(BOSS.list.indexOf(s),1);}continue;}
     const gy=Math.max(G(p.x,p.z),SEA_Y-0.4);
     if(s.up<1){s.up=Math.min(1,s.up+dt*0.8);p.y=lerp(SEA_Y-1.8,gy,s.up);poseHuman(s.h,'stand',dt,{});}
+    else if(s.stun>0){s.stun-=dt;p.y=gy;poseHuman(s.h,'stand',dt,{});}   // knocked back by a trick (trickWave)
     else if(!busy){const dx=P.x-p.x,dz=P.z-p.z,l=Math.hypot(dx,dz)||1;if(l>0.9){p.x+=dx/l*s.sp*dt;p.z+=dz/l*s.sp*dt;}p.y=Math.max(G(p.x,p.z)+paveY(p.x,p.z),SEA_Y-0.4);s.g.rotation.y=Math.atan2(dx,dz);poseHuman(s.h,'walk',dt,{rate:3.8});
       if(l<1.15&&BOSS.inv<=0){s.gone=1;bossHurt();}}
     s.eye.visible=true;s.eye.position.set(p.x,p.y+1.62,p.z);s.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);}
