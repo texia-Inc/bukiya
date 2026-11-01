@@ -83,7 +83,10 @@ function mirProps(g){const hip=(L,W,h)=>{const a=L/2,b=W/2,c=Math.max(0,a-b),P=[
     const n=new THREE.Mesh(new THREE.BoxGeometry(6.0,0.16,0.3),tm(red));n.position.set(MIR_X+x,2.05,z);g.add(n);
     RAILS.push({x0:MIR_X+x-3.1,z0:z,x1:MIR_X+x+3.1,z1:z,top:2.62});}}
 // the reflection: the scene again from the camera's mirror image under the surface, everything below the surface cut away
-function mirReflect(){if(!MIR.on||AREA!=='mir'||!MIR.rt)return;const sz=renderer.getDrawingBufferSize(new THREE.Vector2()),w=Math.max(64,sz.x>>1),h=Math.max(64,sz.y>>1);
+// drawn every other frame and at most 640 across (a phone's screen is large in pixels): the picture in the floor keeps the
+// matrix it was drawn with, so a frame late it still lines up, and nobody sees the water a frame behind
+function mirReflect(){if(!MIR.on||AREA!=='mir'||!MIR.rt)return;MIR.rf=!MIR.rf;if(!MIR.rf)return;
+  const sz=renderer.getDrawingBufferSize(new THREE.Vector2()),k=Math.min(0.5,640/Math.max(1,sz.x)),w=Math.max(64,sz.x*k|0),h=Math.max(64,sz.y*k|0);
   if(MIR.rt.width!==w||MIR.rt.height!==h)MIR.rt.setSize(w,h);
   const c=camera,v=MIR.rcam;c.updateMatrixWorld();const d=c.getWorldDirection(new THREE.Vector3()),t=c.position.clone().add(d);t.y=-t.y;
   const up=new THREE.Vector3(0,1,0).applyQuaternion(c.quaternion);up.y=-up.y;v.position.set(c.position.x,-c.position.y,c.position.z);v.up.copy(up);v.lookAt(t);
@@ -105,16 +108,25 @@ function mirEnter(){mirBuild();Object.assign(MIR,{on:true,go:false,end:false,t:0
   MIR.trail.length=0;mirClearFoes();MIR.g.visible=true;scene.fog.near=40;scene.fog.far=230;canvas.style.filter='saturate(.6) hue-rotate(8deg)';renderHUD();}
 function mirExit(){MIR.on=false;MIR.go=false;mirClearFoes();for(const f of MIR.fx)MIR.g.remove(f.m);MIR.fx.length=0;MIR.trail.length=0;if(MIR.g)MIR.g.visible=false;if(MIR.head)MIR.head.visible=false;
   scene.fog.near=260;scene.fog.far=2600;canvas.style.filter='';$('hurt').style.opacity=0;renderHUD();}
-function mirClearFoes(){for(const f of MIR.foes){MIR.g.remove(f.g);scene.remove(f.eye);if(f.aura)scene.remove(f.aura);}MIR.foes.length=0;MIR.boss=null;}
+function mirClearFoes(){for(const f of MIR.foes)mirDrop(f);MIR.foes.length=0;MIR.boss=null;}
+// the shadows are kept and used again: making a new figure for every one (each with its own shapes, never freed) piled up over
+// the three minutes and slowed the night down. A figure for out here: no ink outlines and no shadow of its own (each of those
+// drew it again), which with the reflection drawing it twice over made a crowd heavy
+const MIR_POOL=[];
+function mirFigure(){const f=MIR_POOL.pop();if(f)return f;const h=makeHuman(SHADE),ol=[];
+  h.g.traverse(o=>{if(!o.isMesh)return;o.castShadow=false;for(const c of o.children)if(c.isMesh&&c.geometry===o.geometry)ol.push(c);});for(const o of ol)o.parent.remove(o);
+  return{h,eye:glow('#ff3020',0,0,0,1),aura:glow('#ff2a2a',0,0,0,1)};}
+function mirDrop(f){MIR.g.remove(f.g);f.eye.visible=false;f.aura.visible=false;MIR_POOL.push({h:f.h,eye:f.eye,aura:f.aura});}
 // a shadow rises out of the mirror somewhere ahead of her or to the side, never right on top of her
 function mirWhere(spread,r0,r1){let x,z;for(let k=0;k<8;k++){const a=P.yaw+(rnd()-0.5)*spread,r=r0+rnd()*(r1-r0);x=P.x+Math.sin(a)*r;z=P.z+Math.cos(a)*r;if(Math.hypot(x-MIR_X,z)<MIR_R-4)break;}
   const l=Math.hypot(x-MIR_X,z);if(l>MIR_R-4){x=MIR_X+(x-MIR_X)/l*(MIR_R-4);z=z/l*(MIR_R-4);}return[x,z];}
 function mirSpawn(){const t=MIR.t,kind=t>80&&rnd()<0.15?'big':t>60&&rnd()<0.22?'red':t>40&&rnd()<0.25?'fast':'normal';mirAdd(kind,...mirWhere(2.6,15,27));
   if(kind==='red'&&!MIR.redSaid){MIR.redSaid=true;toast('赤い影は、光の線を切る！ 先に囲んでしまえ',true);}}
-function mirAdd(kind,x,z){const F=MIR_FOE[kind],h=makeHuman(SHADE);h.g.scale.setScalar(F.s);h.g.position.set(x,mirG(x,z)-1.6*F.s,z);MIR.g.add(h.g);
-  const f={h,g:h.g,kind,hp:F.hp,sp:F.sp*(0.9+rnd()*0.2),up:0,gone:0,fade:0,stun:0,eye:glow(kind==='big'||kind==='boss'?'#ff6020':'#ff3020',0,0,0,0.9*F.s)};
+function mirAdd(kind,x,z){const F=MIR_FOE[kind],{h,eye,aura}=mirFigure();h.g.scale.setScalar(F.s);h.g.position.set(x,mirG(x,z)-1.6*F.s,z);h.g.rotation.set(0,0,0);MIR.g.add(h.g);
+  eye.material.color.set(kind==='big'||kind==='boss'?'#ff6020':'#ff3020');eye.scale.setScalar(0.9*F.s);
+  const f={h,g:h.g,kind,hp:F.hp,sp:F.sp*(0.9+rnd()*0.2),up:0,gone:0,fade:0,stun:0,eye,aura};
   // the red ones and the great one carry a glow of their own, so they are told apart at a distance
-  if(kind==='red'||kind==='boss'){f.aura=glow(kind==='red'?'#ff2a2a':'#8a3cff',0,0,0,kind==='red'?2.6:9);f.aura.visible=true;}
+  aura.visible=kind==='red'||kind==='boss';if(aura.visible){aura.material.color.set(kind==='red'?'#ff2a2a':'#8a3cff');aura.scale.setScalar(kind==='red'?2.6:9);}
   MIR.foes.push(f);return f;}
 // a swarm: small ones coming up together from one side
 function mirSwarm(n){const [cx,cz]=mirWhere(1.6,22,28);for(let k=0;k<n;k++)mirAdd('swarm',cx+(rnd()-0.5)*6,cz+(rnd()-0.5)*6);toast('影の群れが来る！ 大きく囲め',true);sfx.notice&&sfx.notice();}
@@ -207,7 +219,7 @@ function mirStep(dt){const busy=!!(DLG||modal);
   mirRibbon(MIR.core);mirRibbon(MIR.halo);const ML=MIR.ml?MIR.ml.pts:[];mirRibbon(MIR.mcore,ML);mirRibbon(MIR.mhalo,ML);
   for(const f of MIR.foes.slice()){const p=f.g.position,S=MIR_FOE[f.kind].s;
     if(f.gone){f.fade+=dt*2;const k=Math.min(1,f.fade);f.g.scale.set(S*(1-k*0.6),S*(1-k*0.9),S*(1-k*0.6));f.eye.visible=false;if(f.aura)f.aura.visible=false;if(rnd()<dt*25)sparks(new THREE.Vector3(p.x,p.y+1,p.z),1,'#cfeeff',2,0.05);
-      if(k>=1){MIR.g.remove(f.g);scene.remove(f.eye);if(f.aura)scene.remove(f.aura);MIR.foes.splice(MIR.foes.indexOf(f),1);}continue;}
+      if(k>=1){mirDrop(f);MIR.foes.splice(MIR.foes.indexOf(f),1);}continue;}
     const gy=mirG(p.x,p.z);f.stun-=dt;
     if(f.up<1){f.up=Math.min(1,f.up+dt*(f.kind==='boss'?0.35:0.8));p.y=lerp(gy-1.6*S,gy,f.up);poseHuman(f.h,'stand',dt,{});}
     else if(f.stun>0){p.y=gy;poseHuman(f.h,'stand',dt,{});}
