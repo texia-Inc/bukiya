@@ -6854,7 +6854,7 @@ const TRICK_NAME={flip:'キックフリップ',heel:'ヒールフリップ',vari
 // how far each turns the board (z: over, about its length; y: round, flat), how long it takes, and its worth in seconds
 const TRICK_KIND={flip:{z:1,y:0,d:0.42,b:2},heel:{z:-1,y:0,d:0.42,b:2.5},varial:{z:1,y:0.5,d:0.5,b:2.5},spin:{z:0,y:1,d:0.42,b:2},
   s540:{z:0,y:1.5,d:0.6,b:3.5},double:{z:1,y:0,d:0.42,b:1.5},body:{z:0,y:-1,d:0.55,b:2.5},grab:{b:1}};
-function trickAdd(kind){if(!TRICK_NAME[kind])return;TRICK.name=TRICK_NAME[kind];TRICK.sub='';TRICK.shown=1.1;if(TRICK_KIND[kind])TRICK.bank+=TRICK_KIND[kind].b;
+function trickAdd(kind){if(!TRICK_NAME[kind])return;TRICK.name=TRICK_NAME[kind];TRICK.sub='';TRICK.shown=1.1;if(TRICK_KIND[kind])TRICK.bank+=TRICK_KIND[kind].b;if(MIR.on)echoCopy(kind);
   // a flip and a body varial in the same jump: a combo
   const jk=TRICK.jk|(kind==='body'?2:TRICK_KIND[kind]&&TRICK_KIND[kind].z?1:0);if(jk===3&&TRICK.jk!==3){TRICK.bank+=1.5;TRICK.sub='コンボ ＋1.5秒';}TRICK.jk=jk;trickHUD();}
 function trickHUD(){const el=$('trick');if(TRICK.shown<=0||state!=='play'){el.hidden=true;return;}el.hidden=false;el.innerHTML='';
@@ -6957,6 +6957,7 @@ function storyGoal(){const f=SAVE.flags,d=SAVE.day,ph=phaseOf(SAVE.hour),seen=id
   const home='ばあちゃん（神社の鳥居のそば）に話して、家に帰る';
   if(f.in_ura)return null;
   if(f.ex1&&!f.ex1_done)return ex1Goal(f,eve,night,home);
+  if(f.d3&&!f.d3_done)return d3Goal(f,eve,night);
   if(f.ex1_done&&dlc2Owned())return d2Goal(f,eve,night);
   if(f.ending_true)return eve||night?'夜の町と、島の灯台の光を見に行こう。帰るときは、ばあちゃん（神社の鳥居のそば）に話す':null;
   if(f.true_key)return eve||night?'夜、桟橋の釣りのおじさんに話して、船を出してもらう':'夜になったら、桟橋の釣りのおじさんに話す（ばあちゃんに話すと夕方まで休める）';
@@ -8977,13 +8978,14 @@ const HQ_UP={arm:'よし、手入れは終わった。これで一発の重み�
 /* ----- the command table: out to tonight's defense ----- */
 function nightPlan(n){return{drones:Math.min(4+2*n,16),boss:n%3===0,shadows:Math.min(10+3*n,36),alive:Math.min(4+(n>>1),9),spd:0.06*n};}
 async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening'||ph==='night',done=D.last===SAVE.day,n=D.night+1;
-  const nests=D.nest||0,last=!!SAVE.flags.d2c&&!SAVE.flags.d2_done,opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&!last?['今夜の防衛に出る']:[]),...(dark&&!done&&!last&&D.night>=1&&nests<NESTS.length?[`裏海街へ出撃する（のこりの巣 ${NESTS.length-nests}）`]:[]),...(!dark?['日が暮れるまで休む']:[]),'鏡の海へ（試作）','話を聞く','やめる'];
+  const nests=D.nest||0,last=!!SAVE.flags.d2c&&!SAVE.flags.d2_done,opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&!last?['今夜の防衛に出る']:[]),...(dark&&!done&&!last&&D.night>=1&&nests<NESTS.length?[`裏海街へ出撃する（のこりの巣 ${NESTS.length-nests}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),...(!dark?['日が暮れるまで休む']:[]),'鏡の海へ（練習）','話を聞く','やめる'];
   const i=await askP('tome',done?'今夜の町は守った。……ゆっくりお休み。':dark?`${n}日目の夜。……今夜も、来るよ。`:'やつらが来るのは、日が暮れてからだよ。',opts),pick=opts[i];
   if(pick==='日が暮れるまで休む'){await steps([['fade','out'],['time',18.6,0],['fade','in']]);return;}
   if(pick==='話を聞く'){await sayP('tome',[...(n<=1?['施設は、お金と影のかけらで強くなる。かけらは、夜の防衛で影を追いはらうと手に入るよ。']:[]),
     nightPlan(n).boss?'今夜は、大きいのが混じってる。気をつけな。':'夜ごとに、やつらの数は増えていく。施設をきたえておくんだよ。',
     D.night<1?'まずは一晩、町を守ってごらん。そうしたら、裏海街の巣を焼きに行けるようになる。':nests<NESTS.length?`裏海街には、影の巣がのこり${NESTS.length-nests}つ。巣を焼けば、向こうに残された子たちが帰れるんだよ。`:'巣はぜんぶ焼けた。……あとは、海の底の、あの大きな気配だ。']);return;}
-  if(pick==='鏡の海へ（試作）'){await steps(mirScript());return;}
+  if(pick==='鏡の海へ（練習）'){await steps(mirScript());return;}
+  if(pick&&pick===d3Label()&&d3Tonight()){await steps(mirScript(D3_RULE[d3n()+1]));return;}
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(sortieScript(nests));return;}
   if(pick!=='今夜の防衛に出る')return;
@@ -9347,6 +9349,16 @@ const RECAP=[
     'ミオとお母さんは、30年ぶりに会えた。おもちは、30年前からミオの猫だった。',
     f=>f.mochi_gone?'ミオは「もう、迷子じゃないから」と笑って、おもちといっしょに朝の光の中へ帰っていった。':'ミオは「もう、迷子じゃないから」と笑って、朝の光の中へ帰っていった。おもちは、ナギのそばに残った。',
     '海街自警団は、これからもこの町を守る。']},
+  {sec:'追加ストーリー3「鏡の海」',t:'鏡に映る夏',on:f=>f.d3,text:[
+    '夏休みも終わりが近づいたころ、海に映った町が、少しずれて見えた。ミオの声「裏海街の海が鏡になって、こっちの夏を映しはじめてる」',
+    f=>f.d3n>=1?'鏡の海の夜明け、ナギそっくりの黒い影が、スケボーで走っていった。ナギのキックフリップを、そっくりまねして。':null,
+    f=>f.d3n>=2?'映し身は、ナギの技をまねして、光の線を消していく。まるで、いっしょに遊びたがっているみたいに。':null]},
+  {sec:'追加ストーリー3「鏡の海」',t:'裏の灯台',on:f=>f.d3n>=3,text:[
+    '夜明けの鏡の奥に、しまもようがさかさまの灯台が映っていた。黒崎「あれに灯りがともれば、鏡は閉じる」']},
+  {sec:'追加ストーリー3「鏡の海」',t:'夏の終わり',on:f=>f.d3_done,text:[
+    '最後の夜、金の線で囲まれた映し身は、ナギの前で板を止めた。それは、ナギの「夏」だった。',
+    'ナギと映し身が手をあげると、裏の灯台に灯りがともり、鏡の海に水が満ちた。',
+    '夏休みの最後の日。ソウタくんと来年の大会の約束をして、ナギはうみまち線の電車に乗った。']},
 ];
 function renderRecap(){const box=$('recapBody'),f=SAVE.flags;box.innerHTML='';let sec=null,n=0;
   for(const c of RECAP){if(!c.on(f))continue;n++;
@@ -9508,7 +9520,8 @@ async function tdLost(){tdMsg('町の灯りが、ぜんぶ消えてしまった�
    Tricks help too: those of a jump, landed clean, take seconds off the marble's wait (a fall adds one), and line drawn while
    grinding burns gold, holds the whole line from fading while she is on the rail, and a ring with gold in it scores half again.
    In the air after a trick, and on a rail, the shadows cannot touch her; a big one landed (worth three seconds or more) knocks
-   the shadows round her back and stuns them, a way out of a crowd.
+   the shadows round her back and stuns them, a way out of a crowd. Line drawn in a manual, or in the air after a trick, burns
+   gold as well. The third story (p5w_d3.js) brings its nights here, each with a rule of its own (MIR.rule) and Nagi's double.
    Out from the command table (hqCommand in p5q_hq.js). Like the HQ it lies far off the map (x around MIR_X). ---------- */
 const MIR_X=-9000,MIR_R=70;
 const MIR_LIFE=8,MIR_STEP=0.5,MIR_GAP=14,MIR_CLOSE=2.6,MIR_MAX=700;   // the line lasts 8 s; a ring needs 7 m of line and closes within 2.6 m
@@ -9605,9 +9618,9 @@ function mirRibbon(m,T){T=T||MIR.trail;const pos=m.geometry.attributes.position.
     pos[j]=p.x+nx;pos[j+1]=p.y;pos[j+2]=p.z+nz;pos[j+3]=p.x-nx;pos[j+4]=p.y;pos[j+5]=p.z-nz;
     for(let e=0;e<2;e++){col[j+e*3]=c.r*k;col[j+e*3+1]=c.g*k;col[j+e*3+2]=c.b*k;}}
   m.geometry.setDrawRange(0,Math.max(0,n-1)*6);m.geometry.attributes.position.needsUpdate=true;m.geometry.attributes.color.needsUpdate=true;}
-function mirEnter(){mirBuild();Object.assign(MIR,{on:true,go:false,end:false,t:0,hearts:DRONE.maxHp,inv:0,kills:0,score:0,combo:0,comboT:0,spawnT:1.5,best:(d2().mirBest||0),waves:{},boss:null,bossDown:false,bossSaid:false,redSaid:false,ml:null,mcd:0});if(MIR.ball)MIR.ball.visible=false;
+function mirEnter(){mirBuild();Object.assign(MIR,{on:true,go:false,end:false,t:0,hearts:DRONE.maxHp,inv:0,kills:0,score:0,combo:0,comboT:0,spawnT:1.5,best:(d2().mirBest||0),rule:null,waves:{},boss:null,bossDown:false,bossSaid:false,redSaid:false,ml:null,mcd:0});if(MIR.ball)MIR.ball.visible=false;
   MIR.trail.length=0;mirClearFoes();MIR.g.visible=true;scene.fog.near=40;scene.fog.far=230;canvas.style.filter='saturate(.6) hue-rotate(8deg)';renderHUD();}
-function mirExit(){MIR.on=false;MIR.go=false;mirClearFoes();for(const f of MIR.fx)MIR.g.remove(f.m);MIR.fx.length=0;MIR.trail.length=0;if(MIR.g)MIR.g.visible=false;if(MIR.head)MIR.head.visible=false;
+function mirExit(){echoStop();MIR.on=false;MIR.go=false;mirClearFoes();for(const f of MIR.fx)MIR.g.remove(f.m);MIR.fx.length=0;MIR.trail.length=0;if(MIR.g)MIR.g.visible=false;if(MIR.head)MIR.head.visible=false;
   scene.fog.near=260;scene.fog.far=2600;canvas.style.filter='';$('hurt').style.opacity=0;renderHUD();}
 function mirClearFoes(){for(const f of MIR.foes)mirDrop(f);MIR.foes.length=0;MIR.boss=null;}
 // the shadows are kept and used again: making a new figure for every one (each with its own shapes, never freed) piled up over
@@ -9648,8 +9661,10 @@ function mirTrickLand(clean,b){if(!clean){MIR.mcd=Math.max(MIR.mcd,0)+1;renderHU
 // the ring closed: the points from i on make its edge
 function mirRing(poly){let A=0;for(let k=0;k<poly.length;k++){const a=poly[k],b=poly[(k+1)%poly.length];A+=a.x*b.z-b.x*a.z;}A=Math.abs(A)/2;
   if(A<10)return false;
+  // the cloudy mirror of the third night: no gold in it, no ring
+  if(MIR.rule&&MIR.rule.gold&&!poly.some(p=>p.g)){if(clock>(MIR.goldSaid||0)){MIR.goldSaid=clock+3;mirPop('金の線がないと、囲めない！');}return false;}
   const inside=(x,z)=>{let c=false;for(let a=0,b=poly.length-1;a<poly.length;b=a++){const p=poly[a],q=poly[b];if((p.z>z)!==(q.z>z)&&x<(q.x-p.x)*(z-p.z)/(q.z-p.z)+p.x)c=!c;}return c;};
-  let hit=0,pts=0;
+  let hit=0,pts=0;const eh=echoRing(inside,poly.some(p=>p.g));
   for(const f of MIR.foes){if(f.gone||f.up<0.5||!inside(f.g.position.x,f.g.position.z))continue;f.hp--;hit++;
     const p=f.g.position.clone();p.y+=1;sparks(p,14,'#cfeeff',6,0.1);
     if(f.hp<=0){f.gone=1;MIR.kills++;pts+=MIR_FOE[f.kind].pts;mirOrb(p,f.kind==='boss'?8:1);if(f.kind==='boss'){MIR.bossDown=true;MIR.t=Math.max(MIR.t,MIR.dur-3);}}
@@ -9664,7 +9679,7 @@ function mirRing(poly){let A=0;for(let k=0;k<poly.length;k++){const a=poly[k],b=
   MIR.comboT>0?MIR.combo++:MIR.combo=1;MIR.comboT=4;
   const fast=P.v>10?0.5:0,gold=poly.some(p=>p.g)?1.5:1,mult=(1+0.5*Math.max(0,hit-1)+fast)*gold,got=Math.round(pts*mult*(1+(MIR.combo-1)*0.25));MIR.score+=got;
   if(MIR.bossDown&&!MIR.bossSaid){MIR.bossSaid=true;mirPop('大きな影を、追いはらった！');}
-  else if(hit)mirPop(`${hit>1?`${hit}体同時`:''}${gold>1?'金の線で':''}浄化！ ×${mult.toFixed(1)}${MIR.combo>1?`　${MIR.combo}コンボ`:''}`);else mirPop('結界');
+  else if(hit)mirPop(`${hit>1?`${hit}体同時`:''}${gold>1?'金の線で':''}浄化！ ×${mult.toFixed(1)}${MIR.combo>1?`　${MIR.combo}コンボ`:''}`);else mirPop('結界');if(eh)mirPop(eh);
   buzz(hit?'heavy':'light',true);if(hit)sfx.boom(0.6);renderHUD();return true;}
 // the children the shadows held: little lights going up out of where they were
 function mirOrb(p,n){for(let k=0;k<n;k++){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX,color:'#fff0c0',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
@@ -9693,10 +9708,11 @@ function mirMarble(dt){const L=MIR.ml;if(!L)return;
       if(ia>=0&&k>=3)for(let i=0;i<ia-5;i++)if(Math.hypot(T[i].x-m.x,T[i].z-m.z)<MIR_CLOSE||mirCross(m0,m,T[i],T[i+1])){
         if(mirRing(T.slice(i,ia+1).concat(L.pts.slice(1)))){T.splice(0,T.length-1);mirMarbleDone();return;}break;}}}
   MIR.ball.position.set(L.x,mirG(L.x,L.z)+0.16,L.z);MIR.ball.rotation.x+=L.v*dt*4;}
-function mirHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='鏡の海（試作）';const s=document.createElement('span');s.className='step';
-  s.textContent=MIR.go?'走ると光の線が残る。線をつないで影を囲め。ビー玉を投げると、その先まで青い線がのびる':'……';
+function mirHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=MIR.rule?MIR.rule.title:'鏡の海（練習）';const s=document.createElement('span');s.className='step';
+  const R=MIR.rule;s.textContent=!MIR.go?'……':R&&R.final?'映し身を、金の線で3回囲め（技・グラインド・マニュアルで引いた線が金色になる）':R&&R.gold?'金の線をまぜて囲め（技・グラインド・マニュアルで引いた線が金色になる）':
+    R&&R.echo?'映し身の車輪は、光の線を消す。囲めば少しのあいだ止まる':'走ると光の線が残る。線をつないで影を囲め。ビー玉を投げると、その先まで青い線がのびる';
   const m=document.createElement('span');m.className='meter';const left=Math.max(0,Math.ceil(MIR.dur-MIR.t));
-  m.textContent=`のこり ${left/60|0}:${String(left%60).padStart(2,'0')}　${'♥'.repeat(Math.max(0,MIR.hearts))}${'♡'.repeat(Math.max(0,DRONE.maxHp-MIR.hearts))}　浄化 ${MIR.kills}　スコア ${MIR.score}　ビー玉 ${MIR.mcd>0?'○':'●'}${MIR.boss&&!MIR.boss.gone?`　大きな影 ${'■'.repeat(Math.max(0,MIR.boss.hp))}`:''}`;tr.append(b,s,m);}
+  m.textContent=`${R&&R.final?'':`のこり ${left/60|0}:${String(left%60).padStart(2,'0')}　`}${'♥'.repeat(Math.max(0,MIR.hearts))}${'♡'.repeat(Math.max(0,DRONE.maxHp-MIR.hearts))}　浄化 ${MIR.kills}　スコア ${MIR.score}　ビー玉 ${MIR.mcd>0?'○':'●'}${MIR.boss&&!MIR.boss.gone?`　大きな影 ${'■'.repeat(Math.max(0,MIR.boss.hp))}`:''}${R&&R.final&&D3.echo?`　映し身 ${'■'.repeat(Math.max(0,D3.echo.hp))}`:''}`;tr.append(b,s,m);}
 function mirMap(){const V=150,S=mapc.width/V,W=mapc.width,H=mapc.height,toM=(x,z)=>[(x-P.x)*S+W/2,(z-P.z)*S+H/2];mg.fillStyle='#05080e';mg.fillRect(0,0,W,H);
   const [cx,cz]=toM(MIR_X,0);mg.fillStyle='#0f1c30';mg.beginPath();mg.arc(cx,cz,MIR_R*S,0,TAU);mg.fill();mg.strokeStyle='#4a7ab8';mg.lineWidth=1.5;mg.stroke();
   const line=(T,col)=>{mg.strokeStyle=col;mg.lineWidth=2;mg.beginPath();T.forEach((p,k)=>{const [x,y]=toM(p.x,p.z);k?mg.lineTo(x,y):mg.moveTo(x,y);});mg.stroke();};
@@ -9715,7 +9731,7 @@ function mirStep(dt){const busy=!!(DLG||modal);
     if(k>=1){MIR.g.remove(f.m);if(f.kind!=='orb')f.m.geometry.dispose();f.m.material.dispose();MIR.fx.splice(MIR.fx.indexOf(f),1);}}
   if(MIR.go&&!busy&&!MIR.end){MIR.t+=dt;MIR.comboT-=dt;MIR.inv-=dt;MIR.mcd-=dt;mirMarble(dt);
     // the line: a point every half metre while she rides (in the air too), the old end fading away
-    const T=MIR.trail,l=T[T.length-1];if(!P.foot&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>MIR_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;T.push({x:P.x,y:mirG(P.x,P.z)+0.05,z:P.z,t:MIR.t,g:P.grind?1:0});mirClose();}
+    const T=MIR.trail,l=T[T.length-1];if(!P.foot&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>MIR_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;T.push({x:P.x,y:mirG(P.x,P.z)+0.05,z:P.z,t:MIR.t,g:P.grind||P.man||P.air&&(P.trick||TRICK.bank>0)?1:0});mirClose();}
     // on a rail the whole line stops fading (each point for four seconds at most)
     if(P.grind)for(const p of T)if((p.ext||0)<4){p.t+=dt;p.ext=(p.ext||0)+dt;}
     while(T.length&&MIR.t-T[0].t>MIR_LIFE)T.shift();while(T.length>MIR_MAX)T.shift();
@@ -9723,11 +9739,11 @@ function mirStep(dt){const busy=!!(DLG||modal);
     if(MIR.spawnT<=0&&alive<want){mirSpawn();MIR.spawnT=1.1+rnd()*0.6;}
     // the night's turns: two swarms, and the great one before dawn
     const W=MIR.waves;if(MIR.t>55&&!W.s1){W.s1=1;mirSwarm(9);}if(MIR.t>115&&!W.s2){W.s2=1;mirSwarm(12);}
-    if(MIR.t>140&&!W.boss){W.boss=1;MIR.boss=mirAdd('boss',...mirWhere(1.2,26,30));toast('大きな影が来る！ 3回囲んで、追いはらえ',true);buzz('heavy',true);}
+    if(MIR.t>140&&!W.boss&&!(MIR.rule&&MIR.rule.final)){W.boss=1;MIR.boss=mirAdd('boss',...mirWhere(1.2,26,30));toast('大きな影が来る！ 3回囲んで、追いはらえ',true);buzz('heavy',true);}
     if(MIR.t>=MIR.dur)mirFinish(true);}
   // a line drawn in the middle of a combo burns gold
   const gold=MIR.combo>=3&&MIR.comboT>0;MIR.core.userData.col.set(gold?'#ffe6a0':'#bfe6ff');MIR.halo.userData.col.set(gold?'#8a5a18':'#2a5a9a');
-  mirRibbon(MIR.core);mirRibbon(MIR.halo);const ML=MIR.ml?MIR.ml.pts:[];mirRibbon(MIR.mcore,ML);mirRibbon(MIR.mhalo,ML);
+  mirRibbon(MIR.core);mirRibbon(MIR.halo);echoStep(dt,busy);const ML=MIR.ml?MIR.ml.pts:[];mirRibbon(MIR.mcore,ML);mirRibbon(MIR.mhalo,ML);
   for(const f of MIR.foes.slice()){const p=f.g.position,S=MIR_FOE[f.kind].s;
     if(f.gone){f.fade+=dt*2;const k=Math.min(1,f.fade);f.g.scale.set(S*(1-k*0.6),S*(1-k*0.9),S*(1-k*0.6));f.eye.visible=false;if(f.aura)f.aura.visible=false;if(rnd()<dt*25)sparks(new THREE.Vector3(p.x,p.y+1,p.z),1,'#cfeeff',2,0.05);
       if(k>=1){mirDrop(f);MIR.foes.splice(MIR.foes.indexOf(f),1);}continue;}
@@ -9749,17 +9765,19 @@ function mirStep(dt){const busy=!!(DLG||modal);
   MIR.hudT-=dt;if(MIR.hudT<=0){MIR.hudT=0.25;renderHUD();}}
 function mirFinish(won){if(MIR.end)return;MIR.end=true;for(const f of MIR.foes)f.gone=1;MIR.trail.length=0;mirMarbleDone();
   const D=d2(),best=MIR.score>(D.mirBest||0),got=Math.floor(MIR.kills/2)+(won?10:0)+(MIR.bossDown?15:0);if(best)D.mirBest=MIR.score;SAVE.shards=shards()+got;save();
+  const X=MIR.rule?d3End(won):{};
   runEvent({id:'mir_end',once:false,script:[['wait',1.2],
-    ['say','',won?(MIR.bossDown?'大きな影がくずれて、東の空が白んできた。鏡の海の影が、朝の光にとけていく。':'夜が明けてきた。鏡の海の影が、朝の光にとけていく。'):'影の手に、のみこまれた……。',`浄化した影 ${MIR.kills}体　スコア ${MIR.score}${best?'（自己ベスト！）':`（ベスト ${D.mirBest||0}）`}`,`影のかけら +${got}`],
-    ['fade','out'],['call',mirExit],['warp',HQ_X+HQ_IN[0],HQ_IN[1],HQ_IN[2]],['call',()=>{P.foot=true;P.carry='back';padLabels();}],['fade','in'],
-    ['say','tome','おかえり。……試しの夜は、どうだったかい。']]});}
-// out from the command table
-function mirScript(){const first=!SAVE.seen.mir_first;SAVE.seen.mir_first=1;return[
-  ['fade','out'],['call',()=>{applyD2();mirEnter();}],['time',23.3,0],['warp',MIR_X,30,Math.PI],['call',rideNow],
+    ['say','',won?(MIR.rule&&MIR.rule.final?'映し身が止まって、東の空が白んできた。鏡の海の影が、朝の光にとけていく。':MIR.bossDown?'大きな影がくずれて、東の空が白んできた。鏡の海の影が、朝の光にとけていく。':'夜が明けてきた。鏡の海の影が、朝の光にとけていく。'):'影の手に、のみこまれた……。',`浄化した影 ${MIR.kills}体　スコア ${MIR.score}${best?'（自己ベスト！）':`（ベスト ${D.mirBest||0}）`}`,`影のかけら +${got}`],...(X.pre||[]),
+    ...(X.replace||[['fade','out'],['call',mirExit],['warp',HQ_X+HQ_IN[0],HQ_IN[1],HQ_IN[2]],['call',()=>{P.foot=true;P.carry='back';padLabels();}],['fade','in'],
+    ...(X.post||[['say','tome','おかえり。……試しの夜は、どうだったかい。']])])]});}
+// out from the command table (rule: a night of the third story, D3_RULE; none for a practice night)
+function mirScript(rule){const first=!SAVE.seen.mir_first;SAVE.seen.mir_first=1;return[
+  ['fade','out'],['call',()=>{applyD2();mirEnter();MIR.rule=rule||null;MIR.dur=rule&&rule.final?3600:180;if(rule&&rule.echo)echoStart(rule);
+    const tw=d3Tower();if(!tw.parent)MIR.g.add(tw);tw.visible=!!(rule&&rule.n>=4)||!!SAVE.flags.d3_done;D3.lamp.visible=!rule&&!!SAVE.flags.d3_done;}],['time',23.3,0],['warp',MIR_X,30,Math.PI],['call',rideNow],
   ['cam',[MIR_X+10,5,38],[MIR_X,0.8,28],1.2,'cut'],['fade','in'],
   ['say','tome','（無線の声）……ここが、裏海街の海さ。水がひいて、まるで鏡みたいだろう。',
     ...(first?['スケボーで走ると、ランタンの光が足もとに線になって残る。','その線で、影をぐるっと囲んでごらん。線がつながったら、中の影はまとめて消えるよ。','たくさん囲むほど、いっぺんに追いはらえる。','ミオのビー玉も持っておいき。投げると、転がった先まで青い光の線がのびる。その線につなげても、囲めるよ。',
-     '技を出して飛んでいるあいだと、手すりをすべっているあいだは、影にさわられない。大きな技を決めて着地すれば、まわりの影をはじき飛ばせるよ。','技を決めて着地すると、ビー玉が早くたまる。屋根のてっぺんや鳥居をすべると、線が金色になって消えにくくなるし、金の線で囲めば点も上がるさ。','……三分、もちこたえな。']:['今夜も、光の線で囲んでやりな。ビー玉も、技も使うんだよ。'])],
+     '技を出して飛んでいるあいだと、手すりをすべっているあいだは、影にさわられない。大きな技を決めて着地すれば、まわりの影をはじき飛ばせるよ。','技を決めて着地すると、ビー玉が早くたまる。屋根のてっぺんや鳥居をすべったり、技を出して飛んだり、マニュアルで走ったりすると、線が金色になる。すべっているあいだは線が消えにくくなるし、金の線で囲めば点も上がるさ。',...(rule?[]:['……三分、もちこたえな。'])]:rule?[]:['今夜も、光の線で囲んでやりな。ビー玉も、技も使うんだよ。']),...(rule?D3_INTRO[rule.n]:[])],
   ['cam','off'],['call',()=>{MIR.go=true;toast('走って、線で囲め！',true);}]];}
 // the sky on the way to dawn: from the second minute the east pales, the moon goes thin, the mirror catches the light
 const MIR_DAWN={top:new THREE.Color('#5a6f98'),bg:new THREE.Color('#b87a6c'),hemi:new THREE.Color('#ffd8c0')};
@@ -9768,6 +9786,181 @@ function mirDawn(){const k=MIR.end&&MIR.bossDown?1:smooth(clamp((MIR.t/MIR.dur-0
   if(MIR.moon)MIR.moon.material.opacity=1-k*0.8;if(MIR.floor)MIR.floor.material.uniforms.uDawn.value=k;}
 function updateMirror(dt){if(MIR.on){if(footQ&&!DLG&&!modal)mirThrow();footQ=false;if(P.foot&&!P.tr&&!ST.run)rideNow();mirStep(dt);mirDawn();}
   else if(AREA==='mir'&&!ST.run){P.x=HQ_X+HQ_IN[0];P.z=HQ_IN[1];P.yaw=HQ_IN[2];P.y=0;camInit=false;}}   // a save made out there wakes up back at the base
+/* ---------- the third extra story 「鏡の海」 (after d2_done): the end of the summer. The town's reflection in the sea has slipped,
+   and Mio's voice says the sea of 裏海街 has gone to a mirror that is showing this side's summer back, and something like Nagi is
+   being born in it. Four nights out on the mirror (p5v_mirror.js) from the command table, one a day:
+     1. the mirror as it was; at dawn a dark skater rides by, Nagi's double (映し身), and copies her kickflip
+     2. the double rides among the shadows, doing every trick she does a moment later, and its wheels wipe out her line
+        where they cross it; a ring round it stops it for a while
+     3. the mirror has gone cloudy: a ring closes only with gold in it (line drawn on a rail, in a manual, or in the air after a
+        trick); at dawn a lighthouse shows deep in the mirror, the wrong way round
+     4. the last night: three gold rings round the double, and it stops; it is her summer, the lighthouse behind the mirror
+        lights, the water comes back. The last day of the holidays: goodbyes on the beach, the train out of the town.
+   Between the nights, Sota (a dream of a dark Nagi on the night sea) and Natsumi (a mirror sea she saw with Mio) have a word.
+   Flags: d3 (begun), d3n (story nights won), d3last (the day of the last one won), d3_done. ---------- */
+const D3={echo:null,fig:null,rib:null,tower:null,lamp:null,said:false};
+const d3n=()=>SAVE.flags.d3n||0;
+// what each night asks: echo (the double rides), gold (a ring needs gold in it), final (the double takes three gold rings, no clock)
+const D3_RULE=[null,{n:1,title:'鏡の海　1夜目'},{n:2,echo:true,title:'鏡の海　2夜目'},{n:3,echo:true,gold:true,title:'鏡の海　3夜目'},
+  {n:4,echo:true,gold:false,final:true,title:'鏡の海　最後の夜'}];
+const d3Label=()=>`鏡の海へ（${d3n()>=3?'最後の夜':`${d3n()+1}夜目`}）`;
+const d3Tonight=()=>!!SAVE.flags.d3&&!SAVE.flags.d3_done&&SAVE.flags.d3last!==SAVE.day;
+
+/* ----- the double: Nagi's own figure gone dark and glassy, a line of violet behind it ----- */
+function echoBuild(){if(D3.fig)return D3.fig;const h=makeSkater(),ol=[];
+  const mat=new THREE.MeshLambertMaterial({color:'#141a34',emissive:'#2a3a88',emissiveIntensity:0.8,side:THREE.DoubleSide});
+  h.g.traverse(o=>{if(!o.isMesh)return;o.castShadow=false;for(const c of o.children)if(c.isMesh&&c.geometry===o.geometry)ol.push(c);});for(const o of ol)o.parent.remove(o);
+  h.g.traverse(o=>{if(o.isMesh)o.material=mat;});
+  h.aura=glow('#5a6cff',0,0,0,3.4);scene.remove(h.aura);h.aura.visible=true;h.g.add(h.aura);h.aura.position.set(0,1,0);
+  // its line: the same ribbon as hers, in violet (it lives a couple of seconds)
+  const rib=(w,col)=>{const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(MIR_MAX*6),3));geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(MIR_MAX*6),3));
+    const idx=[];for(let i=0;i<MIR_MAX-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}geo.setIndex(idx);
+    const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));m.frustumCulled=false;m.userData={w,col:new THREE.Color(col)};return m;};
+  D3.rib=[rib(1.2,'#2a1a5a'),rib(0.26,'#9a7cff')];D3.fig=h;return h;}
+// the lighthouse behind the mirror: past the edge of the open water, seen from the third night on; lit at the very end
+function d3Tower(){if(D3.tower)return D3.tower;const g=new THREE.Group(),white=tm('#e8e6e0'),red=tm('#a83a34'),dark=tm('#2a2e36');
+  for(let k=0;k<6;k++){const r0=2.2-k*0.22,r1=2.2-(k+1)*0.22,m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r0,2.6,16),k%2?red:white);m.position.y=1.3+k*2.6;g.add(m);}
+  const room=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,1.6,12),tm('#cfe6ff',{transparent:true,opacity:0.5}));room.position.y=16.4;g.add(room);
+  const cap=new THREE.Mesh(new THREE.ConeGeometry(1.5,1.4,12),dark);cap.position.y=17.9;g.add(cap);
+  D3.lamp=glow('#fff2c0',0,0,0,16);scene.remove(D3.lamp);D3.lamp.position.set(0,16.4,0);g.add(D3.lamp);D3.lamp.visible=false;
+  g.scale.setScalar(1.6);g.position.set(MIR_X,0,-(MIR_R+16));D3.tower=g;return g;}
+function echoStart(rule){const h=echoBuild();MIR.g.add(h.g);for(const r of D3.rib)MIR.g.add(r);h.g.visible=true;h.aura.material.opacity=0.5;
+  const x=MIR_X,z=-24;
+  D3.echo={x,z,y:mirG(x,z),yaw:0,v:0,vy:0,air:false,turn:0,trick:null,copy:[],stun:0,hp:rule.final?3:0,line:[],wp:null,wpT:0,down:false};}
+function echoStop(){if(D3.fig&&MIR.g){MIR.g.remove(D3.fig.g);for(const r of D3.rib)MIR.g.remove(r);}D3.echo=null;}
+// Nagi's tricks, a moment later
+function echoCopy(kind){const E=D3.echo;if(!E||E.down||!TRICK_KIND[kind]||kind==='grab')return;E.copy.push({kind,at:clock+1.4});
+  if(!D3.said){D3.said=true;setTimeout(()=>toast('映し身が、ナギの技をまねしている……',true),1500);}}
+function echoStep(dt,busy){const E=D3.echo;if(!E)return;const h=D3.fig;
+  if(E.cut||!busy&&!MIR.end&&MIR.go){
+    if(E.stun>0){E.stun-=dt;E.v=Math.max(0,E.v-14*dt);}
+    else if(!E.cut){// rides round near her: a new point to make for every few seconds, faster on the last night
+      E.wpT-=dt;if(!E.wp||E.wpT<=0||Math.hypot(E.wp.x-E.x,E.wp.z-E.z)<6){const a=rnd()*TAU,r=8+rnd()*16;let x=P.x+Math.sin(a)*r,z=P.z+Math.cos(a)*r;
+        const l=Math.hypot(x-MIR_X,z);if(l>MIR_R-8){x=MIR_X+(x-MIR_X)/l*(MIR_R-8);z=z/l*(MIR_R-8);}E.wp={x,z};E.wpT=4+rnd()*2;}
+      let d=Math.atan2(E.wp.x-E.x,E.wp.z-E.z)-E.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));const st=clamp(d,-1.8*dt,1.8*dt);E.yaw+=st;E.turn+=(clamp(-d,-1,1)-E.turn)*Math.min(1,5*dt);
+      E.v+=((MIR.rule&&MIR.rule.final?9.5:8)-E.v)*Math.min(1,dt);}
+    E.x+=Math.sin(E.yaw)*E.v*dt;E.z+=Math.cos(E.yaw)*E.v*dt;const l=Math.hypot(E.x-MIR_X,E.z);if(l>MIR_R-2){E.x=MIR_X+(E.x-MIR_X)/l*(MIR_R-2);E.z=E.z/l*(MIR_R-2);E.wp=null;}
+    // her tricks, copied: up it goes, and the board turns the same way hers did
+    if(!E.air&&!E.stun&&E.copy.length&&clock>=E.copy[0].at){E.air=true;E.vy=7.6;}
+    const gy=mirG(E.x,E.z);
+    if(E.air){if(!E.trick&&E.copy.length&&clock>=E.copy[0].at)E.trick={type:E.copy.shift().kind,t:0};
+      if(E.trick){E.trick.t+=dt/TRICK_KIND[E.trick.type].d;if(E.trick.t>=1)E.trick=null;}
+      E.vy-=13.5*dt;E.y+=E.vy*dt;if(E.y<=gy){E.y=gy;E.air=false;E.vy=0;E.trick=null;}}
+    else{E.y=gy;
+      // its wheels wipe out her line where they run over it: everything older than that point is gone
+      const T=MIR.trail;if(E.v>1)for(let j=T.length-1;j>=0;j--)if(Math.hypot(T[j].x-E.x,T[j].z-E.z)<1){T.splice(0,j+1);sparks(new THREE.Vector3(E.x,gy+0.2,E.z),10,'#9a7cff',4,0.08);break;}}
+    const q=E.line[E.line.length-1];if(!E.air&&E.v>1&&(!q||Math.hypot(E.x-q.x,E.z-q.z)>MIR_STEP))E.line.push({x:E.x,y:gy+0.05,z:E.z,t:MIR.t-(MIR_LIFE-2.5)});
+  }
+  if(E.cut&&ST.cam)ST.cam.look.set(E.x,E.y+1,E.z);   // the first dawn: the camera follows it past
+  while(E.line.length&&MIR.t-E.line[0].t>MIR_LIFE)E.line.shift();for(const r of D3.rib)mirRibbon(r,E.line);
+  const tk=E.trick,body=tk&&tk.type==='body';
+  h.g.position.set(E.x,E.y,E.z);h.g.rotation.set(0,E.yaw+(body?TAU*tk.t:0),0);h.root.rotation.set(0,0,clamp(E.turn*E.v*0.03,-0.25,0.25));
+  poseSkater(h,dt,{v:E.v,turn:E.turn,push:false,brake:false,air:E.air,vy:E.vy,flip:tk?tk.t*TRICK_KIND[tk.type].z:0,spin:tk?(body?-tk.t:tk.t*TRICK_KIND[tk.type].y):0,tkp:tk?tk.t:0});
+  h.aura.material.opacity=E.stun>0?0.25+0.2*Math.sin(clock*20):0.45+0.12*Math.sin(clock*3);}
+// a ring closed round it: on the last night a gold ring wounds it (a plain one only makes it stagger); before that it stops a while
+function echoRing(inside,gold){const E=D3.echo;if(!E||E.down||!inside(E.x,E.z))return'';const p=new THREE.Vector3(E.x,E.y+1,E.z);sparks(p,20,'#c8b8ff',7,0.12);
+  if(!(MIR.rule&&MIR.rule.final)){E.stun=3;MIR.score+=50;return'映し身を止めた！ ＋50';}
+  if(!gold){E.stun=1.2;return'金の線で囲まないと、映し身には届かない！';}
+  E.hp--;E.stun=2.5;MIR.score+=200;buzz('heavy',true);
+  if(E.hp>0)return`映し身がよろめいた！　のこり ${E.hp}回`;
+  E.down=true;E.stun=999;MIR.bossDown=true;setTimeout(()=>mirFinish(true),1600);return'映し身が、止まった……';}
+
+/* ----- out from the command table: what grandma says before each night ----- */
+const D3_INTRO={
+  1:['ゆうべから、この海に何かが映りこんでる。……今夜は、ようすを見るだけでいい。三分、もちこたえな。'],
+  2:['あの影――映し身は、ナギの技をまねる。それに、あの子の車輪がふれた光の線は、消えてしまうよ。','線で囲めば、少しのあいだ止められる。……三分、もちこたえな。'],
+  3:['今夜は、鏡がにごってる。ふつうの線じゃ、囲んでも閉じないよ。','技を出して飛びながら、手すりや屋根をすべりながら、マニュアルで走りながら引いた線は、金色になる。','金の線をまぜて囲むんだ。……三分、もちこたえな。'],
+  4:['最後の夜だ。映し身を、金の線で三回囲んでおやり。ふつうの線じゃ、あの子には届かない。','あの子は、ナギの技をまねる。……だったら、ナギにしか引けない線を引くんだよ。']};
+// after a night: in the mirror at dawn (pre) and back at the base (post); the last night has an ending of its own
+function d3End(won){const n=MIR.rule.n;
+  if(!won)return{post:[['say','tome','だいじょうぶかい。……あわてなくていい。日が暮れているうちなら、また行けるよ。']]};
+  if(n===4)return{replace:d3Ending()};
+  const pre={1:[['call',()=>d3EchoCut(true)],['wait',0.6],['say','','鏡の上を、だれかがスケボーで走っていく。','……ナギと同じ板。同じフォーム。'],
+      ['say','','黒い影は、ナギがゆうべ決めたキックフリップを、そっくりそのまままねして、朝もやの中に消えた。'],['call',()=>d3EchoCut(false)]],
+    2:[['say','','映し身は、遠くからじっとナギを見ていた。','……それから、ナギと同じしぐさで、首をかしげた。']],
+    3:[['call',()=>{D3.tower.visible=true;setCam([[P.x,3,P.z+6],[MIR_X,20,-(MIR_R+16)],1.2,'cut']);}],['wait',0.8],
+      ['say','','夜明けの鏡の奥に、白い塔が映っていた。','……灯台だ。けれど、島の灯台とは、しまもようの向きがさかさまだった。'],['cam','off']]}[n];
+  const post={1:['おかえり。……ナギそっくりの影、か。','鏡の海は、いちばん強いものを映すっていう。……何を映したんだろうね。'],
+    2:['あの子、ナギの技を、ぜんぶまねしてたね。','……まるで、ナギといっしょに遊びたがってるみたいだったよ。'],
+    3:['さかさまの灯台……。','あすの夜で、きっと終わりにできる。今夜は、ゆっくりお休み。']}[n];
+  return{pre,post:[['say','tome',...post],['call',()=>{SAVE.flags.d3n=n;SAVE.flags.d3last=SAVE.day;save();}],['fade','out'],['warp',...HOME],['day']]};}
+// the first dawn: the double riding past her, a kickflip, gone
+function d3EchoCut(on){if(!on){echoStop();return;}echoStart({});const E=D3.echo,a=P.yaw+0.9;E.x=P.x+Math.sin(a)*9;E.z=P.z+Math.cos(a)*9;E.yaw=P.yaw-Math.PI/2;E.v=7;E.cut=true;E.copy=[{kind:'flip',at:clock+1.2}];
+  setCam([[P.x-Math.sin(P.yaw)*4,P.y+2.2,P.z-Math.cos(P.yaw)*4],[E.x,E.y+1,E.z],2,'cut']);}
+// the last dawn: the double stops in front of her; it is her summer. The lighthouse lights, and then the last day
+function d3Ending(){const front=()=>{const E=D3.echo,F=[Math.sin(P.yaw),Math.cos(P.yaw)];E.x=P.x+F[0]*4.5;E.z=P.z+F[1]*4.5;E.y=mirG(E.x,E.z);E.yaw=P.yaw+Math.PI;E.v=0;E.trick=null;E.air=false;E.line.length=0;
+    const sx=-F[1],sz=F[0];setCam([[P.x+F[0]*2.2+sx*5,P.y+2,P.z+F[1]*2.2+sz*5],[P.x+F[0]*2.2,P.y+1.1,P.z+F[1]*2.2],2,'cut']);};
+  const at=(dx,dz)=>[BOSS_AT.x+dx,SHORE+dz];
+  return[['call',front],['wait',1],
+    ['say','','映し身が、ゆっくりと板を止めた。'],
+    ['call',()=>ex1Marble(true)],
+    ['say','ミオの声','（ナギ。……その子はね、ナギの「夏」だよ）','（鏡の海は、いちばん強い思い出を映すの。……この夏、ナギがいちばん夢中になったもの）'],
+    ['say','nagi','……スケボー、か。','毎日、坂を下って、桟橋まで走って、屋根から飛んで……。'],
+    ['say','ミオの声','（その子、ナギと遊びたかったんだと思う。……夏が終わっちゃう前に）'],
+    ['call',()=>ex1Marble(false)],
+    ['say','','映し身は、ナギに向かって右手をあげた。','ナギも、右手をあげた。……鏡みたいに、ぴったり同じに。'],
+    ['call',()=>{const E=D3.echo;sparks(new THREE.Vector3(E.x,E.y+1,E.z),40,'#c8b8ff',8,0.2);mirOrb(new THREE.Vector3(E.x,E.y+1,E.z),6);echoStop();
+      D3.tower.visible=true;D3.lamp.visible=true;setCam([[P.x,4,P.z+8],[MIR_X,20,-(MIR_R+16)],1.2,'cut']);}],['wait',1.2],
+    ['say','','鏡の奥の灯台に、灯りがともった。','光が鏡の海いちめんに広がって、水が、静かに満ちてくる。'],
+    ['call',()=>ex1Marble(true)],
+    ['say','ミオの声','（ありがとう、ナギ。……これで、向こうの海も、ちゃんと朝になる）','（来年の夏も、灯台の見えるところで、待ってるね）'],
+    ['call',()=>ex1Marble(false)],
+    ['fade','out'],['call',()=>{mirExit();D3.lamp.visible=false;P.foot=true;P.carry='back';padLabels();}],['cam','off'],['warp',...HOME],['day'],
+    // the last day of the holidays: everyone on the beach
+    ['fade','out'],['call',()=>{d3Gather(true);if(SAVE.flags.mochi_stay)mochiShow(true);}],['warp',...at(-0.6,1),0],
+    ['cam',[BOSS_AT.x-0.5,G(BOSS_AT.x,SHORE+3)+1.8,SHORE+10],[BOSS_AT.x-0.5,G(BOSS_AT.x,SHORE+3)+1.1,SHORE+2],1.2,'cut'],['fade','in'],
+    ['say','','そして、夏休みの最後の日。'],
+    ['say','sota','ナギねえちゃん、ほんとに帰っちゃうの？','……じゃあ、来年の夏の大会で勝負だからね！ おれ、それまでにキックフリップできるようになっとく！'],
+    ['say','nagi','うん。マニュアルも練習しときなよ。'],
+    ['say','baker','ほら、こむぎ堂のメロンパンだ。電車の中で食べな。'],
+    ['say','natsumi','ナギ、そろそろ電車の時間よ。'],
+    ['say','tome','……また来年も、おいで。海街自警団は、ナギの席をあけて待ってるからね。'],
+    ['if',{flags:{mochi_stay:1}},[['say','','おもちが、ナギのリュックに鼻をくっつけて、ニャア、と鳴いた。']],[]],
+    ['say','nagi','みんな、ありがとう。……この町の夏、ぜんぶ忘れないよ。'],
+    ['cam',[BOSS_AT.x,G(BOSS_AT.x,SHORE)+3,SHORE-2],[LH.x,LH.gy,LH.z],0.6],['wait',1.2],
+    ['say','','うみまち線の電車が、坂の町を出ていく。','窓の外で、島の灯台が、昼間なのに一度だけ、きらりと光った。'],
+    ['say','','――追加ストーリー3「鏡の海」　おしまい。'],
+    ['credits'],
+    ['set','d3_done'],
+    ['fade','out'],['call',()=>{d3Gather(false);mochiShow(false);}],['cam','off'],['warp',...HOME],['fade','in'],
+    ['call',()=>toast('ナギの夏は、思い出の中でまだ続いている。鏡の海へは、作戦室からいつでも行ける',true)]];}
+// the goodbye on the beach: like the dawn after the last fight (d2Gather), with Sota
+function d3Gather(on){const at={tome:[-5,-1.5],natsumi:[-2.5,1.5],baker:[4.5,-1.5],sota:[2,2.6]};
+  for(const id in at){const n=NPCS[id];if(!n)continue;
+    if(on){if(!n.home)n.home={x:n.x,z:n.z,yaw:n.yaw,y:n.h.g.position.y,mode:n.mode};const x=BOSS_AT.x+at[id][0],z=SHORE+3+at[id][1];n.x=x;n.z=z;n.mode='stand';
+      n.h.g.position.set(x,G(x,z),z);n.h.g.rotation.y=Math.atan2(BOSS_AT.x-0.6-x,SHORE+1-z);n.h.g.visible=true;}
+    else if(n.home){const o=n.home;n.x=o.x;n.z=o.z;n.mode=o.mode;n.h.g.position.set(o.x,o.y,o.z);n.h.g.rotation.y=o.yaw;delete n.home;}
+    Object.assign(n.box,{x0:n.x-n.rad,x1:n.x+n.rad,z0:n.z-n.rad,z1:n.z+n.rad});}}
+
+/* ----- the days between ----- */
+const D3_EVENTS=[
+  {id:'d3_open',when:{flags:{d2_done:1,d3:0},phase:['day','evening'],test:()=>AREA==='town'&&!URA.on&&!MIR.on},script:[
+    ['say','','海を見ていて、ナギは気がついた。','海に映った町が、ほんの少しだけ、ずれている。……映った島の灯台のとなりに、ないはずの灯りが、もうひとつ。'],
+    ['call',()=>ex1Marble(true)],
+    ['say','ミオの声','（……ナギ。聞こえる？）','（裏海街の海が、鏡になってる。向こうの鏡が、こっちの夏を映しはじめてるの）','（鏡の中に、何かが生まれかけてる。……ナギに、よく似た何か）'],
+    ['call',()=>ex1Marble(false)],
+    ['say','tome','（無線の声）ナギ、いまのが聞こえたかい。……鏡の海が、さわがしいね。','日が暮れたら、基地の作戦室においで。','……夏休みも、あと少しだね。'],
+    ['set','d3'],['call',()=>toast('日が暮れたら、基地の作戦室のばあちゃんに話して、鏡の海へ',true)]]},
+  {id:'d3_sota',on:{talk:'sota'},mark:true,when:{min:{d3n:1},flags:{d3_done:0}},script:[['cam','npc','sota',3.4],
+    ['say','sota','ねえ、ナギねえちゃん。ゆうべ、夢を見たんだ。','夜の海の上を、ナギねえちゃんがスケボーで走ってた。……でも、顔がまっ黒で、なんだかさみしそうだった。'],
+    ['say','sota','……ナギねえちゃん、夏休みが終わったら、帰っちゃうんでしょ？'],
+    ['say','nagi','うん。……あと少し。'],
+    ['say','sota','そっか。……じゃあ、帰るまでに、マニュアル教えてよ！ 地面で「技」を押すんでしょ？']]},
+  {id:'d3_natsumi',on:{talk:'natsumi'},mark:true,when:{min:{d3n:2},flags:{d3_done:0}},script:[['cam','npc','natsumi',3.4],
+    ['say','natsumi','ナギ、ずいぶん日に焼けたわね。','……お母さんもね、子どものころ、鏡みたいな夜の海を見たことがあるの。ミオといっしょに。'],
+    ['say','natsumi','海に映ったわたしたちは、わたしたちより、ずっと楽しそうに笑ってた。','……思い出って、きっとそういうものなのね。ほんとうより、少しだけまぶしいの。'],
+    ['say','nagi','……思い出の、影。']]},
+  {id:'d3_kuro',when:{min:{d3n:3},flags:{d3_done:0},test:()=>SAVE.flags.d3last<SAVE.day&&AREA!=='mir'&&!URA.on},script:[
+    ['say','','ポケットの無線が、ザザッと鳴った。'],
+    ['say','黒崎','（無線の声）海街の。鏡の海の奥に、灯台が映っている。……「裏の灯台」だ。','あれに灯りがともれば、鏡は閉じるはずだ。……今夜が最後になるだろう。'],
+    ['say','tome','（無線の声）……最後の夜だね。日が暮れたら、作戦室においで。']]},
+];
+EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...D3_EVENTS);
+// today's aim while the story runs
+function d3Goal(f,eve,night){const lab=d3Label().replace('鏡の海へ','鏡の海'),dark=eve||night,hq=AREA==='hq'?'作戦室のばあちゃん':'基地の作戦室のばあちゃん';
+  if(!d3Tonight())return '今夜の鏡の海は終わった。ゆっくり休もう';
+  const side=d3n()>=1&&!SAVE.seen.d3_sota?'浜辺のソウタくんに話す。':d3n()>=2&&!SAVE.seen.d3_natsumi?'お母さんに話す。':'';
+  return dark?`${hq}に話して、${lab}へ`:`${side}日が暮れたら、${hq}に話して${lab}へ`;}
 
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
    The board rolling (louder and brighter with speed, rougher on sand), kicks, pops, landings and grinds,

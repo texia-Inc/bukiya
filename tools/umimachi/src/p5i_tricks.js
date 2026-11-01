@@ -31,7 +31,7 @@ const TRICK_NAME={flip:'キックフリップ',heel:'ヒールフリップ',vari
 // how far each turns the board (z: over, about its length; y: round, flat), how long it takes, and its worth in seconds
 const TRICK_KIND={flip:{z:1,y:0,d:0.42,b:2},heel:{z:-1,y:0,d:0.42,b:2.5},varial:{z:1,y:0.5,d:0.5,b:2.5},spin:{z:0,y:1,d:0.42,b:2},
   s540:{z:0,y:1.5,d:0.6,b:3.5},double:{z:1,y:0,d:0.42,b:1.5},body:{z:0,y:-1,d:0.55,b:2.5},grab:{b:1}};
-function trickAdd(kind){if(!TRICK_NAME[kind])return;TRICK.name=TRICK_NAME[kind];TRICK.sub='';TRICK.shown=1.1;if(TRICK_KIND[kind])TRICK.bank+=TRICK_KIND[kind].b;
+function trickAdd(kind){if(!TRICK_NAME[kind])return;TRICK.name=TRICK_NAME[kind];TRICK.sub='';TRICK.shown=1.1;if(TRICK_KIND[kind])TRICK.bank+=TRICK_KIND[kind].b;if(MIR.on)echoCopy(kind);
   // a flip and a body varial in the same jump: a combo
   const jk=TRICK.jk|(kind==='body'?2:TRICK_KIND[kind]&&TRICK_KIND[kind].z?1:0);if(jk===3&&TRICK.jk!==3){TRICK.bank+=1.5;TRICK.sub='コンボ ＋1.5秒';}TRICK.jk=jk;trickHUD();}
 function trickHUD(){const el=$('trick');if(TRICK.shown<=0||state!=='play'){el.hidden=true;return;}el.hidden=false;el.innerHTML='';
