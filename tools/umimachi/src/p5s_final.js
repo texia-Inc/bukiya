@@ -4,7 +4,7 @@
    the master rising in the bay. On the beach it throws dark orbs (dodge them) and sends shadows out of the sea; each one sent
    back by the lantern gathers the light (the gauge), and when it is full a flash calls the lighthouse's beam onto it. Three
    strikes and it sinks. Dawn: the mast lit red again, Mio and the children going home into the light, Natsumi meeting her
-   at last. After that the nightly defense goes on as before (d2_done). ---------- */
+   at last (d2_done). Back home that morning, the third story begins at once (d3_open in p5w_d3.js). ---------- */
 const BOSS_AT={x:-50,z:352},BOSS_S=30;
 const BOSS={on:false,hp:3,max:3,gauge:0,need:6,list:[],orbs:[],spawnT:0,orbT:3,hearts:5,inv:0,res:null,ready:false,striking:false,falls:0,hudT:0,g:null,eyes:[]};
 function bossBuild(){if(BOSS.g)return;const h=makeHuman(SHADE);h.g.scale.setScalar(BOSS_S);world.add(h.g);BOSS.g=h;
@@ -150,5 +150,4 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['say','','――追加ストーリー2「海街自警団」　おしまい。'],
   ['credits'],
   ['set','d2_done'],
-  ['fade','out'],['call',()=>{d2Gather(false);d2Lights(false);mochiShow(false);EX1.still=false;ex1Kurosaki(false);}],['cam','off'],['warp',...HOME],['day'],
-  ['call',()=>toast('基地の作戦室から、夜の防衛はこれからも続けられる',true)]];}
+  ['fade','out'],['call',()=>{d2Gather(false);d2Lights(false);mochiShow(false);EX1.still=false;ex1Kurosaki(false);}],['cam','off'],['warp',...HOME],['day']];}

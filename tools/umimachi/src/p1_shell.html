@@ -119,17 +119,12 @@ body.closet #tracker,body.closet #map,body.closet #tools,body.closet #bag,body.c
 .q span{font-size:12px;color:var(--ink-soft)}
 .q .st{font-size:11px;font-weight:900;letter-spacing:.08em}
 .q .st.done{color:var(--leaf)}.q .st.act{color:var(--rose)}.q .st.new{color:var(--sun)}
-#td{position:fixed;inset:0;pointer-events:none;z-index:3}#td>*{pointer-events:auto}
-#tdTop{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;translate:-50% 0;display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;align-items:center;padding:8px 14px;font-size:13px;width:max-content;max-width:calc(100% - 24px)}
-#tdTop b{font-size:14px}#tdPts{font-weight:900;color:#b8741a}
-#tdMsg{position:absolute;top:calc(env(safe-area-inset-top,0px) + 70px);left:50%;translate:-50% 0;padding:8px 14px;font-size:13px;line-height:1.6;width:max-content;max-width:calc(100% - 32px);text-align:center}
-#tdBar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;justify-content:center;gap:12px}#tdBar .btn{font-size:15px;padding:12px 18px}#tdBar .btn.on{background:#fff1c8}
-#tdMenu{position:absolute;left:50%;translate:-50% 0;bottom:calc(env(safe-area-inset-bottom,0px) + 78px);width:min(420px,calc(100% - 24px));padding:10px;display:flex;flex-direction:column;gap:6px}
-#tdMenu .tdo{text-align:left;font-size:14px;padding:8px 12px}#tdMenu .tdo small{display:block;font-size:11px;font-weight:400;opacity:.75}#tdMenu .tdo:disabled{opacity:.45}
-body.td #hud>*:not(#toast){display:none!important}body.td #stick,body.td #pad,body.td #bLook{display:none!important}
 .rsec{margin:8px 0 0;font-size:13px;color:var(--ink-soft);font-weight:900;letter-spacing:.05em}
 .rpart{border-top:1px dashed rgba(43,37,32,.18);padding:6px 0}.rpart summary{cursor:pointer;font-weight:900;font-size:15px;color:var(--ink);padding:4px 0}
 .rpart p{margin:6px 0 0;font-size:13.5px;line-height:1.85;color:var(--ink)}
+.rprog{list-style:none;margin:4px 0 6px;padding:0;display:flex;flex-direction:column;gap:6px}.rprog li{font-size:14px;line-height:1.6;color:var(--ink)}
+.rprog li b{display:inline-block;min-width:4.2em;margin-right:6px;padding:0 6px;border-radius:6px;font-size:12px;text-align:center;background:rgba(43,37,32,.1)}
+.rprog li.done b{background:#d8ecd0;color:#2d5a2a}.rprog li.go b{background:#ffe2a8;color:#7a4a10}.rprog li.not{opacity:.7}.rprog li small{display:block;margin-left:calc(4.2em + 18px);font-size:12.5px;color:var(--ink-soft)}
 .album{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
 .album figure{margin:0;background:#fff;padding:6px 6px 8px;border-radius:6px;box-shadow:0 2px 0 var(--shade);transform:rotate(-1deg)}
 .album figure:nth-child(2n){transform:rotate(1.2deg)}
@@ -302,7 +297,6 @@ body.battle #wrow,body.battle #place,body.battle #bag{display:none!important}
   </dl>
   <button class="btn" id="helpClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="log" hidden><div class="sheet card"><h2>おつかい帳</h2><p class="sub">選んだおつかいが画面左上と地図に出ます。</p><div id="logList" style="display:flex;flex-direction:column;gap:8px"></div><button class="btn ghost" id="logClose" style="align-self:flex-end">とじる</button></div></div>
-<div id="td" hidden><div id="tdTop" class="card"><b id="tdWave"></b><span id="tdLives"></span><span id="tdPts"></span></div><div id="tdMsg" class="card" hidden></div><div id="tdMenu" class="card" hidden></div><div id="tdBar"><button class="btn" id="tdBeam">灯台の光</button><button class="btn" id="tdGo">影を迎えうつ</button></div></div>
 <div class="modal" id="recapM" hidden><div class="sheet card"><h2>これまでの物語</h2><p class="sub">見てきた物語を、もう一度読み返せます。題をおすと開きます。</p><div id="recapBody"></div><button class="btn ghost" id="recapClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="albumM" hidden><div class="sheet card"><h2>アルバム</h2><p class="sub" id="albumSub">P キーか「写真を撮る」で、いつでも1枚。最新の12枚が残ります。写真をクリックすると保存できます。</p><div class="album" id="albumGrid"></div><button class="btn ghost" id="albumClose" style="align-self:flex-end">とじる</button></div></div>
 <div class="modal" id="closet" hidden><div class="sheet card" id="closetSheet"><h2>着がえ<button class="btn" id="closetBig">大きく見る</button></h2><p class="hint">服をえらぶと、すぐに着がえる。上のナギはドラッグで回せる。ピンチ（マウスはホイール）で拡大</p><div id="closetSlots"></div>

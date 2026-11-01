@@ -146,7 +146,7 @@ function d3Gather(on){const at={tome:[-5,-1.5],natsumi:[-2.5,1.5],baker:[4.5,-1.
 
 /* ----- the days between ----- */
 const D3_EVENTS=[
-  {id:'d3_open',when:{flags:{d2_done:1,d3:0},phase:['day','evening'],test:()=>AREA==='town'&&!URA.on&&!MIR.on},script:[
+  {id:'d3_open',when:{flags:{d2_done:1,d3:0},phase:['morning','day','evening'],test:()=>AREA==='town'&&!URA.on&&!MIR.on},script:[
     ['say','','海を見ていて、ナギは気がついた。','海に映った町が、ほんの少しだけ、ずれている。……映った島の灯台のとなりに、ないはずの灯りが、もうひとつ。'],
     ['call',()=>ex1Marble(true)],
     ['say','ミオの声','（……ナギ。聞こえる？）','（裏海街の海が、鏡になってる。向こうの鏡が、こっちの夏を映しはじめてるの）','（鏡の中に、何かが生まれかけてる。……ナギに、よく似た何か）'],

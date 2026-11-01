@@ -474,7 +474,7 @@ function rideNow(){P.foot=false;P.carry='deck';P.tr=null;P.kickT=-1;P.kickCD=0.3
 // (in the mirror sea the walk button throws Mio's marble)
 function padLabels(){const f=!!P.foot,k=f?'走る':'ける',b=MIR.on?(MIR.mcd>0?'…':'ビー玉'):f?'スケボー':'歩く';
   if($('bKick').textContent!==k)$('bKick').textContent=k;if($('bFoot').textContent!==b)$('bFoot').textContent=b;}
-function stepPlayer(dt){if(TD.on){P.v=0;jumpQ=kickQ=footQ=trickQ=false;return;}   // the board is a map from above: she waits at the shrine
+function stepPlayer(dt){
 
   if(RIDE.on){rideStep(dt);return;}if(BOAT.on){boatStep(dt);return;}
   if(URA.chase&&URA.chase.replay){jumpQ=kickQ=footQ=trickQ=false;uraReplayPose(dt);return;}   // the replay of being caught moves her, not the keys
@@ -595,7 +595,6 @@ function camFit(c){if(c.fit&&c.fitA===camera.aspect<0.8)return c.fit.clone();
 function updateCamera(dt){
   const cyaw=P.foot&&stick.on?footCamYaw:P.yaw,F=new THREE.Vector3(Math.sin(cyaw),0,Math.cos(cyaw)),p=new THREE.Vector3(P.x,P.y,P.z);let want,look,rate=4;
   if(state==='title'){const a=Math.sin(clock*0.12)*0.35;want=new THREE.Vector3(P.x+Math.sin(a)*1.9-0.4,P.y+1.25,P.z-Math.cos(a)*1.9);look=new THREE.Vector3(P.x+0.35,P.y+0.95,P.z);rate=2;}
-  else if(TD.on){want=new THREE.Vector3();look=new THREE.Vector3();tdCam(want,look);rate=8;}
   else if(ST.cam){look=ST.cam.look.clone();want=camFit(ST.cam);rate=ST.cam.rate;}
   else if(RIDE.on){want=new THREE.Vector3();look=new THREE.Vector3();rideCam(want,look);rate=0;}
   else if(BOAT.on){want=new THREE.Vector3();look=new THREE.Vector3();boatCam(want,look);rate=3;}
