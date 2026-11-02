@@ -7,6 +7,7 @@ import 'stage.dart';
 import 'talents.dart';
 
 part 'sim_bosses.dart';
+part 'sim_bosses2.dart';
 part 'sim_field.dart';
 part 'sim_weapons.dart';
 
@@ -25,7 +26,10 @@ enum EnemyKind {
   scorpion,
   knight,
   ogre,
-  kingSlime
+  kingSlime,
+  flowerQueen,
+  scorpionKing,
+  demonLord,
 }
 
 class EnemyStats {
@@ -74,6 +78,30 @@ const Map<EnemyKind, EnemyStats> enemyStats = {
       speed: 60,
       damage: 16,
       radius: 26,
+      xp: 0,
+      materialChance: 0,
+      boss: true),
+  EnemyKind.flowerQueen: EnemyStats(
+      hp: 1100,
+      speed: 0,
+      damage: 14,
+      radius: 34,
+      xp: 0,
+      materialChance: 0,
+      boss: true),
+  EnemyKind.scorpionKing: EnemyStats(
+      hp: 1000,
+      speed: 70,
+      damage: 16,
+      radius: 30,
+      xp: 0,
+      materialChance: 0,
+      boss: true),
+  EnemyKind.demonLord: EnemyStats(
+      hp: 1600,
+      speed: 50,
+      damage: 18,
+      radius: 28,
       xp: 0,
       materialChance: 0,
       boss: true),
@@ -136,17 +164,26 @@ class Enemy {
   /// 体力が半分を切ると怒る
   bool enraged = false;
 
+  /// 中ボス（雑魚を大きく強くしたもの。突進してきて、倒すと小さな宝箱を落とす）
+  bool elite = false;
+
   Enemy(this.kind, this.x, this.y, this.hp) : maxHp = hp;
 
   EnemyStats get stats => enemyStats[kind]!;
   bool get isBoss => stats.boss;
 
-  /// 跳んでいる間は攻撃が当たらず、こちらにも当たらない
+  /// ボスか中ボス（押されにくく、自分の行動で動く）
+  bool get heavy => isBoss || elite;
+
+  /// 当たり判定の大きさ（見た目の大きさに合わせる）
+  double get radius => stats.radius * bodyScale;
+
+  /// 跳んでいる（潜っている）間は攻撃が当たらず、こちらにも当たらない
   bool get airborne => bossState == BossState.airborne;
 
-  /// 跳躍の進み具合（0〜1）
+  /// 跳躍・潜行の進み具合（0〜1）
   double get airProgress =>
-      airborne ? (stateTime / kingSlimeAirTime).clamp(0.0, 1.0) : 0;
+      airborne ? (stateTime / bossAirTime(kind)).clamp(0.0, 1.0) : 0;
 }
 
 class Arrow {
@@ -163,7 +200,7 @@ class Arrow {
       this.pierceLeft);
 }
 
-enum PickupKind { gem, material, chest }
+enum PickupKind { gem, material, chest, miniChest }
 
 class Pickup {
   double x;
@@ -184,6 +221,12 @@ class Pickup {
         xp = 0;
   Pickup.chest(this.x, this.y)
       : kind = PickupKind.chest,
+        material = null,
+        xp = 0;
+
+  /// 中ボスが落とす小さな宝箱
+  Pickup.miniChest(this.x, this.y)
+      : kind = PickupKind.miniChest,
         material = null,
         xp = 0;
 }
@@ -239,6 +282,12 @@ enum RunEventType {
   bossSummon,
   bossEnrage,
   bossDefeated,
+  eliteSpawn,
+  eliteDefeated,
+
+  /// 地面からのとげ・闇の柱などが噴き出した
+  hazardBurst,
+  bossTeleport,
   returned,
   died,
 }
@@ -327,6 +376,9 @@ class RunSimulation {
   final List<Pickup> pickups = [];
   final List<Particle> particles = [];
   final List<BossShot> bossShots = [];
+
+  /// 地面に出る攻撃（根のとげ・毒の水たまり・闇の柱）
+  final List<BossHazard> hazards = [];
   SwordSwing? swing;
   ReturnGate? gate;
 
@@ -356,6 +408,7 @@ class RunSimulation {
   double _staffCd = 0.5;
   int _nextGate = 0;
   int _nextBoss = 0;
+  int _nextElite = 0;
 
   void Function(List<SkillId> offer)? onLevelUp;
   void Function(RunResult result)? onEnd;
@@ -393,6 +446,14 @@ class RunSimulation {
   Enemy? get boss {
     for (final e in enemies) {
       if (e.isBoss && !e.dead) return e;
+    }
+    return null;
+  }
+
+  /// 今出ている中ボス
+  Enemy? get elite {
+    for (final e in enemies) {
+      if (e.elite && !e.dead) return e;
     }
     return null;
   }
@@ -436,9 +497,12 @@ class RunSimulation {
     _spawnEnemies(dt);
     _updateWaves(dt);
     _spawnBosses();
+    _spawnElites();
     _moveEnemies(dt);
     _updateBosses(dt);
+    _updateElites(dt);
     _updateBossShots(dt);
+    _updateHazards(dt);
     if (phase != RunPhase.playing) return;
     _separateEnemies();
     _clampEnemies();
@@ -619,8 +683,8 @@ class RunSimulation {
   void _moveEnemies(double dt) {
     for (final e in enemies) {
       if (e.hitFlash > 0) e.hitFlash -= dt;
-      // ボスは自分の行動で動く
-      if (e.isBoss) continue;
+      // ボスと中ボスは自分の行動で動く
+      if (e.heavy) continue;
       final dx = px - e.x, dy = py - e.y;
       final d = sqrt(dx * dx + dy * dy);
       if (d > 0.001) {
@@ -652,7 +716,7 @@ class RunSimulation {
       (grid[k] ??= []).add(e);
     }
     for (final e in enemies) {
-      if (e.isBoss) continue;
+      if (e.heavy) continue;
       final cx = (e.x / cell).floor(), cy = (e.y / cell).floor();
       // ボスは大きいので、近くのマスより広く探す
       for (var ox = -2; ox <= 2; ox++) {
@@ -662,11 +726,11 @@ class RunSimulation {
           for (final o in list) {
             if (identical(o, e)) continue;
             final dx = e.x - o.x, dy = e.y - o.y;
-            final minD = e.stats.radius + o.stats.radius;
+            final minD = e.radius + o.radius;
             final d2 = dx * dx + dy * dy;
             if (d2 >= minD * minD || d2 < 0.0001) continue;
             final d = sqrt(d2);
-            final push = (minD - d) * (o.isBoss ? 0.5 : 0.25);
+            final push = (minD - d) * (o.heavy ? 0.5 : 0.25);
             e.x += dx / d * push;
             e.y += dy / d * push;
           }
@@ -679,11 +743,11 @@ class RunSimulation {
     if (invulnerable > 0) return;
     for (final e in enemies) {
       if (e.airborne) continue;
-      final r = e.stats.radius + playerRadius;
+      final r = e.radius + playerRadius;
       final dx = e.x - px, dy = e.y - py;
       if (dx * dx + dy * dy < r * r) {
-        _hurtPlayer(e.stats.damage);
-        if (e.isBoss) {
+        _hurtPlayer(e.stats.damage * (e.elite ? eliteDamageScale : 1));
+        if (e.heavy) {
           // ボスに触れたら弾き飛ばされる（壁際で押しつけられ続けないように）
           final d = max(1.0, sqrt(dx * dx + dy * dy));
           px -= dx / d * 70;
@@ -722,6 +786,10 @@ class RunSimulation {
       _onBossDefeated(e);
       return;
     }
+    if (e.elite) {
+      _onEliteDefeated(e);
+      return;
+    }
     _dropGem(e.x, e.y, e.stats.xp * e.xpScale);
     if (rng.nextDouble() < e.stats.materialChance) {
       pickups.add(Pickup.material(e.x + 6, e.y - 6, _materialFor(e.kind)));
@@ -755,7 +823,12 @@ class RunSimulation {
         EnemyKind.wolf || EnemyKind.scorpion => MaterialKind.fang,
         EnemyKind.sprout => MaterialKind.manaStone,
         EnemyKind.knight => MaterialKind.ironOre,
-        EnemyKind.ogre || EnemyKind.kingSlime => MaterialKind.bossCore,
+        EnemyKind.ogre ||
+        EnemyKind.kingSlime ||
+        EnemyKind.flowerQueen ||
+        EnemyKind.scorpionKing ||
+        EnemyKind.demonLord =>
+          MaterialKind.bossCore,
       };
 
   int _burstColor(EnemyKind kind) => switch (kind) {
@@ -766,9 +839,10 @@ class RunSimulation {
         EnemyKind.ghost => 0xFFCFE8FF,
         EnemyKind.imp => 0xFFFF7A3D,
         EnemyKind.wolf => 0xFFB8C4D0,
-        EnemyKind.sprout => 0xFF8BD06B,
-        EnemyKind.scorpion => 0xFFD9963E,
+        EnemyKind.sprout || EnemyKind.flowerQueen => 0xFF8BD06B,
+        EnemyKind.scorpion || EnemyKind.scorpionKing => 0xFFD9963E,
         EnemyKind.knight => 0xFF8A86A8,
+        EnemyKind.demonLord => 0xFF9A6BD9,
         EnemyKind.ogre => 0xFFC98B6B,
       };
 
@@ -815,6 +889,11 @@ class RunSimulation {
         hp = min(maxHp, hp + maxHp * 0.3);
         _emit(RunEvent(RunEventType.chest, p.x, p.y));
         _gainLevels(2);
+      case PickupKind.miniChest:
+        // 小さな宝箱：1回分のレベルアップと、少しの回復
+        hp = min(maxHp, hp + maxHp * 0.15);
+        _emit(RunEvent(RunEventType.chest, p.x, p.y));
+        _gainLevels(1);
       case PickupKind.gem:
         _emit(RunEvent(RunEventType.gem, p.x, p.y));
         _xpFraction += p.xp * xpMultiplier;

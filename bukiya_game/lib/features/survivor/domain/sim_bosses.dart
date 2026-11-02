@@ -37,6 +37,33 @@ enum BossAttack {
 
   /// キングスライム：小さいスライムを呼ぶ
   summon,
+
+  /// 人食い花：種を扇状に連射
+  seeds,
+
+  /// 人食い花：プレイヤーの足元から根のとげを噴き出させる
+  roots,
+
+  /// 人食い花：地面に潜ってプレイヤーの下から飛び出す
+  burrow,
+
+  /// サソリの王：前方の扇形を毒針で突く
+  sting,
+
+  /// サソリの王：毒の水たまりを吐き散らす
+  poison,
+
+  /// 魔王：闇の玉を輪にして放つ
+  orbs,
+
+  /// 魔王：プレイヤーへ向けて闇の柱を順に噴き上げる
+  pillars,
+
+  /// 魔王：プレイヤーの近くへ瞬間移動する
+  teleport,
+
+  /// 魔王：黒騎士を呼ぶ
+  knights,
 }
 
 const List<BossAttack> ogreAttacks = [
@@ -84,7 +111,14 @@ const double enragedWindupScale = 0.7;
 /// 怒ると歩くのが速くなる
 const double enragedSpeedScale = 1.3;
 
-enum BossShotKind { rock, slime }
+enum BossShotKind { rock, slime, seed, darkOrb }
+
+/// 弾が砕けたときの破片の色
+int bossShotColor(BossShotKind k) => switch (k) {
+      BossShotKind.rock => 0xFF8A7A62,
+      BossShotKind.slime || BossShotKind.seed => 0xFF7BD389,
+      BossShotKind.darkOrb => 0xFF9A6BD9,
+    };
 
 /// ボスが放つ弾（岩・スライム弾）。当たるとダメージ
 class BossShot {
@@ -112,6 +146,18 @@ double bossWindupTime(Enemy e) {
         ? kingSlimeSprayRepeatTime
         : kingSlimeSprayWindupTime,
     BossAttack.summon => kingSlimeSummonWindupTime,
+    BossAttack.seeds => e.repeatsLeft < e.repeatsTotal
+        ? flowerSeedRepeatTime
+        : flowerSeedWindupTime,
+    BossAttack.roots => flowerRootWindupTime,
+    BossAttack.burrow => flowerBurrowWindupTime,
+    BossAttack.sting => scorpionStingWindupTime,
+    BossAttack.poison => scorpionPoisonWindupTime,
+    BossAttack.orbs =>
+      e.repeatsLeft < e.repeatsTotal ? demonOrbRepeatTime : demonOrbWindupTime,
+    BossAttack.pillars => demonPillarWindupTime,
+    BossAttack.teleport => demonTeleportWindupTime,
+    BossAttack.knights => demonKnightWindupTime,
   };
   return e.enraged ? base * enragedWindupScale : base;
 }
@@ -151,6 +197,12 @@ extension _Bosses on RunSimulation {
           _updateOgre(e, dt);
         case EnemyKind.kingSlime:
           _updateKingSlime(e, dt);
+        case EnemyKind.flowerQueen:
+          _updateFlowerQueen(e, dt);
+        case EnemyKind.scorpionKing:
+          _updateScorpionKing(e, dt);
+        case EnemyKind.demonLord:
+          _updateDemonLord(e, dt);
         default:
           break;
       }
@@ -214,9 +266,9 @@ extension _Bosses on RunSimulation {
             _setState(e, BossState.walk);
         }
       case BossState.charge:
-        e.x += e.dirX * ogreChargeSpeed * dt;
-        e.y += e.dirY * ogreChargeSpeed * dt;
-        if (e.stateTime >= ogreChargeTime) {
+        e.x += e.dirX * chargeSpeedOf(e) * dt;
+        e.y += e.dirY * chargeSpeedOf(e) * dt;
+        if (e.stateTime >= chargeTimeOf(e)) {
           e.repeatsLeft--;
           if (e.repeatsLeft > 0) {
             // 怒っていると、向き直ってもう一度突進する
@@ -250,8 +302,8 @@ extension _Bosses on RunSimulation {
       final a = base + (i - (n - 1) / 2) * spread;
       bossShots.add(BossShot(
           BossShotKind.rock,
-          e.x + cos(a) * e.stats.radius,
-          e.y + sin(a) * e.stats.radius,
+          e.x + cos(a) * e.radius,
+          e.y + sin(a) * e.radius,
           cos(a) * ogreRockSpeed,
           sin(a) * ogreRockSpeed,
           13,
@@ -330,7 +382,7 @@ extension _Bosses on RunSimulation {
     e.toY = py;
     final a = arena;
     if (a != null) {
-      final r = e.stats.radius;
+      final r = e.radius;
       e.toX = e.toX.clamp(a.left + r, a.right - r);
       e.toY = e.toY.clamp(a.top + r, a.bottom - r);
     }
@@ -364,8 +416,8 @@ extension _Bosses on RunSimulation {
       final a = offset + i * 2 * pi / n;
       bossShots.add(BossShot(
           BossShotKind.slime,
-          e.x + cos(a) * e.stats.radius,
-          e.y + sin(a) * e.stats.radius,
+          e.x + cos(a) * e.radius,
+          e.y + sin(a) * e.radius,
           cos(a) * kingSlimeSpraySpeed,
           sin(a) * kingSlimeSpraySpeed,
           9,
@@ -382,8 +434,8 @@ extension _Bosses on RunSimulation {
         enemyStats[EnemyKind.slime]!.hp * (1 + time / 150) * stage.hpScale;
     for (var i = 0; i < n; i++) {
       final a = i * 2 * pi / n + rng.nextDouble() * 0.5;
-      final s = Enemy(EnemyKind.slime, e.x + cos(a) * (e.stats.radius + 20),
-          e.y + sin(a) * (e.stats.radius + 20), hp);
+      final s = Enemy(EnemyKind.slime, e.x + cos(a) * (e.radius + 20),
+          e.y + sin(a) * (e.radius + 20), hp);
       s.kbx = cos(a) * 160;
       s.kby = sin(a) * 160;
       _spawnQueue.add(s);
@@ -404,15 +456,13 @@ extension _Bosses on RunSimulation {
       if (dx * dx + dy * dy < r * r) {
         _hurtPlayer(s.damage);
         s.life = 0;
-        _burst(
-            s.x, s.y, s.kind == BossShotKind.rock ? 0xFF8A7A62 : 0xFF7BD389, 4);
+        _burst(s.x, s.y, bossShotColor(s.kind), 4);
       }
       // 檻の柵に当たると砕ける
       if (a != null &&
           (s.x < a.left || s.x > a.right || s.y < a.top || s.y > a.bottom)) {
         s.life = 0;
-        _burst(
-            s.x, s.y, s.kind == BossShotKind.rock ? 0xFF8A7A62 : 0xFF7BD389, 3);
+        _burst(s.x, s.y, bossShotColor(s.kind), 3);
       }
     }
     bossShots.removeWhere((s) => s.life <= 0);
@@ -443,6 +493,7 @@ extension _Bosses on RunSimulation {
     bossesDefeated++;
     // 飛んでいる弾は消える
     bossShots.clear();
+    hazards.clear();
     pickups.add(Pickup.chest(e.x, e.y));
     _emit(RunEvent(RunEventType.bossDefeated, e.x, e.y));
     for (var i = 0; i < 4; i++) {

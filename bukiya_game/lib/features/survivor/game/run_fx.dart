@@ -44,6 +44,9 @@ class RunFx {
   /// ボス出現の警告を出している残り秒数
   double bossWarning = 0;
 
+  /// 中ボス出現の帯の表示時間
+  double eliteWarning = 0;
+
   /// ボスが怒ったときの帯の表示時間
   double bossEnraged = 0;
 
@@ -112,6 +115,20 @@ class RunFx {
           bossEnraged = 2;
           hurtFlash = max(hurtFlash, 0.4);
           audio.play(Sfx.roar);
+        case RunEventType.eliteSpawn:
+          eliteWarning = 2.5;
+          _addTrauma(0.25);
+          audio.play(Sfx.roar);
+        case RunEventType.eliteDefeated:
+          _addTrauma(0.5);
+          whiteFlash = max(whiteFlash, 0.4);
+          audio.play(Sfx.chest);
+        case RunEventType.hazardBurst:
+          _addTrauma(0.25);
+          audio.play(Sfx.slam);
+        case RunEventType.bossTeleport:
+          _addTrauma(0.2);
+          audio.play(Sfx.cast);
         case RunEventType.bossDefeated:
           _addTrauma(0.9);
           whiteFlash = 1;
@@ -157,6 +174,7 @@ class RunFx {
     hurtFlash = max(0, hurtFlash - dt * 3);
     whiteFlash = max(0, whiteFlash - dt * 2);
     bossWarning = max(0, bossWarning - dt);
+    eliteWarning = max(0, eliteWarning - dt);
     bossEnraged = max(0, bossEnraged - dt);
     waveWarning = max(0, waveWarning - dt);
     final amp = 9 * trauma * trauma;

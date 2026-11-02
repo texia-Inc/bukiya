@@ -98,7 +98,11 @@ class EnemyAtlas {
         s.scorpion(c, e, t, toX, toY);
       case EnemyKind.knight:
         s.knight(c, e, t, toX, toY);
-      case EnemyKind.ogre || EnemyKind.kingSlime:
+      case EnemyKind.ogre ||
+            EnemyKind.kingSlime ||
+            EnemyKind.flowerQueen ||
+            EnemyKind.scorpionKing ||
+            EnemyKind.demonLord:
         break;
     }
   }
