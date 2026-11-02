@@ -152,5 +152,52 @@ void main() {
       final kinds = sim.enemies.map((e) => e.kind).toSet();
       expect(kinds.difference({EnemyKind.slime, EnemyKind.bat}), isEmpty);
     });
+
+    test('ステージは5つあり、番号順で、名前と出る敵が重ならない', () {
+      expect(allStages.length, 5);
+      expect(allStages.map((s) => s.number), [1, 2, 3, 4, 5]);
+      expect(allStages.map((s) => s.id).toSet().length, allStages.length);
+      for (final st in allStages) {
+        // 大群は時刻順
+        final times = st.waves.map((w) => w.time).toList();
+        expect(times, [...times]..sort());
+      }
+    });
+
+    test('火山には火の小鬼、雪原には雪狼が出る', () {
+      for (final (stage, kind) in [
+        (volcanoStage, EnemyKind.imp),
+        (snowfieldStage, EnemyKind.wolf),
+      ]) {
+        final sim = RunSimulation(
+            loadout: const [], config: RunConfig(stage: stage), seed: 5);
+        sim.hp = sim.maxHp = 1e9;
+        _step(sim, 30);
+        expect(sim.enemies.map((e) => e.kind), contains(kind));
+      }
+    });
+
+    test('新しい敵も倒すと素材を落とすことがある', () {
+      for (final kind in [EnemyKind.imp, EnemyKind.wolf]) {
+        final sim =
+            RunSimulation(loadout: [_w(CarriedWeaponType.sword)], seed: 1);
+        for (var i = 0; i < 80; i++) {
+          sim.debugKill(
+              sim.debugSpawn(kind, 40, 0), _w(CarriedWeaponType.sword));
+        }
+        expect(sim.pickups.any((p) => p.kind == PickupKind.material), isTrue);
+      }
+    });
+  });
+
+  group('取得中のスキル', () {
+    test('取った順に並び、レベルが上がっても順番は変わらない', () {
+      final set = SkillSet()
+        ..add(SkillId.magnet)
+        ..add(SkillId.bladeLength)
+        ..add(SkillId.magnet);
+      expect(set.owned, [SkillId.magnet, SkillId.bladeLength]);
+      expect(set.totalLevels, 3);
+    });
   });
 }

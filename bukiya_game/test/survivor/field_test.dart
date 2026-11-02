@@ -162,6 +162,36 @@ void main() {
       expect(spawned, greaterThanOrEqualTo(wave.count));
     });
 
+    test('大群の予告から押し寄せ終わるまではラッシュ中（カメラを引く）', () {
+      final sim = _sim(stage: _waveOnlyStage);
+      final wave = _waveOnlyStage.waves.first;
+      expect(sim.rush, isFalse);
+      sim.time = wave.time - waveWarningTime - 0.1;
+      _step(sim, 0.2);
+      expect(sim.rush, isTrue);
+      sim.time = wave.time + waveRushTime + 0.1;
+      _step(sim, 0.1);
+      expect(sim.rush, isFalse);
+    });
+
+    test('数の多い輪は何重にも重なり、上限を超えては出ない', () {
+      final sim = _sim(stage: _waveOnlyStage);
+      sim.debugSpawnRing(EnemyKind.slime, 120);
+      sim.update(1 / 60);
+      final ring = sim.enemies.where((e) => e.kind == EnemyKind.slime).toList();
+      expect(ring.length, greaterThanOrEqualTo(120));
+      final dists = ring
+          .map((e) => ((e.x - sim.px) * (e.x - sim.px) +
+                  (e.y - sim.py) * (e.y - sim.py))
+              .round())
+          .toSet();
+      expect(dists.length, greaterThan(1));
+      sim.debugSpawnRing(EnemyKind.slime, 2000);
+      sim.update(1 / 60);
+      expect(sim.enemies.length,
+          lessThanOrEqualTo(sim.config.maxEnemies + 250 + 10));
+    });
+
     test('ボス戦（檻の中）の最中の大群は見送る', () {
       final sim = _sim();
       final wave = forestStage.waves.first;

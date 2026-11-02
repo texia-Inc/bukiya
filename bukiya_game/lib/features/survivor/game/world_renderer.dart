@@ -535,6 +535,10 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           _sprites.skeleton(canvas, e, sim.time, sim.px, sim.py);
         case EnemyKind.ghost:
           _sprites.ghost(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.imp:
+          _sprites.imp(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.wolf:
+          _sprites.wolf(canvas, e, sim.time, sim.px, sim.py);
         case EnemyKind.ogre:
           _sprites.ogre(canvas, e, sim.time, sim.px, sim.py);
         case EnemyKind.kingSlime:

@@ -78,6 +78,46 @@ class StageArtPainter extends CustomPainter {
             w * 0.05);
       }
       _deadTree(canvas, Offset(w * 0.2, h * 0.5), w * 0.12);
+    } else if (stage.id == 'volcano') {
+      // 奥にそびえる火山と、流れ落ちる溶岩
+      final cone = Path()
+        ..moveTo(w * 0.22, h * 0.5)
+        ..lineTo(w * 0.42, h * 0.12)
+        ..lineTo(w * 0.58, h * 0.12)
+        ..lineTo(w * 0.78, h * 0.5)
+        ..close();
+      canvas.drawPath(cone, Paint()..color = const Color(0xFF4A3330));
+      canvas.drawPath(cone, _outline(3));
+      final lava = Path()
+        ..moveTo(w * 0.46, h * 0.12)
+        ..lineTo(w * 0.54, h * 0.12)
+        ..lineTo(w * 0.57, h * 0.3)
+        ..lineTo(w * 0.52, h * 0.45)
+        ..lineTo(w * 0.49, h * 0.28)
+        ..close();
+      canvas.drawPath(lava, Paint()..color = const Color(0xFFFF6A2B));
+      canvas.drawCircle(
+          Offset(w * 0.5, h * 0.08),
+          w * 0.06,
+          Paint()
+            ..color = Color.fromRGBO(140, 120, 120, 0.5 + 0.2 * sin(time * 2)));
+      canvas.drawCircle(Offset(w * 0.55, h * 0.02), w * 0.045,
+          Paint()..color = const Color(0x66A09090));
+    } else if (stage.id == 'snowfield') {
+      for (final p in [
+        Offset(w * 0.17, h * 0.52),
+        Offset(w * 0.3, h * 0.47),
+        Offset(w * 0.82, h * 0.52),
+      ]) {
+        _pine(canvas, p, w * 0.08);
+      }
+      final flake = Paint()..color = const Color(0xDDFFFFFF);
+      for (var i = 0; i < 14; i++) {
+        final fx = (rnd.nextDouble() * w + time * 12 * (0.5 + i % 3)) % w;
+        final fy =
+            (rnd.nextDouble() * h * 0.6 + time * 20 * (1 + i % 2)) % (h * 0.6);
+        canvas.drawCircle(Offset(fx, fy), 1.5 + (i % 3) * 0.6, flake);
+      }
     } else if (stage.id == 'canyon') {
       // 左右にそびえる崖と、真ん中の細い谷道
       for (final side in [-1.0, 1.0]) {
@@ -145,6 +185,31 @@ class StageArtPainter extends CustomPainter {
     }
     canvas.drawCircle(base.translate(0, -r * 0.6), r * 0.42,
         Paint()..color = const Color(0xFF4FA860));
+  }
+
+  void _pine(Canvas canvas, Offset base, double r) {
+    canvas.drawRect(
+        Rect.fromCenter(
+            center: base.translate(0, r * 0.4),
+            width: r * 0.3,
+            height: r * 0.6),
+        Paint()..color = const Color(0xFF6B4A35));
+    for (var i = 0; i < 3; i++) {
+      final by = base.dy + r * 0.2 - i * r * 0.55, hw = r * (0.85 - i * 0.2);
+      final tier = Path()
+        ..moveTo(base.dx - hw, by)
+        ..lineTo(base.dx, by - r * 0.9)
+        ..lineTo(base.dx + hw, by)
+        ..close();
+      canvas.drawPath(tier, Paint()..color = const Color(0xFF2F6B55));
+      canvas.drawPath(tier, _outline(2));
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(base.dx - hw * 0.15, by - r * 0.12),
+              width: hw * 1.1,
+              height: r * 0.2),
+          Paint()..color = const Color(0xFFF2F6FA));
+    }
   }
 
   void _signboard(Canvas canvas, Offset base, double r) {
