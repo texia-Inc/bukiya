@@ -224,6 +224,12 @@ class SkillSet {
 
   int level(SkillId id) => _levels[id] ?? 0;
 
+  /// 取った順のスキル
+  List<SkillId> get owned => _levels.keys.toList();
+
+  /// 取ったスキルのレベルの合計（表示を作り直すかの判定用）
+  int get totalLevels => _levels.values.fold(0, (a, b) => a + b);
+
   bool isMaxed(SkillId id) => level(id) >= skillDefs[id]!.maxLevel;
 
   void add(SkillId id) {

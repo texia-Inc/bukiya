@@ -100,10 +100,10 @@ const forestStage = StageDef(
   ],
   mascot: EnemyKind.kingSlime,
   waves: [
-    WaveEvent(55, WaveType.ring, EnemyKind.slime, 36),
-    WaveEvent(150, WaveType.swarm, EnemyKind.bat, 40),
-    WaveEvent(205, WaveType.ring, EnemyKind.goblin, 20),
-    WaveEvent(285, WaveType.ring, EnemyKind.skeleton, 24),
+    WaveEvent(55, WaveType.ring, EnemyKind.slime, 90),
+    WaveEvent(150, WaveType.swarm, EnemyKind.bat, 110),
+    WaveEvent(205, WaveType.ring, EnemyKind.goblin, 50),
+    WaveEvent(285, WaveType.ring, EnemyKind.skeleton, 60),
   ],
   hpScale: 1,
   bossHpScale: 1,
@@ -131,11 +131,11 @@ const graveyardStage = StageDef(
   ],
   mascot: EnemyKind.ogre,
   waves: [
-    WaveEvent(45, WaveType.swarm, EnemyKind.bat, 40),
-    WaveEvent(100, WaveType.ring, EnemyKind.skeleton, 24),
-    WaveEvent(165, WaveType.swarm, EnemyKind.ghost, 36),
-    WaveEvent(215, WaveType.ring, EnemyKind.ghost, 30),
-    WaveEvent(285, WaveType.swarm, EnemyKind.bat, 60),
+    WaveEvent(45, WaveType.swarm, EnemyKind.bat, 100),
+    WaveEvent(100, WaveType.ring, EnemyKind.skeleton, 60),
+    WaveEvent(165, WaveType.swarm, EnemyKind.ghost, 90),
+    WaveEvent(215, WaveType.ring, EnemyKind.ghost, 80),
+    WaveEvent(285, WaveType.swarm, EnemyKind.bat, 150),
   ],
   hpScale: 1.2,
   bossHpScale: 1.15,
@@ -163,11 +163,11 @@ const canyonStage = StageDef(
   ],
   mascot: EnemyKind.kingSlime,
   waves: [
-    WaveEvent(35, WaveType.swarm, EnemyKind.bat, 20),
-    WaveEvent(80, WaveType.ring, EnemyKind.slime, 16),
-    WaveEvent(160, WaveType.swarm, EnemyKind.goblin, 16),
-    WaveEvent(200, WaveType.ring, EnemyKind.skeleton, 14),
-    WaveEvent(280, WaveType.swarm, EnemyKind.ghost, 36),
+    WaveEvent(35, WaveType.swarm, EnemyKind.bat, 50),
+    WaveEvent(80, WaveType.ring, EnemyKind.slime, 40),
+    WaveEvent(160, WaveType.swarm, EnemyKind.goblin, 40),
+    WaveEvent(200, WaveType.ring, EnemyKind.skeleton, 36),
+    WaveEvent(280, WaveType.swarm, EnemyKind.ghost, 90),
   ],
   corridorHalfWidth: 160,
   hpScale: 1.15,
@@ -178,4 +178,72 @@ const canyonStage = StageDef(
   stoneColor: 0xFF8A7A62,
 );
 
-const List<StageDef> allStages = [forestStage, graveyardStage, canyonStage];
+const volcanoStage = StageDef(
+  id: 'volcano',
+  number: 4,
+  name: '灼熱の火山',
+  description: '溶岩が流れる火山のふもと。火の小鬼が群れで飛びまわる',
+  spawns: [
+    SpawnRule(EnemyKind.bat, 0, 2),
+    SpawnRule(EnemyKind.imp, 0, 4),
+    SpawnRule(EnemyKind.goblin, 40, 2),
+    SpawnRule(EnemyKind.skeleton, 120, 2),
+  ],
+  bosses: [
+    BossSpawn(120, EnemyKind.ogre),
+    BossSpawn(240, EnemyKind.kingSlime),
+  ],
+  mascot: EnemyKind.ogre,
+  waves: [
+    WaveEvent(40, WaveType.ring, EnemyKind.imp, 80),
+    WaveEvent(95, WaveType.swarm, EnemyKind.bat, 120),
+    WaveEvent(165, WaveType.ring, EnemyKind.goblin, 60),
+    WaveEvent(210, WaveType.swarm, EnemyKind.imp, 140),
+    WaveEvent(280, WaveType.ring, EnemyKind.imp, 140),
+  ],
+  hpScale: 1.25,
+  bossHpScale: 1.8,
+  groundColor: 0xFF3A2420,
+  tileColor: 0xFF43291F,
+  grassColor: 0xFF7A3A22,
+  stoneColor: 0xFF5A4A44,
+);
+
+const snowfieldStage = StageDef(
+  id: 'snowfield',
+  number: 5,
+  name: '凍てつく雪原',
+  description: '吹雪の吹きすさぶ北の雪原。雪狼の群れが獲物を狙う',
+  spawns: [
+    SpawnRule(EnemyKind.slime, 0, 2),
+    SpawnRule(EnemyKind.wolf, 20, 3),
+    SpawnRule(EnemyKind.ghost, 60, 2),
+    SpawnRule(EnemyKind.skeleton, 140, 2),
+  ],
+  bosses: [
+    BossSpawn(120, EnemyKind.kingSlime),
+    BossSpawn(240, EnemyKind.ogre),
+  ],
+  mascot: EnemyKind.kingSlime,
+  waves: [
+    WaveEvent(50, WaveType.swarm, EnemyKind.wolf, 60),
+    WaveEvent(90, WaveType.ring, EnemyKind.slime, 120),
+    WaveEvent(165, WaveType.swarm, EnemyKind.wolf, 90),
+    WaveEvent(210, WaveType.ring, EnemyKind.ghost, 100),
+    WaveEvent(280, WaveType.ring, EnemyKind.wolf, 120),
+  ],
+  hpScale: 1.3,
+  bossHpScale: 2.0,
+  groundColor: 0xFF5E6E80,
+  tileColor: 0xFF677890,
+  grassColor: 0xFF9AAABC,
+  stoneColor: 0xFF8090A4,
+);
+
+const List<StageDef> allStages = [
+  forestStage,
+  graveyardStage,
+  canyonStage,
+  volcanoStage,
+  snowfieldStage,
+];

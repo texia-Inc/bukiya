@@ -27,6 +27,11 @@ class SurvivorGame extends FlameGame {
 
   SurvivorGame(this.sim);
 
+  /// 短い辺に映るワールドの広さ。大群の最中はカメラを引いて広く見せる
+  static const double normalView = 380;
+  static const double rushView = 560;
+  double _viewSize = normalView;
+
   @override
   void onMount() {
     super.onMount();
@@ -39,7 +44,7 @@ class SurvivorGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     // 縦長・横長どちらでも、短い辺に 380 ほどのワールドが映る
-    camera.viewfinder.visibleGameSize = Vector2.all(380);
+    camera.viewfinder.visibleGameSize = Vector2.all(normalView);
     world.add(WorldRenderer(sim, fx));
     // 音の読み込みを待たずに始める
     audio.load();
@@ -83,6 +88,12 @@ class SurvivorGame extends FlameGame {
       sim.setInput(stickX, stickY);
     }
 
+    // 大群が来るとゆっくり引き、去るとゆっくり寄る
+    final target = sim.rush ? rushView : normalView;
+    if ((_viewSize - target).abs() > 0.5) {
+      _viewSize += (target - _viewSize) * min(1, dt * 1.6);
+      camera.viewfinder.visibleGameSize = Vector2.all(_viewSize);
+    }
     final view = camera.visibleWorldRect;
     // 地面を縦に縮めて描くので、縦は縮めた分だけ広く映る
     final h = view.height / WorldRenderer.tilt;

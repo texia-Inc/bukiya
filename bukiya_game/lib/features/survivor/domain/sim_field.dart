@@ -39,6 +39,12 @@ const double swarmDuration = 4;
 /// 大群の警告は、この秒数前に出す
 const double waveWarningTime = 2.5;
 
+/// 大群が始まってから、この秒数はラッシュ中とみなす（カメラを引いたままにする）
+const double waveRushTime = 12;
+
+/// 大群の敵は数が多いぶん、普段より打たれ弱い
+const double waveHpScale = 0.6;
+
 extension _Field on RunSimulation {
   double? get _corridor => stage.corridorHalfWidth;
 
@@ -162,6 +168,7 @@ extension _Field on RunSimulation {
         if (arena == null) {
           _emit(RunEvent(RunEventType.waveWarning, px, py,
               amount: w.type.index.toDouble()));
+          _rushUntil = w.time + waveRushTime;
         }
       }
       if (time >= w.time) {
@@ -197,30 +204,40 @@ extension _Field on RunSimulation {
     }
   }
 
-  double get _waveHp => (1 + time / 150) * stage.hpScale;
+  double get _waveHp => (1 + time / 150) * stage.hpScale * waveHpScale;
 
-  /// 取り囲む輪（通路では上下の列）
+  /// 大群でも、敵の数はここまでに抑える（重くなりすぎないように）
+  int get _waveCap => config.maxEnemies + 250;
+
+  /// 取り囲む輪（通路では上下の列）。数が多いときは輪を何重にも重ねる
   void _spawnRing(EnemyKind kind, int count) {
     final hp = enemyStats[kind]!.hp * _waveHp;
     final c = _corridor;
     final r = spawnDistance * 0.75;
+    final layers = (count / 48).ceil();
+    final perLayer = (count / layers).ceil();
     for (var i = 0; i < count; i++) {
+      if (enemies.length + _spawnQueue.length >= _waveCap) return;
+      final layer = i ~/ perLayer, j = i % perLayer;
+      final lr = r + layer * 34;
       double x, y;
       if (c != null) {
-        final top = i.isEven;
-        final k = i ~/ 2, n = (count + 1) ~/ 2;
+        final top = j.isEven;
+        final k = j ~/ 2, n = (perLayer + 1) ~/ 2;
         x = -c + 20 + (2 * c - 40) * (n <= 1 ? 0.5 : k / (n - 1));
-        y = py + (top ? -r : r);
+        y = py + (top ? -lr : lr);
       } else {
-        final a = i * 2 * pi / count;
-        x = px + cos(a) * r;
-        y = py + sin(a) * r;
+        // 重ねた輪は少しずらして、すき間を埋める
+        final a = (j + layer * 0.5) * 2 * pi / perLayer;
+        x = px + cos(a) * lr;
+        y = py + sin(a) * lr;
       }
       _spawnQueue.add(Enemy(kind, x, y, hp));
     }
   }
 
   void _spawnSwarmMember(_Swarm s) {
+    if (enemies.length + _spawnQueue.length >= _waveCap) return;
     final spread = (rng.nextDouble() - 0.5) * 0.5;
     final a = s.angle + spread;
     var x = px + cos(a) * spawnDistance;

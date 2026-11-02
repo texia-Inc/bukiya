@@ -12,7 +12,17 @@ part 'sim_weapons.dart';
 /// ラン1回分のゲームルール。描画や入力から切り離してテストできるようにしている。
 enum RunPhase { playing, levelUp, ended }
 
-enum EnemyKind { slime, bat, goblin, skeleton, ghost, ogre, kingSlime }
+enum EnemyKind {
+  slime,
+  bat,
+  goblin,
+  skeleton,
+  ghost,
+  imp,
+  wolf,
+  ogre,
+  kingSlime
+}
 
 class EnemyStats {
   final double hp;
@@ -45,6 +55,10 @@ const Map<EnemyKind, EnemyStats> enemyStats = {
       hp: 70, speed: 38, damage: 12, radius: 13, xp: 4, materialChance: 0.15),
   EnemyKind.ghost: EnemyStats(
       hp: 18, speed: 92, damage: 7, radius: 11, xp: 2, materialChance: 0.08),
+  EnemyKind.imp: EnemyStats(
+      hp: 30, speed: 66, damage: 8, radius: 10, xp: 2, materialChance: 0.1),
+  EnemyKind.wolf: EnemyStats(
+      hp: 32, speed: 86, damage: 8, radius: 13, xp: 3, materialChance: 0.12),
   EnemyKind.ogre: EnemyStats(
       hp: 650,
       speed: 60,
@@ -300,6 +314,9 @@ class RunSimulation {
   _Swarm? _swarm;
   bool horde = false;
 
+  /// 大群ウェーブの最中（予告から押し寄せ終わるまで）は、この時刻まで true。カメラを引くのに使う
+  double _rushUntil = -1;
+
   /// 描画側が毎フレーム取り出して空にする。取り出されなくても溜まり続けないよう上限を設ける
   final List<RunEvent> events = [];
   static const int _maxEvents = 1000;
@@ -342,6 +359,9 @@ class RunSimulation {
   Set<CarriedWeaponType> get carriedTypes => {for (final w in loadout) w.type};
 
   int get totalKills => killsByWeapon.values.fold(0, (a, b) => a + b);
+
+  /// 大群が押し寄せている最中か（時間切れ後の大群も含む）
+  bool get rush => horde || time < _rushUntil || _swarm != null;
   double get timeLeft => max(0, config.runLength - time);
 
   /// 今出ているボス（HP バーの表示用）
@@ -697,7 +717,8 @@ class RunSimulation {
         EnemyKind.goblin =>
           rng.nextDouble() < 0.3 ? MaterialKind.manaStone : MaterialKind.fang,
         EnemyKind.skeleton => MaterialKind.bone,
-        EnemyKind.ghost => MaterialKind.manaStone,
+        EnemyKind.ghost || EnemyKind.imp => MaterialKind.manaStone,
+        EnemyKind.wolf => MaterialKind.fang,
         EnemyKind.ogre || EnemyKind.kingSlime => MaterialKind.bossCore,
       };
 
@@ -707,6 +728,8 @@ class RunSimulation {
         EnemyKind.goblin => 0xFFE0A458,
         EnemyKind.skeleton => 0xFFEDE6D6,
         EnemyKind.ghost => 0xFFCFE8FF,
+        EnemyKind.imp => 0xFFFF7A3D,
+        EnemyKind.wolf => 0xFFB8C4D0,
         EnemyKind.ogre => 0xFFC98B6B,
       };
 
@@ -786,6 +809,12 @@ class RunSimulation {
   /// テスト用：敵をその武器で倒す
   void debugKill(Enemy e, CarriedWeapon weapon) =>
       _damage(e, e.hp + 1, weapon, knockFromX: e.x, knockFromY: e.y);
+
+  /// テスト用：レベルを上げる（次の更新でスキルを選ぶ画面になる）
+  void debugLevelUp() => _gainLevels(1);
+
+  /// テスト用：大群の輪を出す
+  void debugSpawnRing(EnemyKind kind, int count) => _spawnRing(kind, count);
 
   /// テスト用：ボスなしで檻を閉じる
   void debugCloseArena() => _closeArena();

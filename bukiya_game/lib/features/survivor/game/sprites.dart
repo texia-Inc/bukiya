@@ -13,6 +13,9 @@ class Sprites {
     ..strokeJoin = StrokeJoin.round
     ..color = const Color(0xFF1A1A1A);
   final Paint _shadow = Paint()..color = const Color(0x40000000);
+  final Paint _line = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
 
   static const _ink = Color(0xFF1A1A1A);
   static const _white = Color(0xFFFFFFFF);
@@ -403,6 +406,163 @@ class Sprites {
     _fill.color = const Color(0x55F28B82);
     canvas.drawCircle(Offset(e.x - r * 0.55, y + r * 0.2), r * 0.15, _fill);
     canvas.drawCircle(Offset(e.x + r * 0.55, y + r * 0.2), r * 0.15, _fill);
+  }
+
+  /// 火の小鬼：角と小さな翼としっぽ。頭の炎がゆらめく
+  void imp(Canvas canvas, Enemy e, double time, double toX, double toY) {
+    final r = e.stats.radius;
+    final flash = e.hitFlash > 0;
+    final hover = sin(time * 7 + e.x * 0.09) * 2;
+    _shadowAt(canvas, e.x, e.y + r + 6, r * 1.4);
+    final y = e.y + hover - 4;
+    final body = flash ? _white : const Color(0xFFE0553A);
+    final dark = flash ? _white : const Color(0xFF9C2F22);
+    // 翼（はばたく）
+    final flap = 0.6 + 0.4 * sin(time * 22 + e.y * 0.1);
+    for (final side in const [-1.0, 1.0]) {
+      final wing = Path()
+        ..moveTo(e.x + side * r * 0.5, y - r * 0.2)
+        ..lineTo(e.x + side * r * 1.7, y - r * (0.6 + 0.6 * flap))
+        ..lineTo(e.x + side * r * 1.35, y + r * 0.05)
+        ..lineTo(e.x + side * r * 1.0, y - r * 0.05)
+        ..close();
+      _filled(canvas, dark, (p) => canvas.drawPath(wing, p));
+    }
+    // しっぽ
+    final tail = Path()
+      ..moveTo(e.x, y + r * 0.7)
+      ..quadraticBezierTo(e.x + r * 1.1, y + r * 1.0 + sin(time * 6) * 2,
+          e.x + r * 1.2, y + r * 0.3);
+    _stroke(canvas, tail, dark, 2.2);
+    final tip = Path()
+      ..moveTo(e.x + r * 1.2, y + r * 0.05)
+      ..lineTo(e.x + r * 1.45, y + r * 0.4)
+      ..lineTo(e.x + r * 1.0, y + r * 0.4)
+      ..close();
+    _filled(canvas, dark, (p) => canvas.drawPath(tip, p));
+    // 頭の炎
+    final f = 1 + 0.2 * sin(time * 18 + e.x);
+    _fill.color = const Color(0xCCFFB13D);
+    final flame = Path()
+      ..moveTo(e.x - r * 0.45, y - r * 0.6)
+      ..quadraticBezierTo(e.x - r * 0.3, y - r * 1.5 * f, e.x, y - r * 1.7 * f)
+      ..quadraticBezierTo(
+          e.x + r * 0.3, y - r * 1.4 * f, e.x + r * 0.45, y - r * 0.6)
+      ..close();
+    canvas.drawPath(flame, _fill);
+    _fill.color = const Color(0xCCFFF1B8);
+    canvas.drawCircle(Offset(e.x, y - r * 0.95), r * 0.22, _fill);
+    // 体と角
+    _filled(canvas, body, (p) => canvas.drawCircle(Offset(e.x, y), r, p));
+    for (final side in const [-1.0, 1.0]) {
+      final horn = Path()
+        ..moveTo(e.x + side * r * 0.35, y - r * 0.8)
+        ..lineTo(e.x + side * r * 0.7, y - r * 1.35)
+        ..lineTo(e.x + side * r * 0.7, y - r * 0.6)
+        ..close();
+      _filled(canvas, flash ? _white : const Color(0xFFF1E3C6),
+          (p) => canvas.drawPath(horn, p));
+    }
+    _eyes(canvas, e.x, y - r * 0.05, r, toX, toY, spread: 0.32, size: 0.16);
+    // にやりと笑う口と牙
+    canvas.drawArc(
+        Rect.fromCenter(
+            center: Offset(e.x, y + r * 0.25), width: r * 0.9, height: r * 0.5),
+        0.2,
+        pi - 0.4,
+        false,
+        _outline);
+  }
+
+  /// 雪狼：走る四つ足。プレイヤーの方を向き、しっぽをなびかせる
+  void wolf(Canvas canvas, Enemy e, double time, double toX, double toY) {
+    final r = e.stats.radius;
+    final flash = e.hitFlash > 0;
+    final dir = toX >= e.x ? 1.0 : -1.0;
+    final run = time * 14 + e.y * 0.2;
+    _shadowAt(canvas, e.x, e.y + r * 0.85, r * 2.4);
+    final fur = flash ? _white : const Color(0xFFC9D4E0);
+    final furDark = flash ? _white : const Color(0xFF8E9CB0);
+    final bob = sin(run * 2).abs() * 1.5;
+    final y = e.y - bob;
+    // 脚（前後で交互に動く）
+    for (final (lx, ph) in [(-0.6, 0.0), (-0.3, pi), (0.35, pi), (0.65, 0.0)]) {
+      final sw = sin(run + ph) * r * 0.3;
+      final x0 = e.x + dir * lx * r;
+      final top = Offset(x0, y + r * 0.2),
+          foot = Offset(x0 + dir * sw, e.y + r * 0.8);
+      _line
+        ..color = _ink
+        ..strokeWidth = 4.6;
+      canvas.drawLine(top, foot, _line);
+      _line
+        ..color = furDark
+        ..strokeWidth = 2.8;
+      canvas.drawLine(top, foot, _line);
+    }
+    // しっぽ
+    final tail = Path()
+      ..moveTo(e.x - dir * r * 0.8, y - r * 0.15)
+      ..quadraticBezierTo(e.x - dir * r * 1.5, y - r * (0.5 + 0.2 * sin(run)),
+          e.x - dir * r * 1.6, y - r * 0.9)
+      ..quadraticBezierTo(
+          e.x - dir * r * 1.2, y - r * 0.4, e.x - dir * r * 0.75, y + r * 0.1)
+      ..close();
+    _filled(canvas, fur, (p) => canvas.drawPath(tail, p));
+    // 胴
+    _filled(
+        canvas,
+        fur,
+        (p) => canvas.drawOval(
+            Rect.fromCenter(
+                center: Offset(e.x, y), width: r * 2, height: r * 1.05),
+            p));
+    _fill.color = furDark;
+    canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(e.x - dir * r * 0.1, y - r * 0.32),
+            width: r * 1.3,
+            height: r * 0.3),
+        _fill);
+    // 頭・耳・鼻先
+    final head = Offset(e.x + dir * r * 0.95, y - r * 0.45);
+    for (final ex in const [-0.25, 0.2]) {
+      final ear = Path()
+        ..moveTo(head.dx + dir * (ex - 0.12) * r, head.dy - r * 0.3)
+        ..lineTo(head.dx + dir * (ex + 0.05) * r, head.dy - r * 0.85)
+        ..lineTo(head.dx + dir * (ex + 0.22) * r, head.dy - r * 0.3)
+        ..close();
+      _filled(canvas, furDark, (p) => canvas.drawPath(ear, p));
+    }
+    _filled(canvas, fur, (p) => canvas.drawCircle(head, r * 0.5, p));
+    final snout = Path()
+      ..moveTo(head.dx + dir * r * 0.25, head.dy - r * 0.15)
+      ..lineTo(head.dx + dir * r * 0.85, head.dy + r * 0.05)
+      ..lineTo(head.dx + dir * r * 0.25, head.dy + r * 0.3)
+      ..close();
+    _filled(canvas, fur, (p) => canvas.drawPath(snout, p));
+    _fill.color = _ink;
+    canvas.drawCircle(
+        Offset(head.dx + dir * r * 0.82, head.dy + r * 0.04), r * 0.1, _fill);
+    // 鋭い目
+    _fill.color = const Color(0xFF5BC8FF);
+    canvas.drawCircle(
+        Offset(head.dx + dir * r * 0.18, head.dy - r * 0.1), r * 0.13, _fill);
+    _fill.color = _ink;
+    canvas.drawCircle(
+        Offset(head.dx + dir * r * 0.22, head.dy - r * 0.1), r * 0.06, _fill);
+  }
+
+  void _stroke(Canvas canvas, Path path, Color color, double width) {
+    _line
+      ..style = PaintingStyle.stroke
+      ..color = _ink
+      ..strokeWidth = width + 2;
+    canvas.drawPath(path, _line);
+    _line
+      ..color = color
+      ..strokeWidth = width;
+    canvas.drawPath(path, _line);
   }
 
   /// オーガ（ボス）：牙と角のある大男。トゲ付きの棍棒を持ち、大技ごとに構えが変わる。

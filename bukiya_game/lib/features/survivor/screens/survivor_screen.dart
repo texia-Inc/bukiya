@@ -16,6 +16,7 @@ import '../game/sfx_backend.dart';
 import '../game/survivor_audio.dart';
 import '../game/survivor_game.dart';
 import 'home_view.dart';
+import 'skill_icons.dart';
 
 const _bg = Color(0xFF14181D);
 const _panel = Color(0xFF1F262E);
@@ -276,6 +277,7 @@ class _HudTickerState extends State<_HudTicker> {
       widget.fx.bossWarning > 0,
       widget.fx.waveWarning > 0,
       s.boss?.enraged,
+      s.skills.totalLevels,
       widget.fx.bossEnraged > 0,
     );
   }
@@ -374,6 +376,10 @@ class _Hud extends StatelessWidget {
                     color: const Color(0xFF5EC8FF),
                     label: 'Lv ${sim.level}',
                   ),
+                  if (sim.skills.owned.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _OwnedSkills(sim: sim, size: 24),
+                  ],
                 ],
               ),
             ),
@@ -624,6 +630,13 @@ class _LevelUpOverlay extends StatelessWidget {
             const SizedBox(height: 12),
             for (final id in sim.currentOffer)
               _SkillCard(sim: sim, id: id, onTap: () => onChoose(id)),
+            if (sim.skills.owned.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Text('取得中のスキル',
+                  style: TextStyle(color: _muted, fontSize: 12)),
+              const SizedBox(height: 8),
+              _OwnedSkills(sim: sim, size: 34),
+            ],
           ],
         ),
       ),
@@ -641,13 +654,15 @@ class _SkillCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final def = skillDefs[id]!;
-    final evolution = id == SkillId.giantSlayer;
+    final evolution = isEvolution(id);
     final current = sim.skills.level(id);
     final levelText = id == SkillId.potion
         ? ''
         : evolution
             ? '進化'
-            : 'Lv $current → ${current + 1}';
+            : current == 0
+                ? 'NEW'
+                : 'Lv $current → ${current + 1}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -664,30 +679,66 @@ class _SkillCard extends StatelessWidget {
                   color: evolution ? _accent : const Color(0x33EDE6D6),
                   width: 2),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(def.name,
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: evolution ? _accent : _ink)),
-                    ),
-                    Text(levelText,
-                        style: const TextStyle(color: _muted, fontSize: 12)),
-                  ],
+                SkillIcon(id, size: 48),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(def.name,
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: evolution ? _accent : _ink)),
+                          ),
+                          Text(levelText,
+                              style: TextStyle(
+                                  color: current == 0 && !evolution
+                                      ? const Color(0xFF6BE08A)
+                                      : _muted,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(def.description,
+                          style: const TextStyle(color: _muted, fontSize: 13)),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(def.description,
-                    style: const TextStyle(color: _muted, fontSize: 13)),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 取得中のスキルを、アイコンとレベルで並べる
+class _OwnedSkills extends StatelessWidget {
+  final RunSimulation sim;
+  final double size;
+
+  const _OwnedSkills({required this.sim, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: size * 0.35,
+      runSpacing: size * 0.35,
+      children: [
+        for (final id in sim.skills.owned)
+          SkillIcon(id,
+              size: size,
+              level: isEvolution(id) ? null : sim.skills.level(id),
+              maxed: sim.skills.isMaxed(id)),
+      ],
     );
   }
 }
