@@ -83,7 +83,7 @@ const PARTS=[
   {t:'本編「三つの道」',done:f=>endingsSeen()>=3,go:f=>true,n:f=>`エンディング ${endingsSeen()}/3`},
   {t:'真ルート「灯台」',done:f=>!!f.ending_true,go:f=>endingsSeen()>=3,how:'三つの道のエンディングを、ぜんぶ見ると始まる'},
   {t:'追加ストーリー1「オーシャンゲート」',done:f=>!!f.ex1_done,go:f=>!!f.ex1,how:'真ルートのあと、何日かたつと始まる'},
-  {t:'追加ストーリー2「海街自警団」',done:f=>!!f.d2_done,go:f=>!!f.ex1_done,how:'追加ストーリー1を終えると、東の山の岩の扉が開く',n:f=>f.d2?`帰ってきた子 ${(SAVE.d2&&SAVE.d2.nest)||0}/${NESTS.length}`:''},
+  {t:'追加ストーリー2「海街自警団」',done:f=>!!f.d2_done,go:f=>!!f.ex1_done,how:'追加ストーリー1を終えると、東の山の岩の扉が開く',n:f=>f.d2?`帰ってきた子 ${(SAVE.d2&&SAVE.d2.nest)||0}/${KIDS}`:''},
   {t:'追加ストーリー3「鏡の海」',done:f=>!!f.d3_done,go:f=>!!f.d3,how:'追加ストーリー2を終えると、次の朝に始まる',n:f=>`${Math.min(d3n(),3)}/4 夜`}];
 function renderProgress(box,f){const h=document.createElement('h3');h.className='rsec';h.textContent='物語の進み具合';box.appendChild(h);
   const ul=document.createElement('ul');ul.className='rprog';let cur=false;

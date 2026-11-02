@@ -82,7 +82,7 @@ const BEACH_CAT=CATS.find(c=>Math.abs(c.g.position.x+108.5)<0.1);
 function updateD2End(dt){if(SAVE.flags.mochi_gone&&BEACH_CAT)BEACH_CAT.g.visible=false;if(omochi.g.visible&&!URA.on)poseCat(omochi,dt,false);if(!D2END.up)return;D2END.lights.forEach((l,k)=>{const t=(l.userData.t+=dt*0.35),x=BOSS_AT.x+Math.sin(k*2.3)*7,z=SHORE+8+Math.cos(k*1.7)*4;
   l.position.set(x+Math.sin(t*2+k)*0.6,G(x,Math.min(z,SHORE))+0.8+(t%6)*2.2,z);l.material.opacity=Math.max(0,1-(t%6)/6);});}
 const FINAL_EVENTS=[
-  {id:'d2_c1',when:{flags:{ex1_done:1,d2c:0},test:()=>(d2().nest||0)>=NESTS.length&&d2().last<SAVE.day&&!URA.on},script:[
+  {id:'d2_c1',when:{flags:{ex1_done:1,d2c:0},test:()=>(d2().nest||0)>=KIDS&&d2().last<SAVE.day&&!URA.on},script:[
     ['say','','朝。ポケットの無線が、ザザッと鳴った。'],
     ['say','黒崎','（無線の声）……聞こえるか、海街の。海の底で、門が開きかけている。','核をこわされた異界の者どもが、門の向こうの「主」を呼んでいる。……今夜、やつが来るぞ。'],
     ['say','黒崎','（無線の声）オーシャンゲートは、電波塔を直して結界を張りなおす。だが、それには夜明けまでかかる。'],

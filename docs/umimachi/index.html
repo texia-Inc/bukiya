@@ -6656,7 +6656,7 @@ function updateUra(dt){
   for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
   for(const m of NIGHT.lamps){m.visible=Math.random()>0.08;m.material.opacity=0.55+Math.random()*0.3;}
   for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;for(const c of CATS)c.g.visible=false;
-  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id]&&!rescueOn()&&!sortieOn()&&!RUN.on;g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
+  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id]&&!rescueOn()&&!RUN.on;g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
   // the flashlight, held at the chest and pointing where she goes
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw));torch.intensity=torchOn?2.4:0;
   torch.position.set(P.x,P.y+1.1,P.z).addScaledVector(F,0.7);torch.target.position.set(P.x,P.y+0.4,P.z).addScaledVector(F,9);torch.target.updateMatrixWorld();
@@ -6668,13 +6668,13 @@ function updateUra(dt){
     const R=(8+(torchOn?6:0)+(loud?6:0))*(quiet?0.65:1);
     const fx=(b[0]-a[0])/L*s.dir,fz=(b[1]-a[1])/L*s.dir,toX=(P.x-g.position.x)/(d||1),toZ=(P.z-g.position.z)/(d||1);
     if(s.stun>0){s.stun-=dt;s.sus=0;}g.scale.set(1,s.stun>0?0.82:1,1);   // stunned by the lantern: it sags and sees nothing
-    const seen=!(s.stun>0)&&!NEST.fight&&!URA.chase&&!URA.hide&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
+    const seen=!(s.stun>0)&&!URA.chase&&!URA.hide&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
     s.sus=clamp(s.sus+(seen?dt*(d<5?1.6:1):-dt*0.5),0,1);
     if(s.sus<0.05&&!URA.chase&&!(s.stun>0)){s.t+=s.dir*dt*1.1/L;if(s.t>1){s.t=1;s.dir=-1;}if(s.t<0){s.t=0;s.dir=1;}}   // walks its beat unless it has noticed you
     const x=lerp(a[0],b[0],s.t),z=lerp(a[1],b[1],s.t);g.position.set(x,G(x,z),z);
     g.rotation.y=s.sus>0.05?Math.atan2(P.x-x,P.z-z):Math.atan2(fx,fz);if(s.sus<0.05&&!(s.stun>0))poseHuman(s.h,'walk',dt,{rate:4.6});else poseHuman(s.h,'stand',dt,{});
     s.eye.visible=s.sus>0.02;s.eye.position.set(x,G(x,z)+1.62,z);s.eye.material.opacity=s.sus;top=Math.max(top,s.sus);}
-  URA.sus=top;if(!URA.chase&&!NEST.fight)$('hurt').style.opacity=top*0.7;
+  URA.sus=top;if(!URA.chase)$('hurt').style.opacity=top*0.7;
   if(top>=1&&!ST.run){for(const s of URA.shadows)s.sus=0;runEvent({id:'ura_caught',once:false,script:[
     ['fade','out'],['warp',...URA_START],['fade','in'],['say','','冷たい手が、肩にふれた――。','……気がつくと、トンネルの出口に立っていた。'],['say','nagi','（見つかっちゃだめだ。歩けば、足音は小さい……）']]});}
   if(URA.chase)chaseStep(dt);}
@@ -6862,13 +6862,13 @@ function trickLand(clean){TRICK.jk=0;
   const b=Math.round(TRICK.bank*10)/10;TRICK.bank=0;TRICK.last=TRICK.next=null;TRICK.manQ=0;TRICK.links=0;
   const mir=MIR.on&&MIR.go&&!MIR.end;if(!clean)toast(mir?'失敗……　ビー玉の待ちが1秒のびた':'失敗……',false);if(mir)mirTrickLand(clean,b);else if(clean&&b>0&&trickFight())trickPay(b);if(RUN.go)runTrickLand(clean,b);}
 // the fights out in the town (the drones, the shadows of the nests, the shore, the lord of the other side)
-const trickFight=()=>!!(DRONE.active||NEST.fight||DEF.on||BOSS.on||RUN.go);
+const trickFight=()=>!!(DRONE.active||DEF.on||BOSS.on||RUN.go);
 // a jump with a trick in it, or a rail: up there the cold hands, the drones' shots and the dark orbs cannot reach her
 const trickSafe=()=>!!(P.grind||P.air&&(P.trick||TRICK.bank>0));
 // a jump's tricks landed in a fight: the lantern fills sooner, the shots burn harder for a while, and a big one knocks the
 // shadows back (each fight walks its own list)
-function trickPay(b){if(LAN.n<LAN.max)LAN.re+=b;TRICK.boostT=clock+b;const subs=DRONE.active||NEST.fight?[`光 ×2（${b}秒）`]:[];if(LAN.n<LAN.max)subs.push(`ランタン −${b}秒`);
-  if(b>=3){const n=trickWave(NEST.fight?NEST.list:DEF.on?DEF.list:BOSS.on?BOSS.list:RUN.go?RUN.foes:[]);if(n)subs.unshift('影をはじき飛ばした！');}
+function trickPay(b){if(LAN.n<LAN.max)LAN.re+=b;TRICK.boostT=clock+b;const subs=DRONE.active?[`光 ×2（${b}秒）`]:[];if(LAN.n<LAN.max)subs.push(`ランタン −${b}秒`);
+  if(b>=3){const n=trickWave(DEF.on?DEF.list:BOSS.on?BOSS.list:RUN.go?RUN.foes:[]);if(n)subs.unshift('影をはじき飛ばした！');}
   TRICK.sub=subs.join('　');TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
 // how hard her shots hit just now
 const trickDmg=()=>clock<(TRICK.boostT||0)?2:1;
@@ -8582,7 +8582,7 @@ EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...EX1_EVENTS);
 const SOTA_LOOK={skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78};
 const EX1R={sota:null,follow:false,trail:[],wisp:null,beam:null,giant:null,door:null,doorT:0};
 const rescueOn=()=>URA.on&&SAVE.flags.ex1===9;
-const lanternOn=()=>DEF.on||BOSS.on||rescueOn()||sortieOn();
+const lanternOn=()=>DEF.on||BOSS.on||rescueOn()||RUN.go;
 // Mio's light in 裏海街: along the coast road to the beach where Sota is
 const RESCUE_WP=[[-200,COAST_Z+1],[-168,COAST_Z+1],[-134,COAST_Z+1],[-104,COAST_Z+2],[-86,SHORE+6],[-74,SHORE+10]];
 const SOTA_AT=[-72,SHORE+13];
@@ -8598,9 +8598,9 @@ function lanternFlash(){if(LAN.n<1){toast('ランタンの灯りが、まだた�
     if(d<22){URA.chase.stun=3.5;URA.chase.mode='roam';URA.chase.wait=0;const k=Math.min(6,30-d)/(d||1);bg.x-=(P.x-bg.x)*k*0.25;bg.z-=(P.z-bg.z)*k*0.25;URA.chase.tx=bg.x;URA.chase.tz=bg.z;
       toast('大きな影が、光にひるんだ！ いまのうちに');}}
   if(DEF.on)for(const s of DEF.list)if(!s.gone&&dd(s.g.position.x,s.g.position.z)<R+1){s.gone=1;DEF.killed++;}
-  nestFlash(R);bossFlash(R);runFlash(R);
+  bossFlash(R);runFlash(R);
   renderHUD();}
-function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||NEST.fight||BOSS.on)){LAN.n++;LAN.re=0;renderHUD();}}
+function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||BOSS.on||RUN.go)){LAN.n++;LAN.re=0;renderHUD();}}
   if(!LAN.lt)return;LAN.t=Math.max(0,LAN.t-dt*1.4);const k=LAN.t;
   LAN.lt.intensity=k*3;LAN.lt.position.set(P.x,P.y+1.6,P.z);LAN.fx.visible=k>0;LAN.fx.position.set(P.x,P.y+1.2,P.z);LAN.fx.scale.setScalar(2+24*(1-k));LAN.fx.material.opacity=k*0.7;}
 /* ----- Sota: found on the beach of 裏海街, then at her heels ----- */
@@ -8678,7 +8678,7 @@ function rockDoor(){if(EX1R.door)return EX1R.door;const g=new THREE.Group(),x=RO
   const c=collide(x-2,x+2,z-2,z+2,'prop',G(x,z)+3.2);EX1R.door={g,halves,light,c,open:0};g.visible=false;c.on=false;return EX1R.door;}
 function doorStep(dt){const D=EX1R.door;if(!D)return;const show=!!SAVE.flags.x_door&&AREA==='town'&&!URA.on;D.g.visible=show;D.c.on=show;if(!show)return;
   const want=SAVE.flags.x_door>1?1:0;D.open+=(want-D.open)*Math.min(1,dt*0.9);for(const [i,m] of D.halves.entries())m.position.x=(i?1:-1)*(0.62+D.open*1.3);}
-function updateRescue(dt){updateLantern(dt);nestStep(dt);sotaStep(dt);wispStep(dt);updateDefend(dt);giantStep(dt);if(SAVE.flags.x_door)rockDoor();doorStep(dt);
+function updateRescue(dt){updateLantern(dt);sotaStep(dt);wispStep(dt);updateDefend(dt);giantStep(dt);if(SAVE.flags.x_door)rockDoor();doorStep(dt);
   if(lanternOn())$('lightBtn').textContent=lanMeter();else if($('lightBtn').textContent!=='ライト')$('lightBtn').textContent='ライト';
   if(DEF.on||BOSS.on)$('lightBtn').hidden=false;}
 function rescueHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='裏海街';const s=document.createElement('span');s.className='step';
@@ -8973,8 +8973,8 @@ const HQ_UP={arm:'よし、手入れは終わった。これで一発の重み�
 /* ----- the command table: out to tonight's sortie (or the last fight, or the mirror sea) ----- */
 function nightPlan(n){return{drones:Math.min(4+2*n,16),boss:n%3===0,shadows:Math.min(10+3*n,36),alive:Math.min(4+(n>>1),9),spd:0.06*n};}
 async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening'||ph==='night',done=D.last===SAVE.day,f=SAVE.flags;
-  const nests=D.nest||0,last=!!f.d2c&&!f.d2_done,sortie=!last&&!f.d2_done&&nests<NESTS.length;
-  const opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&sortie?[`裏海街へ出撃する（帰ってきた子 ${nests}/${NESTS.length}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),
+  const nests=D.nest||0,last=!!f.d2c&&!f.d2_done,sortie=!last&&!f.d2_done&&nests<KIDS;
+  const opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&sortie?[`裏海街へ出撃する（帰ってきた子 ${nests}/${KIDS}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),
     ...(!dark?['日が暮れるまで休む']:[]),'鏡の海で練習（物語は進まない）','話を聞く','やめる'];
   const msg=!dark?'やつらが動くのは、日が暮れてからだよ。':d3Tonight()?'鏡の海が、呼んでるね。':done&&!f.d2_done?'今夜は、もう十分だ。……ゆっくりお休み。':last?'今夜が、最後の戦いだよ。':sortie?'今夜も、裏海街へ行くかい？':'今夜は、静かな夜だね。';
   const i=await askP('tome',msg,opts),pick=opts[i];
@@ -8982,13 +8982,15 @@ async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening
   if(pick==='話を聞く'){await sayP('tome',f.d2_done?['施設をきたえても、もう戦う相手はいないけどね。……鏡の海で、すべるのは自由さ。']:[
     '施設は、お金と影のかけらで強くなる。かけらは、裏海街で影をたおすと手に入る。やられても、拾ったかけらは持って帰れるよ。',
     '武器庫は核をけずる力、鍛錬場はハート、灯りの工房は光ゲージ、通信室は援護のドローン。……どれも、出撃で効いてくる。',
-    nests<NESTS.length?`向こうに残された子は、あと${NESTS.length-nests}人。三つの核をこわせば、ひとり帰ってこられる。日が暮れたら、ここから出撃しな。`:'子どもたちは、みんな帰ってきた。……あとは、海の底の、あの大きな気配だ。']);return;}
+    '核は毎晩、町の五つの場所のうち三つに出る。こわした場所も、しばらくすると影がもどってくるから、そのときは囲みなおしておやり。',
+    nests<KIDS?`向こうに残された子は、あと${KIDS-nests}人。三つの核をこわせば、ひとり帰ってこられる。日が暮れたら、ここから出撃しな。`:'子どもたちは、みんな帰ってきた。……あとは、海の底の、あの大きな気配だ。',
+    ...(SAVE.runRec&&SAVE.runRec.nights?['これまでの記録だよ。'+runRecords()]:[])]);return;}
   if(pick==='鏡の海で練習（物語は進まない）'){await steps(mirScript());return;}
   if(pick&&pick===d3Label()&&d3Tonight()){await steps(mirScript(D3_RULE[d3n()+1]));return;}
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(runScript());return;}}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
-function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fight||BOSS.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
+function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||BOSS.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
   while(HQ.allies.length<want){const d=makeDrone();d.g.scale.setScalar(1.1);HQ.allies.push(d);toast('オーシャンゲートの援護ドローンが来た！');}
   HQ.allies.forEach((d,k)=>{d.g.visible=k<want;if(!d.g.visible)return;const sd=k?-1:1,a=P.yaw+sd*(0.55+Math.sin(clock*0.7+k)*0.15),w=new THREE.Vector3(P.x+Math.sin(a)*7,P.y+6+Math.sin(clock*2+k)*0.3,P.z+Math.cos(a)*7);
     d.g.position.lerp(w,Math.min(1,dt*3));d.g.rotation.y=a;for(const r of d.rotors)r.rotation.y+=dt*40;});
@@ -9001,18 +9003,16 @@ function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fi
   else if(BOSS.on){const t=BOSS.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
     if(t&&!BOSS.striking){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;bossGain();}}
   else if(RUN.go){const t=RUN.foes.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
-    if(t&&t.g.position.distanceTo(player.g.position)<30){tracer(from,t.g.position.clone().setY(t.g.position.y+1));runKill(t);}}
-  else if(NEST.fight){const t=NEST.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
-    if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;NEST.killed++;}}}
-function hqHUD(){const D=d2();return `影のかけら ${shards()}　帰ってきた子 ${D.nest||0}/${NESTS.length}`;}
+    if(t&&t.g.position.distanceTo(player.g.position)<30){tracer(from,t.g.position.clone().setY(t.g.position.y+1));runKill(t);}}}
+function hqHUD(){const D=d2();return `影のかけら ${shards()}　帰ってきた子 ${D.nest||0}/${KIDS}`;}
 function d2Goal(f,eve,night){const D=d2(),nests=D.nest||0,dark=eve||night,tonight=dark&&D.last!==SAVE.day;
   if(!f.d2)return '町の東の山の岩の扉から、海街自警団の基地へ';
   if(f.d2c&&!f.d2_done)return tonight?(AREA==='hq'?'作戦室のばあちゃんに話して、最後の戦いへ':'基地の作戦室で、ばあちゃんに話して最後の戦いへ'):'日が暮れたら、基地の作戦室で、ばあちゃんに話して最後の戦いへ';
   if(f.d2_done)return AREA==='hq'?'施設をきたえたり、作戦室から鏡の海で練習したりできる':null;
-  if(nests>=NESTS.length)return '子どもたちは、みんな帰ってきた。家で休んで、あしたの朝を待つ';
+  if(nests>=KIDS)return '子どもたちは、みんな帰ってきた。家で休んで、あしたの朝を待つ';
   const fac=`施設の人に話すと、お金と影のかけらで出撃が楽になる（${hqHUD()}）`;
-  if(AREA==='hq')return tonight?`作戦室のばあちゃんに話して、裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`:fac+'。日が暮れたら作戦室から出撃';
-  return tonight?`基地の作戦室で、ばあちゃんに話して裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`:`日が暮れたら、基地の作戦室から裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`;}
+  if(AREA==='hq')return tonight?`作戦室のばあちゃんに話して、裏海街へ出撃（帰ってきた子 ${nests}/${KIDS}）`:fac+'。日が暮れたら作戦室から出撃';
+  return tonight?`基地の作戦室で、ばあちゃんに話して裏海街へ出撃（帰ってきた子 ${nests}/${KIDS}）`:`日が暮れたら、基地の作戦室から裏海街へ出撃（帰ってきた子 ${nests}/${KIDS}）`;}
 // every frame: the hall's warm light, the keepers looking round, the levels, the allies
 function updateHQ(dt){if(SAVE.flags.ex1_done)applyD2();allyStep(dt);if(AREA!=='hq')return;hqBuild();
   scene.fog.color.set('#2a221c');scene.background.set('#2a221c');scene.fog.near=10;scene.fog.far=80;hemi.color.set('#ffe6c4');hemi.groundColor.set('#5a4a3a');hemi.intensity=0.95;sun.intensity=0.15;
@@ -9037,85 +9037,6 @@ const HQ_EVENTS=[
     ['set','d2'],['cam','off'],['call',()=>toast('日が暮れたら、作戦室のばあちゃんに話して裏海街へ出撃。施設はお金とかけらで強くなる',true)]]},
 ];
 EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...HQ_EVENTS);
-/* ---------- the second story's sorties: out from the command table at night into 裏海街, to burn the shadows' nests one by one.
-   Five nests, each a black heap with a red glow in the grey town, the next one marked. On the way the shadows walk their beats
-   as ever (seen, and it is back to the tunnel). Close to a nest the fight starts: shadows crawl out of it and come for Nagi;
-   a touch costs a heart (as many as in the drone fights), and a flash of the lantern sends them off and burns the nest when
-   it is near enough. Hearts gone, and she is back at the tunnel with the nest whole again; every third time, the way home.
-   Like the rescue, the sortie is free play between two events: SAVE.flags.sortie is the nest's number + 1 while it lasts. ---------- */
-const NESTS=[{name:'浜の巣',x:40,z:COAST_Z+1},{name:'駅前の巣',x:62,z:TRAM_Z+6},{name:'まるやの巣',x:SHOPS.dagashi.door[0]+0.7,z:SHOPS.dagashi.door[1]-2.5},
-  {name:'神社の巣',x:SHRINE.x,z:-140},{name:'坂道の巣',x:0,z:-60}];
-const NEST_FREED=['（……ありがとう、おねえちゃん。やっと、海の音が聞こえる）','（まっくらだったの。……灯り、あったかいね）','（ラムネのビー玉、まだ持ってるよ。……帰れるかな）',
-  '（お祭りの太鼓が、ずっと遠くで鳴ってた。……もうすぐ、帰れる）','（坂の上から、灯台が見えた。……ありがとう）'];
-const NEST={on:false,i:0,g:null,core:null,glows:[],hp:0,max:0,fight:false,list:[],spawnT:0,hearts:5,inv:0,falls:0,killed:0,hudT:0,mark:null,asking:false};
-const sortieOn=()=>URA.on&&(SAVE.flags.sortie||0)>0;
-function nestBuild(){if(NEST.g)return;const g=new THREE.Group(),blk=new THREE.MeshBasicMaterial({color:'#0b0b0d'});world.add(g);
-  NEST.core=new THREE.Mesh(new THREE.SphereGeometry(1.6,14,10),blk);NEST.core.position.y=1.2;NEST.core.scale.set(1,0.8,1);g.add(NEST.core);
-  for(let k=0;k<9;k++){const a=k/9*TAU,r=1.3+(k%3)*0.5,m=new THREE.Mesh(new THREE.SphereGeometry(0.5+(k%4)*0.22,10,8),blk);m.position.set(Math.cos(a)*r,0.35+(k%2)*0.4,Math.sin(a)*r);g.add(m);}
-  for(let k=0;k<4;k++){const s=glow('#ff3020',0,0,0,k?1.1:3.2);s.visible=true;g.add(s);s.position.set(k?Math.cos(k*2)*1.2:0,k?0.9+k*0.25:1.4,k?Math.sin(k*2)*1.2:0);NEST.glows.push(s);}
-  NEST.g=g;g.visible=false;}
-// start (or pick up again after a load) the sortie on nest i
-function nestStart(i){nestBuild();const N=NESTS[i];Object.assign(NEST,{on:true,i,hp:4+2*i,max:4+2*i,fight:false,spawnT:1,hearts:DRONE.maxHp,inv:0,killed:0});nestClear(true);
-  NEST.g.position.set(N.x,G(N.x,N.z),N.z);NEST.g.scale.setScalar(1);NEST.g.visible=true;
-  if(!NEST.mark){NEST.mark=marker(MK.target);NEST.mark.scale.set(1.6,1.6,1);}LAN.n=LAN.max;renderHUD();}
-function nestClear(keep){for(const s of NEST.list){world.remove(s.g);scene.remove(s.eye);}NEST.list.length=0;if(keep)return;
-  NEST.on=false;NEST.fight=false;if(NEST.g)NEST.g.visible=false;if(NEST.mark)NEST.mark.visible=false;$('hurt').style.opacity=0;}
-function nestHUD(tr){tr.hidden=false;tr.innerHTML='';const N=NESTS[NEST.i],b=document.createElement('b');b.textContent=`出撃：${N.name}`;const s=document.createElement('span');s.className='step';
-  s.textContent=NEST.fight?'巣のそばでランタンを光らせて、巣を焼く。はい出してくる影も、光で追いはらえる':'影の住人に見つからないように、赤く光る巣へ。歩くと静か';
-  const m=document.createElement('span');m.className='meter';const n=Math.ceil(Math.max(0,NEST.hp)/NEST.max*10);
-  m.textContent=`巣 ${'■'.repeat(n)}${'□'.repeat(10-n)}　${'♥'.repeat(Math.max(0,NEST.hearts))}${'♡'.repeat(Math.max(0,DRONE.maxHp-NEST.hearts))}　${lanMeter()}`;tr.append(b,s,m);}
-// the lantern's flash at the nest: the shadows near it go, and the nest burns if it is within the light
-function nestFlash(R){if(!NEST.on)return;const dd=p=>Math.hypot(P.x-p.x,P.z-p.z);
-  for(const s of NEST.list)if(!s.gone&&dd(s.g.position)<R+1){s.gone=1;NEST.killed++;}
-  if(NEST.fight&&dd(NEST.g.position)<R+2){NEST.hp-=(DRONE.dmg||1)*trickDmg();const p=NEST.g.position.clone();p.y+=1.4;sparks(p,18,'#ffe2a0',6,0.12);buzz('heavy',true);
-    if(NEST.hp<=0)nestBurnt();else toast(`巣が光に焼かれていく……（のこり ${Math.ceil(NEST.hp)}）`);}
-  renderHUD();}
-function nestBurnt(){const p=NEST.g.position.clone();p.y+=1;boom(p);for(let k=0;k<4;k++)setTimeout(()=>sparks(p.clone().add(new THREE.Vector3(rnd()*3-1.5,rnd()*2,rnd()*3-1.5)),16,'#ffe2a0',7,0.12),k*180);
-  for(const s of NEST.list)s.gone=1;NEST.fight=false;SAVE.flags.sortie=0;setTimeout(()=>{NEST.g.visible=false;NEST.mark.visible=false;nestClear();runEvent({id:'nest_done',once:false,script:nestDoneScript(NEST.i,NEST.killed)});},900);}
-function nestFall(){NEST.fight=false;NEST.falls++;$('fade').style.opacity=1;P.v=0;
-  setTimeout(()=>{nestClear(true);NEST.hp=NEST.max;NEST.hearts=DRONE.maxHp;LAN.n=LAN.max;P.x=URA_START[0];P.z=URA_START[1];P.yaw=URA_START[2];P.y=G(P.x,P.z);camInit=false;$('fade').style.opacity=0;$('hurt').style.opacity=0;
-    toast('影にのまれた……。気がつくと、トンネルの出口にいた',true);if(NEST.falls%3===0)nestRetire();},900);}
-async function nestRetire(){NEST.asking=true;const i=await askP('',`${NEST.falls}回やられてしまった……。どうする？`,['もう少しがんばる','今夜は引きあげる']);NEST.asking=false;
-  if(i===1)runEvent({id:'nest_back',once:false,script:[['say','tome','（無線の声）……無理はおしでないよ。今夜は引きあげな。'],...nestHome()]});}
-const nestHome=()=>[['fade','out'],['call',()=>{nestClear();SAVE.flags.sortie=0;}],['ura',false],['call',()=>ex1Kurosaki(false)],['warp',...HOME],['day']];
-function nestDoneScript(i,killed){const last=i===NESTS.length-1,got=15+10*i+killed;return[
-  ['say','','巣が、灯りの中でくずれ落ちた。','黒い霧がほどけて、小さな光が、いくつも空へのぼっていく。'],
-  ['call',()=>ex1Marble(true)],['say','子どもの声',NEST_FREED[i]],['call',()=>ex1Marble(false)],
-  ['call',()=>{const D=d2();D.nest=i+1;D.last=SAVE.day;SAVE.shards=shards()+got;SAVE.money+=300+i*100;save();renderHUD();toast(`影のかけら +${got}　お礼 +${300+i*100}円`,true);}],
-  ...(last?[['say','tome','（無線の声）……これで、町のまわりの巣は、ぜんぶ焼けたよ。','でもね、ナギ。海の底のほうに、まだ大きな気配がある。……ここからが、本番さ。']]
-    :[['say','tome','（無線の声）よくやった、ナギ。のこる巣は、あと'+(NESTS.length-i-1)+'つ。','今夜は帰っておいで。']]),
-  ...nestHome()];}
-// every frame of a sortie: the nest breathing, the fight round it
-function nestStep(dt){if(!sortieOn()){if(NEST.on&&!URA.on)nestClear();return;}
-  if(!NEST.on)nestStart(SAVE.flags.sortie-1);   // a save made out there picks up again at the tunnel's mouth
-  const g=NEST.g,N=NESTS[NEST.i],d=Math.hypot(P.x-g.position.x,P.z-g.position.z),k=NEST.hp/NEST.max,busy=!!(DLG||modal||NEST.asking);
-  g.scale.setScalar(0.55+0.45*k+Math.sin(clock*3)*0.04);NEST.glows.forEach((s,j)=>{s.material.opacity=(0.6+0.4*Math.sin(clock*(4+j)+j))*(0.4+0.6*k);});
-  NEST.mark.visible=!NEST.fight;NEST.mark.position.set(N.x,G(N.x,N.z)+4.2+Math.sin(clock*3)*0.15,N.z);
-  if(!NEST.fight&&d<22&&!URA.hide&&!busy&&NEST.hp>0){NEST.fight=true;NEST.spawnT=0.5;toast('影の巣だ！ そばでランタンを光らせて、巣を焼け',true);for(const s of URA.shadows)s.sus=0;}
-  if(NEST.fight&&d>45){NEST.fight=false;for(const s of NEST.list)s.gone=1;toast('巣から離れた');}
-  NEST.inv-=dt;
-  if(NEST.fight&&!busy){NEST.spawnT-=dt;const alive=NEST.list.filter(s=>!s.gone).length;
-    if(NEST.spawnT<=0&&alive<3+NEST.i){const h=makeHuman(SHADE),a=rnd()*TAU,x=g.position.x+Math.cos(a)*2.2,z=g.position.z+Math.sin(a)*2.2;world.add(h.g);h.g.position.set(x,G(x,z)-1.6,z);
-      NEST.list.push({h,g:h.g,eye:glow('#ff3020',0,0,0,0.9),up:0,sp:2+NEST.i*0.3+rnd()*0.5,gone:0,fade:0});NEST.spawnT=2.4-NEST.i*0.25+rnd()*0.6;}}
-  for(const s of NEST.list.slice()){const p=s.g.position;
-    if(s.gone){s.fade+=dt*1.8;const f=Math.min(1,s.fade);s.g.scale.set(1-f*0.6,1-f*0.9,1-f*0.6);s.eye.visible=false;if(rnd()<dt*25)sparks(new THREE.Vector3(p.x,p.y+1,p.z),1,'#ffe2a0',2,0.05);
-      if(f>=1){world.remove(s.g);scene.remove(s.eye);NEST.list.splice(NEST.list.indexOf(s),1);}continue;}
-    const gy=G(p.x,p.z);
-    if(s.up<1){s.up=Math.min(1,s.up+dt*0.9);p.y=lerp(gy-1.6,gy,s.up);poseHuman(s.h,'stand',dt,{});}
-    else if(s.stun>0){s.stun-=dt;p.y=gy;poseHuman(s.h,'stand',dt,{});}   // knocked back by a trick (trickWave)
-    else if(!busy){const dx=P.x-p.x,dz=P.z-p.z,l=Math.hypot(dx,dz)||1;if(l>0.9){p.x+=dx/l*s.sp*dt;p.z+=dz/l*s.sp*dt;}p.y=G(p.x,p.z);s.g.rotation.y=Math.atan2(dx,dz);poseHuman(s.h,'walk',dt,{rate:3.8});
-      if(l<1.15&&NEST.inv<=0&&!trickSafe()){NEST.inv=1.3;NEST.hearts--;buzz('heavy',true);P.v*=0.3;s.gone=1;renderHUD();if(NEST.hearts<=0){nestFall();break;}toast('冷たい手が、ふれた！');}}
-    s.eye.visible=true;s.eye.position.set(p.x,p.y+1.62,p.z);s.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);}
-  if(NEST.fight)$('hurt').style.opacity=Math.max(NEST.inv>0.7?0.5:0,NEST.hearts===1?0.3+0.1*Math.sin(clock*5):0);
-  NEST.hudT-=dt;if(NEST.hudT<=0){NEST.hudT=0.25;renderHUD();}}
-// out from the command table (hqCommand in p5q_hq.js)
-function sortieScript(i){const N=NESTS[i];return[
-  ['fade','out'],['call',()=>{applyD2();SAVE.flags.sortie=i+1;D2_last();}],['ura',true],['time',23.2,0],['warp',...URA_START],['call',()=>nestStart(i)],
-  ['cam',[URA_START[0]+9,G(URA_START[0],URA_START[1])+3,URA_START[1]-4],[URA_START[0]-2,G(URA_START[0],URA_START[1])+1.2,URA_START[1]],1.2,'cut'],['fade','in'],
-  ['say','tome','（無線の声）……ザザッ……聞こえるかい、ナギ。今夜の目標は「'+N.name+'」だよ。','赤く光ってるのが見えたら、それが巣だ。影の住人には、見つかるんじゃないよ。'],
-  ...(i===0?[['say','ミオの声','（ナギ……巣の中には、向こうに残された子たちが閉じこめられてるの）','（灯りで焼いて。そうすれば、あの子たちは光のほうへ帰れる）']]:[]),
-  ['cam','off']];}
-function D2_last(){const D=d2();D.last=SAVE.day;save();}
 /* ---------- the end of the second story: with the five nests burnt, the gate under the sea opens and its master comes.
    The morning after the fifth nest Kurosaki calls: Oceangate will mend the radio mast and raise the barrier again, but not
    before dawn. That night, from the command table, the last fight: the shadow drones and the shadows on the coast road, then
@@ -9200,7 +9121,7 @@ const BEACH_CAT=CATS.find(c=>Math.abs(c.g.position.x+108.5)<0.1);
 function updateD2End(dt){if(SAVE.flags.mochi_gone&&BEACH_CAT)BEACH_CAT.g.visible=false;if(omochi.g.visible&&!URA.on)poseCat(omochi,dt,false);if(!D2END.up)return;D2END.lights.forEach((l,k)=>{const t=(l.userData.t+=dt*0.35),x=BOSS_AT.x+Math.sin(k*2.3)*7,z=SHORE+8+Math.cos(k*1.7)*4;
   l.position.set(x+Math.sin(t*2+k)*0.6,G(x,Math.min(z,SHORE))+0.8+(t%6)*2.2,z);l.material.opacity=Math.max(0,1-(t%6)/6);});}
 const FINAL_EVENTS=[
-  {id:'d2_c1',when:{flags:{ex1_done:1,d2c:0},test:()=>(d2().nest||0)>=NESTS.length&&d2().last<SAVE.day&&!URA.on},script:[
+  {id:'d2_c1',when:{flags:{ex1_done:1,d2c:0},test:()=>(d2().nest||0)>=KIDS&&d2().last<SAVE.day&&!URA.on},script:[
     ['say','','朝。ポケットの無線が、ザザッと鳴った。'],
     ['say','黒崎','（無線の声）……聞こえるか、海街の。海の底で、門が開きかけている。','核をこわされた異界の者どもが、門の向こうの「主」を呼んでいる。……今夜、やつが来るぞ。'],
     ['say','黒崎','（無線の声）オーシャンゲートは、電波塔を直して結界を張りなおす。だが、それには夜明けまでかかる。'],
@@ -9354,7 +9275,7 @@ const PARTS=[
   {t:'本編「三つの道」',done:f=>endingsSeen()>=3,go:f=>true,n:f=>`エンディング ${endingsSeen()}/3`},
   {t:'真ルート「灯台」',done:f=>!!f.ending_true,go:f=>endingsSeen()>=3,how:'三つの道のエンディングを、ぜんぶ見ると始まる'},
   {t:'追加ストーリー1「オーシャンゲート」',done:f=>!!f.ex1_done,go:f=>!!f.ex1,how:'真ルートのあと、何日かたつと始まる'},
-  {t:'追加ストーリー2「海街自警団」',done:f=>!!f.d2_done,go:f=>!!f.ex1_done,how:'追加ストーリー1を終えると、東の山の岩の扉が開く',n:f=>f.d2?`帰ってきた子 ${(SAVE.d2&&SAVE.d2.nest)||0}/${NESTS.length}`:''},
+  {t:'追加ストーリー2「海街自警団」',done:f=>!!f.d2_done,go:f=>!!f.ex1_done,how:'追加ストーリー1を終えると、東の山の岩の扉が開く',n:f=>f.d2?`帰ってきた子 ${(SAVE.d2&&SAVE.d2.nest)||0}/${KIDS}`:''},
   {t:'追加ストーリー3「鏡の海」',done:f=>!!f.d3_done,go:f=>!!f.d3,how:'追加ストーリー2を終えると、次の朝に始まる',n:f=>`${Math.min(d3n(),3)}/4 夜`}];
 function renderProgress(box,f){const h=document.createElement('h3');h.className='rsec';h.textContent='物語の進み具合';box.appendChild(h);
   const ul=document.createElement('ul');ul.className='rprog';let cur=false;
@@ -9836,11 +9757,20 @@ function d3Goal(f,eve,night){const lab=d3Label().replace('鏡の海へ','鏡の�
    and at each level she picks one of three powers for the night. Here she jumps twice (the second jump in a burst of light),
    and the roofs bear her: up the slope of a tiled roof, along its ridge as a rail, from roof to roof round a block.
    Fall (the hearts gone) and she wakes back at the base with the shards she found; the base's rooms make the next night
-   easier. SAVE.flags.run marks a night out; a save made out there wakes up back at the base. ---------- */
-const RUN_AREAS=[{id:'eki',name:'駅前',x:65,z:186,r:30,hp:6},{id:'saka',name:'中央の坂',x:0,z:90,r:34,hp:8},{id:'shop',name:'商店街',x:-60,z:-20,r:38,hp:10}];
-const RUN_START=[0,150,Math.PI],RUN_DUR=300,RUN_STEP=0.5,RUN_GAP=14,RUN_CLOSE=2.6,RUN_MAX=900;
+   easier. SAVE.flags.run marks a night out; a save made out there wakes up back at the base.
+   Five places in all (the harbour and the beach too); each night three of them hold a core, and the more children are home
+   the harder the night. A place made clean is safe for a while, then the shadows creep back into it, one place at a time:
+   ring it again to stop them, or its core comes back (never the end of the night). Its records are kept on this phone only. ---------- */
+const RUN_AREAS=[{id:'eki',name:'駅前',x:61,z:186,r:30,hp:6},{id:'saka',name:'中央の坂',x:0,z:90,r:34,hp:8},{id:'shop',name:'商店街',x:-60,z:-20,r:38,hp:10},
+  {id:'port',name:'港',x:-80,z:243,r:28,hp:8},{id:'hama',name:'浜',x:40,z:243,r:28,hp:8}];
+// the children held out there; each one comes home when a night's three cores are broken
+const NEST_FREED=['（……ありがとう、おねえちゃん。やっと、海の音が聞こえる）','（まっくらだったの。……灯り、あったかいね）','（ラムネのビー玉、まだ持ってるよ。……帰れるかな）',
+  '（お祭りの太鼓が、ずっと遠くで鳴ってた。……もうすぐ、帰れる）','（坂の上から、灯台が見えた。……ありがとう）'];
+const KIDS=NEST_FREED.length;
+function D2_last(){const D=d2();D.last=SAVE.day;save();}
+const RUN_START=[0,150,Math.PI],RUN_DUR=300,RUN_SAFE=90,RUN_ERODE=45,RUN_STEP=0.5,RUN_GAP=14,RUN_CLOSE=2.6,RUN_MAX=900;
 const RUN_FOE={normal:{hp:1,sp:3.2,s:1,xp:10},fast:{hp:1,sp:5,s:0.9,xp:14},big:{hp:3,sp:2.2,s:1.6,xp:40},red:{hp:1,sp:2.8,s:1.05,xp:25}};
-const RUN={on:false,go:false,end:false,t:0,trail:[],foes:[],cores:[],fx:[],deco:[],light:100,max:100,hearts:5,inv:0,xp:0,lv:1,lvQ:0,picking:false,kills:0,
+const RUN={on:false,go:false,end:false,t:0,night:0,trail:[],foes:[],cores:[],fx:[],deco:[],light:100,max:100,hearts:5,inv:0,xp:0,lv:1,lvQ:0,picking:false,kills:0,
   spawnT:0,hudT:0,jumps:0,maxJ:1,spd:1,life:10,perk:{},auraT:0,orbs:[],core:null,halo:null,head:null,g:null};
 const runSpd=()=>RUN.go?RUN.spd:1;
 const runNeed=lv=>40+lv*35;
@@ -9890,17 +9820,20 @@ function runRibbon(m){const T=RUN.trail,pos=m.geometry.attributes.position.array
     for(let e=0;e<2;e++){col[j+e*3]=c.r*k;col[j+e*3+1]=c.g*k;col[j+e*3+2]=c.b*k;}}
   m.geometry.setDrawRange(0,Math.max(0,n-1)*6);m.geometry.attributes.position.needsUpdate=true;m.geometry.attributes.color.needsUpdate=true;}
 // the cores: a black heap with red eyes of light, breathing, smaller as it wears down
+// tonight's three places: the first night the three nearest the start, then any three of the five
+function runAreas(){if(!RUN.night)return RUN_AREAS.slice(0,3);return RUN_AREAS.slice().sort(()=>rnd()-0.5).slice(0,3);}
 function runCoreMake(A){const g=new THREE.Group(),blk=new THREE.MeshBasicMaterial({color:'#0b0b0d'}),y=G(A.x,A.z)+paveY(A.x,A.z);
   const c=new THREE.Mesh(new THREE.SphereGeometry(1.8,14,10),blk);c.position.y=1.8;g.add(c);
   for(let k=0;k<9;k++){const a=k/9*TAU,r=1.5+(k%3)*0.5,m=new THREE.Mesh(new THREE.SphereGeometry(0.55+(k%4)*0.22,10,8),blk);m.position.set(Math.cos(a)*r,0.4+(k%2)*0.4,Math.sin(a)*r);g.add(m);}
   const glows=[];for(let k=0;k<4;k++){const s=glow('#ff3020',0,0,0,k?1.2:3.6);scene.remove(s);s.visible=true;g.add(s);s.position.set(k?Math.cos(k*2)*1.3:0,k?1.1+k*0.3:2,k?Math.sin(k*2)*1.3:0);glows.push(s);}
   const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.6,1.4,40,12,1,true),new THREE.MeshBasicMaterial({color:'#7a2030',transparent:true,opacity:0.25,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
   pil.position.y=20;g.add(pil);   // a dim red column over it, seen from across the town
-  g.position.set(A.x,y,A.z);RUN.g.add(g);return{a:A,g,glows,pil,hp:A.hp,max:A.hp,done:false,spawnT:0};}
+  const hp=Math.round(A.hp*(1+0.2*RUN.night));g.position.set(A.x,y,A.z);RUN.g.add(g);return{a:A,g,glows,pil,hp,max:hp,done:false,spawnT:0,safe:0,ero:0,deco:[]};}
 function runEnter(){runBuild();runRoofs();for(const c of RUN.cores)RUN.g.remove(c.g);for(const d of RUN.deco)RUN.g.remove(d);RUN.deco.length=0;
   const lv=k=>hqLv(k);RUN.max=100+20*(lv('lamp')-1);RUN.hmax=DRONE.maxHp;
-  Object.assign(RUN,{on:true,go:false,end:false,t:0,light:RUN.max,hearts:RUN.hmax,inv:0,xp:0,lv:1,lvQ:0,picking:false,kills:0,spawnT:2,jumps:0,maxJ:1,spd:1,life:10,perk:{},auraT:0});
-  RUN.trail.length=0;runClearFoes();runOrbs();RUN.cores=RUN_AREAS.map(runCoreMake);RUN.g.visible=true;SAVE.flags.run=1;renderHUD();}
+  Object.assign(RUN,{on:true,go:false,end:false,t:0,light:RUN.max,hearts:RUN.hmax,inv:0,xp:0,lv:1,lvQ:0,picking:false,kills:0,spawnT:2,jumps:0,maxJ:1,spd:1,life:10,perk:{},auraT:0,
+    night:d2().nest||0,bigRing:0,bigHit:0});
+  RUN.trail.length=0;runClearFoes();runOrbs();RUN.cores=runAreas().map(runCoreMake);runTint();RUN.g.visible=true;SAVE.flags.run=1;renderHUD();}
 function runExit(){RUN.on=false;RUN.go=false;runClearFoes();for(const f of RUN.fx)RUN.g.remove(f.m);RUN.fx.length=0;RUN.trail.length=0;RUN.perk={};runOrbs();
   if(RUN.g)RUN.g.visible=false;if(RUN.head)RUN.head.visible=false;SAVE.flags.run=0;$('hurt').style.opacity=0;renderHUD();}
 function runClearFoes(){for(const f of RUN.foes){world.remove(f.g);f.eye.visible=false;f.aura.visible=false;MIR_POOL.push({h:f.h,eye:f.eye,aura:f.aura});}RUN.foes.length=0;}
@@ -9909,8 +9842,8 @@ function runSpot(x0,z0,r0,r1){for(let k=0;k<12;k++){const a=rnd()*TAU,r=r0+rnd()
     if(y>SEA_Y+0.3&&!hits(x,z,0.5,y+0.2)&&Math.hypot(x-P.x,z-P.z)>9)return[x,z];}return null;}
 function runAdd(kind,x,z){const F=RUN_FOE[kind],{h,eye,aura}=mirFigure(),y=G(x,z)+paveY(x,z);h.g.scale.setScalar(F.s);h.g.position.set(x,y-1.6*F.s,z);h.g.rotation.set(0,0,0);world.add(h.g);
   eye.material.color.set(kind==='big'?'#ff6020':'#ff3020');eye.scale.setScalar(0.9*F.s);aura.visible=kind==='red';if(aura.visible){aura.material.color.set('#ff2a2a');aura.scale.setScalar(2.6);}
-  const f={h,g:h.g,kind,hp:F.hp,sp:F.sp*(0.9+rnd()*0.2),up:0,gone:0,fade:0,stun:0,eye,aura};RUN.foes.push(f);return f;}
-function runSpawn(){const t=RUN.t,live=RUN.cores.filter(c=>!c.done),kind=t>150&&rnd()<0.12?'big':t>90&&rnd()<0.18?'red':t>45&&rnd()<0.25?'fast':'normal';
+  const f={h,g:h.g,kind,hp:F.hp,sp:F.sp*(0.9+rnd()*0.2)*(1+0.05*RUN.night),up:0,gone:0,fade:0,stun:0,eye,aura};RUN.foes.push(f);return f;}
+function runSpawn(){const t=RUN.t+RUN.night*15,live=RUN.cores.filter(c=>!c.done),kind=t>150&&rnd()<0.12?'big':t>90&&rnd()<0.18?'red':t>45&&rnd()<0.25?'fast':'normal';
   const c=live.length&&rnd()<0.6?live[rnd()*live.length|0]:null,at=c?runSpot(c.a.x,c.a.z,6,c.a.r):runSpot(P.x+Math.sin(P.yaw)*18,P.z+Math.cos(P.yaw)*18,0,12);
   if(!at)return;runAdd(kind,...at);if(kind==='red'&&!RUN.redSaid){RUN.redSaid=true;toast('赤い影は、光の線を切る！',true);}}
 function runPop(t,sub){TRICK.name=t;TRICK.sub=sub||'';TRICK.shown=1.8;trickHUD();}
@@ -9926,10 +9859,11 @@ function runRing(poly){let A=0,cx=0,cz=0;for(let k=0;k<poly.length;k++){const a=
   const inside=(x,z)=>{let c=false;for(let a=0,b=poly.length-1;a<poly.length;b=a++){const p=poly[a],q=poly[b];if((p.z>z)!==(q.z>z)&&x<(q.x-p.x)*(z-p.z)/(q.z-p.z)+p.x)c=!c;}return c;};
   const tier=A<80?0:A<300?1:A<900?2:3,gold=poly.some(p=>p.g)?1.5:1,size=['小','中','大','特大'][tier];let hit=0,cores=0;
   for(const f of RUN.foes){if(f.gone||f.up<0.5||!inside(f.g.position.x,f.g.position.z))continue;runHit(f,tier>=1?2:1);hit++;}
+  for(const c of RUN.cores)if(c.done&&c.ero>0&&inside(c.a.x,c.a.z)){runHold(c);cores++;runPop(`${c.a.name}の影を止めた`,'しばらくは、だいじょうぶ');}
   for(const c of RUN.cores){if(c.done||!inside(c.a.x,c.a.z))continue;const d=(tier+1)*DRONE.dmg*gold;c.hp-=d;cores++;runXP(Math.round(d*10));
     const p=c.g.position.clone();p.y+=2;sparks(p,30,'#ffe2a0',9,0.16);buzz('heavy',true);if(c.hp<=0)runPurify(c);else runPop(`影の核に ${d%1?d.toFixed(1):d} ダメージ`,`${c.a.name}　のこり ${Math.ceil(c.hp)}`);}
   if(perkN('burst')){const R=5+2*perkN('burst');for(const f of RUN.foes)if(!f.gone&&f.up>=0.5&&Math.hypot(f.g.position.x-P.x,f.g.position.z-P.z)<R){runKill(f);hit++;}runWave(P.x,P.y+0.1,P.z,'#ffe6a0',R);}
-  runXP(tier*8);
+  runXP(tier*8);RUN.bigRing=Math.max(RUN.bigRing,A);
   // the light rises from the whole ring: a wall of it along the line, and the ground inside flashes
   const ym=poly.reduce((s,p)=>s+p.y,0)/poly.length,sh=new THREE.Shape(poly.map(p=>new THREE.Vector2(p.x,-p.z)));
   const fill=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshBasicMaterial({color:'#7fc8ff',transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,side:THREE.DoubleSide,fog:false}));
@@ -9937,22 +9871,34 @@ function runRing(poly){let A=0,cx=0,cz=0;for(let k=0;k<poly.length;k++){const a=
   const wp=[],wi=[];poly.forEach((p,k)=>{wp.push(p.x,p.y-0.05,p.z,p.x,p.y+1.2,p.z);if(k){const a=(k-1)*2;wi.push(a,a+1,a+2,a+1,a+3,a+2);}});const a=(poly.length-1)*2;wi.push(a,a+1,0,a+1,1,0);
   const wg=new THREE.BufferGeometry();wg.setAttribute('position',new THREE.Float32BufferAttribute(wp,3));wg.setIndex(wi);
   const wall=new THREE.Mesh(wg,new THREE.MeshBasicMaterial({color:gold>1?'#ffe2a0':'#a8dcff',transparent:true,opacity:0.7,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));RUN.g.add(wall);RUN.fx.push({m:wall,t:0,dur:1.1,kind:'wall'});
+  RUN.bigHit=Math.max(RUN.bigHit,hit);
   if(!cores)runPop(`結界（${size}）`,hit?`${hit}体 浄化${gold>1?'　金の線':''}`:'');
   if(hit||cores)sfx.boom(0.6);buzz(hit||cores?'heavy':'light',true);renderHUD();return true;}
 // a core broken: the place comes back. Lamps light round it, the ground there takes on a warm light, and the whole town a
 // little of its colour
-function runPurify(c){c.done=true;const p=c.g.position.clone();p.y+=1.5;boom(p);for(let k=0;k<5;k++)setTimeout(()=>sparks(p.clone().add(new THREE.Vector3(rnd()*4-2,rnd()*3,rnd()*4-2)),20,'#ffe2a0',8,0.14),k*160);
+function runPurify(c){c.done=true;c.safe=RUN_SAFE;c.ero=0;const p=c.g.position.clone();p.y+=1.5;boom(p);for(let k=0;k<5;k++)setTimeout(()=>sparks(p.clone().add(new THREE.Vector3(rnd()*4-2,rnd()*3,rnd()*4-2)),20,'#ffe2a0',8,0.14),k*160);
   c.g.visible=false;runXP(80);RUN.light=RUN.max;for(const f of RUN.foes)if(!f.gone&&Math.hypot(f.g.position.x-c.a.x,f.g.position.z-c.a.z)<c.a.r)runKill(f);
   const A=c.a,ring=[],R=A.r*0.9,N=24,M=6;
   // the warm ground: a disc that follows the slope
   const pos=[],idx=[];for(let i=0;i<=M;i++)for(let j=0;j<N;j++){const r=R*i/M,a=j/N*TAU,x=A.x+Math.cos(a)*r,z=A.z+Math.sin(a)*r;pos.push(x,G(x,z)+paveY(x,z)+0.12,z);}
   for(let i=0;i<M;i++)for(let j=0;j<N;j++){const a=i*N+j,b=i*N+(j+1)%N,c2=a+N,d=b+N;idx.push(a,c2,b,b,c2,d);}
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setIndex(idx);
-  const disc=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:'#ffb860',transparent:true,opacity:0.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));RUN.g.add(disc);RUN.deco.push(disc);
-  for(let k=0;k<10;k++){const a=k/10*TAU,x=A.x+Math.cos(a)*R*0.7,z=A.z+Math.sin(a)*R*0.7,l=glow('#ffd9a0',x,G(x,z)+3.4,z,2.6);scene.remove(l);l.visible=true;RUN.g.add(l);RUN.deco.push(l);ring.push(l);}
-  const n=RUN.cores.filter(o=>o.done).length;canvas.style.filter=`saturate(${0.28+0.22*n}) sepia(${0.3-0.08*n}) hue-rotate(-12deg) brightness(1.12)`;
+  const disc=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:'#ffb860',transparent:true,opacity:0.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));disc.userData.o0=0.16;RUN.g.add(disc);RUN.deco.push(disc);c.deco.push(disc);
+  for(let k=0;k<10;k++){const a=k/10*TAU,x=A.x+Math.cos(a)*R*0.7,z=A.z+Math.sin(a)*R*0.7,l=glow('#ffd9a0',x,G(x,z)+3.4,z,2.6);scene.remove(l);l.visible=true;l.userData.o0=l.material.opacity;RUN.g.add(l);RUN.deco.push(l);c.deco.push(l);}
+  runTint();
   toast(`${A.name}を浄化した！ 色と灯りが、少しもどってきた`,true);buzz('heavy',true);
   if(RUN.cores.every(o=>o.done))setTimeout(()=>runFinish(true),1600);renderHUD();}
+// the town's colour, a little more for each place made clean
+function runTint(){const n=RUN.cores.filter(o=>o.done).length;canvas.style.filter=`saturate(${0.28+0.22*n}) sepia(${0.3-0.08*n}) hue-rotate(-12deg) brightness(1.12)`;}
+// the shadows creeping back: once a clean place has had its while, they come back into it (one place at a time). Its lamps
+// fade as they do; a ring round it stops them, and if they get all the way its core is back, half worn already
+function runErode(dt){if(RUN.cores.every(c=>c.done))return;const done=RUN.cores.filter(c=>c.done);let e=done.find(c=>c.ero>0);
+  for(const c of done)if(c!==e)c.safe-=dt;
+  if(!e){e=done.filter(c=>c.safe<=0).sort((a,b)=>a.safe-b.safe)[0];if(!e)return;e.ero=0.001;toast(`${e.a.name}に、影がもどりはじめた！ もう一度囲めば止まる`,true);buzz('heavy',true);}
+  e.ero+=dt/RUN_ERODE;for(const d of e.deco)d.material.opacity=d.userData.o0*(1-0.8*e.ero);
+  if(e.ero>=1){e.done=false;e.ero=0;e.hp=Math.ceil(e.max/2);e.g.visible=true;for(const d of e.deco){RUN.g.remove(d);RUN.deco.splice(RUN.deco.indexOf(d),1);}e.deco.length=0;
+    runTint();toast(`${e.a.name}が、影にのみこまれた。核がもどってきた`,true);buzz('heavy',true);renderHUD();}}
+function runHold(c){c.ero=0;c.safe=RUN_SAFE;for(const d of c.deco)d.material.opacity=d.userData.o0;}
 // the orbiting lights of ランタン旋回
 function runOrbs(){const n=perkN('orbit');while(RUN.orbs.length<n){const s=glow('#ffe6a0',0,0,0,1.4);scene.remove(s);s.visible=true;if(RUN.g)RUN.g.add(s);RUN.orbs.push(s);}
   while(RUN.orbs.length>n){const s=RUN.orbs.pop();if(s.parent)s.parent.remove(s);}}
@@ -9973,13 +9919,14 @@ async function runPick(){const keys=Object.keys(RUN_PERKS).filter(k=>perkN(k)<RU
   const k=keys[i]||keys[0];RUN.perk[k]=perkN(k)+1;if(RUN_PERKS[k].fn)RUN_PERKS[k].fn();RUN.lvQ--;toast(`${RUN_PERKS[k].name}を手に入れた`,false);renderHUD();}
 function runHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='裏海街の夜';const s=document.createElement('span');s.className='step';
   const left=RUN.cores.filter(c=>!c.done).map(c=>c.a.name);
-  s.textContent=!RUN.go?'……':left.length?`走ると光の線が残る。影の核（赤い柱）を線で囲んでこわせ。のこり：${left.join('・')}`:'夜明けだ';
+  const ero=RUN.cores.find(c=>c.done&&c.ero>0);
+  s.textContent=!RUN.go?'……':ero?`${ero.a.name}に影がもどってくる！ 囲んで止めろ（${Math.round(ero.ero*100)}%）`:left.length?`走ると光の線が残る。影の核（赤い柱）を線で囲んでこわせ。のこり：${left.join('・')}`:'夜明けだ';
   const m=document.createElement('span');m.className='meter';const tl=Math.max(0,Math.ceil(RUN_DUR-RUN.t)),lk=Math.round(RUN.light/RUN.max*10);
   m.textContent=`のこり ${tl/60|0}:${String(tl%60).padStart(2,'0')}　${'♥'.repeat(Math.max(0,RUN.hearts))}${'♡'.repeat(Math.max(0,RUN.hmax-RUN.hearts))}　光 ${'■'.repeat(lk)}${'□'.repeat(10-lk)}　Lv${RUN.lv}（${Math.floor(RUN.xp/runNeed(RUN.lv)*100)}%）　浄化 ${RUN.cores.filter(c=>c.done).length}/${RUN.cores.length}`;
   tr.append(b,s,m);}
 // the little map: the cores (red, gold once broken), the line, the shadows
 function runMap(toM){for(const c of RUN.cores){const [x,y]=toM(c.a.x,c.a.z),W=mapc.width,px=clamp(x,8,W-8),py=clamp(y,8,W-8);
-    mg.fillStyle=c.done?'#ffc860':'#d02838';mg.beginPath();mg.arc(px,py,c.done?5:7,0,TAU);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=1.5;mg.stroke();}
+    mg.fillStyle=c.done?(c.ero>0&&Math.sin(clock*8)>0?'#a050d0':'#ffc860'):'#d02838';mg.beginPath();mg.arc(px,py,c.done?5:7,0,TAU);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=1.5;mg.stroke();}
   mg.strokeStyle='#9fd4ff';mg.lineWidth=2;mg.beginPath();RUN.trail.forEach((p,k)=>{const [x,y]=toM(p.x,p.z);k?mg.lineTo(x,y):mg.moveTo(x,y);});mg.stroke();
   for(const f of RUN.foes){if(f.gone)continue;const [x,y]=toM(f.g.position.x,f.g.position.z);mg.fillStyle=f.kind==='red'?'#ff8070':'#ff4030';mg.beginPath();mg.arc(x,y,f.kind==='big'?3.5:2.2,0,TAU);mg.fill();}}
 // a new point on the line: does it close a ring? (near an old point, or the newest stretch crossing an old one)
@@ -10008,10 +9955,10 @@ function updateRun(dt){
     if(RUN.light>20)RUN.dry=false;
     if(P.grind)for(const p of T)if((p.ext||0)<4){p.t+=dt;p.ext=(p.ext||0)+dt;}
     while(T.length&&RUN.t-T[0].t>RUN.life)T.shift();while(T.length>RUN_MAX)T.shift();
-    RUN.spawnT-=dt;const alive=RUN.foes.filter(f=>!f.gone).length,want=Math.min(18,6+Math.floor(RUN.t/20));
+    RUN.spawnT-=dt;const alive=RUN.foes.filter(f=>!f.gone).length,want=Math.min(18+2*RUN.night,6+RUN.night+Math.floor(RUN.t/20));
     if(RUN.spawnT<=0&&alive<want){runSpawn();RUN.spawnT=0.9+rnd()*0.6;}
     if(perkN('aura')){RUN.auraT-=dt;if(RUN.auraT<=0){RUN.auraT=12;const R=6+3*perkN('aura');for(const f of RUN.foes)if(!f.gone&&f.up>=0.5&&Math.hypot(f.g.position.x-P.x,f.g.position.z-P.z)<R)runKill(f);runWave(P.x,P.y+0.1,P.z,'#ffe2a0',R);}}
-    if(RUN.t>=RUN_DUR)runFinish(false);}
+    runErode(dt);if(RUN.t>=RUN_DUR)runFinish(false);}
   runRibbon(RUN.core);runRibbon(RUN.halo);
   RUN.orbs.forEach((s,k)=>{const a=clock*2.6+k/RUN.orbs.length*TAU;s.position.set(P.x+Math.cos(a)*2.6,P.y+1,P.z+Math.sin(a)*2.6);s.material.opacity=0.85;
     if(RUN.go&&!busy)for(const f of RUN.foes)if(!f.gone&&f.up>=0.5&&Math.hypot(f.g.position.x-s.position.x,f.g.position.z-s.position.z)<1.1)runKill(f);});
@@ -10036,24 +9983,34 @@ function updateRun(dt){
 // the base, the shards kept)
 function runFinish(won){if(RUN.end)return;RUN.end=true;for(const f of RUN.foes)f.gone=1;RUN.trail.length=0;
   const D=d2(),n=RUN.cores.filter(c=>c.done).length,got=Math.floor(RUN.kills/3)+n*5+(won?10:0),i=D.nest||0;SAVE.shards=shards()+got;if(won)SAVE.money+=300+i*100;save();
-  const sum=`浄化した場所 ${n}/${RUN.cores.length}　浄化した影 ${RUN.kills}体　Lv${RUN.lv}`,dawn=!won&&RUN.hearts>0;
+  const rec=runRecord(won),sum=`浄化した場所 ${n}/${RUN.cores.length}　浄化した影 ${RUN.kills}体　Lv${RUN.lv}`,dawn=!won&&RUN.hearts>0;
   runEvent({id:'run_end',once:false,script:[['wait',1.2],
-    ['say','',won?'三つの核がくずれて、裏海街に、ほんの少し色がもどった。':dawn?'東の空が白んできた。……核は、まだ残っている。':'影の手に、のみこまれた……。',sum,`影のかけら +${got}${won?`　お礼 +${300+i*100}円`:''}`],
+    ['say','',won?'三つの核がくずれて、裏海街に、ほんの少し色がもどった。':dawn?'東の空が白んできた。……核は、まだ残っている。':'影の手に、のみこまれた……。',sum,`影のかけら +${got}${won?`　お礼 +${300+i*100}円`:''}`,...rec],
     ...(won?[['call',()=>ex1Marble(true)],['say','子どもの声',NEST_FREED[i]||NEST_FREED[0]],['call',()=>ex1Marble(false)],
       ['call',()=>{D.nest=i+1;D.last=SAVE.day;save();}],
-      ['say','tome',...(i+1>=NESTS.length?['（無線の声）……これで、閉じこめられてた子は、みんな帰ってきたよ。','でもね、ナギ。海の底のほうに、まだ大きな気配がある。……ここからが、本番さ。']:
+      ['say','tome',...(i+1>=KIDS?['（無線の声）……これで、閉じこめられてた子は、みんな帰ってきたよ。','でもね、ナギ。海の底のほうに、まだ大きな気配がある。……ここからが、本番さ。']:
         ['（無線の声）よくやった、ナギ。子どもがひとり、光のほうへ帰っていったよ。','まだ向こうには、帰れない子がいる。……今夜は帰っておいで。'])],
       ['fade','out'],['call',runExit],['ura',false],['call',()=>ex1Kurosaki(false)],['warp',...HOME],['day']]:
      [['fade','out'],['call',runExit],['ura',false],['warp',HQ_X+HQ_IN[0],HQ_IN[1],HQ_IN[2]],['call',()=>{P.foot=true;P.carry='back';padLabels();}],['fade','in'],
       ['say','tome','おかえり。……拾ってきたかけらで、施設をきたえておいき。','力がついたら、また出撃すればいい。夜は、まだ長いよ。']])]});}
+// the night's records, kept on this phone: the quickest night, the biggest ring, the most shadows in one ring and in a night
+function runRecord(won){const R=SAVE.runRec||(SAVE.runRec={}),news=[];
+  const best=(k,v,lower)=>{if(v>0&&(R[k]==null||(lower?v<R[k]:v>R[k]))){const had=R[k]!=null;R[k]=v;if(had)news.push(k);}};
+  R.nights=(R.nights||0)+1;if(won)best('fast',Math.round(RUN.t),true);best('ring',Math.round(RUN.bigRing));best('hit',RUN.bigHit);best('kills',RUN.kills);save();
+  const name={fast:`いちばん早い夜明け ${R.fast/60|0}分${R.fast%60}秒`,ring:`いちばん大きい結界 ${R.ring}㎡`,hit:`一度に浄化 ${R.hit}体`,kills:`一夜で浄化 ${R.kills}体`};
+  return news.length?['新記録！　'+news.map(k=>name[k]).join('　')]:[];}
+function runRecords(){const R=SAVE.runRec;if(!R||!R.nights)return 'まだ記録はない。';
+  return `出撃 ${R.nights}回　${R.fast!=null?`いちばん早い夜明け ${R.fast/60|0}分${R.fast%60}秒　`:''}いちばん大きい結界 ${R.ring||0}㎡　一度に浄化 ${R.hit||0}体　一夜で浄化 ${R.kills||0}体`;}
 // out from the command table
 function runScript(){const first=!SAVE.seen.run_first;SAVE.seen.run_first=1;return[
   ['fade','out'],['call',()=>{applyD2();}],['ura',true],['call',runEnter],['time',23.2,0],['warp',...RUN_START],['call',rideNow],
   ['cam',[RUN_START[0]+8,G(RUN_START[0],RUN_START[1])+4,RUN_START[1]+6],[RUN_START[0],G(RUN_START[0],RUN_START[1])+1,RUN_START[1]-8],1.2,'cut'],['fade','in'],
   ['say','tome','（無線の声）……ザザッ……聞こえるかい、ナギ。町の三つの場所に、赤い柱が立ってるだろう。あれが「影の核」さ。',
+    ...(RUN.night?[`今夜は${RUN.cores.map(c=>c.a.name).join('と')}だ。帰ってきた子がふえるほど、影も本気になってくるよ。`]:[]),
     ...(first?['核のまわりに、子どもがひとり閉じこめられてる。','スケボーで走ると、灯台の光が線になって残る。その線で核をぐるっと囲めば、核はけずれていく。大きく囲むほど、よく効くよ。',
       '線を引くと光がへる。技を決めて着地したり、手すりや屋根のてっぺんをすべったりすれば、またたまる。','この町じゃ、空中でもう一回跳べる。屋根の上も走れるよ。屋根の上から囲むのも、ありさ。',
-      '影をたおすと、力がついてくる。力がついたら、ひとつえらんで持っておいき。','三つの核をぜんぶこわせば、夜明けに子どもが帰ってくる。']:['今夜も、三つの核をこわしておいで。'])],
+      '影をたおすと、力がついてくる。力がついたら、ひとつえらんで持っておいき。','こわした場所も、しばらくすると影がもどってくる。そうなったら、もう一度囲んでおやり。',
+      '三つの核をぜんぶこわせば、夜明けに子どもが帰ってくる。']:['今夜も、三つの核をこわしておいで。'])],
   ['cam','off'],['call',()=>{RUN.go=true;RUN.lvQ=1;toast('走って、線で囲め！',true);}]];}
 
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
@@ -10410,7 +10367,7 @@ function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){c
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
   if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
-  if(MIR.on)mirHUD(tr);else if(RUN.on)runHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(BOSS.on)bossHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(sortieOn())nestHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
+  if(MIR.on)mirHUD(tr);else if(RUN.on)runHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(BOSS.on)bossHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
@@ -10423,7 +10380,7 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');l
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();
-  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||BOSS.on||DEF.on||sortieOn()||rescueOn()||URA.chase));}
+  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||BOSS.on||DEF.on||rescueOn()||URA.chase));}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
 // the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
 const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);

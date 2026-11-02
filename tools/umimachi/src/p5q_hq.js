@@ -183,8 +183,8 @@ const HQ_UP={arm:'よし、手入れは終わった。これで一発の重み�
 /* ----- the command table: out to tonight's sortie (or the last fight, or the mirror sea) ----- */
 function nightPlan(n){return{drones:Math.min(4+2*n,16),boss:n%3===0,shadows:Math.min(10+3*n,36),alive:Math.min(4+(n>>1),9),spd:0.06*n};}
 async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening'||ph==='night',done=D.last===SAVE.day,f=SAVE.flags;
-  const nests=D.nest||0,last=!!f.d2c&&!f.d2_done,sortie=!last&&!f.d2_done&&nests<NESTS.length;
-  const opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&sortie?[`裏海街へ出撃する（帰ってきた子 ${nests}/${NESTS.length}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),
+  const nests=D.nest||0,last=!!f.d2c&&!f.d2_done,sortie=!last&&!f.d2_done&&nests<KIDS;
+  const opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&sortie?[`裏海街へ出撃する（帰ってきた子 ${nests}/${KIDS}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),
     ...(!dark?['日が暮れるまで休む']:[]),'鏡の海で練習（物語は進まない）','話を聞く','やめる'];
   const msg=!dark?'やつらが動くのは、日が暮れてからだよ。':d3Tonight()?'鏡の海が、呼んでるね。':done&&!f.d2_done?'今夜は、もう十分だ。……ゆっくりお休み。':last?'今夜が、最後の戦いだよ。':sortie?'今夜も、裏海街へ行くかい？':'今夜は、静かな夜だね。';
   const i=await askP('tome',msg,opts),pick=opts[i];
@@ -192,13 +192,15 @@ async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening
   if(pick==='話を聞く'){await sayP('tome',f.d2_done?['施設をきたえても、もう戦う相手はいないけどね。……鏡の海で、すべるのは自由さ。']:[
     '施設は、お金と影のかけらで強くなる。かけらは、裏海街で影をたおすと手に入る。やられても、拾ったかけらは持って帰れるよ。',
     '武器庫は核をけずる力、鍛錬場はハート、灯りの工房は光ゲージ、通信室は援護のドローン。……どれも、出撃で効いてくる。',
-    nests<NESTS.length?`向こうに残された子は、あと${NESTS.length-nests}人。三つの核をこわせば、ひとり帰ってこられる。日が暮れたら、ここから出撃しな。`:'子どもたちは、みんな帰ってきた。……あとは、海の底の、あの大きな気配だ。']);return;}
+    '核は毎晩、町の五つの場所のうち三つに出る。こわした場所も、しばらくすると影がもどってくるから、そのときは囲みなおしておやり。',
+    nests<KIDS?`向こうに残された子は、あと${KIDS-nests}人。三つの核をこわせば、ひとり帰ってこられる。日が暮れたら、ここから出撃しな。`:'子どもたちは、みんな帰ってきた。……あとは、海の底の、あの大きな気配だ。',
+    ...(SAVE.runRec&&SAVE.runRec.nights?['これまでの記録だよ。'+runRecords()]:[])]);return;}
   if(pick==='鏡の海で練習（物語は進まない）'){await steps(mirScript());return;}
   if(pick&&pick===d3Label()&&d3Tonight()){await steps(mirScript(D3_RULE[d3n()+1]));return;}
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(runScript());return;}}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
-function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fight||BOSS.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
+function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||BOSS.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
   while(HQ.allies.length<want){const d=makeDrone();d.g.scale.setScalar(1.1);HQ.allies.push(d);toast('オーシャンゲートの援護ドローンが来た！');}
   HQ.allies.forEach((d,k)=>{d.g.visible=k<want;if(!d.g.visible)return;const sd=k?-1:1,a=P.yaw+sd*(0.55+Math.sin(clock*0.7+k)*0.15),w=new THREE.Vector3(P.x+Math.sin(a)*7,P.y+6+Math.sin(clock*2+k)*0.3,P.z+Math.cos(a)*7);
     d.g.position.lerp(w,Math.min(1,dt*3));d.g.rotation.y=a;for(const r of d.rotors)r.rotation.y+=dt*40;});
@@ -211,18 +213,16 @@ function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||NEST.fi
   else if(BOSS.on){const t=BOSS.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
     if(t&&!BOSS.striking){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;bossGain();}}
   else if(RUN.go){const t=RUN.foes.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
-    if(t&&t.g.position.distanceTo(player.g.position)<30){tracer(from,t.g.position.clone().setY(t.g.position.y+1));runKill(t);}}
-  else if(NEST.fight){const t=NEST.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
-    if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;NEST.killed++;}}}
-function hqHUD(){const D=d2();return `影のかけら ${shards()}　帰ってきた子 ${D.nest||0}/${NESTS.length}`;}
+    if(t&&t.g.position.distanceTo(player.g.position)<30){tracer(from,t.g.position.clone().setY(t.g.position.y+1));runKill(t);}}}
+function hqHUD(){const D=d2();return `影のかけら ${shards()}　帰ってきた子 ${D.nest||0}/${KIDS}`;}
 function d2Goal(f,eve,night){const D=d2(),nests=D.nest||0,dark=eve||night,tonight=dark&&D.last!==SAVE.day;
   if(!f.d2)return '町の東の山の岩の扉から、海街自警団の基地へ';
   if(f.d2c&&!f.d2_done)return tonight?(AREA==='hq'?'作戦室のばあちゃんに話して、最後の戦いへ':'基地の作戦室で、ばあちゃんに話して最後の戦いへ'):'日が暮れたら、基地の作戦室で、ばあちゃんに話して最後の戦いへ';
   if(f.d2_done)return AREA==='hq'?'施設をきたえたり、作戦室から鏡の海で練習したりできる':null;
-  if(nests>=NESTS.length)return '子どもたちは、みんな帰ってきた。家で休んで、あしたの朝を待つ';
+  if(nests>=KIDS)return '子どもたちは、みんな帰ってきた。家で休んで、あしたの朝を待つ';
   const fac=`施設の人に話すと、お金と影のかけらで出撃が楽になる（${hqHUD()}）`;
-  if(AREA==='hq')return tonight?`作戦室のばあちゃんに話して、裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`:fac+'。日が暮れたら作戦室から出撃';
-  return tonight?`基地の作戦室で、ばあちゃんに話して裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`:`日が暮れたら、基地の作戦室から裏海街へ出撃（帰ってきた子 ${nests}/${NESTS.length}）`;}
+  if(AREA==='hq')return tonight?`作戦室のばあちゃんに話して、裏海街へ出撃（帰ってきた子 ${nests}/${KIDS}）`:fac+'。日が暮れたら作戦室から出撃';
+  return tonight?`基地の作戦室で、ばあちゃんに話して裏海街へ出撃（帰ってきた子 ${nests}/${KIDS}）`:`日が暮れたら、基地の作戦室から裏海街へ出撃（帰ってきた子 ${nests}/${KIDS}）`;}
 // every frame: the hall's warm light, the keepers looking round, the levels, the allies
 function updateHQ(dt){if(SAVE.flags.ex1_done)applyD2();allyStep(dt);if(AREA!=='hq')return;hqBuild();
   scene.fog.color.set('#2a221c');scene.background.set('#2a221c');scene.fog.near=10;scene.fog.far=80;hemi.color.set('#ffe6c4');hemi.groundColor.set('#5a4a3a');hemi.intensity=0.95;sun.intensity=0.15;

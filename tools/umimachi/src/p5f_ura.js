@@ -138,7 +138,7 @@ function updateUra(dt){
   for(const m of NIGHT_MATS)m.emissiveIntensity=0;NIGHT.stars.material.opacity=0;
   for(const m of NIGHT.lamps){m.visible=Math.random()>0.08;m.material.opacity=0.55+Math.random()*0.3;}
   for(const c of CARS){c.g.visible=false;c.box.on=false;}for(const k in folkMesh)folkMesh[k].visible=false;for(const c of CATS)c.g.visible=false;
-  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id]&&!rescueOn()&&!sortieOn()&&!RUN.on;g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
+  URA_CLUES.forEach((c,k)=>{const g=uraGlints[k];g.visible=!SAVE.flags['clue_'+c.id]&&!rescueOn()&&!RUN.on;g.material.opacity=0.5+0.4*Math.sin(clock*3+k);});
   // the flashlight, held at the chest and pointing where she goes
   const F=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw));torch.intensity=torchOn?2.4:0;
   torch.position.set(P.x,P.y+1.1,P.z).addScaledVector(F,0.7);torch.target.position.set(P.x,P.y+0.4,P.z).addScaledVector(F,9);torch.target.updateMatrixWorld();
@@ -150,13 +150,13 @@ function updateUra(dt){
     const R=(8+(torchOn?6:0)+(loud?6:0))*(quiet?0.65:1);
     const fx=(b[0]-a[0])/L*s.dir,fz=(b[1]-a[1])/L*s.dir,toX=(P.x-g.position.x)/(d||1),toZ=(P.z-g.position.z)/(d||1);
     if(s.stun>0){s.stun-=dt;s.sus=0;}g.scale.set(1,s.stun>0?0.82:1,1);   // stunned by the lantern: it sags and sees nothing
-    const seen=!(s.stun>0)&&!NEST.fight&&!URA.chase&&!URA.hide&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
+    const seen=!(s.stun>0)&&!URA.chase&&!URA.hide&&!ST.run&&!DLG&&!modal&&d<R&&(fx*toX+fz*toZ>0.45||d<3);
     s.sus=clamp(s.sus+(seen?dt*(d<5?1.6:1):-dt*0.5),0,1);
     if(s.sus<0.05&&!URA.chase&&!(s.stun>0)){s.t+=s.dir*dt*1.1/L;if(s.t>1){s.t=1;s.dir=-1;}if(s.t<0){s.t=0;s.dir=1;}}   // walks its beat unless it has noticed you
     const x=lerp(a[0],b[0],s.t),z=lerp(a[1],b[1],s.t);g.position.set(x,G(x,z),z);
     g.rotation.y=s.sus>0.05?Math.atan2(P.x-x,P.z-z):Math.atan2(fx,fz);if(s.sus<0.05&&!(s.stun>0))poseHuman(s.h,'walk',dt,{rate:4.6});else poseHuman(s.h,'stand',dt,{});
     s.eye.visible=s.sus>0.02;s.eye.position.set(x,G(x,z)+1.62,z);s.eye.material.opacity=s.sus;top=Math.max(top,s.sus);}
-  URA.sus=top;if(!URA.chase&&!NEST.fight)$('hurt').style.opacity=top*0.7;
+  URA.sus=top;if(!URA.chase)$('hurt').style.opacity=top*0.7;
   if(top>=1&&!ST.run){for(const s of URA.shadows)s.sus=0;runEvent({id:'ura_caught',once:false,script:[
     ['fade','out'],['warp',...URA_START],['fade','in'],['say','','冷たい手が、肩にふれた――。','……気がつくと、トンネルの出口に立っていた。'],['say','nagi','（見つかっちゃだめだ。歩けば、足音は小さい……）']]});}
   if(URA.chase)chaseStep(dt);}
