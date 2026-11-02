@@ -553,6 +553,260 @@ class Sprites {
         Offset(head.dx + dir * r * 0.22, head.dy - r * 0.1), r * 0.06, _fill);
   }
 
+  /// 人食い草：葉の上の大きな花の口がぱくぱく開く。跳ねながら近づく
+  void sprout(Canvas canvas, Enemy e, double time, double toX, double toY) {
+    final r = e.stats.radius;
+    final flash = e.hitFlash > 0;
+    final hop = sin(time * 6 + e.x * 0.05).abs() * 4;
+    _shadowAt(canvas, e.x, e.y + r * 0.85, r * 2);
+    final leaf = flash ? _white : const Color(0xFF3E8E4E);
+    // 根元の葉
+    for (final side in const [-1.0, 1.0]) {
+      final p = Path()
+        ..moveTo(e.x, e.y + r * 0.8)
+        ..quadraticBezierTo(e.x + side * r * 1.4, e.y + r * 0.6,
+            e.x + side * r * 1.3, e.y + r * 0.05)
+        ..quadraticBezierTo(
+            e.x + side * r * 0.6, e.y + r * 0.35, e.x, e.y + r * 0.8)
+        ..close();
+      _filled(canvas, leaf, (q) => canvas.drawPath(p, q));
+    }
+    final y = e.y - hop;
+    // 茎
+    _line
+      ..color = _ink
+      ..strokeWidth = 5;
+    canvas.drawLine(
+        Offset(e.x, e.y + r * 0.7), Offset(e.x, y - r * 0.1), _line);
+    _line
+      ..color = leaf
+      ..strokeWidth = 3;
+    canvas.drawLine(
+        Offset(e.x, e.y + r * 0.7), Offset(e.x, y - r * 0.1), _line);
+    // 花びら
+    final petal = flash ? _white : const Color(0xFFF07AA0);
+    for (var i = 0; i < 5; i++) {
+      final a = -pi / 2 + i * 2 * pi / 5;
+      _filled(
+          canvas,
+          petal,
+          (q) => canvas.drawCircle(
+              Offset(e.x + cos(a) * r * 0.62, y - r * 0.55 + sin(a) * r * 0.62),
+              r * 0.48,
+              q));
+    }
+    // 口（ぱくぱく開く）
+    final open = 0.25 + 0.2 * (sin(time * 12 + e.y * 0.1) + 1) / 2;
+    final mouth = Rect.fromCenter(
+        center: Offset(e.x, y - r * 0.5),
+        width: r * 0.95,
+        height: r * open * 2);
+    _filled(canvas, flash ? _white : const Color(0xFF5A1E2A),
+        (q) => canvas.drawOval(mouth, q));
+    _fill.color = _white;
+    for (var i = 0; i < 3; i++) {
+      final tx = mouth.left + mouth.width * (0.25 + i * 0.25);
+      final tooth = Path()
+        ..moveTo(tx - r * 0.09, mouth.top + 1)
+        ..lineTo(tx, mouth.top + mouth.height * 0.45)
+        ..lineTo(tx + r * 0.09, mouth.top + 1)
+        ..close();
+      canvas.drawPath(tooth, _fill);
+    }
+    // 小さな目
+    _eyes(canvas, e.x, y - r * 1.25, r * 0.55, toX, toY,
+        spread: 0.55, size: 0.22);
+  }
+
+  /// サソリ：はさみを振り上げ、しっぽの毒針を背中の上に構える
+  void scorpion(Canvas canvas, Enemy e, double time, double toX, double toY) {
+    final r = e.stats.radius;
+    final flash = e.hitFlash > 0;
+    final dir = toX >= e.x ? 1.0 : -1.0;
+    final walk = time * 10 + e.y * 0.1;
+    _shadowAt(canvas, e.x, e.y + r * 0.6, r * 2.4);
+    final shell = flash ? _white : const Color(0xFFC77A2E);
+    final dark = flash ? _white : const Color(0xFF8E5320);
+    // 脚
+    for (var i = 0; i < 3; i++) {
+      for (final side in const [-1.0, 1.0]) {
+        final lx = e.x + dir * (i - 1) * r * 0.45;
+        final sw = sin(walk + i * 2 + (side > 0 ? pi : 0)) * r * 0.15;
+        _line
+          ..color = _ink
+          ..strokeWidth = 2.6;
+        canvas.drawLine(Offset(lx, e.y + r * 0.1),
+            Offset(lx + sw, e.y + r * 0.1 + side * r * 0.55), _line);
+      }
+    }
+    // しっぽ（体の後ろから背中の上へ）
+    final tail = Path()
+      ..moveTo(e.x - dir * r * 0.7, e.y)
+      ..quadraticBezierTo(e.x - dir * r * 1.6, e.y - r * 0.6,
+          e.x - dir * r * 0.9, e.y - r * 1.35)
+      ..quadraticBezierTo(e.x - dir * r * 0.5, e.y - r * 1.6,
+          e.x - dir * r * 0.2, e.y - r * 1.2);
+    _stroke(canvas, tail, shell, 5);
+    final sting = Path()
+      ..moveTo(e.x - dir * r * 0.25, e.y - r * 1.35)
+      ..lineTo(e.x + dir * r * 0.15, e.y - r * 1.1)
+      ..lineTo(e.x - dir * r * 0.3, e.y - r * 1.0)
+      ..close();
+    _filled(canvas, flash ? _white : const Color(0xFF5A1E2A),
+        (q) => canvas.drawPath(sting, q));
+    // 胴
+    _filled(
+        canvas,
+        shell,
+        (q) => canvas.drawOval(
+            Rect.fromCenter(
+                center: Offset(e.x, e.y), width: r * 1.9, height: r * 1.0),
+            q));
+    _fill.color = dark;
+    for (var i = -1; i <= 1; i++) {
+      canvas.drawLine(Offset(e.x + i * r * 0.4, e.y - r * 0.45),
+          Offset(e.x + i * r * 0.4, e.y + r * 0.4), _outline);
+    }
+    // はさみ
+    final snap = sin(time * 8 + e.x * 0.1) * 0.25;
+    for (final side in const [-1.0, 1.0]) {
+      final base = Offset(e.x + dir * r * 0.9, e.y + side * r * 0.25);
+      final claw = base + Offset(dir * r * 0.55, side * r * 0.25 - r * 0.15);
+      _line
+        ..color = _ink
+        ..strokeWidth = 4.5;
+      canvas.drawLine(base, claw, _line);
+      _line
+        ..color = shell
+        ..strokeWidth = 2.6;
+      canvas.drawLine(base, claw, _line);
+      canvas.save();
+      canvas.translate(claw.dx, claw.dy);
+      canvas.rotate(dir > 0 ? snap * side : pi - snap * side);
+      final pincer = Path()
+        ..moveTo(0, -r * 0.28)
+        ..quadraticBezierTo(r * 0.55, -r * 0.3, r * 0.5, -r * 0.02)
+        ..lineTo(r * 0.12, 0)
+        ..lineTo(r * 0.5, r * 0.06)
+        ..quadraticBezierTo(r * 0.5, r * 0.32, 0, r * 0.26)
+        ..close();
+      _filled(canvas, shell, (q) => canvas.drawPath(pincer, q));
+      canvas.restore();
+    }
+    // 目
+    _fill.color = _ink;
+    canvas.drawCircle(
+        Offset(e.x + dir * r * 0.65, e.y - r * 0.2), r * 0.1, _fill);
+    canvas.drawCircle(
+        Offset(e.x + dir * r * 0.65, e.y + r * 0.08), r * 0.1, _fill);
+  }
+
+  /// 黒騎士：重い鎧と盾。兜のすき間から赤い目が光る
+  void knight(Canvas canvas, Enemy e, double time, double toX, double toY) {
+    final r = e.stats.radius;
+    final flash = e.hitFlash > 0;
+    final dir = toX >= e.x ? 1.0 : -1.0;
+    final step = sin(time * 5 + e.x * 0.1);
+    _shadowAt(canvas, e.x, e.y + r * 0.95, r * 1.9);
+    final armor = flash ? _white : const Color(0xFF4E4A66);
+    final steel = flash ? _white : const Color(0xFF7C78A0);
+    // 脚
+    for (final (sx, st) in [(-0.35, step), (0.35, -step)]) {
+      _filled(
+          canvas,
+          armor,
+          (q) => canvas.drawRRect(
+              RRect.fromRectAndRadius(
+                  Rect.fromLTWH(e.x + sx * r - r * 0.2, e.y + r * 0.35 + st,
+                      r * 0.4, r * 0.55),
+                  Radius.circular(r * 0.1)),
+              q));
+    }
+    // 剣（後ろの手）
+    canvas.save();
+    canvas.translate(e.x - dir * r * 0.75, e.y);
+    canvas.rotate(dir * (0.5 + 0.1 * step));
+    _filled(
+        canvas,
+        flash ? _white : const Color(0xFFDDE6EE),
+        (q) => canvas.drawRect(
+            Rect.fromLTWH(-r * 0.09, -r * 1.5, r * 0.18, r * 1.3), q));
+    _filled(
+        canvas,
+        flash ? _white : const Color(0xFF8A5A2B),
+        (q) => canvas.drawRect(
+            Rect.fromLTWH(-r * 0.3, -r * 0.25, r * 0.6, r * 0.15), q));
+    canvas.restore();
+    // 胴
+    _filled(
+        canvas,
+        armor,
+        (q) => canvas.drawRRect(
+            RRect.fromRectAndRadius(
+                Rect.fromCenter(
+                    center: Offset(e.x, e.y + r * 0.05),
+                    width: r * 1.5,
+                    height: r * 1.0),
+                Radius.circular(r * 0.3)),
+            q));
+    _fill.color = steel;
+    canvas.drawRect(
+        Rect.fromCenter(
+            center: Offset(e.x, e.y + r * 0.05),
+            width: r * 0.2,
+            height: r * 0.8),
+        _fill);
+    // 兜と羽飾り
+    final head = Offset(e.x, e.y - r * 0.65);
+    final plume = Path()
+      ..moveTo(head.dx, head.dy - r * 0.45)
+      ..quadraticBezierTo(head.dx - dir * r * 0.9, head.dy - r * 1.2,
+          head.dx - dir * r * 1.1, head.dy - r * 0.4)
+      ..quadraticBezierTo(head.dx - dir * r * 0.5, head.dy - r * 0.7, head.dx,
+          head.dy - r * 0.3)
+      ..close();
+    _filled(canvas, flash ? _white : const Color(0xFFB0303A),
+        (q) => canvas.drawPath(plume, q));
+    _filled(
+        canvas,
+        steel,
+        (q) => canvas.drawRRect(
+            RRect.fromRectAndCorners(
+                Rect.fromCenter(center: head, width: r * 1.15, height: r * 1.0),
+                topLeft: Radius.circular(r * 0.55),
+                topRight: Radius.circular(r * 0.55),
+                bottomLeft: Radius.circular(r * 0.15),
+                bottomRight: Radius.circular(r * 0.15)),
+            q));
+    _fill.color = _ink;
+    canvas.drawRect(
+        Rect.fromCenter(
+            center: head.translate(dir * r * 0.08, r * 0.02),
+            width: r * 0.85,
+            height: r * 0.18),
+        _fill);
+    _fill.color = flash ? _white : const Color(0xFFFF4A3D);
+    canvas.drawCircle(
+        head.translate(dir * r * 0.05 - r * 0.17, r * 0.02), r * 0.07, _fill);
+    canvas.drawCircle(
+        head.translate(dir * r * 0.05 + r * 0.17, r * 0.02), r * 0.07, _fill);
+    // 盾（前の手）
+    final shield = Path()
+      ..moveTo(e.x + dir * r * 0.55, e.y - r * 0.35)
+      ..lineTo(e.x + dir * r * 1.15, e.y - r * 0.35)
+      ..lineTo(e.x + dir * r * 1.15, e.y + r * 0.2)
+      ..quadraticBezierTo(e.x + dir * r * 1.1, e.y + r * 0.65,
+          e.x + dir * r * 0.85, e.y + r * 0.75)
+      ..quadraticBezierTo(e.x + dir * r * 0.6, e.y + r * 0.65,
+          e.x + dir * r * 0.55, e.y + r * 0.2)
+      ..close();
+    _filled(canvas, flash ? _white : const Color(0xFF6A3A8E),
+        (q) => canvas.drawPath(shield, q));
+    _fill.color = flash ? _white : const Color(0xFFFFD45E);
+    canvas.drawCircle(
+        Offset(e.x + dir * r * 0.85, e.y + r * 0.1), r * 0.12, _fill);
+  }
+
   void _stroke(Canvas canvas, Path path, Color color, double width) {
     _line
       ..style = PaintingStyle.stroke

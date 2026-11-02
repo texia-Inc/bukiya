@@ -4,6 +4,7 @@ import 'loadout.dart';
 import 'run_result.dart';
 import 'skills.dart';
 import 'stage.dart';
+import 'talents.dart';
 
 part 'sim_bosses.dart';
 part 'sim_field.dart';
@@ -20,6 +21,9 @@ enum EnemyKind {
   ghost,
   imp,
   wolf,
+  sprout,
+  scorpion,
+  knight,
   ogre,
   kingSlime
 }
@@ -59,6 +63,12 @@ const Map<EnemyKind, EnemyStats> enemyStats = {
       hp: 30, speed: 66, damage: 8, radius: 10, xp: 2, materialChance: 0.1),
   EnemyKind.wolf: EnemyStats(
       hp: 32, speed: 86, damage: 8, radius: 13, xp: 3, materialChance: 0.12),
+  EnemyKind.sprout: EnemyStats(
+      hp: 22, speed: 48, damage: 7, radius: 11, xp: 2, materialChance: 0.08),
+  EnemyKind.scorpion: EnemyStats(
+      hp: 50, speed: 62, damage: 11, radius: 14, xp: 4, materialChance: 0.15),
+  EnemyKind.knight: EnemyStats(
+      hp: 120, speed: 40, damage: 15, radius: 15, xp: 6, materialChance: 0.2),
   EnemyKind.ogre: EnemyStats(
       hp: 650,
       speed: 60,
@@ -254,11 +264,15 @@ class RunConfig {
   final int maxEnemies;
   final StageDef stage;
 
+  /// 才能（ずっと残る強化）
+  final Talents talents;
+
   const RunConfig({
+    this.talents = const Talents(),
     this.runLength = 300,
     this.gateTimes = const [90, 180, 270],
     this.gateDuration = 25,
-    this.maxEnemies = 350,
+    this.maxEnemies = 500,
     this.stage = forestStage,
   });
 }
@@ -350,7 +364,9 @@ class RunSimulation {
     required this.loadout,
     this.config = const RunConfig(),
     int? seed,
-  }) : rng = Random(seed);
+  }) : rng = Random(seed) {
+    maxHp = hp = 100 + config.talents.bonusHp;
+  }
 
   StageDef get stage => config.stage;
 
@@ -383,9 +399,15 @@ class RunSimulation {
 
   // ---- 数値（スキル反映後） ----
 
-  double get moveSpeed => 140 * (1 + 0.1 * skills.level(SkillId.moveSpeed));
-  double get pickupRadius => 50.0 + 28 * skills.level(SkillId.magnet);
-  double get xpMultiplier => 1 + 0.15 * skills.level(SkillId.wisdom);
+  double get moveSpeed =>
+      140 *
+      (1 + 0.1 * skills.level(SkillId.moveSpeed)) *
+      config.talents.moveMultiplier;
+  double get pickupRadius =>
+      (50.0 + 28 * skills.level(SkillId.magnet)) *
+      config.talents.pickupMultiplier;
+  double get xpMultiplier =>
+      (1 + 0.15 * skills.level(SkillId.wisdom)) * config.talents.xpMultiplier;
 
   // ---- 入力 ----
 
@@ -498,6 +520,7 @@ class RunSimulation {
 
   void _hurtPlayer(double amount) {
     if (invulnerable > 0 || phase != RunPhase.playing) return;
+    amount *= config.talents.damageTaken;
     hp -= amount;
     invulnerable = 0.6;
     _emit(RunEvent(RunEventType.playerHurt, px, py, amount: amount));
@@ -561,18 +584,19 @@ class RunSimulation {
 
   void _spawnEnemies(double dt) {
     // ボス戦（檻の中）の間は雑魚が湧かない
-    final rate = (1.4 + time / 40) *
+    final rate = (2.1 + time / 27) *
         (horde ? 2.5 : 1) *
         (arena != null ? 0 : 1) *
         // 細い通路では同じ数でも混み合うので減らす
-        (stage.corridorHalfWidth != null ? 0.6 : 1);
+        (stage.corridorHalfWidth != null ? 0.45 : 1);
     _spawnAcc += rate * dt;
     while (_spawnAcc >= 1) {
       _spawnAcc -= 1;
       if (enemies.length >= config.maxEnemies) continue;
       final (x, y) = _spawnPoint();
       final kind = _pickEnemyKind();
-      final hpScale = (1 + time / 150) * stage.hpScale;
+      // 数を多めに出すぶん、1体ずつは少し打たれ弱い
+      final hpScale = (1 + time / 150) * stage.hpScale * 0.75;
       enemies.add(Enemy(kind, x, y, enemyStats[kind]!.hp * hpScale));
     }
   }
@@ -676,6 +700,7 @@ class RunSimulation {
 
   void _damage(Enemy e, double amount, CarriedWeapon weapon,
       {required double knockFromX, required double knockFromY}) {
+    amount *= config.talents.damageMultiplier;
     e.hp -= amount;
     _emit(RunEvent(RunEventType.hit, e.x, e.y,
         amount: amount, weapon: weapon.type));
@@ -727,7 +752,9 @@ class RunSimulation {
           rng.nextDouble() < 0.3 ? MaterialKind.manaStone : MaterialKind.fang,
         EnemyKind.skeleton => MaterialKind.bone,
         EnemyKind.ghost || EnemyKind.imp => MaterialKind.manaStone,
-        EnemyKind.wolf => MaterialKind.fang,
+        EnemyKind.wolf || EnemyKind.scorpion => MaterialKind.fang,
+        EnemyKind.sprout => MaterialKind.manaStone,
+        EnemyKind.knight => MaterialKind.ironOre,
         EnemyKind.ogre || EnemyKind.kingSlime => MaterialKind.bossCore,
       };
 
@@ -739,6 +766,9 @@ class RunSimulation {
         EnemyKind.ghost => 0xFFCFE8FF,
         EnemyKind.imp => 0xFFFF7A3D,
         EnemyKind.wolf => 0xFFB8C4D0,
+        EnemyKind.sprout => 0xFF8BD06B,
+        EnemyKind.scorpion => 0xFFD9963E,
+        EnemyKind.knight => 0xFF8A86A8,
         EnemyKind.ogre => 0xFFC98B6B,
       };
 

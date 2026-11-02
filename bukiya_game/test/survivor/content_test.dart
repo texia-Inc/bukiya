@@ -153,9 +153,9 @@ void main() {
       expect(kinds.difference({EnemyKind.slime, EnemyKind.bat}), isEmpty);
     });
 
-    test('ステージは5つあり、番号順で、名前と出る敵が重ならない', () {
-      expect(allStages.length, 5);
-      expect(allStages.map((s) => s.number), [1, 2, 3, 4, 5]);
+    test('ステージは8つあり、番号順で、名前と出る敵が重ならない', () {
+      expect(allStages.length, 8);
+      expect(allStages.map((s) => s.number), [1, 2, 3, 4, 5, 6, 7, 8]);
       expect(allStages.map((s) => s.id).toSet().length, allStages.length);
       for (final st in allStages) {
         // 大群は時刻順
@@ -164,21 +164,31 @@ void main() {
       }
     });
 
-    test('火山には火の小鬼、雪原には雪狼が出る', () {
+    test('後半のステージには、それぞれの新しい敵が出る', () {
       for (final (stage, kind) in [
         (volcanoStage, EnemyKind.imp),
         (snowfieldStage, EnemyKind.wolf),
+        (farmStage, EnemyKind.sprout),
+        (desertStage, EnemyKind.scorpion),
+        (castleStage, EnemyKind.knight),
       ]) {
         final sim = RunSimulation(
             loadout: const [], config: RunConfig(stage: stage), seed: 5);
         sim.hp = sim.maxHp = 1e9;
-        _step(sim, 30);
-        expect(sim.enemies.map((e) => e.kind), contains(kind));
+        _step(sim, 45);
+        expect(sim.enemies.map((e) => e.kind), contains(kind),
+            reason: stage.id);
       }
     });
 
     test('新しい敵も倒すと素材を落とすことがある', () {
-      for (final kind in [EnemyKind.imp, EnemyKind.wolf]) {
+      for (final kind in [
+        EnemyKind.imp,
+        EnemyKind.wolf,
+        EnemyKind.sprout,
+        EnemyKind.scorpion,
+        EnemyKind.knight,
+      ]) {
         final sim =
             RunSimulation(loadout: [_w(CarriedWeaponType.sword)], seed: 1);
         for (var i = 0; i < 80; i++) {
