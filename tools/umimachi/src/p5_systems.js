@@ -188,7 +188,7 @@ function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){c
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
   if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
-  if(MIR.on)mirHUD(tr);else if(RUN.on)runHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(BOSS.on)bossHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(sortieOn())nestHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
+  if(MIR.on)mirHUD(tr);else if(RUN.on)runHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(GNT.on)giantHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
@@ -201,7 +201,7 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');l
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();
-  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||BOSS.on||DEF.on||sortieOn()||rescueOn()||URA.chase));}
+  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||GNT.on||DEF.on||rescueOn()||URA.chase));}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
 // the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
 const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);
@@ -521,14 +521,14 @@ function stepPlayer(dt){
   P.turn+=(I.turn-P.turn)*Math.min(1,8*dt);
   P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
   const nx=P.x+F[0]*P.v*dt,nz=P.z+F[1]*P.v*dt,R=0.3;
-  let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
+  let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz)&&!(GNT.on&&P.air);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
   const c=ok&&!hits(P.x,P.z,R,P.y)&&hits(nx,nz,R,P.y);   // already inside something (a tram stopping on her, a gate coming down): she can always get out
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
   // at the edge of the open water she slides round along it (by the heading after this frame's turn, so steering in gets her off it)
   if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){const ox=dx/l,oz=P.z/l,fx=Math.sin(P.yaw),fz=Math.cos(P.yaw),d=fx*ox+fz*oz;P.x=MIR_X+ox*MIR_R;P.z=oz*MIR_R;if(d>0){const tx=fx-ox*d,tz=fz-oz*d;P.yaw=Math.hypot(tx,tz)>0.15?Math.atan2(tx,tz):Math.atan2(-oz,ox);}}}
-  else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
+  else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,GNT.on?PIER.z1+70:PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&P.air&&!busy&&!onFoot&&runJump())jumpQ=false;   // in 裏海街's nights out, a second jump in the air
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}if(P.man){P.man=null;$('manBar').hidden=true;}}jumpQ=false;
@@ -618,6 +618,8 @@ function updateCamera(dt){
   else if(lookBack()){want=p.clone().addScaledVector(F,-0.45);want.y+=1.55;look=p.clone().addScaledVector(F,-20);look.y+=1.2;rate=0;}   // her eyes turned back: from just behind her head, down the way she came (her body stays out of the picture)
   // out on a night in 裏海街 the camera rides farther back, so the rings are in view
   else{const rk=RUN.go?1.6:1,back=(3.3+P.v*0.12)*rk,up=(1.45+P.v*0.035)*rk*1.2;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
+    // in the last fight the camera stands off outside the ring of rails and turns partway to the master, so it stays in view
+    if(GNT.on&&!ST.run){const C=gntC(),ox=P.x-C.x,oz=P.z-C.z,ol=Math.hypot(ox,oz)||1;want.x+=ox/ol*6;want.z+=oz/ol*6;want.y+=2.5;look.lerp(new THREE.Vector3(C.x,BOSS.y+40,C.z),0.3);}
     // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
     const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
     // on this side of the walls. How far the camera can get from her head toward a spot before a wall stops it (0…1; pressed
