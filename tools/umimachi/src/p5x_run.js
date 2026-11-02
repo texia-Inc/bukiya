@@ -80,17 +80,17 @@ function runCoreMake(A){const g=new THREE.Group(),blk=new THREE.MeshBasicMateria
   const pil=new THREE.Mesh(new THREE.CylinderGeometry(0.6,1.4,40,12,1,true),new THREE.MeshBasicMaterial({color:'#7a2030',transparent:true,opacity:0.25,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
   pil.position.y=20;g.add(pil);   // a dim red column over it, seen from across the town
   const hp=Math.round(A.hp*(1+0.2*RUN.night));g.position.set(A.x,y,A.z);RUN.g.add(g);return{a:A,g,glows,pil,hp,max:hp,done:false,spawnT:0,safe:0,ero:0,deco:[]};}
-function runEnter(){runBuild();runRoofs();for(const c of RUN.cores)RUN.g.remove(c.g);for(const d of RUN.deco)RUN.g.remove(d);RUN.deco.length=0;
+function runEnter(mode){runBuild();runRoofs();for(const c of RUN.cores)RUN.g.remove(c.g);for(const d of RUN.deco)RUN.g.remove(d);RUN.deco.length=0;
   const lv=k=>hqLv(k);RUN.max=100+20*(lv('lamp')-1);RUN.hmax=DRONE.maxHp;
   Object.assign(RUN,{on:true,go:false,end:false,t:0,light:RUN.max,hearts:RUN.hmax,inv:0,xp:0,lv:1,lvQ:0,picking:false,kills:0,spawnT:2,jumps:0,maxJ:1,spd:1,life:10,perk:{},auraT:0,
-    night:d2().nest||0,bigRing:0,bigHit:0});
-  RUN.trail.length=0;runClearFoes();runOrbs();RUN.cores=runAreas().map(runCoreMake);runTint();RUN.g.visible=true;SAVE.flags.run=1;renderHUD();}
-function runExit(){RUN.on=false;RUN.go=false;runClearFoes();for(const f of RUN.fx)RUN.g.remove(f.m);RUN.fx.length=0;RUN.trail.length=0;RUN.perk={};runOrbs();
+    night:d2().nest||0,bigRing:0,bigHit:0,mode:mode||'core'});
+  RUN.trail.length=0;runClearFoes();runOrbs();RUN.cores=RUN.mode==='jin'?[]:runAreas().map(runCoreMake);runTint();if(RUN.mode==='jin')jinEnter();RUN.g.visible=true;SAVE.flags.run=1;renderHUD();}
+function runExit(){if(RUN.mode==='jin')jinExit();RUN.on=false;RUN.go=false;runClearFoes();for(const f of RUN.fx)RUN.g.remove(f.m);RUN.fx.length=0;RUN.trail.length=0;RUN.perk={};runOrbs();
   if(RUN.g)RUN.g.visible=false;if(RUN.head)RUN.head.visible=false;SAVE.flags.run=0;$('hurt').style.opacity=0;renderHUD();}
 function runClearFoes(){for(const f of RUN.foes){world.remove(f.g);f.eye.visible=false;f.aura.visible=false;MIR_POOL.push({h:f.h,eye:f.eye,aura:f.aura});}RUN.foes.length=0;}
 // somewhere open near (x, z): on the ground, out of the sea, not inside a building
 function runSpot(x0,z0,r0,r1){for(let k=0;k<12;k++){const a=rnd()*TAU,r=r0+rnd()*(r1-r0),x=clamp(x0+Math.cos(a)*r,-225,225),z=clamp(z0+Math.sin(a)*r,-200,COAST_Z+3),y=G(x,z);
-    if(y>SEA_Y+0.3&&!hits(x,z,0.5,y+0.2)&&Math.hypot(x-P.x,z-P.z)>9)return[x,z];}return null;}
+    if(y>SEA_Y+0.3&&!hits(x,z,0.5,y+0.2)&&Math.hypot(x-P.x,z-P.z)>9&&!(RUN.mode==='jin'&&jinOwn(x,z)))return[x,z];}return null;}
 function runAdd(kind,x,z){const F=RUN_FOE[kind],{h,eye,aura}=mirFigure(),y=G(x,z)+paveY(x,z);h.g.scale.setScalar(F.s);h.g.position.set(x,y-1.6*F.s,z);h.g.rotation.set(0,0,0);world.add(h.g);
   eye.material.color.set(kind==='big'?'#ff6020':'#ff3020');eye.scale.setScalar(0.9*F.s);aura.visible=kind==='red';if(aura.visible){aura.material.color.set('#ff2a2a');aura.scale.setScalar(2.6);}
   const f={h,g:h.g,kind,hp:F.hp,sp:F.sp*(0.9+rnd()*0.2)*(1+0.05*RUN.night),up:0,gone:0,fade:0,stun:0,eye,aura};RUN.foes.push(f);return f;}
@@ -168,7 +168,7 @@ async function runPick(){const keys=Object.keys(RUN_PERKS).filter(k=>perkN(k)<RU
   if(!keys.length){RUN.lvQ=0;return;}
   const i=await askP('',RUN.lv<=1&&!RUN.t?'最初の力を、ひとつえらぶ':`レベル ${RUN.lv - RUN.lvQ + 1}！ 力をひとつえらぶ`,keys.map(k=>`${RUN_PERKS[k].name}${perkN(k)?` ${perkN(k)+1}`:''}　—　${RUN_PERKS[k].info}`));
   const k=keys[i]||keys[0];RUN.perk[k]=perkN(k)+1;if(RUN_PERKS[k].fn)RUN_PERKS[k].fn();RUN.lvQ--;toast(`${RUN_PERKS[k].name}を手に入れた`,false);renderHUD();}
-function runHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='裏海街の夜';const s=document.createElement('span');s.className='step';
+function runHUD(tr){if(RUN.mode==='jin'){jinHUD(tr);return;}tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='裏海街の夜';const s=document.createElement('span');s.className='step';
   const left=RUN.cores.filter(c=>!c.done).map(c=>c.a.name);
   const ero=RUN.cores.find(c=>c.done&&c.ero>0);
   s.textContent=!RUN.go?'……':ero?`${ero.a.name}に影がもどってくる！ 囲んで止めろ（${Math.round(ero.ero*100)}%）`:left.length?`走ると光の線が残る。影の核（赤い柱）を線で囲んでこわせ。のこり：${left.join('・')}`:'夜明けだ';
@@ -176,14 +176,14 @@ function runHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createEleme
   m.textContent=`のこり ${tl/60|0}:${String(tl%60).padStart(2,'0')}　${'♥'.repeat(Math.max(0,RUN.hearts))}${'♡'.repeat(Math.max(0,RUN.hmax-RUN.hearts))}　光 ${'■'.repeat(lk)}${'□'.repeat(10-lk)}　Lv${RUN.lv}（${Math.floor(RUN.xp/runNeed(RUN.lv)*100)}%）　浄化 ${RUN.cores.filter(c=>c.done).length}/${RUN.cores.length}`;
   tr.append(b,s,m);}
 // the little map: the cores (red, gold once broken), the line, the shadows
-function runMap(toM){for(const c of RUN.cores){const [x,y]=toM(c.a.x,c.a.z),W=mapc.width,px=clamp(x,8,W-8),py=clamp(y,8,W-8);
+function runMap(toM){if(RUN.mode==='jin')jinMap(toM);for(const c of RUN.cores){const [x,y]=toM(c.a.x,c.a.z),W=mapc.width,px=clamp(x,8,W-8),py=clamp(y,8,W-8);
     mg.fillStyle=c.done?(c.ero>0&&Math.sin(clock*8)>0?'#a050d0':'#ffc860'):'#d02838';mg.beginPath();mg.arc(px,py,c.done?5:7,0,TAU);mg.fill();mg.strokeStyle='#fff';mg.lineWidth=1.5;mg.stroke();}
   mg.strokeStyle='#9fd4ff';mg.lineWidth=2;mg.beginPath();RUN.trail.forEach((p,k)=>{const [x,y]=toM(p.x,p.z);k?mg.lineTo(x,y):mg.moveTo(x,y);});mg.stroke();
   for(const f of RUN.foes){if(f.gone)continue;const [x,y]=toM(f.g.position.x,f.g.position.z);mg.fillStyle=f.kind==='red'?'#ff8070':'#ff4030';mg.beginPath();mg.arc(x,y,f.kind==='big'?3.5:2.2,0,TAU);mg.fill();}}
 // a new point on the line: does it close a ring? (near an old point, or the newest stretch crossing an old one)
 function runClose(){const T=RUN.trail,n=T.length-1,p=T[n],o=T[n-1];if(n<RUN_GAP)return;
   for(let i=0;i<=n-RUN_GAP;i++){if(Math.hypot(T[i].x-p.x,T[i].z-p.z)<RUN_CLOSE||(i<n-RUN_GAP&&mirCross(o,p,T[i],T[i+1]))){if(runRing(T.slice(i)))T.splice(0,n);return;}}}
-function runHurt(f){if(RUN.inv>0||trickSafe())return;RUN.inv=1.3;RUN.hearts--;buzz('heavy',true);P.v*=0.4;
+function runHurt(f){if(RUN.inv>0||trickSafe()||RUN.mode==='jin'&&jinOwn(P.x,P.z))return;RUN.inv=1.3;RUN.hearts--;buzz('heavy',true);P.v*=0.4;
   if(f.kind==='big'){const kx=P.x-f.g.position.x,kz=P.z-f.g.position.z,kl=Math.hypot(kx,kz)||1;P.x+=kx/kl*2;P.z+=kz/kl*2;f.stun=0.8;}else f.gone=1;
   renderHUD();if(RUN.hearts<=0){runFinish(false);return;}toast('冷たい手が、ふれた！');}
 function updateRun(dt){
@@ -194,18 +194,20 @@ function updateRun(dt){
     if(k>=1){RUN.g.remove(f.m);f.m.geometry.dispose();f.m.material.dispose();RUN.fx.splice(RUN.fx.indexOf(f),1);}}
   for(const c of RUN.cores){if(c.done)continue;const k=c.hp/c.max;c.g.scale.setScalar(0.6+0.4*k+Math.sin(clock*3)*0.04);c.glows.forEach((s,j)=>{s.material.opacity=(0.6+0.4*Math.sin(clock*(4+j)+j))*(0.4+0.6*k);});c.pil.material.opacity=0.18+0.08*Math.sin(clock*2);}
   if(RUN.head){RUN.head.visible=RUN.go&&!P.foot;RUN.head.position.set(P.x,P.y+0.3,P.z);}
-  if(RUN.go&&!busy&&!RUN.end&&RUN.lvQ>0&&!RUN.picking&&!ST.run){RUN.picking=true;runPick().then(()=>{RUN.picking=false;});}
+  if(RUN.go&&!busy&&!RUN.end&&RUN.lvQ>0&&!RUN.picking&&!ST.run&&RUN.mode!=='jin'){RUN.picking=true;runPick().then(()=>{RUN.picking=false;});}
   if(RUN.go&&!busy&&!RUN.end){RUN.t+=dt;RUN.inv-=dt;if(!P.air)RUN.jumps=0;
+    // in the 陣取り night the line is her way out of her own ground and back (p5z_jin.js)
+    const T=RUN.trail;if(RUN.mode==='jin')jinStep(dt);else{
     // the light: back a little while she rides, more on a rail or in a manual
     const gm=perkN('grind')?2:1;if(!P.foot&&!P.air)RUN.light+=dt*(P.grind?12*gm:P.man?8*gm:2.5);RUN.light=Math.min(RUN.max,RUN.light);
     // the line: a point every half metre while she rides and has light (in the air too); the old end fading away
-    const T=RUN.trail,l=T[T.length-1];
+    const l=T[T.length-1];
     if(!P.foot&&RUN.light>0&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>RUN_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;
       T.push({x:P.x,y:P.y+0.08,z:P.z,t:RUN.t,g:P.grind||P.man||P.air&&(P.trick||TRICK.bank>0)?1:0});RUN.light=Math.max(0,RUN.light-0.25);runClose();
       if(RUN.light<=0&&!RUN.dry){RUN.dry=true;toast('光が切れた！ 技を決めるか、手すりをすべって光をためろ',true);}}
     if(RUN.light>20)RUN.dry=false;
     if(P.grind)for(const p of T)if((p.ext||0)<4){p.t+=dt;p.ext=(p.ext||0)+dt;}
-    while(T.length&&RUN.t-T[0].t>RUN.life)T.shift();while(T.length>RUN_MAX)T.shift();
+    while(T.length&&RUN.t-T[0].t>RUN.life)T.shift();while(T.length>RUN_MAX)T.shift();}
     RUN.spawnT-=dt;const alive=RUN.foes.filter(f=>!f.gone).length,want=Math.min(18+2*RUN.night,6+RUN.night+Math.floor(RUN.t/20));
     if(RUN.spawnT<=0&&alive<want){runSpawn();RUN.spawnT=0.9+rnd()*0.6;}
     if(perkN('aura')){RUN.auraT-=dt;if(RUN.auraT<=0){RUN.auraT=12;const R=6+3*perkN('aura');for(const f of RUN.foes)if(!f.gone&&f.up>=0.5&&Math.hypot(f.g.position.x-P.x,f.g.position.z-P.z)<R)runKill(f);runWave(P.x,P.y+0.1,P.z,'#ffe2a0',R);}}
@@ -221,9 +223,9 @@ function updateRun(dt){
     if(f.up<1){f.up=Math.min(1,f.up+dt*0.8);p.y=lerp(gy-1.6*S,gy,f.up);poseHuman(f.h,'stand',dt,{});}
     else if(f.stun>0){p.y=gy;poseHuman(f.h,'stand',dt,{});}
     else if(!busy&&!RUN.end&&RUN.go){let dx=P.x-p.x,dz=P.z-p.z;const d=Math.hypot(dx,dz)||1;dx/=d;dz/=d;
-      if(f.kind==='red'){const T=RUN.trail;for(let j=T.length-1;j>=0;j--)if(Math.hypot(T[j].x-p.x,T[j].z-p.z)<0.9&&Math.abs(T[j].y-gy)<2){T.splice(0,j+1);sparks(new THREE.Vector3(p.x,gy+0.2,p.z),10,'#ff6a5a',4,0.08);break;}}
+      if(f.kind==='red'){const T=RUN.trail;for(let j=T.length-1;j>=0;j--)if(Math.hypot(T[j].x-p.x,T[j].z-p.z)<0.9&&Math.abs(T[j].y-gy)<2){if(RUN.mode==='jin')jinCut();else T.splice(0,j+1);sparks(new THREE.Vector3(p.x,gy+0.2,p.z),10,'#ff6a5a',4,0.08);break;}}
       for(const o of RUN.foes)if(o!==f&&!o.gone){const ex=p.x-o.g.position.x,ez=p.z-o.g.position.z,e=Math.hypot(ex,ez);if(e<1.4&&e>0){dx+=ex/e*0.6;dz+=ez/e*0.6;}}
-      const m=Math.hypot(dx,dz)||1;p.x+=dx/m*f.sp*dt;p.z+=dz/m*f.sp*dt;p.y=G(p.x,p.z)+paveY(p.x,p.z);f.g.rotation.y=Math.atan2(P.x-p.x,P.z-p.z);poseHuman(f.h,'walk',dt,{rate:3.8});
+      const m=Math.hypot(dx,dz)||1,ox=p.x,oz=p.z;p.x+=dx/m*f.sp*dt;p.z+=dz/m*f.sp*dt;if(RUN.mode==='jin'&&jinOwn(p.x,p.z)){p.x=ox;p.z=oz;}p.y=G(p.x,p.z)+paveY(p.x,p.z);f.g.rotation.y=Math.atan2(P.x-p.x,P.z-p.z);poseHuman(f.h,'walk',dt,{rate:3.8});
       // a touch: only from the same height (up on a roof she is out of their reach)
       if(d<0.75+0.35*S&&Math.abs(P.y-p.y)<1.6){if(fast)runKill(f);else runHurt(f);}}
     f.eye.visible=true;f.eye.position.set(p.x,p.y+1.62*S,p.z);f.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);
@@ -232,7 +234,7 @@ function updateRun(dt){
   RUN.hudT-=dt;if(RUN.hudT<=0){RUN.hudT=0.25;renderHUD();}}
 // the end of the night: all three broken (a child comes home, and it is morning), or dawn first, or the hearts gone (back to
 // the base, the shards kept)
-function runFinish(won){if(RUN.end)return;RUN.end=true;for(const f of RUN.foes)f.gone=1;RUN.trail.length=0;
+function runFinish(won){if(RUN.end)return;if(RUN.mode==='jin'){jinFinish();return;}RUN.end=true;for(const f of RUN.foes)f.gone=1;RUN.trail.length=0;
   const D=d2(),n=RUN.cores.filter(c=>c.done).length,got=Math.floor(RUN.kills/3)+n*5+(won?10:0),i=D.nest||0;SAVE.shards=shards()+got;if(won)SAVE.money+=300+i*100;save();
   const rec=runRecord(won),sum=`浄化した場所 ${n}/${RUN.cores.length}　浄化した影 ${RUN.kills}体　Lv${RUN.lv}`,dawn=!won&&RUN.hearts>0;
   runEvent({id:'run_end',once:false,script:[['wait',1.2],
