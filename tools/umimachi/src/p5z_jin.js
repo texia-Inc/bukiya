@@ -6,7 +6,7 @@
    the hearts, the roofs, the second jump), RUN.mode 'jin'; the ground is a grid of 2 m cells. Here the town keeps its colours
    (no grey over the whole picture): the shadow's ground is darkened, hers is clear with a warm edge, and so on the little map. ---------- */
 const JX0=-200,JZ0=-200,JS=2,JW=200,JH=224;
-const JIN={own:null,land:null,total:0,mine:0,tex:null,mesh:null,map:null,lx:0,lz:0,cut:false,said:false};
+const JIN={own:null,land:null,total:0,mine:0,tex:null,mesh:null,map:null,lx:0,lz:0,cut:false,said:false,graze:null};
 const jinCell=(x,z)=>{const cx=Math.floor((x-JX0)/JS),cz=Math.floor((z-JZ0)/JS);return cx<0||cz<0||cx>=JW||cz>=JH?-1:cz*JW+cx;};
 const jinOwn=(x,z)=>{const i=jinCell(x,z);return i>=0&&JIN.own[i]===1;};
 // the grid, the land in it (not the sea), and the shade over the ground: a mesh lying on the ground every 4 m
@@ -70,10 +70,25 @@ function jinFinish(){RUN.end=true;for(const f of RUN.foes)f.gone=1;RUN.trail.len
   runEvent({id:'jin_end',once:false,script:[['wait',1.2],
     ['say','',RUN.hearts>0?'東の空が白んできた。':'影の手に、のみこまれた……。',`取り戻した町 ${pct.toFixed(1)}%　浄化した影 ${RUN.kills}体`,`影のかけら +${got}${best?'　新記録！':''}　（いちばん広かった夜 ${R.best}%）`],
     ['fade','out'],['call',runExit],['ura',false],['warp',HQ_X+HQ_IN[0],HQ_IN[1],HQ_IN[2]],['call',()=>{P.foot=true;P.carry='back';padLabels();}],['fade','in']]});}
+// riding in 陣取り: the board keeps its speed, the small things in the street let her through (a spark as she brushes them),
+// and a building turns her along its wall instead of stopping her
+const JIN_CRUISE=8,JIN_SOFT=new Set(['prop','pole','vend','tree','stop','npc','car','post','kei','van','truck']);
+const jinRide=()=>RUN.on&&RUN.mode==='jin'&&RUN.go&&!RUN.end;
+function jinAlong(to,dt){const d=Math.atan2(Math.sin(to-P.yaw),Math.cos(to-P.yaw));P.yaw+=clamp(d,-6*dt,6*dt);}
+function jinSlide(hx,hz,nx,nz,F,dt){
+  const al=!hx?Math.abs(F[0]):!hz?Math.abs(F[1]):0;if(al<0.5&&P.v>6&&P.bump<0.1)P.bump=0.2;
+  if(!hx){P.x=nx;jinAlong(F[0]>=0?Math.PI/2:-Math.PI/2,dt);}
+  else if(!hz){P.z=nz;jinAlong(F[1]>=0?0:Math.PI,dt);}
+  else{let best=null;for(const sd of [1,-1]){const y=P.yaw+sd*Math.PI/2;if(!hits(P.x+Math.sin(y)*0.8,P.z+Math.cos(y)*0.8,0.3,P.y,JIN_SOFT)){best=y;break;}}
+    jinAlong(best==null?P.yaw+Math.PI:best,dt*1.5);}
+  P.v*=1-Math.min(0.5,dt*1.4*(1-al));}
+function jinGraze(R){let hit=null;for(const c of COLL)if(c.on&&JIN_SOFT.has(c.tag)&&c.top>P.y+STEP&&P.x+R>c.x0&&P.x-R<c.x1&&P.z+R>c.z0&&P.z-R<c.z1){hit=c;break;}
+  if(hit&&hit!==JIN.graze){sparks(new THREE.Vector3(P.x,P.y+0.6,P.z),6,'#ffe2a0',3,0.06);P.bump=Math.max(P.bump,0.12);buzz('light');}JIN.graze=hit;}
 // out from the command table
 function jinScript(){return[
   ['fade','out'],['call',()=>{applyD2();}],['ura',true],['call',()=>runEnter('jin')],['time',23.2,0],['warp',...RUN_START],['call',rideNow],['fade','in'],
   ['say','tome','（無線の声）……聞こえるかい、ナギ。今夜は、町を取りもどす夜だよ。','足もとの、あったかい光のところが、あんたの土地だ。そこには影は入ってこられない。',
     '土地から出ると、光の線がのびる。ぐるっと回って土地にもどれば、線で囲んだところが、ぜんぶあんたの土地になる。','大きく回るほど、たくさん取りもどせる。でも、外にいるあいだに赤い影に線を切られたら、やりなおしだ。',
+    '今夜のボードは止まらずにすべりつづける。小さな物はすりぬけて、建物にあたっても壁にそって曲がるよ。止まりたいときは、うしろだ。',
     '屋根の上も、二段ジャンプも使えるよ。夜明けまでに、どれだけ取りもどせるかね。'],
   ['call',()=>{RUN.go=true;toast('土地から出て、ぐるっと回ってもどれ！',true);}]];}

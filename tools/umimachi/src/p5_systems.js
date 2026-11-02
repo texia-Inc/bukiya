@@ -466,7 +466,7 @@ function inputs(){let fwd=!!(keys.KeyW||keys.ArrowUp),back=!!(keys.KeyS||keys.Ar
    if(Math.abs(stick.x)>0.15)turn=clamp(stick.x*1.4,-1,1);}
   return{fwd,back,turn};}
 const STEP=0.45;
-function hits(x,z,r,y){for(const c of COLL){if(!c.on||c.top<=y+STEP||c.tag==='step')continue;   /* steps never stop you: you rise onto them one at a time */if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
+function hits(x,z,r,y,soft){for(const c of COLL){if(!c.on||c.top<=y+STEP||c.tag==='step'||soft&&soft.has(c.tag))continue;   /* steps never stop you: you rise onto them one at a time */if(x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1)return c;}return null;}
 // the highest surface under you that you are above: ground, a wall top, a crate, a car roof
 function groundAt(x,z,y){let g=G(x,z)+paveY(x,z);for(const c of COLL){if(!c.on||c.top>y+STEP||c.top<=g)continue;if(x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;}return RUN.on?Math.max(g,runRoof(x,z,y)):g;}
 // on the board now, with no hop-on (also when an event puts her straight on it)
@@ -518,14 +518,16 @@ function stepPlayer(dt){
   P.push=P.kickT>=0;
   P.brake=I.back&&!onFoot&&!P.man;if(P.brake&&!P.air)a-=P.v>0.2?4.2:0;if(P.man)a-=0.3;
   P.v=clamp(P.v+a*dt,0,16*runSpd());if(Math.abs(P.v)<0.04&&!I.fwd)P.v=0;
+  const jin=!onFoot&&jinRide(),soft=jin?JIN_SOFT:null;if(jin&&!P.brake&&!P.man)P.v=Math.max(P.v,JIN_CRUISE);   // in 陣取り the board never runs down
   P.turn+=(I.turn-P.turn)*Math.min(1,8*dt);
   P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
   const nx=P.x+F[0]*P.v*dt,nz=P.z+F[1]*P.v*dt,R=0.3;
   let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz)&&!(GNT.on&&P.air);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
-  const c=ok&&!hits(P.x,P.z,R,P.y)&&hits(nx,nz,R,P.y);   // already inside something (a tram stopping on her, a gate coming down): she can always get out
-  if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
-    if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
+  const c=ok&&!hits(P.x,P.z,R,P.y,soft)&&hits(nx,nz,R,P.y,soft);   // already inside something (a tram stopping on her, a gate coming down): she can always get out
+  if(c){const hx=hits(nx,P.z,R,P.y,soft),hz=hits(P.x,nz,R,P.y,soft);
+    if(jin)jinSlide(hx,hz,nx,nz,F,dt);else if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
+  if(jin)jinGraze(R);
   // at the edge of the open water she slides round along it (by the heading after this frame's turn, so steering in gets her off it)
   if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){const ox=dx/l,oz=P.z/l,fx=Math.sin(P.yaw),fz=Math.cos(P.yaw),d=fx*ox+fz*oz;P.x=MIR_X+ox*MIR_R;P.z=oz*MIR_R;if(d>0){const tx=fx-ox*d,tz=fz-oz*d;P.yaw=Math.hypot(tx,tz)>0.15?Math.atan2(tx,tz):Math.atan2(-oz,ox);}}}
   else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,GNT.on?PIER.z1+70:PIER.z1);}
