@@ -84,8 +84,9 @@ class SurvivorGame extends FlameGame {
     }
 
     final view = camera.visibleWorldRect;
-    sim.spawnDistance =
-        sqrt(view.width * view.width + view.height * view.height) / 2 + 40;
+    // 地面を縦に縮めて描くので、縦は縮めた分だけ広く映る
+    final h = view.height / WorldRenderer.tilt;
+    sim.spawnDistance = sqrt(view.width * view.width + h * h) / 2 + 40;
     sim.update(dt);
     fx.handle(sim);
     fx.update(dt);

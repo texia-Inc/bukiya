@@ -7,6 +7,7 @@ import 'package:flutter/painting.dart' show FontWeight, Shadow, TextStyle;
 import '../domain/run_result.dart';
 import '../domain/loadout.dart';
 import '../domain/run_simulation.dart';
+import 'props.dart';
 import 'run_fx.dart';
 import 'sprites.dart';
 import 'survivor_game.dart';
@@ -20,6 +21,8 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   WorldRenderer(this.sim, this.fx);
 
   final Sprites _sprites = Sprites();
+  final PropPainter _props = PropPainter();
+  final List<Prop> _visibleProps = [];
 
   final Paint _fill = Paint();
   final Paint _stroke = Paint()
@@ -72,37 +75,75 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     ..lineTo(0, 1)
     ..lineTo(-0.7, 0)
     ..close();
+  static final Path _grassTuft = Path()
+    ..moveTo(-6, 0)
+    ..lineTo(-5, -7)
+    ..lineTo(-2.5, 0)
+    ..moveTo(-2, 0)
+    ..lineTo(0, -10)
+    ..lineTo(2, 0)
+    ..moveTo(2.5, 0)
+    ..lineTo(5.5, -6)
+    ..lineTo(6, 0)
+    ..close();
   static final Path _fangPath = Path()
     ..moveTo(-5, -5)
     ..lineTo(5, -5)
     ..lineTo(0, 7)
     ..close();
 
+  /// 斜めから見下ろしているように、地面を縦に縮める割合。
+  /// URL に ?flat=1 を付けると真上から見た描き方に戻る（重さの比較用）
+  static final double tilt =
+      Uri.base.queryParameters['flat'] == '1' ? 1.0 : 0.72;
+
   /// 画面外のものは描かない
   late Rect _cull;
 
   @override
   void render(Canvas canvas) {
-    final view = game.camera.visibleWorldRect;
+    final screenView = game.camera.visibleWorldRect;
+    // 地面を縦に縮めると、同じ画面に縦長のワールドが映る
+    final cy = screenView.center.dy;
+    final view = Rect.fromLTRB(
+        screenView.left,
+        cy + (screenView.top - cy) / tilt,
+        screenView.right,
+        cy + (screenView.bottom - cy) / tilt);
     _cull = view.inflate(40);
+    canvas.save();
+    canvas.translate(0, cy);
+    canvas.scale(1, tilt);
+    canvas.translate(0, -cy);
     _drawGround(canvas, view);
     _drawCorridorWalls(canvas, view);
     _drawArenaShade(canvas, view);
     _drawGate(canvas);
-    _drawPickups(canvas);
     _drawBossTelegraphs(canvas);
-    _drawEnemies(canvas);
-    _drawArenaFence(canvas);
     _drawBlasts(canvas);
     _drawArrows(canvas);
     _drawThrusts(canvas);
-    _drawPlayer(canvas);
+    _drawPickups(canvas);
+    _drawArenaFence(canvas, front: false);
+    _collectProps(view);
+    _drawActors(canvas);
+    _drawArenaFence(canvas, front: true);
     _drawFireballs(canvas);
     _drawBossShots(canvas);
     _drawParticles(canvas);
     _drawNumbers(canvas);
     _drawGateArrow(canvas, view);
-    _drawFlashes(canvas, view);
+    canvas.restore();
+    _drawFlashes(canvas, screenView);
+  }
+
+  /// 地面は縮めたまま、キャラや物は立った姿で描く（縦の縮みを打ち消す）
+  void _upright(Canvas canvas, double x, double y) {
+    canvas.save();
+    if (tilt == 1) return;
+    canvas.translate(x, y);
+    canvas.scale(1, 1 / tilt);
+    canvas.translate(-x, -y);
   }
 
   void _drawNumbers(Canvas canvas) {
@@ -115,7 +156,7 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
               ? 1 - (t - 0.75) / 0.25
               : 1.0;
       if (scale <= 0) continue;
-      final y = n.y - 34 * (1 - pow(1 - t, 2));
+      final rise = 34 * (1 - pow(1 - t, 2));
       final paint = n.big
           ? _bigNumber
           : switch (n.weapon) {
@@ -124,8 +165,8 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
               CarriedWeaponType.staff => _staffNumber,
               _ => _swordNumber,
             };
-      canvas.save();
-      canvas.translate(n.x, y);
+      _upright(canvas, n.x, n.y);
+      canvas.translate(n.x, n.y - rise);
       canvas.scale(scale);
       paint.render(canvas, n.text, Vector2.zero(), anchor: Anchor.center);
       canvas.restore();
@@ -169,9 +210,17 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           // 草むら
           _fill.color = Color(sim.stage.grassColor);
           final gx = tx * tile + (h % 37) + 10, gy = ty * tile + (h % 29) + 14;
-          canvas.drawCircle(Offset(gx, gy), 3, _fill);
-          canvas.drawCircle(Offset(gx + 5, gy + 2), 2.5, _fill);
-          canvas.drawCircle(Offset(gx - 4, gy + 3), 2, _fill);
+          if (tilt == 1) {
+            canvas.drawCircle(Offset(gx, gy), 3, _fill);
+            canvas.drawCircle(Offset(gx + 5, gy + 2), 2.5, _fill);
+            canvas.drawCircle(Offset(gx - 4, gy + 3), 2, _fill);
+          } else {
+            // 地面から生えた草の葉
+            _upright(canvas, gx, gy);
+            canvas.translate(gx, gy);
+            canvas.drawPath(_grassTuft, _fill);
+            canvas.restore();
+          }
         } else if (h % 11 == 0) {
           // 小石
           _fill.color = Color(sim.stage.stoneColor);
@@ -205,9 +254,22 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
         ..lineTo(edge + side * 600, (y1 + 1) * step)
         ..lineTo(edge + side * 600, y0 * step)
         ..close();
+      if (tilt != 1) {
+        // 崖の高さ：ふちの下に影を落とし、崖の上面は少し持ち上げて描く
+        _fill.color = const Color(0x55000000);
+        canvas.drawRect(
+            Rect.fromLTRB(min(edge, edge - side * 26), y0 * step,
+                max(edge, edge - side * 26), (y1 + 1) * step),
+            _fill);
+        _fill.color = const Color(0xFF5E4A30);
+        canvas.drawPath(path, _fill);
+        canvas.save();
+        canvas.translate(0, -14 / tilt);
+      }
       _fill.color = const Color(0xFF8A6E48);
       canvas.drawPath(path, _fill);
       canvas.drawPath(path, _outline);
+      if (tilt != 1) canvas.restore();
       // 岩の模様
       _fill.color = const Color(0xFF6E5638);
       for (var i = y0; i <= y1; i += 2) {
@@ -234,15 +296,19 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     canvas.drawRect(Rect.fromLTRB(a.right, a.top, v.right, a.bottom), _fill);
   }
 
-  /// ボス戦の檻の柵。現れるときに地面からせり上がる
-  void _drawArenaFence(Canvas canvas) {
+  /// ボス戦の檻の柵。現れるときに地面からせり上がる。
+  /// 奥の辺はキャラより先に、手前の辺はキャラの後に描いて、立体的に重ねる
+  void _drawArenaFence(Canvas canvas, {required bool front}) {
     final a = sim.arena;
     if (a == null) return;
     final rise = ((sim.time - a.closedAt) / 0.4).clamp(0.0, 1.0);
     const gap = 22.0;
-    final height = 18 * rise;
+    final height = (tilt == 1 ? 18 : 24) * rise;
+    // 横木の高さ（縮んだ地面の上で、立った杭の中ほどに合わせる）
+    final railY = height * 0.5 / tilt;
     void post(double x, double y) {
       if (!_cull.contains(Offset(x, y))) return;
+      _upright(canvas, x, y);
       final r = RRect.fromRectAndCorners(
           Rect.fromLTWH(x - 3.5, y - height, 7, height + 2),
           topLeft: const Radius.circular(3.5),
@@ -250,28 +316,40 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       _fill.color = const Color(0xFF8A5A2B);
       canvas.drawRRect(r, _fill);
       canvas.drawRRect(r, _outline);
+      canvas.restore();
     }
 
-    // 横木
-    final rail = Rect.fromLTRB(
-        a.left, a.top - height * 0.5, a.right, a.bottom - height * 0.5);
-    _stroke
-      ..color = const Color(0xFF1A1A1A)
-      ..strokeWidth = 5;
-    canvas.drawRect(rail, _stroke);
-    _stroke
-      ..color = const Color(0xFFB07A42)
-      ..strokeWidth = 2.5;
-    canvas.drawRect(rail, _stroke);
-    _stroke.strokeWidth = 2;
-    // 杭
-    for (var x = a.left; x <= a.right + 0.1; x += gap) {
-      post(x, a.top);
-      post(x, a.bottom);
+    void rail(Offset p1, Offset p2) {
+      final o = Offset(0, -railY);
+      _stroke
+        ..color = const Color(0xFF1A1A1A)
+        ..strokeWidth = 5;
+      canvas.drawLine(p1 + o, p2 + o, _stroke);
+      _stroke
+        ..color = const Color(0xFFB07A42)
+        ..strokeWidth = 2.5;
+      canvas.drawLine(p1 + o, p2 + o, _stroke);
+      _stroke.strokeWidth = 2;
     }
-    for (var y = a.top + gap; y < a.bottom - 0.1; y += gap) {
-      post(a.left, y);
-      post(a.right, y);
+
+    final tl = Offset(a.left, a.top), tr = Offset(a.right, a.top);
+    final bl = Offset(a.left, a.bottom), br = Offset(a.right, a.bottom);
+    if (!front) {
+      rail(tl, tr);
+      rail(tl, bl);
+      rail(tr, br);
+      for (var x = a.left; x <= a.right + 0.1; x += gap) {
+        post(x, a.top);
+      }
+      for (var y = a.top + gap; y < a.bottom - 0.1; y += gap) {
+        post(a.left, y);
+        post(a.right, y);
+      }
+    } else {
+      rail(bl, br);
+      for (var x = a.left; x <= a.right + 0.1; x += gap) {
+        post(x, a.bottom);
+      }
     }
   }
 
@@ -291,8 +369,10 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       ..strokeWidth = 3;
     canvas.drawCircle(c, RunSimulation.gateRadius, _stroke);
     _stroke.strokeWidth = 2;
+    _upright(canvas, g.x, g.y);
     _gateLabel.render(canvas, '帰還', Vector2(g.x, g.y - 40),
         anchor: Anchor.center);
+    canvas.restore();
   }
 
   void _drawGateArrow(Canvas canvas, Rect view) {
@@ -312,9 +392,17 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   void _drawPickups(Canvas canvas) {
     for (final p in sim.pickups) {
       if (!_cull.contains(Offset(p.x, p.y))) continue;
+      _upright(canvas, p.x, p.y);
+      _drawPickup(canvas, p);
+      canvas.restore();
+    }
+  }
+
+  void _drawPickup(Canvas canvas, Pickup p) {
+    {
       if (p.kind == PickupKind.chest) {
         _sprites.chest(canvas, p.x, p.y, sim.time);
-        continue;
+        return;
       }
       final m = p.material;
       if (m == null) {
@@ -322,7 +410,7 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
         final big = p.xp >= 5;
         _diamond(canvas, p.x, p.y, big ? 7 : 5,
             big ? const Color(0xFF6BE08A) : const Color(0xFF5EC8FF));
-        continue;
+        return;
       }
       switch (m) {
         case MaterialKind.ironOre:
@@ -375,13 +463,67 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     canvas.restore();
   }
 
-  void _drawEnemies(Canvas canvas) {
-    // 奥（画面の上）にいる敵から描いて、手前の敵が上に重なるようにする
+  /// 敵とプレイヤー。奥（画面の上）にいるものから描いて、手前が上に重なるようにする
+  void _drawActors(Canvas canvas) {
     final visible = [
       for (final e in sim.enemies)
         if (e.isBoss || _cull.contains(Offset(e.x, e.y))) e
     ]..sort((a, b) => a.y.compareTo(b.y));
+    var playerDrawn = false;
+    var next = 0;
+    final props = _visibleProps;
+    void propsUpTo(double y) {
+      while (next < props.length && props[next].y <= y) {
+        final p = props[next++];
+        _upright(canvas, p.x, p.y);
+        _props.paint(canvas, p);
+        canvas.restore();
+      }
+    }
+
     for (final e in visible) {
+      if (!playerDrawn && e.y > sim.py) {
+        propsUpTo(sim.py);
+        _drawPlayer(canvas);
+        playerDrawn = true;
+      }
+      propsUpTo(e.y);
+      _upright(canvas, e.x, e.y);
+      _drawEnemy(canvas, e);
+      canvas.restore();
+    }
+    if (!playerDrawn) {
+      propsUpTo(sim.py);
+      _drawPlayer(canvas);
+    }
+    propsUpTo(double.infinity);
+  }
+
+  /// 画面に入る区画ごとに、決まった場所へ小物を置く（同じ場所にはいつも同じ物）
+  void _collectProps(Rect view) {
+    _visibleProps.clear();
+    if (tilt == 1) return;
+    const cell = 110.0;
+    final kinds = propKindsFor(sim.stage.id);
+    final c = sim.stage.corridorHalfWidth;
+    final x0 = (view.left / cell).floor() - 1, x1 = (view.right / cell).ceil();
+    final y0 = (view.top / cell).floor() - 1, y1 = (view.bottom / cell).ceil();
+    for (var cx = x0; cx <= x1; cx++) {
+      for (var cy = y0; cy <= y1; cy++) {
+        final h = _hash(cx * 3 + 1, cy * 5 + 2);
+        if (h % 3 != 0) continue;
+        final x = cx * cell + (h % 83) + 12, y = cy * cell + (h % 71) + 20;
+        if (c != null && x.abs() > c - 24) continue;
+        if (!_cull.contains(Offset(x, y))) continue;
+        _visibleProps
+            .add(Prop(kinds[(h ~/ 7) % kinds.length], x, y, (h % 100) / 100));
+      }
+    }
+    _visibleProps.sort((a, b) => a.y.compareTo(b.y));
+  }
+
+  void _drawEnemy(Canvas canvas, Enemy e) {
+    {
       switch (e.kind) {
         case EnemyKind.slime:
           _sprites.slime(canvas, e, sim.time, sim.px, sim.py);
@@ -504,7 +646,7 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
               width: r * 1.8,
               height: r * 0.6),
           _fill);
-      canvas.save();
+      _upright(canvas, s.x, s.y);
       canvas.translate(s.x, s.y);
       switch (s.kind) {
         case BossShotKind.rock:
@@ -579,12 +721,14 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     for (final f in sim.fireballs) {
       if (!_cull.contains(Offset(f.x, f.y))) continue;
       final flick = 1 + 0.15 * sin(sim.time * 40 + f.x);
+      _upright(canvas, f.x, f.y);
       _fill.color = const Color(0x55FF8A3D);
       canvas.drawCircle(Offset(f.x, f.y), 11 * flick, _fill);
       _fill.color = const Color(0xFFFF6A2B);
       canvas.drawCircle(Offset(f.x, f.y), 6.5 * flick, _fill);
       _fill.color = const Color(0xFFFFE08A);
       canvas.drawCircle(Offset(f.x, f.y), 3.2, _fill);
+      canvas.restore();
     }
   }
 
@@ -620,6 +764,12 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     final facing = atan2(sim.facingY, sim.facingX);
 
     if (sim.sword != null) _drawSword(canvas, c, facing);
+    _upright(canvas, sim.px, sim.py);
+    _drawPlayerBody(canvas);
+    canvas.restore();
+  }
+
+  void _drawPlayerBody(Canvas canvas) {
     if (sim.bow != null) {
       // 背中に背負った弓（向きと反対側に見える）
       final side = sim.facingX >= 0 ? -1.0 : 1.0;
