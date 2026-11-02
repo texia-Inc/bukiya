@@ -138,7 +138,7 @@ function mirAdd(kind,x,z){const F=MIR_FOE[kind],{h,eye,aura}=mirFigure();h.g.sca
 function mirSwarm(n){const [cx,cz]=mirWhere(1.6,22,28);for(let k=0;k<n;k++)mirAdd('swarm',cx+(rnd()-0.5)*6,cz+(rnd()-0.5)*6);toast('影の群れが来る！ 大きく囲め',true);sfx.notice&&sfx.notice();}
 function mirPop(t){TRICK.name=t;TRICK.sub='';TRICK.shown=1.8;trickHUD();}
 // a jump with a trick in it, or a rail: up there the cold hands cannot reach her
-const mirSafe=trickSafe;
+const mirSafe=()=>trickSafe()||MST.on&&P.air&&P.y>3;   // (falling from the master, the shadows below cannot reach her)
 // a big trick landed: a ring of light goes out from her board, throwing the shadows near her back and stunning them
 function mirWave(){const R=7;
   for(const f of MIR.foes){if(f.gone||f.up<1)continue;const p=f.g.position,dx=p.x-P.x,dz=p.z-P.z,d=Math.hypot(dx,dz)||1;if(d>R)continue;
@@ -147,7 +147,7 @@ function mirWave(){const R=7;
   const w=new THREE.Mesh(new THREE.RingGeometry(0.8,1,48),new THREE.MeshBasicMaterial({color:'#bfe6ff',transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
   w.rotation.x=-Math.PI/2;w.position.set(P.x,mirG(P.x,P.z)+0.08,P.z);MIR.g.add(w);MIR.fx.push({m:w,t:0,dur:0.5,kind:'wave'});buzz('heavy',true);TRICK.sub='影をはじき飛ばした！';TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();}
 // a jump landed (trickLand): its tricks take seconds off the marble's wait; a fall puts one back on
-function mirTrickLand(clean,b){if(!clean){MIR.mcd=Math.max(MIR.mcd,0)+1;renderHUD();return;}
+function mirTrickLand(clean,b){if(!clean){MIR.mcd=Math.max(MIR.mcd,0)+1;renderHUD();return;}mstTrick(b);
   if(b>0)MIR.inv=Math.max(MIR.inv,0.5);if(b>=3)mirWave();   // a moment's grace to land in, and a big one knocks them back
   if(b<=0||MIR.mcd<=0)return;MIR.mcd=Math.max(0,MIR.mcd-b);TRICK.sub=(TRICK.sub?TRICK.sub+'　':'')+(MIR.mcd>0?`ビー玉 −${b}秒`:`ビー玉 −${b}秒　投げられる！`);TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
 // the ring closed: the points from i on make its edge
