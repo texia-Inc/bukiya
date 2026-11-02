@@ -60,7 +60,8 @@ class _SurvivorScreenState extends State<SurvivorScreen> {
     SfxBackend.unlock();
     final stage = _profile.stage;
     final sim = RunSimulation(
-        loadout: _profile.loadout, config: RunConfig(stage: stage));
+        loadout: _profile.loadout,
+        config: RunConfig(stage: stage, talents: _profile.talents));
     sim.onLevelUp = (_) => setState(() {});
     sim.onEnd = (result) {
       _profile.applyResult(result, stage);

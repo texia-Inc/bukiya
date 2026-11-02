@@ -13,6 +13,12 @@ enum PropKind {
   lavaRock,
   pine,
   iceCrystal,
+  pumpkin,
+  cabbage,
+  cactus,
+  ruinPillar,
+  brokenPillar,
+  skullPile,
 }
 
 class Prop {
@@ -32,6 +38,9 @@ List<PropKind> propKindsFor(String stageId) => switch (stageId) {
       'canyon' => const [PropKind.boulder, PropKind.shrub],
       'volcano' => const [PropKind.lavaRock, PropKind.lavaRock, PropKind.shrub],
       'snowfield' => const [PropKind.pine, PropKind.iceCrystal, PropKind.pine],
+      'farm' => const [PropKind.pumpkin, PropKind.cabbage, PropKind.pumpkin],
+      'desert' => const [PropKind.cactus, PropKind.ruinPillar, PropKind.shrub],
+      'castle' => const [PropKind.brokenPillar, PropKind.skullPile],
       _ => const [PropKind.bush, PropKind.stump, PropKind.bush],
     };
 
@@ -195,6 +204,108 @@ class PropPainter {
             Offset(x + 4 * s, y - 14 * s),
             _outline..color = const Color(0xBBFFFFFF));
         _outline.color = const Color(0xFF1A1A1A);
+      case PropKind.pumpkin:
+        final w = 22 * s, h = 15 * s;
+        for (final (dx, ww) in [(-0.28, 0.5), (0.28, 0.5), (0.0, 0.56)]) {
+          _both(
+              (q) => canvas.drawOval(
+                  Rect.fromCenter(
+                      center: Offset(x + dx * w, y - h / 2),
+                      width: w * ww,
+                      height: h),
+                  q),
+              const Color(0xFFE8892E));
+        }
+        _both(
+            (q) => canvas.drawRect(
+                Rect.fromLTWH(x - 1.5 * s, y - h - 5 * s, 3 * s, 6 * s), q),
+            const Color(0xFF4A6A2A));
+        _fill.color = const Color(0x55FFFFFF);
+        canvas.drawOval(
+            Rect.fromLTWH(x - w * 0.3, y - h * 0.85, w * 0.18, h * 0.3), _fill);
+      case PropKind.cabbage:
+        for (final (dx, dy, r) in const [
+          (-5.0, -5.0, 6.5),
+          (5.0, -5.0, 6.5),
+          (0.0, -9.0, 7.0),
+        ]) {
+          _both(
+              (q) =>
+                  canvas.drawCircle(Offset(x + dx * s, y + dy * s), r * s, q),
+              const Color(0xFF8CC46A));
+        }
+        _outline.strokeWidth = 1;
+        canvas.drawLine(Offset(x, y - 15 * s), Offset(x, y - 4 * s), _outline);
+        _outline.strokeWidth = 1.6;
+      case PropKind.cactus:
+        const green = Color(0xFF4E9A5A);
+        _both(
+            (q) => canvas.drawRRect(
+                RRect.fromRectAndRadius(
+                    Rect.fromLTWH(x - 4 * s, y - 26 * s, 8 * s, 26 * s),
+                    Radius.circular(4 * s)),
+                q),
+            green);
+        for (final side in const [-1.0, 1.0]) {
+          final ax = x + side * 9 * s, top = y - (side > 0 ? 20 : 16) * s;
+          _both(
+              (q) => canvas.drawRRect(
+                  RRect.fromRectAndRadius(
+                      Rect.fromLTWH(ax - 2.5 * s, top, 5 * s, 9 * s),
+                      Radius.circular(2.5 * s)),
+                  q),
+              green);
+          _both(
+              (q) => canvas.drawRect(
+                  Rect.fromLTWH(min(ax, x), top + 6 * s, (ax - x).abs(), 4 * s),
+                  q),
+              green);
+        }
+      case PropKind.ruinPillar:
+        final h = (14 + 14 * p.v) * s, w = 10 * s;
+        _both((q) => canvas.drawRect(Rect.fromLTWH(x - w / 2, y - h, w, h), q),
+            const Color(0xFFD9C08A));
+        _both(
+            (q) => canvas.drawRect(
+                Rect.fromLTWH(x - w * 0.7, y - h - 3 * s, w * 1.4, 3 * s), q),
+            const Color(0xFFC9AE76));
+        _outline.strokeWidth = 1;
+        canvas.drawLine(
+            Offset(x - w * 0.15, y - h + 2), Offset(x - w * 0.15, y), _outline);
+        canvas.drawLine(
+            Offset(x + w * 0.2, y - h + 2), Offset(x + w * 0.2, y), _outline);
+        _outline.strokeWidth = 1.6;
+      case PropKind.brokenPillar:
+        final h = (12 + 16 * p.v) * s, w = 11 * s;
+        final top = Path()
+          ..moveTo(x - w / 2, y)
+          ..lineTo(x - w / 2, y - h)
+          ..lineTo(x - w * 0.1, y - h + 4 * s)
+          ..lineTo(x + w * 0.2, y - h - 3 * s)
+          ..lineTo(x + w / 2, y - h + 2 * s)
+          ..lineTo(x + w / 2, y)
+          ..close();
+        _both((q) => canvas.drawPath(top, q), const Color(0xFF6A6280));
+        _fill.color = const Color(0xFF8A82A0);
+        canvas.drawRect(
+            Rect.fromLTWH(x - w / 2 + 1, y - h + 5 * s, 3 * s, h - 6 * s),
+            _fill);
+        // 足元の瓦礫
+        _both(
+            (q) => canvas.drawCircle(Offset(x + w * 0.8, y - 2 * s), 3 * s, q),
+            const Color(0xFF5A5470));
+      case PropKind.skullPile:
+        for (final (dx, dy) in const [
+          (-5.0, -3.0),
+          (5.0, -3.0),
+          (0.0, -10.0)
+        ]) {
+          final c = Offset(x + dx * s, y + dy * s);
+          _both((q) => canvas.drawCircle(c, 5 * s, q), const Color(0xFFEDE6D6));
+          _fill.color = const Color(0xFF1A1A1A);
+          canvas.drawCircle(c.translate(-1.8 * s, -0.5 * s), 1.2 * s, _fill);
+          canvas.drawCircle(c.translate(1.8 * s, -0.5 * s), 1.2 * s, _fill);
+        }
       case PropKind.shrub:
         _outline.strokeWidth = 2.2;
         _outline.color = const Color(0xFF6B5A3A);

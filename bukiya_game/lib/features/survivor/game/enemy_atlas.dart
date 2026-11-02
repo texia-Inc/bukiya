@@ -29,6 +29,9 @@ class EnemyAtlas {
     EnemyKind.ghost: (2 * 2 * pi / 9, 12),
     EnemyKind.imp: (2 * pi / 7, 16),
     EnemyKind.wolf: (2 * pi / 14, 8),
+    EnemyKind.sprout: (2 * pi / 6, 8),
+    EnemyKind.scorpion: (2 * pi / 10, 8),
+    EnemyKind.knight: (2 * pi / 5, 8),
   };
 
   static bool supports(EnemyKind kind) => _loops.containsKey(kind);
@@ -89,6 +92,12 @@ class EnemyAtlas {
         s.imp(c, e, t, toX, toY);
       case EnemyKind.wolf:
         s.wolf(c, e, t, toX, toY);
+      case EnemyKind.sprout:
+        s.sprout(c, e, t, toX, toY);
+      case EnemyKind.scorpion:
+        s.scorpion(c, e, t, toX, toY);
+      case EnemyKind.knight:
+        s.knight(c, e, t, toX, toY);
       case EnemyKind.ogre || EnemyKind.kingSlime:
         break;
     }

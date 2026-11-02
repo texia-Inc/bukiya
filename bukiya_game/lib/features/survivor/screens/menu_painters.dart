@@ -103,6 +103,63 @@ class StageArtPainter extends CustomPainter {
             ..color = Color.fromRGBO(140, 120, 120, 0.5 + 0.2 * sin(time * 2)));
       canvas.drawCircle(Offset(w * 0.55, h * 0.02), w * 0.045,
           Paint()..color = const Color(0x66A09090));
+    } else if (stage.id == 'farm') {
+      // かぼちゃが並ぶ畑と、かかし
+      for (var i = 0; i < 4; i++) {
+        _pumpkin(
+            canvas,
+            Offset(w * (0.18 + i * 0.21), h * (0.56 + (i % 2) * 0.05)),
+            w * 0.05);
+      }
+      _scarecrow(canvas, Offset(w * 0.2, h * 0.5), w * 0.1);
+    } else if (stage.id == 'desert') {
+      canvas.drawCircle(Offset(w * 0.82, h * 0.15), w * 0.07,
+          Paint()..color = const Color(0xFFFFE08A));
+      final pyramid = Path()
+        ..moveTo(w * 0.12, h * 0.5)
+        ..lineTo(w * 0.32, h * 0.18)
+        ..lineTo(w * 0.52, h * 0.5)
+        ..close();
+      canvas.drawPath(pyramid, Paint()..color = const Color(0xFFD9B26A));
+      canvas.drawPath(pyramid, _outline(3));
+      canvas.drawLine(
+          Offset(w * 0.32, h * 0.18), Offset(w * 0.36, h * 0.5), _outline(2));
+      for (final x in [0.68, 0.8]) {
+        canvas.drawRect(Rect.fromLTWH(w * x, h * 0.36, w * 0.06, h * 0.16),
+            Paint()..color = const Color(0xFFE0C48A));
+        canvas.drawRect(
+            Rect.fromLTWH(w * x, h * 0.36, w * 0.06, h * 0.16), _outline(2));
+      }
+    } else if (stage.id == 'castle') {
+      _moon(canvas, Offset(w * 0.18, h * 0.14), w * 0.06);
+      final castle = Path()
+        ..moveTo(w * 0.3, h * 0.5)
+        ..lineTo(w * 0.3, h * 0.24)
+        ..lineTo(w * 0.36, h * 0.24)
+        ..lineTo(w * 0.36, h * 0.3)
+        ..lineTo(w * 0.42, h * 0.3)
+        ..lineTo(w * 0.42, h * 0.1)
+        ..lineTo(w * 0.5, h * 0.02)
+        ..lineTo(w * 0.58, h * 0.1)
+        ..lineTo(w * 0.58, h * 0.3)
+        ..lineTo(w * 0.64, h * 0.3)
+        ..lineTo(w * 0.64, h * 0.24)
+        ..lineTo(w * 0.7, h * 0.24)
+        ..lineTo(w * 0.7, h * 0.5)
+        ..close();
+      canvas.drawPath(castle, Paint()..color = const Color(0xFF3A3448));
+      canvas.drawPath(castle, _outline(3));
+      final glow = Paint()
+        ..color = Color.fromRGBO(255, 200, 90, 0.6 + 0.3 * sin(time * 3));
+      for (final p in [
+        Offset(w * 0.5, h * 0.18),
+        Offset(w * 0.39, h * 0.4),
+        Offset(w * 0.61, h * 0.4)
+      ]) {
+        canvas.drawRect(
+            Rect.fromCenter(center: p, width: w * 0.025, height: h * 0.05),
+            glow);
+      }
     } else if (stage.id == 'snowfield') {
       for (final p in [
         Offset(w * 0.17, h * 0.52),
@@ -185,6 +242,42 @@ class StageArtPainter extends CustomPainter {
     }
     canvas.drawCircle(base.translate(0, -r * 0.6), r * 0.42,
         Paint()..color = const Color(0xFF4FA860));
+  }
+
+  void _pumpkin(Canvas canvas, Offset c, double r) {
+    for (final (dx, ww) in [(-0.45, 0.9), (0.45, 0.9), (0.0, 1.0)]) {
+      final rect = Rect.fromCenter(
+          center: c.translate(dx * r, 0), width: r * ww * 1.1, height: r * 1.4);
+      canvas.drawOval(rect, Paint()..color = const Color(0xFFE8892E));
+      canvas.drawOval(rect, _outline(2));
+    }
+    canvas.drawRect(Rect.fromLTWH(c.dx - r * 0.1, c.dy - r, r * 0.2, r * 0.35),
+        Paint()..color = const Color(0xFF4A6A2A));
+  }
+
+  void _scarecrow(Canvas canvas, Offset base, double r) {
+    final wood = Paint()
+      ..color = const Color(0xFF7A5230)
+      ..strokeWidth = r * 0.15;
+    canvas.drawLine(base, base.translate(0, -r * 1.6), wood);
+    canvas.drawLine(base.translate(-r * 0.7, -r * 1.1),
+        base.translate(r * 0.7, -r * 1.1), wood);
+    canvas.drawRect(
+        Rect.fromCenter(
+            center: base.translate(0, -r * 1.0),
+            width: r * 0.8,
+            height: r * 0.7),
+        Paint()..color = const Color(0xFF6A8EC4));
+    canvas.drawCircle(base.translate(0, -r * 1.65), r * 0.3,
+        Paint()..color = const Color(0xFFE8C07A));
+    canvas.drawCircle(base.translate(0, -r * 1.65), r * 0.3, _outline(2));
+    final hat = Path()
+      ..moveTo(base.dx - r * 0.5, base.dy - r * 1.85)
+      ..lineTo(base.dx + r * 0.5, base.dy - r * 1.85)
+      ..lineTo(base.dx, base.dy - r * 2.3)
+      ..close();
+    canvas.drawPath(hat, Paint()..color = const Color(0xFFC9A266));
+    canvas.drawPath(hat, _outline(2));
   }
 
   void _pine(Canvas canvas, Offset base, double r) {

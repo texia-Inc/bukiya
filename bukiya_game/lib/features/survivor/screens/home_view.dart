@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../domain/loadout.dart';
 import '../domain/profile.dart';
+import '../domain/rewards.dart';
 import '../domain/shop.dart';
 import '../domain/run_result.dart';
 import '../domain/stage.dart';
+import '../domain/talents.dart';
 import 'menu_painters.dart';
+
+part 'home_menus.dart';
 
 // ホーム画面の配色：明るいオレンジの背景に、黒い縁取りの太いパネル
 const _bgTop = Color(0xFFFFA53A);
@@ -17,9 +23,9 @@ const _yellow = Color(0xFFFFD23F);
 const _cream = Color(0xFFFFF4DC);
 const _muted = Color(0xFFB9BECB);
 
-enum HomeTab { shop, gear, battle }
+enum HomeTab { shop, gear, battle, talent }
 
-/// ホーム画面（店・装備・戦闘の3タブ）
+/// ホーム画面（店・装備・戦闘・才能のタブ）
 class HomeView extends StatefulWidget {
   final SurvivorProfile profile;
   final VoidCallback onStart;
@@ -83,6 +89,15 @@ class _HomeViewState extends State<HomeView>
                         onStage: (s) => _change(() => _p.selectedStage = s.id),
                         onGear: () => setState(() => _tab = HomeTab.gear),
                         onStart: widget.onStart,
+                        onChanged: () => _change(() {}),
+                      ),
+                    HomeTab.talent => _TalentTab(
+                        profile: _p,
+                        onUpgrade: (id) {
+                          _change(() => _p.upgradeTalent(id));
+                          _toast('${talentDef(id).name} が '
+                              'Lv ${_p.talentLevel(id)} になった');
+                        },
                       ),
                     HomeTab.gear => _GearTab(
                         profile: _p,
@@ -270,6 +285,8 @@ const _rules = [
   '武器で倒した数が熟練度になり、売値が最大 +50% 上がる',
   '武器は出撃で耐久が減る（生還 -10・倒れると -40）。0 になったら店で修理',
   '店で武器を売ってお金を稼ぎ、素材とお金で新しい武器を鍛えたり強化したりできる',
+  '才能タブでお金を払うと、HP や攻撃力がずっと上がる',
+  'ギフト（毎日）・パトロール（留守の間に貯まる）・宝箱（生き残った時間）・ミッションで報酬がもらえる',
 ];
 
 void showRulesDialog(BuildContext context) {
@@ -427,6 +444,7 @@ class _BattleTab extends StatelessWidget {
   final ValueChanged<StageDef> onStage;
   final VoidCallback onGear;
   final VoidCallback onStart;
+  final VoidCallback onChanged;
 
   const _BattleTab({
     required this.profile,
@@ -434,6 +452,7 @@ class _BattleTab extends StatelessWidget {
     required this.onStage,
     required this.onGear,
     required this.onStart,
+    required this.onChanged,
   });
 
   @override
@@ -443,7 +462,7 @@ class _BattleTab extends StatelessWidget {
     final locked = !profile.isUnlocked(stage);
     final best = profile.bestSeconds[stage.id];
     return LayoutBuilder(builder: (context, c) {
-      final artHeight = (c.maxHeight * 0.42).clamp(160.0, 320.0);
+      final artHeight = (c.maxHeight * 0.34).clamp(140.0, 300.0);
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
@@ -507,6 +526,8 @@ class _BattleTab extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     color: _ink, fontWeight: FontWeight.w700, fontSize: 12)),
+            const SizedBox(height: 12),
+            _MenuRow(profile: profile, onChanged: onChanged),
             const Spacer(),
             GestureDetector(
               onTap: onGear,
@@ -1089,6 +1110,7 @@ class _BottomNav extends StatelessWidget {
       (HomeTab.shop, Icons.storefront_rounded, '店'),
       (HomeTab.gear, Icons.shield_rounded, '装備'),
       (HomeTab.battle, Icons.local_fire_department_rounded, '戦闘'),
+      (HomeTab.talent, Icons.auto_awesome_rounded, '才能'),
     ];
     return Container(
       height: 68,

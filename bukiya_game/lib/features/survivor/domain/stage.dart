@@ -261,10 +261,113 @@ const snowfieldStage = StageDef(
   stoneColor: 0xFF8090A4,
 );
 
+const farmStage = StageDef(
+  id: 'farm',
+  number: 6,
+  name: '荒れた畑',
+  description: '魔物に荒らされたかぼちゃ畑。人食い草が地面から次々に顔を出す',
+  spawns: [
+    SpawnRule(EnemyKind.slime, 0, 2),
+    SpawnRule(EnemyKind.sprout, 0, 4),
+    SpawnRule(EnemyKind.wolf, 60, 1),
+    SpawnRule(EnemyKind.goblin, 40, 2),
+    SpawnRule(EnemyKind.bat, 80, 2),
+  ],
+  bosses: [
+    BossSpawn(120, EnemyKind.kingSlime),
+    BossSpawn(240, EnemyKind.ogre),
+  ],
+  mascot: EnemyKind.kingSlime,
+  waves: [
+    WaveEvent(45, WaveType.ring, EnemyKind.sprout, 220, hpScale: 0.35),
+    WaveEvent(100, WaveType.swarm, EnemyKind.bat, 230, hpScale: 0.4),
+    WaveEvent(165, WaveType.swarm, EnemyKind.sprout, 160),
+    WaveEvent(215, WaveType.ring, EnemyKind.goblin, 70,
+        hpScale: 2.5, speedScale: 0.65),
+    WaveEvent(285, WaveType.ring, EnemyKind.skeleton, 75,
+        hpScale: 3, speedScale: 0.55),
+  ],
+  hpScale: 1.65,
+  bossHpScale: 2.4,
+  groundColor: 0xFF4A5A2A,
+  tileColor: 0xFF52632F,
+  grassColor: 0xFF6E8A3A,
+  stoneColor: 0xFF7A6A50,
+);
+
+const desertStage = StageDef(
+  id: 'desert',
+  number: 7,
+  name: '砂漠の遺跡',
+  description: '砂に埋もれた古い遺跡。サソリの群れと骸骨がうろつく',
+  spawns: [
+    SpawnRule(EnemyKind.bat, 0, 2),
+    SpawnRule(EnemyKind.scorpion, 0, 4),
+    SpawnRule(EnemyKind.skeleton, 60, 2),
+    SpawnRule(EnemyKind.ghost, 140, 2),
+  ],
+  bosses: [
+    BossSpawn(120, EnemyKind.ogre),
+    BossSpawn(240, EnemyKind.kingSlime),
+  ],
+  mascot: EnemyKind.ogre,
+  waves: [
+    WaveEvent(45, WaveType.swarm, EnemyKind.scorpion, 160, hpScale: 0.3),
+    WaveEvent(95, WaveType.ring, EnemyKind.bat, 230, hpScale: 0.4),
+    WaveEvent(160, WaveType.ring, EnemyKind.skeleton, 150, hpScale: 0.5),
+    WaveEvent(215, WaveType.ring, EnemyKind.scorpion, 70,
+        hpScale: 2.5, speedScale: 0.6),
+    WaveEvent(285, WaveType.ring, EnemyKind.skeleton, 80,
+        hpScale: 3, speedScale: 0.55),
+  ],
+  hpScale: 1.55,
+  bossHpScale: 2.5,
+  groundColor: 0xFF9C7A48,
+  tileColor: 0xFFA6844F,
+  grassColor: 0xFFC9A266,
+  stoneColor: 0xFF7E6440,
+);
+
+const castleStage = StageDef(
+  id: 'castle',
+  number: 8,
+  name: '魔王城',
+  description: '魔物たちの本拠地。重い鎧の黒騎士が城を守っている',
+  spawns: [
+    SpawnRule(EnemyKind.skeleton, 0, 3),
+    SpawnRule(EnemyKind.ghost, 0, 2),
+    SpawnRule(EnemyKind.knight, 30, 3),
+    SpawnRule(EnemyKind.imp, 60, 2),
+  ],
+  bosses: [
+    BossSpawn(120, EnemyKind.ogre),
+    BossSpawn(240, EnemyKind.kingSlime),
+  ],
+  mascot: EnemyKind.ogre,
+  waves: [
+    WaveEvent(45, WaveType.ring, EnemyKind.imp, 220, hpScale: 0.35),
+    WaveEvent(100, WaveType.swarm, EnemyKind.ghost, 230, hpScale: 0.4),
+    WaveEvent(160, WaveType.ring, EnemyKind.skeleton, 160, hpScale: 0.6),
+    WaveEvent(215, WaveType.ring, EnemyKind.knight, 60,
+        hpScale: 2.5, speedScale: 0.6),
+    WaveEvent(285, WaveType.ring, EnemyKind.knight, 80,
+        hpScale: 3, speedScale: 0.55),
+  ],
+  hpScale: 1.7,
+  bossHpScale: 3.0,
+  groundColor: 0xFF2E2838,
+  tileColor: 0xFF363042,
+  grassColor: 0xFF4E4660,
+  stoneColor: 0xFF6A6280,
+);
+
 const List<StageDef> allStages = [
   forestStage,
   graveyardStage,
   canyonStage,
   volcanoStage,
   snowfieldStage,
+  farmStage,
+  desertStage,
+  castleStage,
 ];

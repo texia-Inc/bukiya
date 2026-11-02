@@ -1,9 +1,11 @@
 import 'dart:math';
 
 import 'loadout.dart';
+import 'rewards.dart';
 import 'run_result.dart';
 import 'shop.dart';
 import 'stage.dart';
+import 'talents.dart';
 
 /// ランをまたいで残る記録（最長生存時間・お金・素材・店の武器など）
 class SurvivorProfile {
@@ -24,6 +26,29 @@ class SurvivorProfile {
   int runs;
   int _nextWeaponId;
 
+  /// 才能のレベル
+  final Map<TalentId, int> talentLevels;
+
+  /// これまでの合計（実績用）
+  int totalKills;
+  int totalBosses;
+  int totalForges;
+
+  /// 毎日のミッション：数えている日と、その日の進み具合・受け取り済み
+  int dailyDay;
+  final Map<MissionStat, int> dailyProgress;
+  final Set<String> dailyClaimed;
+
+  /// 受け取り済みの実績とチャプター宝箱
+  final Set<String> achievementsClaimed;
+  final Set<String> chestsClaimed;
+
+  /// 最後にパトロールの成果を受け取った時刻（ミリ秒）。null ならまだ始めていない
+  int? patrolSince;
+
+  /// 最後にギフトを受け取った日
+  int giftDay;
+
   SurvivorProfile({
     Map<String, double>? bestSeconds,
     Map<String, int>? bossKills,
@@ -34,7 +59,23 @@ class SurvivorProfile {
     this.gold = startingGold,
     this.runs = 0,
     int nextWeaponId = 1,
-  })  : bestSeconds = bestSeconds ?? {},
+    Map<TalentId, int>? talentLevels,
+    this.totalKills = 0,
+    this.totalBosses = 0,
+    this.totalForges = 0,
+    this.dailyDay = 0,
+    Map<MissionStat, int>? dailyProgress,
+    Set<String>? dailyClaimed,
+    Set<String>? achievementsClaimed,
+    Set<String>? chestsClaimed,
+    this.patrolSince,
+    this.giftDay = 0,
+  })  : talentLevels = talentLevels ?? {},
+        dailyProgress = dailyProgress ?? {},
+        dailyClaimed = dailyClaimed ?? {},
+        achievementsClaimed = achievementsClaimed ?? {},
+        chestsClaimed = chestsClaimed ?? {},
+        bestSeconds = bestSeconds ?? {},
         bossKills = bossKills ?? {},
         materials = materials ?? {},
         weapons = weapons ?? starterWeapons(),
@@ -136,6 +177,7 @@ class SurvivorProfile {
     _pay(r.gold, r.materials);
     final w = OwnedWeapon(uid: 'w${_nextWeaponId++}', type: r.type);
     weapons.add(w);
+    _countForge();
     return w;
   }
 
@@ -150,6 +192,7 @@ class SurvivorProfile {
     final c = enchantCost(w);
     _pay(c.gold, c.materials);
     w.enchantLevel++;
+    _countForge();
   }
 
   bool canRepair(OwnedWeapon w) => w.durability < 100 && gold >= repairCost(w);
@@ -162,8 +205,16 @@ class SurvivorProfile {
   }
 
   /// ランの結果を記録に反映する
-  void applyResult(RunResult r, StageDef stage) {
+  void applyResult(RunResult r, StageDef stage, {DateTime? now}) {
     runs++;
+    totalKills += r.totalKills;
+    totalBosses += r.bossesDefeated;
+    _rollDay(now ?? DateTime.now());
+    _addDaily(MissionStat.runs, 1);
+    _addDaily(MissionStat.kills, r.totalKills);
+    _addDaily(MissionStat.bosses, r.bossesDefeated);
+    if (r.survivedSeconds >= 180) _addDaily(MissionStat.survive3min, 1);
+    if (r.returned) _addDaily(MissionStat.returned, 1);
     bestSeconds[stage.id] = max(bestSeconds[stage.id] ?? 0, r.survivedSeconds);
     if (r.bossesDefeated > 0) {
       bossKills[stage.id] = (bossKills[stage.id] ?? 0) + r.bossesDefeated;
@@ -180,8 +231,166 @@ class SurvivorProfile {
     _fixSelection();
   }
 
+  // ---- 受け取り ----
+
+  void grant(Reward r) {
+    gold += r.gold;
+    for (final e in r.materials.entries) {
+      materials[e.key] = have(e.key) + e.value;
+    }
+  }
+
+  int get unlockedStageCount => allStages.where(isUnlocked).length;
+
+  // ---- 才能 ----
+
+  Talents get talents => Talents(Map.of(talentLevels));
+
+  int talentLevel(TalentId id) => talentLevels[id] ?? 0;
+
+  bool canUpgradeTalent(TalentId id) {
+    final d = talentDef(id), lv = talentLevel(id);
+    return lv < d.maxLevel && gold >= d.costAt(lv);
+  }
+
+  void upgradeTalent(TalentId id) {
+    if (!canUpgradeTalent(id)) return;
+    gold -= talentDef(id).costAt(talentLevel(id));
+    talentLevels[id] = talentLevel(id) + 1;
+  }
+
+  // ---- ミッション ----
+
+  void _countForge() {
+    totalForges++;
+    _rollDay(DateTime.now());
+    _addDaily(MissionStat.forge, 1);
+  }
+
+  /// 日付が変わっていたら、毎日のミッションを数え直す
+  void _rollDay(DateTime now) {
+    final d = dayKey(now);
+    if (dailyDay == d) return;
+    dailyDay = d;
+    dailyProgress.clear();
+    dailyClaimed.clear();
+  }
+
+  void _addDaily(MissionStat stat, int n) {
+    if (n <= 0) return;
+    dailyProgress[stat] = (dailyProgress[stat] ?? 0) + n;
+  }
+
+  int _total(MissionStat stat) => switch (stat) {
+        MissionStat.runs => runs,
+        MissionStat.kills => totalKills,
+        MissionStat.bosses => totalBosses,
+        MissionStat.forge => totalForges,
+        MissionStat.survive3min || MissionStat.returned => 0,
+      };
+
+  bool _isDaily(MissionDef m) => dailyMissions.contains(m);
+
+  /// ミッションの進み具合（目標で頭打ち）
+  int missionProgress(MissionDef m, {DateTime? now}) {
+    if (_isDaily(m)) {
+      _rollDay(now ?? DateTime.now());
+      return min(m.goal, dailyProgress[m.stat] ?? 0);
+    }
+    return min(m.goal, _total(m.stat));
+  }
+
+  bool missionClaimed(MissionDef m, {DateTime? now}) {
+    if (_isDaily(m)) {
+      _rollDay(now ?? DateTime.now());
+      return dailyClaimed.contains(m.id);
+    }
+    return achievementsClaimed.contains(m.id);
+  }
+
+  bool canClaimMission(MissionDef m, {DateTime? now}) =>
+      !missionClaimed(m, now: now) && missionProgress(m, now: now) >= m.goal;
+
+  void claimMission(MissionDef m, {DateTime? now}) {
+    if (!canClaimMission(m, now: now)) return;
+    (_isDaily(m) ? dailyClaimed : achievementsClaimed).add(m.id);
+    grant(m.reward);
+  }
+
+  bool hasClaimableMission({DateTime? now}) => [
+        ...dailyMissions,
+        ...achievements
+      ].any((m) => canClaimMission(m, now: now));
+
+  // ---- チャプター宝箱 ----
+
+  bool chestClaimed(StageDef s, ChapterChest c) =>
+      chestsClaimed.contains(c.key(s));
+
+  bool canClaimChest(StageDef s, ChapterChest c) =>
+      !chestClaimed(s, c) && (bestSeconds[s.id] ?? 0) >= c.seconds;
+
+  void claimChest(StageDef s, ChapterChest c) {
+    if (!canClaimChest(s, c)) return;
+    chestsClaimed.add(c.key(s));
+    grant(c.reward(s));
+  }
+
+  bool hasClaimableChest() =>
+      allStages.any((s) => chapterChests.any((c) => canClaimChest(s, c)));
+
+  // ---- パトロール ----
+
+  /// 見回りを始めてからの分数（上限つき）。初めてなら今から始める
+  int patrolMinutes(DateTime now) {
+    final since = patrolSince ??= now.millisecondsSinceEpoch;
+    final m = (now.millisecondsSinceEpoch - since) ~/ 60000;
+    return m.clamp(0, patrolCap.inMinutes);
+  }
+
+  Reward patrolPending(DateTime now) =>
+      patrolReward(patrolMinutes(now), unlockedStageCount, patrolSince ?? 0);
+
+  bool canClaimPatrol(DateTime now) => !patrolPending(now).isEmpty;
+
+  /// 受け取ると、また今から見回りを始める
+  Reward claimPatrol(DateTime now) {
+    final r = patrolPending(now);
+    if (r.isEmpty) return r;
+    grant(r);
+    patrolSince = now.millisecondsSinceEpoch;
+    return r;
+  }
+
+  // ---- 毎日のギフト ----
+
+  bool canClaimGift(DateTime now) => giftDay != dayKey(now);
+
+  Reward giftFor(DateTime now) => dailyGift(dayKey(now), unlockedStageCount);
+
+  Reward? claimGift(DateTime now) {
+    if (!canClaimGift(now)) return null;
+    final r = giftFor(now);
+    giftDay = dayKey(now);
+    grant(r);
+    return r;
+  }
+
   Map<String, Object?> toJson() => {
-        'version': 2,
+        'version': 3,
+        'talents': {for (final e in talentLevels.entries) e.key.name: e.value},
+        'totalKills': totalKills,
+        'totalBosses': totalBosses,
+        'totalForges': totalForges,
+        'dailyDay': dailyDay,
+        'dailyProgress': {
+          for (final e in dailyProgress.entries) e.key.name: e.value
+        },
+        'dailyClaimed': dailyClaimed.toList(),
+        'achievementsClaimed': achievementsClaimed.toList(),
+        'chestsClaimed': chestsClaimed.toList(),
+        'patrolSince': patrolSince,
+        'giftDay': giftDay,
         'bestSeconds': bestSeconds,
         'bossKills': bossKills,
         'materials': {for (final e in materials.entries) e.key.name: e.value},
@@ -220,6 +429,13 @@ class SurvivorProfile {
     }
     final selected = j['selectedWeapons'];
     final stage = j['selectedStage'];
+    final talents = map(j['talents'], (n) => n.toInt());
+    final daily = map(j['dailyProgress'], (n) => n.toInt());
+    Set<String> strings(Object? v) => {
+          if (v is List)
+            for (final s in v)
+              if (s is String) s
+        };
     return SurvivorProfile(
       bestSeconds: map(j['bestSeconds'], (n) => n.toDouble()),
       bossKills: map(j['bossKills'], (n) => n.toInt()),
@@ -240,6 +456,24 @@ class SurvivorProfile {
       gold: max(0, number(j['gold'], startingGold)),
       runs: max(0, number(j['runs'], 0)),
       nextWeaponId: max(1, number(j['nextWeaponId'], 1)),
+      talentLevels: {
+        for (final d in talentDefs)
+          if (talents[d.id.name] case final lv?) d.id: lv.clamp(0, d.maxLevel),
+      },
+      totalKills: max(0, number(j['totalKills'], 0)),
+      totalBosses: max(0, number(j['totalBosses'], 0)),
+      totalForges: max(0, number(j['totalForges'], 0)),
+      dailyDay: number(j['dailyDay'], 0),
+      dailyProgress: {
+        for (final s in MissionStat.values)
+          if (daily[s.name] case final n?) s: max(0, n),
+      },
+      dailyClaimed: strings(j['dailyClaimed']),
+      achievementsClaimed: strings(j['achievementsClaimed']),
+      chestsClaimed: strings(j['chestsClaimed']),
+      patrolSince:
+          j['patrolSince'] is num ? (j['patrolSince'] as num).toInt() : null,
+      giftDay: number(j['giftDay'], 0),
     );
   }
 }
