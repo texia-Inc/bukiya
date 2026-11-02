@@ -4,7 +4,7 @@
    the master rising in the bay. On the beach it throws dark orbs (dodge them) and sends shadows out of the sea; each one sent
    back by the lantern gathers the light (the gauge), and when it is full a flash calls the lighthouse's beam onto it. Three
    strikes and it sinks. Dawn: the mast lit red again, Mio and the children going home into the light, Natsumi meeting her
-   at last. After that the nightly defense goes on as before (d2_done). ---------- */
+   at last (d2_done). Back home that morning, the third story begins at once (d3_open in p5w_d3.js). ---------- */
 const BOSS_AT={x:-50,z:352},BOSS_S=30;
 const BOSS={on:false,hp:3,max:3,gauge:0,need:6,list:[],orbs:[],spawnT:0,orbT:3,hearts:5,inv:0,res:null,ready:false,striking:false,falls:0,hudT:0,g:null,eyes:[]};
 function bossBuild(){if(BOSS.g)return;const h=makeHuman(SHADE);h.g.scale.setScalar(BOSS_S);world.add(h.g);BOSS.g=h;
@@ -84,7 +84,7 @@ function updateD2End(dt){if(SAVE.flags.mochi_gone&&BEACH_CAT)BEACH_CAT.g.visible
 const FINAL_EVENTS=[
   {id:'d2_c1',when:{flags:{ex1_done:1,d2c:0},test:()=>(d2().nest||0)>=NESTS.length&&d2().last<SAVE.day&&!URA.on},script:[
     ['say','','朝。ポケットの無線が、ザザッと鳴った。'],
-    ['say','黒崎','（無線の声）……聞こえるか、海街の。海の底で、門が開きかけている。','巣を焼かれた異界の者どもが、門の向こうの「主」を呼んでいる。……今夜、やつが来るぞ。'],
+    ['say','黒崎','（無線の声）……聞こえるか、海街の。海の底で、門が開きかけている。','核をこわされた異界の者どもが、門の向こうの「主」を呼んでいる。……今夜、やつが来るぞ。'],
     ['say','黒崎','（無線の声）オーシャンゲートは、電波塔を直して結界を張りなおす。だが、それには夜明けまでかかる。'],
     ['say','tome','（無線の声）……それまで、わたしたちで町を守りきるってことだね。'],
     ['call',()=>ex1Marble(true)],
@@ -125,7 +125,7 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['say','','夜が明けた。','波打ちぎわから、小さな光がいくつも、白みはじめた空へのぼっていく。'],
   ['say','mio','……ナギ。'],
   ['say','nagi','ミオ！ ……ほんとうに、ミオだ。'],
-  ['say','mio','巣にとじこめられてた子たち、みんな、光のほうへ帰っていくよ。……ナギの灯りのおかげ。'],
+  ['say','mio','核にとじこめられてた子たち、みんな、光のほうへ帰っていくよ。……ナギの灯りのおかげ。'],
   ['say','natsumi','……ミオ？'],
   ['say','mio','ナツミちゃん。……おとなになったね。'],
   ['say','natsumi','ミオ……ごめんね。あの夜、いっしょに行ってあげられなくて。ずっと、ずっと……'],
@@ -150,5 +150,4 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['say','','――追加ストーリー2「海街自警団」　おしまい。'],
   ['credits'],
   ['set','d2_done'],
-  ['fade','out'],['call',()=>{d2Gather(false);d2Lights(false);mochiShow(false);EX1.still=false;ex1Kurosaki(false);}],['cam','off'],['warp',...HOME],['day'],
-  ['call',()=>toast('基地の作戦室から、夜の防衛はこれからも続けられる',true)]];}
+  ['fade','out'],['call',()=>{d2Gather(false);d2Lights(false);mochiShow(false);EX1.still=false;ex1Kurosaki(false);}],['cam','off'],['warp',...HOME],['day']];}

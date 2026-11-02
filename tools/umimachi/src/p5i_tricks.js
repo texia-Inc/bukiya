@@ -42,15 +42,15 @@ function trickLand(clean){TRICK.jk=0;
   // K pressed just before coming down: straight into a manual, the seconds carried on
   if(clean&&TRICK.manQ>clock&&!P.foot&&!P.grind){TRICK.manQ=0;TRICK.last=TRICK.next=null;manStart(TRICK.manNose,true);return;}
   const b=Math.round(TRICK.bank*10)/10;TRICK.bank=0;TRICK.last=TRICK.next=null;TRICK.manQ=0;TRICK.links=0;
-  const mir=MIR.on&&MIR.go&&!MIR.end;if(!clean)toast(mir?'失敗……　ビー玉の待ちが1秒のびた':'失敗……',false);if(mir)mirTrickLand(clean,b);else if(clean&&b>0&&trickFight())trickPay(b);}
+  const mir=MIR.on&&MIR.go&&!MIR.end;if(!clean)toast(mir?'失敗……　ビー玉の待ちが1秒のびた':'失敗……',false);if(mir)mirTrickLand(clean,b);else if(clean&&b>0&&trickFight())trickPay(b);if(RUN.go)runTrickLand(clean,b);}
 // the fights out in the town (the drones, the shadows of the nests, the shore, the lord of the other side)
-const trickFight=()=>!!(DRONE.active||NEST.fight||DEF.on||BOSS.on);
+const trickFight=()=>!!(DRONE.active||NEST.fight||DEF.on||BOSS.on||RUN.go);
 // a jump with a trick in it, or a rail: up there the cold hands, the drones' shots and the dark orbs cannot reach her
 const trickSafe=()=>!!(P.grind||P.air&&(P.trick||TRICK.bank>0));
 // a jump's tricks landed in a fight: the lantern fills sooner, the shots burn harder for a while, and a big one knocks the
 // shadows back (each fight walks its own list)
 function trickPay(b){if(LAN.n<LAN.max)LAN.re+=b;TRICK.boostT=clock+b;const subs=DRONE.active||NEST.fight?[`光 ×2（${b}秒）`]:[];if(LAN.n<LAN.max)subs.push(`ランタン −${b}秒`);
-  if(b>=3){const n=trickWave(NEST.fight?NEST.list:DEF.on?DEF.list:BOSS.on?BOSS.list:[]);if(n)subs.unshift('影をはじき飛ばした！');}
+  if(b>=3){const n=trickWave(NEST.fight?NEST.list:DEF.on?DEF.list:BOSS.on?BOSS.list:RUN.go?RUN.foes:[]);if(n)subs.unshift('影をはじき飛ばした！');}
   TRICK.sub=subs.join('　');TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
 // how hard her shots hit just now
 const trickDmg=()=>clock<(TRICK.boostT||0)?2:1;
@@ -79,7 +79,7 @@ function trickAir(dt){TRICK.airT+=dt;
   // catching a rail on the way down
   // no catching while slow, or just after leaving a rail (otherwise a stop on the rail drops you straight back onto it)
   if(P.vy>4||P.v<2.5||clock<(P.grindCD||0))return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
-  for(const r of RAILS){const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
+  for(const r of RAILS){if(r.run&&!RUN.go)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
     const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
     const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
     // a board still flipping cannot catch the rail; caught clean, it is a landing

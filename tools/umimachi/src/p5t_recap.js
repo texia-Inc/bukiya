@@ -57,10 +57,10 @@ const RECAP=[
     '夜明け。黒崎「次は、もっと大きなものが来る」。ばあちゃんは、東の山の岩の扉を開けた。「山の中に、わたしたちの基地がある」']},
   {sec:'追加ストーリー2「海街自警団」',t:'自警団の基地',on:f=>f.d2,text:[
     '岩の扉の奥は、山をくりぬいた洞窟の基地だった。武器庫、鍛錬場、灯りの工房、通信室、作戦室。',
-    '夜ごとにやってくる異界の者から、町を守る日々が始まった。',
-    f=>(SAVE.d2&&SAVE.d2.nest)?`裏海街に出撃して、影の巣を${SAVE.d2.nest}つ焼いた。巣に閉じこめられていた子どもたちが、光のほうへ帰っていった。`:null]},
+    '夜ごとに裏海街へ出撃して、影の核をこわす日々が始まった。',
+    f=>(SAVE.d2&&SAVE.d2.nest)?`スケボーで裏海街に出撃して、光の線で影の核をこわした。閉じこめられていた子どもが、${SAVE.d2.nest}人、光のほうへ帰っていった。`:null]},
   {sec:'追加ストーリー2「海街自警団」',t:'異界の主',on:f=>f.d2c,text:[
-    '五つの巣を焼くと、海の底の門が開きかけた。黒崎「今夜、主が来る。結界を張りなおすまで、夜明けまでかかる」',
+    '子どもたちがみんな帰ってくると、海の底の門が開きかけた。黒崎「今夜、主が来る。結界を張りなおすまで、夜明けまでかかる」',
     f=>f.d2_done?'最後の夜。湾に立ち上がった異界の主を、灯台の光で三度つらぬいた。電波塔に赤い灯りがともり、門は閉じた。':null]},
   {sec:'追加ストーリー2「海街自警団」',t:'夜明け',on:f=>f.d2_done,text:[
     '夜明けの浜で、閉じこめられていた子どもたちの光が空へのぼっていった。',
@@ -78,7 +78,24 @@ const RECAP=[
     'ナギと映し身が手をあげると、裏の灯台に灯りがともり、鏡の海に水が満ちた。',
     '夏休みの最後の日。ソウタくんと来年の大会の約束をして、ナギはうみまち線の電車に乗った。']},
 ];
+// 「物語の進み具合」 on top: every part in order, done / going / not yet; a part not reached shows only how it begins
+const PARTS=[
+  {t:'本編「三つの道」',done:f=>endingsSeen()>=3,go:f=>true,n:f=>`エンディング ${endingsSeen()}/3`},
+  {t:'真ルート「灯台」',done:f=>!!f.ending_true,go:f=>endingsSeen()>=3,how:'三つの道のエンディングを、ぜんぶ見ると始まる'},
+  {t:'追加ストーリー1「オーシャンゲート」',done:f=>!!f.ex1_done,go:f=>!!f.ex1,how:'真ルートのあと、何日かたつと始まる'},
+  {t:'追加ストーリー2「海街自警団」',done:f=>!!f.d2_done,go:f=>!!f.ex1_done,how:'追加ストーリー1を終えると、東の山の岩の扉が開く',n:f=>f.d2?`帰ってきた子 ${(SAVE.d2&&SAVE.d2.nest)||0}/${NESTS.length}`:''},
+  {t:'追加ストーリー3「鏡の海」',done:f=>!!f.d3_done,go:f=>!!f.d3,how:'追加ストーリー2を終えると、次の朝に始まる',n:f=>`${Math.min(d3n(),3)}/4 夜`}];
+function renderProgress(box,f){const h=document.createElement('h3');h.className='rsec';h.textContent='物語の進み具合';box.appendChild(h);
+  const ul=document.createElement('ul');ul.className='rprog';let cur=false;
+  PARTS.forEach((c,k)=>{const done=c.done(f),go=!done&&c.go(f),seen=done||go||k===0||PARTS[k-1].done(f)||PARTS[k-1].go(f);if(!seen)return;
+    const li=document.createElement('li');li.className=done?'done':go?'go':'not';
+    const st=document.createElement('b');st.textContent=done?'済み':go?'進行中':'まだ';const t=document.createElement('span');t.textContent=c.t+(go&&c.n&&c.n(f)?`（${c.n(f)}）`:'');li.append(st,t);
+    if(!done&&!go&&c.how){const s=document.createElement('small');s.textContent=c.how;li.appendChild(s);}
+    if(go&&!cur){cur=true;const g=storyGoal();if(g){const s=document.createElement('small');s.textContent='次は：'+g;li.appendChild(s);}}
+    ul.appendChild(li);});
+  box.appendChild(ul);}
 function renderRecap(){const box=$('recapBody'),f=SAVE.flags;box.innerHTML='';let sec=null,n=0;
+  renderProgress(box,f);
   for(const c of RECAP){if(!c.on(f))continue;n++;
     if(c.sec!==sec){sec=c.sec;const h=document.createElement('h3');h.className='rsec';h.textContent=sec;box.appendChild(h);}
     const d=document.createElement('details');d.className='rpart';const s=document.createElement('summary');s.textContent=c.t;d.appendChild(s);
