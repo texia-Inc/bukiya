@@ -106,6 +106,15 @@ class Enemy {
   double toY = 0;
   bool split = false;
 
+  /// 大群の敵の速さの倍率（後半の大群は遅くて硬い）
+  double speedScale = 1;
+
+  /// 見た目の大きさの倍率（硬い大群の敵はひと回り大きい）
+  double bodyScale = 1;
+
+  /// 落とす経験値の倍率
+  int xpScale = 1;
+
   /// 今の大技と、これまでに繰り出した数（順番に回す）
   BossAttack attack = BossAttack.charge;
   int attackCount = 0;
@@ -591,8 +600,8 @@ class RunSimulation {
       final dx = px - e.x, dy = py - e.y;
       final d = sqrt(dx * dx + dy * dy);
       if (d > 0.001) {
-        e.x += dx / d * e.stats.speed * dt;
-        e.y += dy / d * e.stats.speed * dt;
+        e.x += dx / d * e.stats.speed * e.speedScale * dt;
+        e.y += dy / d * e.stats.speed * e.speedScale * dt;
       }
       e.x += e.kbx * dt;
       e.y += e.kby * dt;
@@ -688,7 +697,7 @@ class RunSimulation {
       _onBossDefeated(e);
       return;
     }
-    _dropGem(e.x, e.y, e.stats.xp);
+    _dropGem(e.x, e.y, e.stats.xp * e.xpScale);
     if (rng.nextDouble() < e.stats.materialChance) {
       pickups.add(Pickup.material(e.x + 6, e.y - 6, _materialFor(e.kind)));
     }
@@ -814,7 +823,10 @@ class RunSimulation {
   void debugLevelUp() => _gainLevels(1);
 
   /// テスト用：大群の輪を出す
-  void debugSpawnRing(EnemyKind kind, int count) => _spawnRing(kind, count);
+  void debugSpawnRing(EnemyKind kind, int count,
+          {double hpScale = 1, double speedScale = 1}) =>
+      _spawnRing(WaveEvent(time, WaveType.ring, kind, count,
+          hpScale: hpScale, speedScale: speedScale));
 
   /// テスト用：ボスなしで檻を閉じる
   void debugCloseArena() => _closeArena();

@@ -20,14 +20,22 @@ enum WaveType {
   swarm,
 }
 
-/// 決まった時刻に押し寄せる大群
+/// 決まった時刻に押し寄せる大群。
+/// 序盤は柔らかい敵を大量に（[hpScale] が小さい）、終盤は遅くて硬い敵を（[hpScale] が大きく [speedScale] が小さい）
 class WaveEvent {
   final double time;
   final WaveType type;
   final EnemyKind kind;
   final int count;
 
-  const WaveEvent(this.time, this.type, this.kind, this.count);
+  /// ふだんの同じ敵と比べた体力の倍率
+  final double hpScale;
+
+  /// ふだんの同じ敵と比べた速さの倍率
+  final double speedScale;
+
+  const WaveEvent(this.time, this.type, this.kind, this.count,
+      {this.hpScale = 1, this.speedScale = 1});
 }
 
 class BossSpawn {
@@ -100,10 +108,14 @@ const forestStage = StageDef(
   ],
   mascot: EnemyKind.kingSlime,
   waves: [
-    WaveEvent(55, WaveType.ring, EnemyKind.slime, 90),
-    WaveEvent(150, WaveType.swarm, EnemyKind.bat, 110),
-    WaveEvent(205, WaveType.ring, EnemyKind.goblin, 50),
-    WaveEvent(285, WaveType.ring, EnemyKind.skeleton, 60),
+    // 序盤：柔らかい敵を大量に
+    WaveEvent(55, WaveType.ring, EnemyKind.slime, 120, hpScale: 0.35),
+    WaveEvent(150, WaveType.swarm, EnemyKind.bat, 130, hpScale: 0.4),
+    // 終盤：遅くて硬い敵
+    WaveEvent(205, WaveType.ring, EnemyKind.goblin, 40,
+        hpScale: 2.5, speedScale: 0.65),
+    WaveEvent(285, WaveType.ring, EnemyKind.skeleton, 45,
+        hpScale: 3, speedScale: 0.6),
   ],
   hpScale: 1,
   bossHpScale: 1,
@@ -131,11 +143,13 @@ const graveyardStage = StageDef(
   ],
   mascot: EnemyKind.ogre,
   waves: [
-    WaveEvent(45, WaveType.swarm, EnemyKind.bat, 100),
-    WaveEvent(100, WaveType.ring, EnemyKind.skeleton, 60),
-    WaveEvent(165, WaveType.swarm, EnemyKind.ghost, 90),
-    WaveEvent(215, WaveType.ring, EnemyKind.ghost, 80),
-    WaveEvent(285, WaveType.swarm, EnemyKind.bat, 150),
+    WaveEvent(45, WaveType.swarm, EnemyKind.bat, 120, hpScale: 0.35),
+    WaveEvent(100, WaveType.ring, EnemyKind.skeleton, 80, hpScale: 0.45),
+    WaveEvent(165, WaveType.swarm, EnemyKind.ghost, 90, hpScale: 0.7),
+    WaveEvent(215, WaveType.ring, EnemyKind.goblin, 40,
+        hpScale: 2.5, speedScale: 0.65),
+    WaveEvent(285, WaveType.ring, EnemyKind.skeleton, 50,
+        hpScale: 3, speedScale: 0.55),
   ],
   hpScale: 1.2,
   bossHpScale: 1.15,
@@ -163,11 +177,14 @@ const canyonStage = StageDef(
   ],
   mascot: EnemyKind.kingSlime,
   waves: [
-    WaveEvent(35, WaveType.swarm, EnemyKind.bat, 50),
-    WaveEvent(80, WaveType.ring, EnemyKind.slime, 40),
-    WaveEvent(160, WaveType.swarm, EnemyKind.goblin, 40),
-    WaveEvent(200, WaveType.ring, EnemyKind.skeleton, 36),
-    WaveEvent(280, WaveType.swarm, EnemyKind.ghost, 90),
+    WaveEvent(35, WaveType.swarm, EnemyKind.bat, 60, hpScale: 0.35),
+    WaveEvent(80, WaveType.ring, EnemyKind.slime, 36, hpScale: 0.3),
+    WaveEvent(160, WaveType.swarm, EnemyKind.goblin, 30,
+        hpScale: 2, speedScale: 0.7),
+    WaveEvent(200, WaveType.ring, EnemyKind.skeleton, 30,
+        hpScale: 2.5, speedScale: 0.6),
+    WaveEvent(280, WaveType.swarm, EnemyKind.skeleton, 36,
+        hpScale: 3, speedScale: 0.6),
   ],
   corridorHalfWidth: 160,
   hpScale: 1.15,
@@ -195,11 +212,13 @@ const volcanoStage = StageDef(
   ],
   mascot: EnemyKind.ogre,
   waves: [
-    WaveEvent(40, WaveType.ring, EnemyKind.imp, 80),
-    WaveEvent(95, WaveType.swarm, EnemyKind.bat, 120),
-    WaveEvent(165, WaveType.ring, EnemyKind.goblin, 60),
-    WaveEvent(210, WaveType.swarm, EnemyKind.imp, 140),
-    WaveEvent(280, WaveType.ring, EnemyKind.imp, 140),
+    WaveEvent(40, WaveType.ring, EnemyKind.imp, 110, hpScale: 0.35),
+    WaveEvent(95, WaveType.swarm, EnemyKind.bat, 130, hpScale: 0.4),
+    WaveEvent(165, WaveType.ring, EnemyKind.goblin, 45,
+        hpScale: 2.5, speedScale: 0.65),
+    WaveEvent(210, WaveType.swarm, EnemyKind.imp, 100),
+    WaveEvent(280, WaveType.ring, EnemyKind.skeleton, 55,
+        hpScale: 3, speedScale: 0.55),
   ],
   hpScale: 1.25,
   bossHpScale: 1.8,
@@ -226,11 +245,13 @@ const snowfieldStage = StageDef(
   ],
   mascot: EnemyKind.kingSlime,
   waves: [
-    WaveEvent(50, WaveType.swarm, EnemyKind.wolf, 60),
-    WaveEvent(90, WaveType.ring, EnemyKind.slime, 120),
-    WaveEvent(165, WaveType.swarm, EnemyKind.wolf, 90),
-    WaveEvent(210, WaveType.ring, EnemyKind.ghost, 100),
-    WaveEvent(280, WaveType.ring, EnemyKind.wolf, 120),
+    WaveEvent(50, WaveType.swarm, EnemyKind.wolf, 70, hpScale: 0.4),
+    WaveEvent(90, WaveType.ring, EnemyKind.slime, 140, hpScale: 0.35),
+    WaveEvent(165, WaveType.swarm, EnemyKind.wolf, 60),
+    WaveEvent(210, WaveType.ring, EnemyKind.skeleton, 50,
+        hpScale: 2.5, speedScale: 0.6),
+    WaveEvent(280, WaveType.ring, EnemyKind.goblin, 60,
+        hpScale: 3, speedScale: 0.6),
   ],
   hpScale: 1.3,
   bossHpScale: 2.0,

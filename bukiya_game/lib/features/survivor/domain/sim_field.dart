@@ -24,13 +24,14 @@ const double arenaHalfHeight = 280;
 
 /// 一方向から群れが流れ込んでいる最中の状態
 class _Swarm {
-  final EnemyKind kind;
+  final WaveEvent wave;
   final double angle;
-  final int total;
   int remaining;
   double acc = 0;
 
-  _Swarm(this.kind, this.angle, this.total) : remaining = total;
+  _Swarm(this.wave, this.angle) : remaining = wave.count;
+
+  int get total => wave.count;
 }
 
 /// 突撃の群れは、この秒数をかけて流れ込む
@@ -42,8 +43,8 @@ const double waveWarningTime = 2.5;
 /// 大群が始まってから、この秒数はラッシュ中とみなす（カメラを引いたままにする）
 const double waveRushTime = 12;
 
-/// 大群の敵は数が多いぶん、普段より打たれ弱い
-const double waveHpScale = 0.6;
+/// これより硬い大群の敵は、ひと回り大きく描き、経験値も多く落とす
+const double heavyWaveHp = 2;
 
 extension _Field on RunSimulation {
   double? get _corridor => stage.corridorHalfWidth;
@@ -194,24 +195,35 @@ extension _Field on RunSimulation {
         amount: w.type.index.toDouble()));
     switch (w.type) {
       case WaveType.ring:
-        _spawnRing(w.kind, w.count);
+        _spawnRing(w);
       case WaveType.swarm:
         final c = _corridor;
         final angle = c != null
             ? (rng.nextBool() ? pi / 2 : -pi / 2)
             : rng.nextDouble() * 2 * pi;
-        _swarm = _Swarm(w.kind, angle, w.count);
+        _swarm = _Swarm(w, angle);
     }
   }
 
-  double get _waveHp => (1 + time / 150) * stage.hpScale * waveHpScale;
+  /// 大群の敵を1体作る。大群ごとの硬さ・速さを反映し、硬い敵は大きく、経験値も多い
+  Enemy _waveEnemy(WaveEvent w, double x, double y) {
+    final hp =
+        enemyStats[w.kind]!.hp * (1 + time / 150) * stage.hpScale * w.hpScale;
+    final e = Enemy(w.kind, x, y, hp)..speedScale = w.speedScale;
+    if (w.hpScale >= heavyWaveHp) {
+      e
+        ..bodyScale = 1.25
+        ..xpScale = w.hpScale.round();
+    }
+    return e;
+  }
 
   /// 大群でも、敵の数はここまでに抑える（重くなりすぎないように）
   int get _waveCap => config.maxEnemies + 250;
 
   /// 取り囲む輪（通路では上下の列）。数が多いときは輪を何重にも重ねる
-  void _spawnRing(EnemyKind kind, int count) {
-    final hp = enemyStats[kind]!.hp * _waveHp;
+  void _spawnRing(WaveEvent w) {
+    final count = w.count;
     final c = _corridor;
     final r = spawnDistance * 0.75;
     final layers = (count / 48).ceil();
@@ -232,7 +244,7 @@ extension _Field on RunSimulation {
         x = px + cos(a) * lr;
         y = py + sin(a) * lr;
       }
-      _spawnQueue.add(Enemy(kind, x, y, hp));
+      _spawnQueue.add(_waveEnemy(w, x, y));
     }
   }
 
@@ -244,6 +256,6 @@ extension _Field on RunSimulation {
     final y = py + sin(a) * spawnDistance;
     final c = _corridor;
     if (c != null) x = (rng.nextDouble() * 2 - 1) * (c - 20);
-    _spawnQueue.add(Enemy(s.kind, x, y, enemyStats[s.kind]!.hp * _waveHp));
+    _spawnQueue.add(_waveEnemy(s.wave, x, y));
   }
 }

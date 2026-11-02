@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:bukiya_game/features/survivor/domain/loadout.dart';
 import 'package:bukiya_game/features/survivor/domain/run_simulation.dart';
 import 'package:bukiya_game/features/survivor/domain/stage.dart';
@@ -172,6 +174,44 @@ void main() {
       sim.time = wave.time + waveRushTime + 0.1;
       _step(sim, 0.1);
       expect(sim.rush, isFalse);
+    });
+
+    test('柔らかい大群はふだんより打たれ弱く、硬い大群は遅くて硬く、大きく経験値も多い', () {
+      // 武器なし（敵が倒されず、動きだけを比べられる）
+      final sim = RunSimulation(
+          loadout: const [],
+          config: const RunConfig(stage: _waveOnlyStage),
+          seed: 1);
+      final normalHp = enemyStats[EnemyKind.goblin]!.hp * (1 + sim.time / 150);
+      final normal = sim.debugSpawn(EnemyKind.goblin, -300, 150, hp: normalHp);
+      sim.debugSpawnRing(EnemyKind.slime, 10, hpScale: 0.35);
+      sim.debugSpawnRing(EnemyKind.goblin, 10, hpScale: 3, speedScale: 0.6);
+      sim.update(1 / 60);
+      final soft = sim.enemies.firstWhere((e) => e.kind == EnemyKind.slime);
+      final heavy = sim.enemies
+          .firstWhere((e) => e.kind == EnemyKind.goblin && e != normal);
+      expect(soft.maxHp, lessThan(enemyStats[EnemyKind.slime]!.hp * 0.5));
+      expect(soft.bodyScale, 1);
+      expect(heavy.maxHp, greaterThan(normalHp * 2.5));
+      expect(heavy.speedScale, lessThan(1));
+      expect(heavy.bodyScale, greaterThan(1));
+      expect(heavy.xpScale, greaterThan(1));
+      // 遅い：同じ時間で歩く距離が短い
+      double dist(Enemy e) => sqrt(
+          (e.x - sim.px) * (e.x - sim.px) + (e.y - sim.py) * (e.y - sim.py));
+      final d0 = dist(heavy), n0 = dist(normal);
+      _step(sim, 0.5);
+      final d1 = dist(heavy), n1 = dist(normal);
+      expect(d0 - d1, lessThan((n0 - n1) * 0.8));
+    });
+
+    test('どのステージも、最初の大群は柔らかく、最後の大群は遅くて硬い', () {
+      for (final st in allStages) {
+        expect(st.waves.first.hpScale, lessThan(1), reason: st.id);
+        expect(st.waves.last.hpScale, greaterThanOrEqualTo(heavyWaveHp),
+            reason: st.id);
+        expect(st.waves.last.speedScale, lessThan(1), reason: st.id);
+      }
     });
 
     test('数の多い輪は何重にも重なり、上限を超えては出ない', () {

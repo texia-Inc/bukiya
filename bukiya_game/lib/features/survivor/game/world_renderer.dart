@@ -7,6 +7,7 @@ import 'package:flutter/painting.dart' show FontWeight, Shadow, TextStyle;
 import '../domain/run_result.dart';
 import '../domain/loadout.dart';
 import '../domain/run_simulation.dart';
+import 'enemy_atlas.dart';
 import 'props.dart';
 import 'run_fx.dart';
 import 'sprites.dart';
@@ -97,14 +98,28 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   static final double tilt =
       Uri.base.queryParameters['flat'] == '1' ? 1.0 : 0.72;
 
+  /// URL に ?atlas=0 を付けると、雑魚敵も1体ずつ図形で描く（重さの比較用）
+  static final bool useAtlas = Uri.base.queryParameters['atlas'] != '0';
+  final EnemyAtlas _atlas = EnemyAtlas();
+  final AtlasBatch _batch = AtlasBatch();
+
   /// 画面外のものは描かない
   late Rect _cull;
+
+  /// 地面を縮める中心（画面の中央の高さ）
+  double _cy = 0;
+
+  @override
+  Future<void> onLoad() async {
+    if (useAtlas) await _atlas.build(_sprites);
+  }
 
   @override
   void render(Canvas canvas) {
     final screenView = game.camera.visibleWorldRect;
     // 地面を縦に縮めると、同じ画面に縦長のワールドが映る
     final cy = screenView.center.dy;
+    _cy = cy;
     final view = Rect.fromLTRB(
         screenView.left,
         cy + (screenView.top - cy) / tilt,
@@ -472,7 +487,21 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     var playerDrawn = false;
     var next = 0;
     final props = _visibleProps;
+    final atlas = _atlas.image;
+    void flush() {
+      if (atlas == null || _batch.length == 0) return;
+      // アトラスの絵は縮めずに貼るので、地面の縮みを打ち消した座標で描く
+      canvas.save();
+      canvas.translate(0, _cy);
+      canvas.scale(1, 1 / tilt);
+      canvas.translate(0, -_cy);
+      _batch.flush(canvas, atlas);
+      canvas.restore();
+    }
+
     void propsUpTo(double y) {
+      if (next >= props.length || props[next].y > y) return;
+      flush();
       while (next < props.length && props[next].y <= y) {
         final p = props[next++];
         _upright(canvas, p.x, p.y);
@@ -484,19 +513,53 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     for (final e in visible) {
       if (!playerDrawn && e.y > sim.py) {
         propsUpTo(sim.py);
+        flush();
         _drawPlayer(canvas);
         playerDrawn = true;
       }
       propsUpTo(e.y);
+      if (atlas != null && EnemyAtlas.supports(e.kind)) {
+        // 雑魚敵はアトラスから切り抜いて溜め、まとめて描く
+        _batch.add(_atlas.frameOf(e, sim.time, sim.px), e.x,
+            _cy + (e.y - _cy) * tilt, e.bodyScale, e.hitFlash > 0);
+        continue;
+      }
+      flush();
       _upright(canvas, e.x, e.y);
+      if (e.bodyScale != 1) {
+        canvas.translate(e.x, e.y);
+        canvas.scale(e.bodyScale);
+        canvas.translate(-e.x, -e.y);
+      }
       _drawEnemy(canvas, e);
       canvas.restore();
     }
     if (!playerDrawn) {
       propsUpTo(sim.py);
+      flush();
       _drawPlayer(canvas);
     }
     propsUpTo(double.infinity);
+    flush();
+    if (atlas != null) _drawHpBars(canvas, visible);
+  }
+
+  /// アトラスで描いた敵のうち、傷ついたゴブリンと硬い大群の敵に体力バーを出す
+  void _drawHpBars(Canvas canvas, List<Enemy> enemies) {
+    for (final e in enemies) {
+      if (e.isBoss || e.hp >= e.maxHp) continue;
+      if (e.kind != EnemyKind.goblin && e.bodyScale == 1) continue;
+      final r = e.stats.radius * e.bodyScale;
+      final w = r * 1.6, h = 3 / tilt;
+      final top = e.y - r * 1.35 / tilt;
+      _fill.color = const Color(0xAA000000);
+      canvas.drawRect(Rect.fromLTWH(e.x - w / 2, top, w, h), _fill);
+      _fill.color = const Color(0xFFE5484D);
+      canvas.drawRect(
+          Rect.fromLTWH(
+              e.x - w / 2, top, w * (e.hp / e.maxHp).clamp(0.0, 1.0), h),
+          _fill);
+    }
   }
 
   /// 画面に入る区画ごとに、決まった場所へ小物を置く（同じ場所にはいつも同じ物）
