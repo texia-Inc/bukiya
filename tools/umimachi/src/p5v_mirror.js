@@ -223,8 +223,8 @@ function mirStep(dt){const busy=!!(DLG||modal);
   if(MIR.go&&!busy&&!MIR.end){MIR.t+=dt;MIR.comboT-=dt;MIR.inv-=dt;MIR.mcd-=dt;mirMarble(dt);
     // the line: a point every half metre while she rides (in the air too), the old end fading away
     const T=MIR.trail,l=T[T.length-1];if(!P.foot&&(!l||Math.hypot(P.x-l.x,P.z-l.z)>MIR_STEP)){if(l&&Math.hypot(P.x-l.x,P.z-l.z)>4)T.length=0;T.push({x:P.x,y:mirG(P.x,P.z)+0.05,z:P.z,t:MIR.t,g:P.grind||P.man||P.air&&(P.trick||TRICK.bank>0)?1:0});mirClose();}
-    // on a rail the whole line stops fading (each point for four seconds at most)
-    if(P.grind)for(const p of T)if((p.ext||0)<4){p.t+=dt;p.ext=(p.ext||0)+dt;}
+    // on a rail the whole line stops fading (each point for four seconds at most; on the master's rails, for as long as she rides them)
+    if(P.grind)for(const p of T)if((p.ext||0)<4||P.grind.r.mst){p.t+=dt;p.ext=(p.ext||0)+dt;}
     while(T.length&&MIR.t-T[0].t>mirLife())T.shift();while(T.length>MIR_MAX)T.shift();
     MIR.spawnT-=dt;const alive=MIR.foes.filter(f=>!f.gone).length,R=MIR.rule,want=R&&R.master?Math.min(8,3+Math.floor(MIR.t/20)):Math.min(16,4+Math.floor(MIR.t/14)+(R&&R.kid?2*R.k:0));
     if(MIR.spawnT<=0&&alive<want){mirSpawn();MIR.spawnT=1.1+rnd()*0.6;}

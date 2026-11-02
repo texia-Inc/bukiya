@@ -481,7 +481,7 @@ function stepPlayer(dt){
   if(URA.chase&&URA.chase.replay){jumpQ=kickQ=footQ=trickQ=false;uraReplayPose(dt);return;}   // the replay of being caught moves her, not the keys
   if(URA.hide){P.v=0;jumpQ=kickQ=footQ=trickQ=false;uraPeek(dt,DLG||modal?0:inputs().turn);return;}   // in a crate in 裏海街: still and out of sight
   const busy=!!(DLG||modal);const I=busy?{fwd:false,back:true,turn:0}:inputs();
-  if(P.grind){grindStep(dt);return;}
+  if(P.grind){grindStep(dt,I);return;}
   const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
   // the slope under her: on a bridge it is the deck's, not the ground far below
   const gs=(x,z)=>{let g=G(x,z)+paveY(x,z);for(const c of COLL)if(c.on&&c.tag==='bridge'&&c.top<=P.y+STEP&&c.top>g&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1)g=c.top;return g;};
