@@ -80,7 +80,7 @@ function trickAir(dt){TRICK.airT+=dt;
   // catching a rail on the way down
   // no catching while slow, or just after leaving a rail (otherwise a stop on the rail drops you straight back onto it)
   if(P.vy>4||P.v<2.5||clock<(P.grindCD||0))return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
-  for(const r of RAILS){if(r.run&&!RUN.go||r.mst&&!MST.on)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
+  for(const r of RAILS){if(r.run&&!RUN.go||r.mst&&!MST.on||r.mprop&&MST.on||r.off)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
     const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
     const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
     // a board still flipping cannot catch the rail; caught clean, it is a landing
@@ -103,18 +103,22 @@ function manStep(dt,I,onFoot,busy){const m=P.man;if(onFoot||busy||P.v<1.5){manEn
 // out of it: kept level (K again, or too slow) it is paid like a landing; off balance the board drops and the line is lost
 function manEnd(clean){P.man=null;$('manBar').hidden=true;if(!clean){TRICK.bank=0;TRICK.links=0;P.v*=0.6;P.bump=0.3;}trickLand(clean);}
 // on the rail: gravity along it, a little friction, sparks; Space pops off, the rail's end drops you off
-function grindStep(dt){const g=P.grind,r=g.r;
+function grindStep(dt,I){const g=P.grind,r=g.r;
   const ry0=railY(r,P.x,P.z),nx=P.x+g.ux*g.dir*0.5,nz=P.z+g.uz*g.dir*0.5,slope=(railY(r,nx,nz)-ry0)/0.5;
   P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);if(r.keep)P.v=Math.max(P.v,r.keep);g.t+=g.dir*P.v*dt/g.L;
   P.x=r.x0+(r.x1-r.x0)*g.t;P.z=r.z0+(r.z1-r.z0)*g.t;P.y=railY(r,P.x,P.z);
   TRICK.shown=Math.max(TRICK.shown,0.4);trickHUD();
   if(Math.random()<dt*25)sparks(new THREE.Vector3(P.x,P.y+0.05,P.z),1,'#ffd27a',2.2,0.035);
-  // the rails of light run on into the next length without a break
-  const nr=g.t>=1&&g.dir>0?r.nx:g.t<=0&&g.dir<0?r.pv:null;
-  if(nr&&!jumpQ){const L=Math.hypot(nr.x1-nr.x0,nr.z1-nr.z0),ux=(nr.x1-nr.x0)/L,uz=(nr.z1-nr.z0)/L;P.grind={r:nr,t:g.dir>0?0:1,dir:g.dir,L,ux,uz,sc:0,rot:g.rot};
-    P.yaw=Math.atan2(ux*g.dir,uz*g.dir);player.g.position.set(P.x,P.y,P.z);return;}
-  const off=g.t<=0||g.t>=1,pop=jumpQ,slow=P.v<1.2;jumpQ=false;
-  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;P.grindCD=clock+(r.keep&&off&&!pop?0.15:0.8);   // off the end of a rail of light, she can catch the next across the gap
+  // the rails of light run on into the next length without a break (onto whichever end of it is here); at a fork (alt / palt),
+  // the stick held to that side takes the other way; a length switched off (r.off: gone for now) drops her
+  const end=g.t>=1&&g.dir>0?1:g.t<=0&&g.dir<0?-1:0;let nr=end>0?r.nx:end<0?r.pv:null;const fk=end>0?r.alt:end<0?r.palt:null;
+  if(fk&&!fk.off&&I&&Math.abs(I.turn)>0.3){const near0=Math.hypot(P.x-fk.x0,P.z-fk.z0)<=Math.hypot(P.x-fk.x1,P.z-fk.z1),L=Math.hypot(fk.x1-fk.x0,fk.z1-fk.z0)||1,s=near0?1:-1,
+    side=((fk.x1-fk.x0)/L*s)*-Math.cos(P.yaw)+((fk.z1-fk.z0)/L*s)*Math.sin(P.yaw);if(Math.sign(side)===Math.sign(I.turn))nr=fk;}
+  if(nr&&nr.off)nr=null;
+  if(nr&&!jumpQ){const L=Math.hypot(nr.x1-nr.x0,nr.z1-nr.z0),ux=(nr.x1-nr.x0)/L,uz=(nr.z1-nr.z0)/L,e0=Math.hypot(P.x-nr.x0,P.z-nr.z0)<=Math.hypot(P.x-nr.x1,P.z-nr.z1),dir=e0?1:-1;
+    P.grind={r:nr,t:e0?0:1,dir,L,ux,uz,sc:0,rot:g.rot};P.yaw=Math.atan2(ux*dir,uz*dir);player.g.position.set(P.x,P.y,P.z);return;}
+  const off=g.t<=0||g.t>=1||r.off,pop=jumpQ,slow=P.v<1.2;jumpQ=false;
+  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?(r.keep?3.5:2.2):0;TRICK.airT=0;P.grindCD=clock+(r.keep&&off&&!pop?0.15:0.8);   // off the end of a rail of light she lifts a little, and can catch the next across the gap
 
    
     if(slow){const cx=r.top!=null?(PIER.x0+PIER.x1)/2:0;P.x+=0.7*(Math.sign(cx-P.x)||1);}}   // too slow: she steps off toward the road (or the middle of the pier); the rails all run along z
