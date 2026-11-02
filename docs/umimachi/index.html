@@ -6151,7 +6151,7 @@ function tintUnlit(){_tint.copy(sun.color).multiplyScalar(sun.intensity*0.6);_tc
 /* running events */
 const ST={run:null,actor:null,cam:null,tween:null,scanT:0,marks:{},phase:null};
 const storyBusy=()=>!!ST.run;
-const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait||baseBusy()||DEF.on||BOSS.on;   // events during which the board is yours
+const storyFree=()=>RACE.on||TOUGE.on||!!URA.chase||ogBusy()||lightsBusy()||DRONE.active||!!ISL.wait||baseBusy()||DEF.on||GNT.on;   // events during which the board is yours
 const flag=k=>SAVE.flags[k]||0;
 function cond(w){if(!w)return true;if(typeof w==='function')return!!w();
   if(w.day!=null&&SAVE.day!==w.day)return false;if(w.minDay!=null&&SAVE.day<w.minDay)return false;
@@ -6248,7 +6248,7 @@ function goalHUD(tr){const g=state==='play'&&!ST.run?storyGoal():null;if(!g){tr.
 function updateStory(dt){const tw=ST.tween;updateRace(dt);updateEx1();updateFestival(dt);updateOG(dt);updateLights(dt);
   if(tw){tw.t+=dt;SAVE.hour=lerp(tw.from,tw.to,smooth(clamp(tw.t/tw.dur,0,1)));if(tw.t>=tw.dur){ST.tween=null;SAVE.hour=tw.to;tw.res();}}
   else if(state==='play'&&!ST.run&&!DLG&&!modal&&SAVE.hour<SAVE.cap)SAVE.hour=Math.min(SAVE.cap,SAVE.hour+dt*TIME_RATE);
-  applyLight(SAVE.hour);updateUra(dt);updateBase(dt);updateRescue(dt);updateHQ(dt);updateBoss(dt);updateMirror(dt);updateRun(dt);updateD2End(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
+  applyLight(SAVE.hour);updateUra(dt);updateBase(dt);updateRescue(dt);updateHQ(dt);updateBoss(dt);updateMirror(dt);updateRun(dt);updateGiant(dt);updateD2End(dt);tintUnlit();const ph=phaseOf(SAVE.hour),tm=Math.floor(SAVE.hour*6);
   if(ph!==ST.phase){ST.phase=ph;renderHUD();}if(tm!==ST.tm){ST.tm=tm;renderClock();}
   const calm=!!(DLG||modal||ST.run)||state!=='play';
   for(const e of EVENTS){const id=e.on&&e.on.talk;if(!id||!e.mark)continue;const n=NPCS[id];const m=ST.marks[e.id]||(ST.marks[e.id]=marker(MK.quest));
@@ -6833,7 +6833,8 @@ function creditsP(){return new Promise(res=>{const c=$('credits');c.hidden=false
 const RAILS=[];
 for(const sx of [-1,1])for(const [a,b] of [[-196,-128],[-112,-28],[-12,82],[98,162],[178,204]])RAILS.push({x0:sx*4.75,z0:a,x1:sx*4.75,z1:b,h:0.5});
 for(const x of [PIER.x0+0.1,PIER.x1-0.1])RAILS.push({x0:x,z0:PIER.z0+8,x1:x,z1:PIER.z1-0.4,top:PIER.y+0.9});
-const railY=(r,x,z)=>r.top!=null?r.top:G(x,z)+r.h;
+// a rail with y0/y1 slopes from one end to the other (the rails of light in the last fight)
+const railY=(r,x,z)=>r.y0!=null?lerp(r.y0,r.y1,clamp(((x-r.x0)*(r.x1-r.x0)+(z-r.z0)*(r.z1-r.z0))/((r.x1-r.x0)**2+(r.z1-r.z0)**2),0,1)):r.top!=null?r.top:G(x,z)+r.h;
 { const metal=tm('#9aa3ab'),posts=[];
   for(const r of RAILS){const L=Math.hypot(r.x1-r.x0,r.z1-r.z0);if(r.top!=null)continue;   // the pier railings are already there
     const a=new THREE.Vector3(r.x0,railY(r,r.x0,r.z0),r.z0),b=new THREE.Vector3(r.x1,railY(r,r.x1,r.z1),r.z1);
@@ -6862,13 +6863,13 @@ function trickLand(clean){TRICK.jk=0;
   const b=Math.round(TRICK.bank*10)/10;TRICK.bank=0;TRICK.last=TRICK.next=null;TRICK.manQ=0;TRICK.links=0;
   const mir=MIR.on&&MIR.go&&!MIR.end;if(!clean)toast(mir?'失敗……　ビー玉の待ちが1秒のびた':'失敗……',false);if(mir)mirTrickLand(clean,b);else if(clean&&b>0&&trickFight())trickPay(b);if(RUN.go)runTrickLand(clean,b);}
 // the fights out in the town (the drones, the shadows of the nests, the shore, the lord of the other side)
-const trickFight=()=>!!(DRONE.active||DEF.on||BOSS.on||RUN.go);
+const trickFight=()=>!!(DRONE.active||DEF.on||GNT.on||RUN.go);
 // a jump with a trick in it, or a rail: up there the cold hands, the drones' shots and the dark orbs cannot reach her
 const trickSafe=()=>!!(P.grind||P.air&&(P.trick||TRICK.bank>0));
 // a jump's tricks landed in a fight: the lantern fills sooner, the shots burn harder for a while, and a big one knocks the
 // shadows back (each fight walks its own list)
 function trickPay(b){if(LAN.n<LAN.max)LAN.re+=b;TRICK.boostT=clock+b;const subs=DRONE.active?[`光 ×2（${b}秒）`]:[];if(LAN.n<LAN.max)subs.push(`ランタン −${b}秒`);
-  if(b>=3){const n=trickWave(DEF.on?DEF.list:BOSS.on?BOSS.list:RUN.go?RUN.foes:[]);if(n)subs.unshift('影をはじき飛ばした！');}
+  if(b>=3){const n=trickWave(DEF.on?DEF.list:RUN.go?RUN.foes:[]);if(n)subs.unshift('影をはじき飛ばした！');}
   TRICK.sub=subs.join('　');TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
 // how hard her shots hit just now
 const trickDmg=()=>clock<(TRICK.boostT||0)?2:1;
@@ -6897,7 +6898,7 @@ function trickAir(dt){TRICK.airT+=dt;
   // catching a rail on the way down
   // no catching while slow, or just after leaving a rail (otherwise a stop on the rail drops you straight back onto it)
   if(P.vy>4||P.v<2.5||clock<(P.grindCD||0))return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
-  for(const r of RAILS){if(r.run&&!RUN.go)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
+  for(const r of RAILS){if(r.run&&!RUN.go||r.gnt&&!GNT.on)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
     const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
     const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
     // a board still flipping cannot catch the rail; caught clean, it is a landing
@@ -6922,12 +6923,17 @@ function manEnd(clean){P.man=null;$('manBar').hidden=true;if(!clean){TRICK.bank=
 // on the rail: gravity along it, a little friction, sparks; Space pops off, the rail's end drops you off
 function grindStep(dt){const g=P.grind,r=g.r;
   const ry0=railY(r,P.x,P.z),nx=P.x+g.ux*g.dir*0.5,nz=P.z+g.uz*g.dir*0.5,slope=(railY(r,nx,nz)-ry0)/0.5;
-  P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);g.t+=g.dir*P.v*dt/g.L;
+  P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);if(r.gnt)P.v=Math.max(P.v,9);g.t+=g.dir*P.v*dt/g.L;
   P.x=r.x0+(r.x1-r.x0)*g.t;P.z=r.z0+(r.z1-r.z0)*g.t;P.y=railY(r,P.x,P.z);
   TRICK.shown=Math.max(TRICK.shown,0.4);trickHUD();
   if(Math.random()<dt*25)sparks(new THREE.Vector3(P.x,P.y+0.05,P.z),1,'#ffd27a',2.2,0.035);
+  // the rails of light run on into the next length without a break
+  const nr=g.t>=1&&g.dir>0?r.nx:g.t<=0&&g.dir<0?r.pv:null;
+  if(nr&&!jumpQ){const L=Math.hypot(nr.x1-nr.x0,nr.z1-nr.z0),ux=(nr.x1-nr.x0)/L,uz=(nr.z1-nr.z0)/L;P.grind={r:nr,t:g.dir>0?0:1,dir:g.dir,L,ux,uz,sc:0,rot:g.rot};
+    P.yaw=Math.atan2(ux*g.dir,uz*g.dir);player.g.position.set(P.x,P.y,P.z);return;}
   const off=g.t<=0||g.t>=1,pop=jumpQ,slow=P.v<1.2;jumpQ=false;
-  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;P.grindCD=clock+0.8;
+  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;P.grindCD=clock+(r.gnt&&off&&!pop?0.15:0.8);   // off the end of a rail of light, she can catch the next across the gap
+   
     if(slow){const cx=r.top!=null?(PIER.x0+PIER.x1)/2:0;P.x+=0.7*(Math.sign(cx-P.x)||1);}}   // too slow: she steps off toward the road (or the middle of the pier); the rails all run along z
   player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw+(g.rot||0),0);player.root.rotation.set(0,0,0);
   poseSkater(player,dt,{v:P.v,turn:0,push:false,brake:false,air:false,grind:true});}
@@ -8582,7 +8588,7 @@ EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...EX1_EVENTS);
 const SOTA_LOOK={skin:'#e3b088',hair:'#1c1a1a',style:'short',cap:'#3a7bd5',shirt:'#f2c230',bottom:'shorts',bottomCol:'#3a6b8a',shoe:'#3a7bd5',scale:0.78};
 const EX1R={sota:null,follow:false,trail:[],wisp:null,beam:null,giant:null,door:null,doorT:0};
 const rescueOn=()=>URA.on&&SAVE.flags.ex1===9;
-const lanternOn=()=>DEF.on||BOSS.on||rescueOn()||RUN.go;
+const lanternOn=()=>DEF.on||rescueOn()||RUN.go;
 // Mio's light in 裏海街: along the coast road to the beach where Sota is
 const RESCUE_WP=[[-200,COAST_Z+1],[-168,COAST_Z+1],[-134,COAST_Z+1],[-104,COAST_Z+2],[-86,SHORE+6],[-74,SHORE+10]];
 const SOTA_AT=[-72,SHORE+13];
@@ -8598,9 +8604,9 @@ function lanternFlash(){if(LAN.n<1){toast('ランタンの灯りが、まだた�
     if(d<22){URA.chase.stun=3.5;URA.chase.mode='roam';URA.chase.wait=0;const k=Math.min(6,30-d)/(d||1);bg.x-=(P.x-bg.x)*k*0.25;bg.z-=(P.z-bg.z)*k*0.25;URA.chase.tx=bg.x;URA.chase.tz=bg.z;
       toast('大きな影が、光にひるんだ！ いまのうちに');}}
   if(DEF.on)for(const s of DEF.list)if(!s.gone&&dd(s.g.position.x,s.g.position.z)<R+1){s.gone=1;DEF.killed++;}
-  bossFlash(R);runFlash(R);
+  runFlash(R);
   renderHUD();}
-function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||BOSS.on||RUN.go)){LAN.n++;LAN.re=0;renderHUD();}}
+function updateLantern(dt){if(LAN.n<LAN.max){LAN.re+=dt;if(LAN.re>=lanRe(DEF.on||RUN.go)){LAN.n++;LAN.re=0;renderHUD();}}
   if(!LAN.lt)return;LAN.t=Math.max(0,LAN.t-dt*1.4);const k=LAN.t;
   LAN.lt.intensity=k*3;LAN.lt.position.set(P.x,P.y+1.6,P.z);LAN.fx.visible=k>0;LAN.fx.position.set(P.x,P.y+1.2,P.z);LAN.fx.scale.setScalar(2+24*(1-k));LAN.fx.material.opacity=k*0.7;}
 /* ----- Sota: found on the beach of 裏海街, then at her heels ----- */
@@ -8680,7 +8686,7 @@ function doorStep(dt){const D=EX1R.door;if(!D)return;const show=!!SAVE.flags.x_d
   const want=SAVE.flags.x_door>1?1:0;D.open+=(want-D.open)*Math.min(1,dt*0.9);for(const [i,m] of D.halves.entries())m.position.x=(i?1:-1)*(0.62+D.open*1.3);}
 function updateRescue(dt){updateLantern(dt);sotaStep(dt);wispStep(dt);updateDefend(dt);giantStep(dt);if(SAVE.flags.x_door)rockDoor();doorStep(dt);
   if(lanternOn())$('lightBtn').textContent=lanMeter();else if($('lightBtn').textContent!=='ライト')$('lightBtn').textContent='ライト';
-  if(DEF.on||BOSS.on)$('lightBtn').hidden=false;}
+  if(DEF.on)$('lightBtn').hidden=false;}
 function rescueHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='裏海街';const s=document.createElement('span');s.className='step';
   s.textContent='ミオの青い光を追って、ソウタくんを探す。影に見つかりそうになったら、ランタンを光らせてひるませる';
   const m=document.createElement('span');m.className='meter';m.textContent=lanMeter();tr.append(b,s,m);}
@@ -8990,7 +8996,7 @@ async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(runScript());return;}}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
-function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||BOSS.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
+function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
   while(HQ.allies.length<want){const d=makeDrone();d.g.scale.setScalar(1.1);HQ.allies.push(d);toast('オーシャンゲートの援護ドローンが来た！');}
   HQ.allies.forEach((d,k)=>{d.g.visible=k<want;if(!d.g.visible)return;const sd=k?-1:1,a=P.yaw+sd*(0.55+Math.sin(clock*0.7+k)*0.15),w=new THREE.Vector3(P.x+Math.sin(a)*7,P.y+6+Math.sin(clock*2+k)*0.3,P.z+Math.cos(a)*7);
     d.g.position.lerp(w,Math.min(1,dt*3));d.g.rotation.y=a;for(const r of d.rotors)r.rotation.y+=dt*40;});
@@ -9000,8 +9006,6 @@ function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||BOSS.on
     if(t){const p=t.g.position.clone();tracer(from,p);damage(t,p);if(!t.dead)damage(t,p);}}
   else if(DEF.on){const t=DEF.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.z-b.g.position.z)[0];
     if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;DEF.killed++;}}
-  else if(BOSS.on){const t=BOSS.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
-    if(t&&!BOSS.striking){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;bossGain();}}
   else if(RUN.go){const t=RUN.foes.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
     if(t&&t.g.position.distanceTo(player.g.position)<30){tracer(from,t.g.position.clone().setY(t.g.position.y+1));runKill(t);}}}
 function hqHUD(){const D=d2();return `影のかけら ${shards()}　帰ってきた子 ${D.nest||0}/${KIDS}`;}
@@ -9037,72 +9041,23 @@ const HQ_EVENTS=[
     ['set','d2'],['cam','off'],['call',()=>toast('日が暮れたら、作戦室のばあちゃんに話して裏海街へ出撃。施設はお金とかけらで強くなる',true)]]},
 ];
 EVENTS.splice(EVENTS.findIndex(e=>e.id==='dusk'),0,...HQ_EVENTS);
-/* ---------- the end of the second story: with the five nests burnt, the gate under the sea opens and its master comes.
-   The morning after the fifth nest Kurosaki calls: Oceangate will mend the radio mast and raise the barrier again, but not
+/* ---------- the end of the second story: with the five children home, the gate under the sea opens and its master comes.
+   The morning after the fifth child Kurosaki calls: Oceangate will mend the radio mast and raise the barrier again, but not
    before dawn. That night, from the command table, the last fight: the shadow drones and the shadows on the coast road, then
-   the master rising in the bay. On the beach it throws dark orbs (dodge them) and sends shadows out of the sea; each one sent
-   back by the lantern gathers the light (the gauge), and when it is full a flash calls the lighthouse's beam onto it. Three
-   strikes and it sinks. Dawn: the mast lit red again, Mio and the children going home into the light, Natsumi meeting her
+   the master rising in the bay, and round it Mio's ring of rails of light (the fight itself is in p5y_giant.js): ridden round,
+   the ring of light wears it down, and the third time it reels the lighthouse's beam finishes it. Dawn: the mast lit red again, Mio and the children going home into the light, Natsumi meeting her
    at last (d2_done). Back home that morning, the third story begins at once (d3_open in p5w_d3.js). ---------- */
 const BOSS_AT={x:-50,z:352},BOSS_S=30;
-const BOSS={on:false,hp:3,max:3,gauge:0,need:6,list:[],orbs:[],spawnT:0,orbT:3,hearts:5,inv:0,res:null,ready:false,striking:false,falls:0,hudT:0,g:null,eyes:[]};
+// the master as seen: its figure and its three red eyes (BOSS.y is where it is rising or sinking to)
+const BOSS={g:null,eyes:[],y:0};
 function bossBuild(){if(BOSS.g)return;const h=makeHuman(SHADE);h.g.scale.setScalar(BOSS_S);world.add(h.g);BOSS.g=h;
-  BOSS.eyes=[[0,0,32],[-0.09,-0.06,10],[0.09,-0.06,10]].map(([dx,dy,s])=>{const e=glow('#ff3020',0,0,0,s);e.userData.d=[dx,dy];return e;});h.g.visible=false;}
-function bossShow(on,y){bossBuild();const g=BOSS.g.g;g.visible=on;for(const e of BOSS.eyes)e.visible=on;if(!on)return;g.position.set(BOSS_AT.x,y==null?SEA_Y-14:y,BOSS_AT.z);g.rotation.y=Math.PI;BOSS.y=g.position.y;}
+  BOSS.eyes=[[0,0,32],[-0.09,-0.06,10],[0.09,-0.06,10]].map(([dx,dy,s])=>{const e=glow('#ff3020',0,0,0,s);e.userData.d=[dx,dy];return e;});h.g.visible=false;
+  for(const L of h.legs)for(const k of ['th','kn','ft'])if(L[k])L[k].visible=false;}   // only from the waist up: it stands in the sea
+function bossShow(on,y){bossBuild();const g=BOSS.g.g;g.visible=on;for(const e of BOSS.eyes)e.visible=on;if(!on)return;g.position.set(BOSS_AT.x,y==null?SEA_Y-27:y,BOSS_AT.z);g.rotation.y=Math.PI;BOSS.y=g.position.y;}
 function bossPose(dt){if(!BOSS.g||!BOSS.g.g.visible)return;const g=BOSS.g.g;poseHuman(BOSS.g,'stand',dt,{});g.position.y+=(BOSS.y-g.position.y)*Math.min(1,dt*1.5);
   const s=g.scale.x;BOSS.eyes.forEach((e,k)=>{const [dx,dy]=e.userData.d;e.position.set(g.position.x+dx*s,g.position.y+(1.62+dy)*s,g.position.z-0.3*s);e.material.opacity=k?0.6+0.3*Math.sin(clock*4+k):0.85+0.15*Math.sin(clock*6);});}
 const bossEye=()=>BOSS.eyes[0].position.clone();
-function bossP(){return new Promise(res=>{ST.actor=null;talkNpc=null;Object.assign(BOSS,{on:true,res,hp:3,gauge:0,need:6,spawnT:1,orbT:3,hearts:DRONE.maxHp,inv:0,ready:false,striking:false,falls:0});LAN.n=LAN.max;
-  toast(hasTouch?'影を「ランタン」で追いはらって光をためろ。黒い玉はよけろ':'影を L キーで追いはらって光をためろ。黒い玉はよけろ',true);renderHUD();});}
-function bossHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='異界の主';const s=document.createElement('span');s.className='step';
-  s.textContent=BOSS.ready?'光が満ちた！ ランタンを光らせて、灯台の光を呼べ':'浜から上がってくる影をランタンで追いはらうと、光がたまる。黒い玉は、動いてよける';
-  const m=document.createElement('span');m.className='meter';const gk=Math.min(BOSS.need,BOSS.gauge);
-  m.textContent=`主 ${'■'.repeat(BOSS.hp)}${'□'.repeat(BOSS.max-BOSS.hp)}　光 ${'◆'.repeat(gk)}${'◇'.repeat(BOSS.need-gk)}　${'♥'.repeat(Math.max(0,BOSS.hearts))}${'♡'.repeat(Math.max(0,DRONE.maxHp-BOSS.hearts))}　${lanMeter()}`;tr.append(b,s,m);}
-// the lantern's flash in the last fight: shadows near go back and fill the gauge; with the gauge full, the beam comes
-function bossFlash(R){if(!BOSS.on||BOSS.striking)return;
-  if(BOSS.ready){bossStrike();return;}
-  for(const s of BOSS.list)if(!s.gone&&Math.hypot(P.x-s.g.position.x,P.z-s.g.position.z)<R+1){s.gone=1;bossGain();}}
-function bossGain(){if(BOSS.ready)return;BOSS.gauge++;if(BOSS.gauge>=BOSS.need){BOSS.ready=true;buzz('medium');toast('光が満ちた！ ランタンを光らせて、灯台の光を呼べ！',true);}renderHUD();}
-async function bossStrike(){BOSS.striking=true;BOSS.ready=false;const T={x:BOSS_AT.x,z:BOSS_AT.z};
-  for(const o of BOSS.orbs){scene.remove(o.m);}BOSS.orbs.length=0;
-  await beamTurnP(T);const p=bossEye();for(let k=0;k<6;k++)setTimeout(()=>sparks(p.clone().add(new THREE.Vector3(rnd()*16-8,rnd()*10-6,rnd()*4)),20,'#ffe2a0',9,0.5),k*120);
-  buzz('heavy',true);BOSS.hp--;BOSS.y-=4;BOSS.gauge=0;BOSS.need+=2;renderHUD();
-  toast(BOSS.hp>0?`灯台の光が、主をつらぬいた！（のこり ${BOSS.hp}）`:'灯台の光が、主をつらぬいた！',true);
-  setTimeout(()=>{EX1R.beam=null;BOSS.striking=false;if(BOSS.hp<=0&&BOSS.on){BOSS.on=false;bossClear();const r=BOSS.res;r();}},1800);}
-function bossClear(){for(const s of BOSS.list){world.remove(s.g);scene.remove(s.eye);}BOSS.list.length=0;for(const o of BOSS.orbs)scene.remove(o.m);BOSS.orbs.length=0;$('hurt').style.opacity=0;}
-function bossHurt(){if(BOSS.inv>0||trickSafe())return;BOSS.inv=1.3;BOSS.hearts--;buzz('heavy',true);P.v*=0.4;renderHUD();
-  if(BOSS.hearts>0){toast('やられた！');return;}
-  // down: back on her feet a little way up the beach; the master keeps its wounds
-  BOSS.falls++;$('fade').style.opacity=1;BOSS.striking=true;
-  setTimeout(()=>{bossClear();BOSS.hearts=DRONE.maxHp;BOSS.gauge=0;BOSS.ready=false;LAN.n=LAN.max;P.x=BOSS_AT.x;P.z=COAST_Z+2;P.yaw=0;P.y=G(P.x,P.z);camInit=false;BOSS.striking=false;
-    $('fade').style.opacity=0;toast('……まだ、終われない。ミオの声が、背中を押した',true);},900);}
-const ORB_G=new THREE.SphereGeometry(0.45,12,8),ORB_M=new THREE.MeshBasicMaterial({color:'#0b0b0d'});
-function bossOrb(){const a=bossEye(),c=new THREE.Vector3(P.x,P.y+1,P.z),t=a.distanceTo(c)/18;
-  const lead=new THREE.Vector3(Math.sin(P.yaw),0,Math.cos(P.yaw)).multiplyScalar(P.v*t*0.8),aim=c.add(lead);
-  const m=new THREE.Group(),core=new THREE.Mesh(ORB_G,ORB_M),gl=glow('#ff3020',0,0,0,1.6);gl.visible=true;scene.remove(gl);m.add(core,gl);m.position.copy(a);scene.add(m);
-  BOSS.orbs.push({m,v:aim.sub(a).setLength(18),life:6});}
-function updateBoss(dt){bossPose(dt);if(!BOSS.on)return;const busy=!!(DLG||modal)||BOSS.striking;BOSS.inv-=dt;
-  // shadows out of the sea, coming for her
-  BOSS.spawnT-=dt;const alive=BOSS.list.filter(s=>!s.gone).length;
-  if(!busy&&alive<4+(3-BOSS.hp)&&BOSS.spawnT<=0){const h=makeHuman(SHADE),x=clamp(P.x-20+rnd()*40,-115,15),z=SHORE+12+rnd()*5;world.add(h.g);h.g.position.set(x,SEA_Y-1.8,z);
-    BOSS.list.push({h,g:h.g,eye:glow('#ff3020',0,0,0,0.9),up:0,sp:2+rnd()*0.6+(3-BOSS.hp)*0.25,gone:0,fade:0});BOSS.spawnT=1.3+rnd()*0.8;}
-  for(const s of BOSS.list.slice()){const p=s.g.position;
-    if(s.gone){s.fade+=dt*1.8;const f=Math.min(1,s.fade);s.g.scale.set(1-f*0.6,1-f*0.9,1-f*0.6);s.eye.visible=false;if(f>=1){world.remove(s.g);scene.remove(s.eye);BOSS.list.splice(BOSS.list.indexOf(s),1);}continue;}
-    const gy=Math.max(G(p.x,p.z),SEA_Y-0.4);
-    if(s.up<1){s.up=Math.min(1,s.up+dt*0.8);p.y=lerp(SEA_Y-1.8,gy,s.up);poseHuman(s.h,'stand',dt,{});}
-    else if(s.stun>0){s.stun-=dt;p.y=gy;poseHuman(s.h,'stand',dt,{});}   // knocked back by a trick (trickWave)
-    else if(!busy){const dx=P.x-p.x,dz=P.z-p.z,l=Math.hypot(dx,dz)||1;if(l>0.9){p.x+=dx/l*s.sp*dt;p.z+=dz/l*s.sp*dt;}p.y=Math.max(G(p.x,p.z)+paveY(p.x,p.z),SEA_Y-0.4);s.g.rotation.y=Math.atan2(dx,dz);poseHuman(s.h,'walk',dt,{rate:3.8});
-      if(l<1.15&&BOSS.inv<=0){s.gone=1;bossHurt();}}
-    s.eye.visible=true;s.eye.position.set(p.x,p.y+1.62,p.z);s.eye.material.opacity=0.7+0.3*Math.sin(clock*7+p.x);}
-  // the dark orbs, faster as it weakens
-  if(!busy){BOSS.orbT-=dt;if(BOSS.orbT<=0){bossOrb();if(BOSS.hp===1)setTimeout(()=>BOSS.on&&!BOSS.striking&&bossOrb(),450);BOSS.orbT=3.2-(3-BOSS.hp)*0.6+rnd()*0.6;}}
-  const me=new THREE.Vector3(P.x,P.y+1,P.z);
-  for(const o of BOSS.orbs.slice()){const p=o.m.position;o.life-=dt;if(!busy)p.addScaledVector(o.v,dt);let gone=o.life<=0;
-    if(!gone&&p.distanceTo(me)<0.95){bossHurt();gone=true;}
-    else if(!gone&&p.y<Math.max(G(p.x,p.z),SEA_Y)+0.1){sparks(p,8,'#3a3236',4,0.08);gone=true;}
-    if(gone){scene.remove(o.m);BOSS.orbs.splice(BOSS.orbs.indexOf(o),1);}}
-  $('hurt').style.opacity=Math.max(BOSS.inv>0.8?0.5:0,BOSS.hearts===1?0.3+0.1*Math.sin(clock*5):0);
-  BOSS.hudT-=dt;if(BOSS.hudT<=0){BOSS.hudT=0.25;renderHUD();}}
+function updateBoss(dt){bossPose(dt);}
 // the people on the beach at dawn: Mio (shown again, off the pier), Natsumi, grandma, the baker, Kurosaki
 const D2END={mio:false};
 { const m0=NPCS.mio.show;NPCS.mio.show=()=>D2END.mio||m0(); }
@@ -9140,17 +9095,17 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['drones',{total:Math.max(12,N.drones),boss:1,title:'最後の夜：影のドローン'}],
   ['say','baker','（無線の声）上は片づいた！ ナギちゃん、浜だ！'],
   ['call',()=>defendP({total:Math.max(24,N.shadows),alive:Math.max(7,N.alive),spd:Math.max(0.4,N.spd)})],
-  ['fade','out'],['warp',BOSS_AT.x,COAST_Z+2,0],['call',()=>bossShow(true,SEA_Y-40)],['time',23.5,0],
+  ['fade','out'],['warp',(PIER.x0+PIER.x1)/2,PIER.z1-40,0],['call',rideNow],['call',()=>bossShow(true,SEA_Y-40)],['time',23.5,0],
   ['cam',[BOSS_AT.x+14,G(BOSS_AT.x,SHORE)+2.4,SHORE+1],[BOSS_AT.x,SEA_Y+22,BOSS_AT.z],1.2,'cut'],['fade','in'],
-  ['call',()=>{BOSS.y=SEA_Y-14;}],['wait',3],
+  ['call',()=>{BOSS.y=SEA_Y-27;}],['wait',3],
   ['say','','海が、まっぷたつに割れた。','山よりも大きな影が、ゆっくりと立ち上がる。……赤い目が、三つ。'],
   ['say','黒崎','（無線の声）主だ……！ 電波塔は、まだか！'],
   ['say','master','（無線の声）あと少しだ！ 夜明けまで、もたせてくれ！'],
   ['call',()=>ex1Marble(true)],
-  ['say','ミオの声','（ナギ、影を追いはらって、光をためて。光が満ちたら、わたしが灯台の光をあいつに向ける）'],
+  ['say','ミオの声','（ナギ、見て。あいつのまわりに、光のレールをかけたよ。桟橋の先から跳び乗って）','（レールで、あいつのまわりをぐるっと回るの。光の輪でしめつけて、三回よろけさせたら、わたしが灯台の光をあいつに向ける）'],
   ['call',()=>ex1Marble(false)],
   ['cam','off'],
-  ['call',bossP],
+  ['call',giantP],
   // it sinks
   ['cam',[BOSS_AT.x+14,G(BOSS_AT.x,SHORE)+2.4,SHORE+1],[BOSS_AT.x,SEA_Y+18,BOSS_AT.z],1.2,'cut'],
   ['call',()=>{BOSS.y=SEA_Y-70;}],['wait',3.5],
@@ -9806,22 +9761,23 @@ function runRoof(x,z,y){let g=-1e9;
 // the second jump (and a third, with the power): a burst of light under the board
 function runJump(){if(!RUN.go||RUN.end||RUN.jumps>=RUN.maxJ||P.grind)return false;RUN.jumps++;P.vy=9;TRICK.airT=0;
   sparks(new THREE.Vector3(P.x,P.y,P.z),16,'#bfe6ff',5,0.1);runWave(P.x,P.y+0.1,P.z,'#bfe6ff',3);buzz('light',true);return true;}
-function runBuild(){if(RUN.g)return;const g=new THREE.Group();scene.add(g);RUN.g=g;
-  const rib=(w,col,gold)=>{const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));
+// a ribbon of light along a line of points (the night out's line, and the line round the master in the last fight)
+function runRib(g,w,col,gold){const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));
     const idx=[];for(let i=0;i<RUN_MAX-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}geo.setIndex(idx);
     const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));m.frustumCulled=false;
-    m.userData={w,col:new THREE.Color(col),gold:new THREE.Color(gold)};g.add(m);return m;};
-  RUN.halo=rib(1.5,'#2a5a9a','#8a5a18');RUN.core=rib(0.32,'#bfe6ff','#ffe6a0');RUN.head=glow('#9fd4ff',0,0,0,2.2);}
+    m.userData={w,col:new THREE.Color(col),gold:new THREE.Color(gold)};g.add(m);return m;}
+function runBuild(){if(RUN.g)return;const g=new THREE.Group();scene.add(g);RUN.g=g;
+  RUN.halo=runRib(g,1.5,'#2a5a9a','#8a5a18');RUN.core=runRib(g,0.32,'#bfe6ff','#ffe6a0');RUN.head=glow('#9fd4ff',0,0,0,2.2);}
 // the line lies flat across the way she went (up the slope of a roof, through the air after a jump)
-function runRibbon(m){const T=RUN.trail,pos=m.geometry.attributes.position.array,col=m.geometry.attributes.color.array,n=T.length,w=m.userData.w/2;
+function runRibbon(m,T=RUN.trail,now=RUN.t,life=RUN.life){const pos=m.geometry.attributes.position.array,col=m.geometry.attributes.color.array,n=T.length,w=m.userData.w/2;
   for(let i=0;i<n;i++){const p=T[i],q=T[Math.min(n-1,i+1)],o=T[Math.max(0,i-1)],dx=q.x-o.x,dz=q.z-o.z,l=Math.hypot(dx,dz)||1,nx=-dz/l*w,nz=dx/l*w;
-    const age=RUN.t-p.t,k=clamp((RUN.life-age)/0.4,0,1)*(age<0.3?1.6:1),j=i*6,c=p.g?m.userData.gold:m.userData.col;
+    const age=now-p.t,k=clamp((life-age)/0.4,0,1)*(age<0.3?1.6:1),j=i*6,c=p.g?m.userData.gold:m.userData.col;
     pos[j]=p.x+nx;pos[j+1]=p.y;pos[j+2]=p.z+nz;pos[j+3]=p.x-nx;pos[j+4]=p.y;pos[j+5]=p.z-nz;
     for(let e=0;e<2;e++){col[j+e*3]=c.r*k;col[j+e*3+1]=c.g*k;col[j+e*3+2]=c.b*k;}}
   m.geometry.setDrawRange(0,Math.max(0,n-1)*6);m.geometry.attributes.position.needsUpdate=true;m.geometry.attributes.color.needsUpdate=true;}
-// the cores: a black heap with red eyes of light, breathing, smaller as it wears down
 // tonight's three places: the first night the three nearest the start, then any three of the five
 function runAreas(){if(!RUN.night)return RUN_AREAS.slice(0,3);return RUN_AREAS.slice().sort(()=>rnd()-0.5).slice(0,3);}
+// the cores: a black heap with red eyes of light, breathing, smaller as it wears down
 function runCoreMake(A){const g=new THREE.Group(),blk=new THREE.MeshBasicMaterial({color:'#0b0b0d'}),y=G(A.x,A.z)+paveY(A.x,A.z);
   const c=new THREE.Mesh(new THREE.SphereGeometry(1.8,14,10),blk);c.position.y=1.8;g.add(c);
   for(let k=0;k<9;k++){const a=k/9*TAU,r=1.5+(k%3)*0.5,m=new THREE.Mesh(new THREE.SphereGeometry(0.55+(k%4)*0.22,10,8),blk);m.position.set(Math.cos(a)*r,0.4+(k%2)*0.4,Math.sin(a)*r);g.add(m);}
@@ -10012,6 +9968,94 @@ function runScript(){const first=!SAVE.seen.run_first;SAVE.seen.run_first=1;retu
       '影をたおすと、力がついてくる。力がついたら、ひとつえらんで持っておいき。','こわした場所も、しばらくすると影がもどってくる。そうなったら、もう一度囲んでおやり。',
       '三つの核をぜんぶこわせば、夜明けに子どもが帰ってくる。']:['今夜も、三つの核をこわしておいで。'])],
   ['cam','off'],['call',()=>{RUN.go=true;RUN.lvQ=1;toast('走って、線で囲め！',true);}]];}
+/* ---------- the last fight of the second story: the master of the shadows, risen to the waist out of the bay, and a ring of
+   rails of light hung in the air round it. From the end of the pier a rail climbs up to the ring; the ring is four arcs with a
+   gap between each (she flies across, or jumps). Riding them leaves a gold line, and once round the master the line closes
+   into a ring of light that wears it down; worn enough, it reels (three times, and the lighthouse's beam finishes it).
+   Its arm sweeps round the ring at the height of the rails, a red shadow on the sea first: jump over it. A fall into the sea
+   or the hearts gone, and she is back at the end of the pier; the master keeps its wounds. ---------- */
+const GNT_R=24,GNT_LIFE=22;
+const GNT={on:false,res:null,g:null,rails:[],trail:[],t:0,st:0,gauge:0,need:4,hearts:5,inv:0,swept:0,ang:null,armT:5,arm:null,warn:null,sw:null,end:false,hudT:0,said:false};
+const gntC=()=>({x:BOSS_AT.x,z:BOSS_AT.z});
+// where the ring is lowest and highest: each arc climbs from 4.6 m to 5.4 m with a hump in the middle, so going round the way
+// it was laid (anticlockwise seen from above) she drops a little onto each next arc
+const gntArcY=u=>4.6+0.8*u+1.6*Math.sin(Math.PI*u);
+function gntBuild(){if(GNT.g)return;const g=new THREE.Group();scene.add(g);GNT.g=g;g.visible=false;const C=gntC();
+  const mat=new THREE.MeshBasicMaterial({color:'#ffe6a0',fog:false}),halo=new THREE.MeshBasicMaterial({color:'#ffcf70',transparent:true,opacity:0.22,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
+  const draw=r=>{const a=new THREE.Vector3(r.x0,r.y0,r.z0),b=new THREE.Vector3(r.x1,r.y1,r.z1),L=a.distanceTo(b);
+    for(const [m,w] of [[mat,0.06],[halo,0.28]]){const c=new THREE.Mesh(new THREE.CylinderGeometry(w,w,L,8,1,true),m);c.position.copy(a).add(b).multiplyScalar(0.5);c.lookAt(b);c.rotateX(Math.PI/2);g.add(c);}};
+  // the ring: four arcs of four straight lengths, from the side facing the pier round anticlockwise
+  const p0=Math.atan2(PIER.z1-C.z,(PIER.x0+PIER.x1)/2-C.x),pt=(a,u)=>({x:C.x+Math.cos(a)*GNT_R,z:C.z+Math.sin(a)*GNT_R,y:gntArcY(u)});
+  const arc=80*Math.PI/180,gap=10*Math.PI/180;let first=null;
+  for(let k=0;k<4;k++){let prev=null;for(let j=0;j<4;j++){const a0=p0+k*(arc+gap)+j*arc/4,a1=a0+arc/4,A=pt(a0,j/4),B=pt(a1,(j+1)/4);
+      const r={x0:A.x,z0:A.z,y0:A.y,x1:B.x,z1:B.z,y1:B.y,gnt:true,ring:true};if(prev){prev.nx=r;r.pv=prev;}prev=r;if(!first)first=r;RAILS.push(r);GNT.rails.push(r);draw(r);}}
+  // the rail up from the pier
+  const S={x:(PIER.x0+PIER.x1)/2,z:PIER.z1-18},up={x0:S.x,z0:S.z,y0:PIER.y+0.6,x1:first.x0,z1:first.z0,y1:first.y0,gnt:true,nx:first};first.pv=up;
+  RAILS.push(up);GNT.rails.push(up);draw(up);
+  // the arm, from the master's shoulder out over the ring, and the red shadow it throws on the sea before it comes
+  const arm=new THREE.Group(),blk=new THREE.MeshBasicMaterial({color:'#0b0b0d'}),bar=new THREE.Mesh(new THREE.BoxGeometry(32,1.1,1.4),blk);bar.position.x=19;arm.add(bar);
+  const hand=new THREE.Mesh(new THREE.SphereGeometry(1.5,12,8),blk);hand.position.x=35;arm.add(hand);arm.position.set(C.x,30,C.z);arm.visible=false;g.add(arm);GNT.arm=arm;
+  const warn=new THREE.Mesh(new THREE.RingGeometry(GNT_R-5,GNT_R+5,32,1,0,1),new THREE.MeshBasicMaterial({color:'#ff3020',transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
+  warn.rotation.x=Math.PI/2;warn.position.set(C.x,SEA_Y+0.3,C.z);g.add(warn);GNT.warn=warn;
+  GNT.halo=runRib(g,1.5,'#2a5a9a','#8a5a18');GNT.core=runRib(g,0.32,'#bfe6ff','#ffe6a0');}
+// in the fight: the hearts and the master's wounds as they were at the start, and her on the pier facing the ring
+function giantP(){return new Promise(res=>{gntBuild();ST.actor=null;talkNpc=null;
+  Object.assign(GNT,{on:true,res,t:0,st:0,gauge:0,need:4,hearts:DRONE.maxHp,inv:0,swept:0,ang:null,armT:5,sw:null,end:false});GNT.trail.length=0;GNT.g.visible=true;
+  gntPier();toast('桟橋の先の光のレールに跳び乗って、主のまわりを一周しろ！',true);renderHUD();});}
+function gntPier(){P.grind=null;P.air=false;P.vy=0;P.x=(PIER.x0+PIER.x1)/2;P.z=PIER.z1-40;P.y=PIER.y;P.yaw=0;P.v=6;P.foot=false;GNT.swept=0;GNT.ang=null;GNT.trail.length=0;camInit=false;}
+function gntHurt(why){if(why!=='sea'&&GNT.inv>0||GNT.end)return;GNT.inv=1.4;GNT.hearts--;buzz('heavy',true);renderHUD();
+  if(GNT.hearts>0&&why!=='sea'){toast('主の腕に、はじかれた！');return;}
+  $('fade').style.opacity=1;GNT.end=true;
+  setTimeout(()=>{if(GNT.hearts<=0){GNT.hearts=DRONE.maxHp;toast('……まだ、終われない。ミオの声が、背中を押した',true);}else toast('海に落ちた！ 桟橋からやりなおし');
+    gntPier();GNT.sw=null;GNT.arm.visible=false;GNT.warn.material.opacity=0;GNT.armT=4;GNT.end=false;$('fade').style.opacity=0;renderHUD();},700);}
+// once round: the line closes in the air, a ring of light rises round the master and wears it down
+function gntLap(){const C=gntC(),y=GNT.trail.reduce((s,p)=>s+p.y,0)/Math.max(1,GNT.trail.length);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(GNT_R,0.5,8,64),new THREE.MeshBasicMaterial({color:'#ffe2a0',transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
+  ring.rotation.x=Math.PI/2;ring.position.set(C.x,y,C.z);GNT.g.add(ring);GNT.fx=GNT.fx||[];GNT.fx.push({m:ring,t:0});
+  const d=1+DRONE.dmg;GNT.gauge+=d;const p=bossEye();for(let k=0;k<5;k++)setTimeout(()=>sparks(p.clone().add(new THREE.Vector3(rnd()*12-6,rnd()*10-12,rnd()*6-3)),18,'#ffe2a0',8,0.4),k*120);
+  sfx.boom(0.7);buzz('heavy',true);
+  if(GNT.gauge>=GNT.need){GNT.gauge=0;GNT.st++;BOSS.y-=5;setTimeout(()=>{if(GNT.on)BOSS.y+=5;},1400);
+    if(GNT.st>=3){gntFinish();return;}toast(`光の輪が、主をしめつけた！ 主がよろけた（${GNT.st}/3）`,true);}
+  else runPop('光の輪！',`主に ${d%1?d.toFixed(1):d}　あと ${Math.ceil(GNT.need-GNT.gauge)}でよろける`);renderHUD();}
+// the third time it reels: the lighthouse's beam swings round onto it
+async function gntFinish(){GNT.end=true;GNT.sw=null;GNT.arm.visible=false;GNT.warn.material.opacity=0;gntPier();P.v=0;toast('いまだ！ 灯台の光が、主に向く！',true);
+  await beamTurnP(gntC());const p=bossEye();for(let k=0;k<8;k++)setTimeout(()=>sparks(p.clone().add(new THREE.Vector3(rnd()*16-8,rnd()*10-6,rnd()*4)),20,'#ffe2a0',9,0.5),k*120);buzz('heavy',true);
+  setTimeout(()=>{EX1R.beam=null;GNT.on=false;GNT.g.visible=false;GNT.trail.length=0;$('hurt').style.opacity=0;renderHUD();const r=GNT.res;GNT.res=null;if(r)r();},1800);}
+// in the air over the ring she keeps to it: her heading turns along it and she is drawn back over it
+function gntSteer(dt,C,r,a){if(!P.air||Math.abs(r-GNT_R)>4)return;const s=Math.sign(Math.sin(P.yaw)*-Math.sin(a)+Math.cos(P.yaw)*Math.cos(a))||1;
+  P.yaw=Math.atan2(-Math.sin(a)*s,Math.cos(a)*s);const k=Math.min(1,dt*3);P.x+=(C.x+Math.cos(a)*GNT_R-P.x)*k;P.z+=(C.z+Math.sin(a)*GNT_R-P.z)*k;}
+function updateGiant(dt){if(!GNT.on)return;const busy=!!(DLG||modal),C=gntC();
+  for(const f of (GNT.fx||[]).slice()){f.t+=dt/1.2;f.m.scale.setScalar(1+f.t*0.3);f.m.position.y+=dt*4;f.m.material.opacity=0.9*(1-f.t);if(f.t>=1){GNT.g.remove(f.m);f.m.geometry.dispose();GNT.fx.splice(GNT.fx.indexOf(f),1);}}
+  runRibbon(GNT.core,GNT.trail,GNT.t,GNT_LIFE);runRibbon(GNT.halo,GNT.trail,GNT.t,GNT_LIFE);
+  if(busy||GNT.end)return;GNT.t+=dt;GNT.inv-=dt;
+  const dx=P.x-C.x,dz=P.z-C.z,r=Math.hypot(dx,dz),a=Math.atan2(dz,dx),onRing=P.grind&&P.grind.r.ring,flying=P.air&&Math.abs(r-GNT_R)<5&&P.y>SEA_Y+1;
+  gntSteer(dt,C,r,a);
+  // into the sea
+  if(P.y<SEA_Y+0.6&&!onPier(P.x,P.z)){gntHurt('sea');return;}
+  // round the master: the angle she has gone, and the line behind her
+  if(onRing||flying){if(GNT.ang!=null){let d=a-GNT.ang;d=Math.atan2(Math.sin(d),Math.cos(d));GNT.swept+=d;}GNT.ang=a;
+    const T=GNT.trail,l=T[T.length-1];if(!l||Math.hypot(P.x-l.x,P.z-l.z)>0.5)T.push({x:P.x,y:P.y+0.08,z:P.z,t:GNT.t,g:1});
+    if(Math.abs(GNT.swept)>=TAU){GNT.swept-=TAU*Math.sign(GNT.swept);gntLap();}}
+  else if(!P.grind){GNT.ang=null;GNT.swept=0;}
+  while(GNT.trail.length&&GNT.t-GNT.trail[0].t>GNT_LIFE)GNT.trail.shift();while(GNT.trail.length>RUN_MAX)GNT.trail.shift();
+  // the arm: a red shadow on the sea across the ring ahead of her, then the arm sweeping over it at the height of the rails
+  GNT.armT-=dt;
+  if(!GNT.sw&&GNT.armT<=0&&GNT.t>4){const dir=P.grind&&P.grind.r.ring?P.grind.dir:1,a0=a+dir*1.6,a1=a+dir*0.3;GNT.sw={a0,a1,t:0,warn:1.6};
+    const lo=Math.min(a0,a1);GNT.warn.geometry.dispose();GNT.warn.geometry=new THREE.RingGeometry(GNT_R-5,GNT_R+5,24,1,lo,Math.abs(a1-a0));
+    if(!GNT.said){GNT.said=true;toast('赤い影の上を、主の腕がなぎはらう！ レールの上でジャンプしてよけろ',true);}}
+  const S=GNT.sw;
+  if(S){S.t+=dt;const arm=GNT.arm;arm.visible=true;
+    if(S.t<S.warn){GNT.warn.material.opacity=0.25+0.2*Math.sin(S.t*14);arm.rotation.y=-S.a0;arm.position.y=lerp(arm.position.y,24,dt*3);}
+    else{const k=Math.min(1,(S.t-S.warn)/0.55),aa=lerp(S.a0,S.a1,k);arm.rotation.y=-aa;arm.position.y=lerp(arm.position.y,5.6,Math.min(1,dt*14));GNT.warn.material.opacity=0.35*(1-k);
+      let d=a-aa;d=Math.atan2(Math.sin(d),Math.cos(d));
+      if(Math.abs(d)<0.12&&r>GNT_R-6&&r<GNT_R+6&&(P.grind||!P.air))gntHurt('arm');
+      if(k>=1){GNT.sw=null;arm.visible=false;arm.position.y=30;GNT.warn.material.opacity=0;GNT.armT=Math.max(3.5,7-GNT.st)+rnd()*2;}}}
+  $('hurt').style.opacity=Math.max(GNT.inv>0.8?0.5:0,GNT.hearts===1?0.3+0.1*Math.sin(clock*5):0);
+  GNT.hudT-=dt;if(GNT.hudT<=0){GNT.hudT=0.25;renderHUD();}}
+function giantHUD(tr){tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent='影の主';const s=document.createElement('span');s.className='step';
+  s.textContent=GNT.sw?'赤い影から腕がくる！ ジャンプでよけろ':`光のレールで、主のまわりを一周しろ（いま ${Math.round(Math.abs(GNT.swept)/TAU*100)}%）`;
+  const m=document.createElement('span');m.className='meter';const gk=Math.min(GNT.need,Math.floor(GNT.gauge));
+  m.textContent=`よろけ ${'■'.repeat(GNT.st)}${'□'.repeat(3-GNT.st)}　光 ${'◆'.repeat(gk)}${'◇'.repeat(Math.max(0,GNT.need-gk))}　${'♥'.repeat(Math.max(0,GNT.hearts))}${'♡'.repeat(Math.max(0,DRONE.maxHp-GNT.hearts))}`;tr.append(b,s,m);}
 
 /* ---------- sound: all of it made with Web Audio as it plays, no sound files ----------
    The board rolling (louder and brighter with speed, rougher on sand), kicks, pops, landings and grinds,
@@ -10367,7 +10411,7 @@ function renderBag(){const B=$('bag');B.innerHTML='';for(const id in SAVE.inv){c
   d.append(im,document.createTextNode('×'+SAVE.inv[id]));d.title=ITEMS[id].name;B.appendChild(d);}}
 function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');let q=SAVE.tracked&&QBY(SAVE.tracked);const tr=$('tracker');
   if(!(q&&qs(q.id).state===1)&&!ST.run&&state==='play'&&!storyGoal())q=activeQuests()[0];   // nothing for the story right now: show an errand rather than nothing
-  if(MIR.on)mirHUD(tr);else if(RUN.on)runHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(BOSS.on)bossHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
+  if(MIR.on)mirHUD(tr);else if(RUN.on)runHUD(tr);else if(DRONE.active)droneHUD(tr);else if(lightsBusy())lightsHUD(tr);else if(ogBusy())ogHUD(tr);else if(baseBusy())baseHUD(tr);else if(GNT.on)giantHUD(tr);else if(DEF.on)defHUD(tr);else if(rescueOn()&&!URA.chase)rescueHUD(tr);else if(ISL.wait)islHUD(tr);else if(URA.on)uraHUD(tr);
   else if(q&&qs(q.id).state===1){const st=stepOf(q);tr.hidden=false;tr.innerHTML='';const b=document.createElement('b');b.textContent=q.title;const s=document.createElement('span');s.className='step';s.textContent=st.hint;tr.append(b,s);
     let m='';if(st.type==='have')m=`${ITEMS[st.item].name} ${Math.min(invN(st.item),st.n)} / ${st.n}`;if(st.type==='photos')m=`写真 ${SAVE.spots.length} / ${SPOTS.length}`;
     if(m){const e=document.createElement('span');e.className='meter';e.textContent=m;tr.appendChild(e);}
@@ -10380,7 +10424,7 @@ function renderHUD(){$('money').textContent=SAVE.money.toLocaleString('ja-JP');l
       let shown=0;act.forEach((o,k)=>{if(o===q||++shown>4)return;const r=document.createElement('button');r.className='oq';const n=document.createElement('i');n.className='qn';n.textContent=k+1;n.style.background=QCOL[k%QCOL.length];
         r.append(n,document.createTextNode(o.title));r.title=stepOf(o).hint;r.onclick=e=>{e.stopPropagation();SAVE.tracked=o.id;save();renderHUD();};box.appendChild(r);});if(shown>4){const m=document.createElement('span');m.className='meter';m.textContent=`ほか ${shown-4}件（おつかい帳）`;box.appendChild(m);}tr.appendChild(box);}}
   else goalHUD(tr);renderBag();
-  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||BOSS.on||DEF.on||rescueOn()||URA.chase));}
+  document.body.classList.toggle('battle',!!(MIR.on||DRONE.active||GNT.on||DEF.on||rescueOn()||URA.chase));}
 // errands in hand, in a fixed order, and the colour each one has on the tracker and the map
 // the errands a route depends on (the ones with `when`) are offered before the everyday ones by the same person
 const STORY_FIRST=[...QUESTS].sort((a,b)=>!!b.when-!!a.when);
@@ -10700,14 +10744,14 @@ function stepPlayer(dt){
   P.turn+=(I.turn-P.turn)*Math.min(1,8*dt);
   P.yaw-=P.turn*(onFoot?3.2:2.3-Math.min(1.1,P.v*0.1))*dt;
   const nx=P.x+F[0]*P.v*dt,nz=P.z+F[1]*P.v*dt,R=0.3;
-  let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
+  let ok=true;const water=G(nx,nz)<SEA_Y+0.1&&!onPier(nx,nz)&&!(GNT.on&&P.air);if(water){ok=false;if(P.v>1)toast('海には入れない…ここから先は泳ぐしかない');P.v=0;}
   const c=ok&&!hits(P.x,P.z,R,P.y)&&hits(nx,nz,R,P.y);   // already inside something (a tram stopping on her, a gate coming down): she can always get out
   if(c){const hx=hits(nx,P.z,R,P.y),hz=hits(P.x,nz,R,P.y);
     if(!hx){P.x=nx;P.v*=0.7;}else if(!hz){P.z=nz;P.v*=0.7;}else{if(P.v>3.5){P.bump=0.35;}P.v*=0.15;}}
   else if(ok){P.x=nx;P.z=nz;}
   // at the edge of the open water she slides round along it (by the heading after this frame's turn, so steering in gets her off it)
   if(P.x>INK_X-600){P.x=clamp(P.x,INK_X-270,INK_X+270);P.z=clamp(P.z,-270,270);}else if(P.x<MIR_X+1500){const dx=P.x-MIR_X,l=Math.hypot(dx,P.z);if(l>MIR_R){const ox=dx/l,oz=P.z/l,fx=Math.sin(P.yaw),fz=Math.cos(P.yaw),d=fx*ox+fz*oz;P.x=MIR_X+ox*MIR_R;P.z=oz*MIR_R;if(d>0){const tx=fx-ox*d,tz=fz-oz*d;P.yaw=Math.hypot(tx,tz)>0.15?Math.atan2(tx,tz):Math.atan2(-oz,ox);}}}
-  else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,PIER.z1);}
+  else if(P.x<HQ_X+1200){P.x=clamp(P.x,HQ_X+0.6,HQ_X+43.4);P.z=clamp(P.z,-13.4,13.4);}else if(P.x<BASE_X+600){P.x=clamp(P.x,BASE_X-1,BASE_X+240);P.z=clamp(P.z,-36,20);}else if(P.z>ISL_Z0)islClamp();else{P.x=clamp(P.x,-336,336);P.z=clamp(P.z,-255,GNT.on?PIER.z1+70:PIER.z1);}
   const gy=groundAt(P.x,P.z,P.y);P.onTop=gy>G(P.x,P.z)+0.2;
   if(jumpQ&&P.air&&!busy&&!onFoot&&runJump())jumpQ=false;   // in 裏海街's nights out, a second jump in the air
   if(jumpQ&&!P.air&&!busy&&!(P.tr&&P.tr.type!=='stow')){P.vy=onFoot?5.6:7.6;P.air=true;if(!onFoot){TRICK.airT=0;TRICK.grab=0;}if(P.man){P.man=null;$('manBar').hidden=true;}}jumpQ=false;
@@ -10797,6 +10841,8 @@ function updateCamera(dt){
   else if(lookBack()){want=p.clone().addScaledVector(F,-0.45);want.y+=1.55;look=p.clone().addScaledVector(F,-20);look.y+=1.2;rate=0;}   // her eyes turned back: from just behind her head, down the way she came (her body stays out of the picture)
   // out on a night in 裏海街 the camera rides farther back, so the rings are in view
   else{const rk=RUN.go?1.6:1,back=(3.3+P.v*0.12)*rk,up=(1.45+P.v*0.035)*rk*1.2;want=p.clone().addScaledVector(F,-back);want.y+=up;look=p.clone().addScaledVector(F,2.2);look.y+=1.05;
+    // in the last fight the camera stands off outside the ring of rails and turns partway to the master, so it stays in view
+    if(GNT.on&&!ST.run){const C=gntC(),ox=P.x-C.x,oz=P.z-C.z,ol=Math.hypot(ox,oz)||1;want.x+=ox/ol*6;want.z+=oz/ol*6;want.y+=2.5;look.lerp(new THREE.Vector3(C.x,BOSS.y+40,C.z),0.3);}
     // in the drone fight the camera moves over her shoulder, so the raised pistols and the shots are in view
     const aw=player.aimW||0;if(aw>0.01){const side=new THREE.Vector3(-F.z,0,F.x);want.addScaledVector(side,-1.0*aw).addScaledVector(F,1.1*aw);want.y+=0.1*aw;look.addScaledVector(side,-0.5*aw);look.y+=0.6*aw;}
     // on this side of the walls. How far the camera can get from her head toward a spot before a wall stops it (0…1; pressed

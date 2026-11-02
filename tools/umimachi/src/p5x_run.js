@@ -56,22 +56,23 @@ function runRoof(x,z,y){let g=-1e9;
 // the second jump (and a third, with the power): a burst of light under the board
 function runJump(){if(!RUN.go||RUN.end||RUN.jumps>=RUN.maxJ||P.grind)return false;RUN.jumps++;P.vy=9;TRICK.airT=0;
   sparks(new THREE.Vector3(P.x,P.y,P.z),16,'#bfe6ff',5,0.1);runWave(P.x,P.y+0.1,P.z,'#bfe6ff',3);buzz('light',true);return true;}
-function runBuild(){if(RUN.g)return;const g=new THREE.Group();scene.add(g);RUN.g=g;
-  const rib=(w,col,gold)=>{const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));
+// a ribbon of light along a line of points (the night out's line, and the line round the master in the last fight)
+function runRib(g,w,col,gold){const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(RUN_MAX*6),3));
     const idx=[];for(let i=0;i<RUN_MAX-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}geo.setIndex(idx);
     const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));m.frustumCulled=false;
-    m.userData={w,col:new THREE.Color(col),gold:new THREE.Color(gold)};g.add(m);return m;};
-  RUN.halo=rib(1.5,'#2a5a9a','#8a5a18');RUN.core=rib(0.32,'#bfe6ff','#ffe6a0');RUN.head=glow('#9fd4ff',0,0,0,2.2);}
+    m.userData={w,col:new THREE.Color(col),gold:new THREE.Color(gold)};g.add(m);return m;}
+function runBuild(){if(RUN.g)return;const g=new THREE.Group();scene.add(g);RUN.g=g;
+  RUN.halo=runRib(g,1.5,'#2a5a9a','#8a5a18');RUN.core=runRib(g,0.32,'#bfe6ff','#ffe6a0');RUN.head=glow('#9fd4ff',0,0,0,2.2);}
 // the line lies flat across the way she went (up the slope of a roof, through the air after a jump)
-function runRibbon(m){const T=RUN.trail,pos=m.geometry.attributes.position.array,col=m.geometry.attributes.color.array,n=T.length,w=m.userData.w/2;
+function runRibbon(m,T=RUN.trail,now=RUN.t,life=RUN.life){const pos=m.geometry.attributes.position.array,col=m.geometry.attributes.color.array,n=T.length,w=m.userData.w/2;
   for(let i=0;i<n;i++){const p=T[i],q=T[Math.min(n-1,i+1)],o=T[Math.max(0,i-1)],dx=q.x-o.x,dz=q.z-o.z,l=Math.hypot(dx,dz)||1,nx=-dz/l*w,nz=dx/l*w;
-    const age=RUN.t-p.t,k=clamp((RUN.life-age)/0.4,0,1)*(age<0.3?1.6:1),j=i*6,c=p.g?m.userData.gold:m.userData.col;
+    const age=now-p.t,k=clamp((life-age)/0.4,0,1)*(age<0.3?1.6:1),j=i*6,c=p.g?m.userData.gold:m.userData.col;
     pos[j]=p.x+nx;pos[j+1]=p.y;pos[j+2]=p.z+nz;pos[j+3]=p.x-nx;pos[j+4]=p.y;pos[j+5]=p.z-nz;
     for(let e=0;e<2;e++){col[j+e*3]=c.r*k;col[j+e*3+1]=c.g*k;col[j+e*3+2]=c.b*k;}}
   m.geometry.setDrawRange(0,Math.max(0,n-1)*6);m.geometry.attributes.position.needsUpdate=true;m.geometry.attributes.color.needsUpdate=true;}
-// the cores: a black heap with red eyes of light, breathing, smaller as it wears down
 // tonight's three places: the first night the three nearest the start, then any three of the five
 function runAreas(){if(!RUN.night)return RUN_AREAS.slice(0,3);return RUN_AREAS.slice().sort(()=>rnd()-0.5).slice(0,3);}
+// the cores: a black heap with red eyes of light, breathing, smaller as it wears down
 function runCoreMake(A){const g=new THREE.Group(),blk=new THREE.MeshBasicMaterial({color:'#0b0b0d'}),y=G(A.x,A.z)+paveY(A.x,A.z);
   const c=new THREE.Mesh(new THREE.SphereGeometry(1.8,14,10),blk);c.position.y=1.8;g.add(c);
   for(let k=0;k<9;k++){const a=k/9*TAU,r=1.5+(k%3)*0.5,m=new THREE.Mesh(new THREE.SphereGeometry(0.55+(k%4)*0.22,10,8),blk);m.position.set(Math.cos(a)*r,0.4+(k%2)*0.4,Math.sin(a)*r);g.add(m);}

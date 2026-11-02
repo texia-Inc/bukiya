@@ -15,7 +15,8 @@
 const RAILS=[];
 for(const sx of [-1,1])for(const [a,b] of [[-196,-128],[-112,-28],[-12,82],[98,162],[178,204]])RAILS.push({x0:sx*4.75,z0:a,x1:sx*4.75,z1:b,h:0.5});
 for(const x of [PIER.x0+0.1,PIER.x1-0.1])RAILS.push({x0:x,z0:PIER.z0+8,x1:x,z1:PIER.z1-0.4,top:PIER.y+0.9});
-const railY=(r,x,z)=>r.top!=null?r.top:G(x,z)+r.h;
+// a rail with y0/y1 slopes from one end to the other (the rails of light in the last fight)
+const railY=(r,x,z)=>r.y0!=null?lerp(r.y0,r.y1,clamp(((x-r.x0)*(r.x1-r.x0)+(z-r.z0)*(r.z1-r.z0))/((r.x1-r.x0)**2+(r.z1-r.z0)**2),0,1)):r.top!=null?r.top:G(x,z)+r.h;
 { const metal=tm('#9aa3ab'),posts=[];
   for(const r of RAILS){const L=Math.hypot(r.x1-r.x0,r.z1-r.z0);if(r.top!=null)continue;   // the pier railings are already there
     const a=new THREE.Vector3(r.x0,railY(r,r.x0,r.z0),r.z0),b=new THREE.Vector3(r.x1,railY(r,r.x1,r.z1),r.z1);
@@ -44,13 +45,13 @@ function trickLand(clean){TRICK.jk=0;
   const b=Math.round(TRICK.bank*10)/10;TRICK.bank=0;TRICK.last=TRICK.next=null;TRICK.manQ=0;TRICK.links=0;
   const mir=MIR.on&&MIR.go&&!MIR.end;if(!clean)toast(mir?'失敗……　ビー玉の待ちが1秒のびた':'失敗……',false);if(mir)mirTrickLand(clean,b);else if(clean&&b>0&&trickFight())trickPay(b);if(RUN.go)runTrickLand(clean,b);}
 // the fights out in the town (the drones, the shadows of the nests, the shore, the lord of the other side)
-const trickFight=()=>!!(DRONE.active||DEF.on||BOSS.on||RUN.go);
+const trickFight=()=>!!(DRONE.active||DEF.on||GNT.on||RUN.go);
 // a jump with a trick in it, or a rail: up there the cold hands, the drones' shots and the dark orbs cannot reach her
 const trickSafe=()=>!!(P.grind||P.air&&(P.trick||TRICK.bank>0));
 // a jump's tricks landed in a fight: the lantern fills sooner, the shots burn harder for a while, and a big one knocks the
 // shadows back (each fight walks its own list)
 function trickPay(b){if(LAN.n<LAN.max)LAN.re+=b;TRICK.boostT=clock+b;const subs=DRONE.active?[`光 ×2（${b}秒）`]:[];if(LAN.n<LAN.max)subs.push(`ランタン −${b}秒`);
-  if(b>=3){const n=trickWave(DEF.on?DEF.list:BOSS.on?BOSS.list:RUN.go?RUN.foes:[]);if(n)subs.unshift('影をはじき飛ばした！');}
+  if(b>=3){const n=trickWave(DEF.on?DEF.list:RUN.go?RUN.foes:[]);if(n)subs.unshift('影をはじき飛ばした！');}
   TRICK.sub=subs.join('　');TRICK.shown=Math.max(TRICK.shown,1.4);trickHUD();renderHUD();}
 // how hard her shots hit just now
 const trickDmg=()=>clock<(TRICK.boostT||0)?2:1;
@@ -79,7 +80,7 @@ function trickAir(dt){TRICK.airT+=dt;
   // catching a rail on the way down
   // no catching while slow, or just after leaving a rail (otherwise a stop on the rail drops you straight back onto it)
   if(P.vy>4||P.v<2.5||clock<(P.grindCD||0))return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
-  for(const r of RAILS){if(r.run&&!RUN.go)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
+  for(const r of RAILS){if(r.run&&!RUN.go||r.gnt&&!GNT.on)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
     const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
     const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
     // a board still flipping cannot catch the rail; caught clean, it is a landing
@@ -104,12 +105,17 @@ function manEnd(clean){P.man=null;$('manBar').hidden=true;if(!clean){TRICK.bank=
 // on the rail: gravity along it, a little friction, sparks; Space pops off, the rail's end drops you off
 function grindStep(dt){const g=P.grind,r=g.r;
   const ry0=railY(r,P.x,P.z),nx=P.x+g.ux*g.dir*0.5,nz=P.z+g.uz*g.dir*0.5,slope=(railY(r,nx,nz)-ry0)/0.5;
-  P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);g.t+=g.dir*P.v*dt/g.L;
+  P.v=clamp(P.v+(-9.8*slope*0.5-0.35)*dt,0,16);if(r.gnt)P.v=Math.max(P.v,9);g.t+=g.dir*P.v*dt/g.L;
   P.x=r.x0+(r.x1-r.x0)*g.t;P.z=r.z0+(r.z1-r.z0)*g.t;P.y=railY(r,P.x,P.z);
   TRICK.shown=Math.max(TRICK.shown,0.4);trickHUD();
   if(Math.random()<dt*25)sparks(new THREE.Vector3(P.x,P.y+0.05,P.z),1,'#ffd27a',2.2,0.035);
+  // the rails of light run on into the next length without a break
+  const nr=g.t>=1&&g.dir>0?r.nx:g.t<=0&&g.dir<0?r.pv:null;
+  if(nr&&!jumpQ){const L=Math.hypot(nr.x1-nr.x0,nr.z1-nr.z0),ux=(nr.x1-nr.x0)/L,uz=(nr.z1-nr.z0)/L;P.grind={r:nr,t:g.dir>0?0:1,dir:g.dir,L,ux,uz,sc:0,rot:g.rot};
+    P.yaw=Math.atan2(ux*g.dir,uz*g.dir);player.g.position.set(P.x,P.y,P.z);return;}
   const off=g.t<=0||g.t>=1,pop=jumpQ,slow=P.v<1.2;jumpQ=false;
-  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;P.grindCD=clock+0.8;
+  if(off||pop||slow){P.grind=null;P.air=true;P.vy=pop?6.8:off?2.2:0;TRICK.airT=0;P.grindCD=clock+(r.gnt&&off&&!pop?0.15:0.8);   // off the end of a rail of light, she can catch the next across the gap
+   
     if(slow){const cx=r.top!=null?(PIER.x0+PIER.x1)/2:0;P.x+=0.7*(Math.sign(cx-P.x)||1);}}   // too slow: she steps off toward the road (or the middle of the pier); the rails all run along z
   player.g.position.set(P.x,P.y,P.z);player.g.rotation.set(0,P.yaw+(g.rot||0),0);player.root.rotation.set(0,0,0);
   poseSkater(player,dt,{v:P.v,turn:0,push:false,brake:false,air:false,grind:true});}

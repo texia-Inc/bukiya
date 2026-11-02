@@ -200,7 +200,7 @@ async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening
   if(pick==='最後の戦いに出る'){await steps(finalScript());return;}
   if(pick&&pick.startsWith('裏海街へ出撃')){await steps(runScript());return;}}
 /* ----- Oceangate's help: one or two of their drones ahead of Nagi to either side (out of the camera's way), picking off a drone or a shadow now and then ----- */
-function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||BOSS.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
+function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||RUN.go)&&lv>=2?(lv>=4?2:1):0;
   while(HQ.allies.length<want){const d=makeDrone();d.g.scale.setScalar(1.1);HQ.allies.push(d);toast('オーシャンゲートの援護ドローンが来た！');}
   HQ.allies.forEach((d,k)=>{d.g.visible=k<want;if(!d.g.visible)return;const sd=k?-1:1,a=P.yaw+sd*(0.55+Math.sin(clock*0.7+k)*0.15),w=new THREE.Vector3(P.x+Math.sin(a)*7,P.y+6+Math.sin(clock*2+k)*0.3,P.z+Math.cos(a)*7);
     d.g.position.lerp(w,Math.min(1,dt*3));d.g.rotation.y=a;for(const r of d.rotors)r.rotation.y+=dt*40;});
@@ -210,8 +210,6 @@ function allyStep(dt){const lv=hqLv('radio'),want=(DRONE.active||DEF.on||BOSS.on
     if(t){const p=t.g.position.clone();tracer(from,p);damage(t,p);if(!t.dead)damage(t,p);}}
   else if(DEF.on){const t=DEF.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.z-b.g.position.z)[0];
     if(t){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;DEF.killed++;}}
-  else if(BOSS.on){const t=BOSS.list.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
-    if(t&&!BOSS.striking){tracer(from,t.g.position.clone().setY(t.g.position.y+1));t.gone=1;bossGain();}}
   else if(RUN.go){const t=RUN.foes.filter(s=>!s.gone&&s.up>=1).sort((a,b)=>a.g.position.distanceTo(player.g.position)-b.g.position.distanceTo(player.g.position))[0];
     if(t&&t.g.position.distanceTo(player.g.position)<30){tracer(from,t.g.position.clone().setY(t.g.position.y+1));runKill(t);}}}
 function hqHUD(){const D=d2();return `影のかけら ${shards()}　帰ってきた子 ${D.nest||0}/${KIDS}`;}
