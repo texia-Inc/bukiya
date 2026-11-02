@@ -258,7 +258,7 @@ class RunConfig {
     this.runLength = 300,
     this.gateTimes = const [90, 180, 270],
     this.gateDuration = 25,
-    this.maxEnemies = 350,
+    this.maxEnemies = 500,
     this.stage = forestStage,
   });
 }
@@ -561,18 +561,19 @@ class RunSimulation {
 
   void _spawnEnemies(double dt) {
     // ボス戦（檻の中）の間は雑魚が湧かない
-    final rate = (1.4 + time / 40) *
+    final rate = (2.1 + time / 27) *
         (horde ? 2.5 : 1) *
         (arena != null ? 0 : 1) *
         // 細い通路では同じ数でも混み合うので減らす
-        (stage.corridorHalfWidth != null ? 0.6 : 1);
+        (stage.corridorHalfWidth != null ? 0.45 : 1);
     _spawnAcc += rate * dt;
     while (_spawnAcc >= 1) {
       _spawnAcc -= 1;
       if (enemies.length >= config.maxEnemies) continue;
       final (x, y) = _spawnPoint();
       final kind = _pickEnemyKind();
-      final hpScale = (1 + time / 150) * stage.hpScale;
+      // 数を多めに出すぶん、1体ずつは少し打たれ弱い
+      final hpScale = (1 + time / 150) * stage.hpScale * 0.75;
       enemies.add(Enemy(kind, x, y, enemyStats[kind]!.hp * hpScale));
     }
   }

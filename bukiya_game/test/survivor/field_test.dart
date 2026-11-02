@@ -229,7 +229,7 @@ void main() {
       sim.debugSpawnRing(EnemyKind.slime, 2000);
       sim.update(1 / 60);
       expect(sim.enemies.length,
-          lessThanOrEqualTo(sim.config.maxEnemies + 250 + 10));
+          lessThanOrEqualTo(sim.config.maxEnemies + 400 + 10));
     });
 
     test('ボス戦（檻の中）の最中の大群は見送る', () {

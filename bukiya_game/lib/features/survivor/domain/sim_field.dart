@@ -219,7 +219,7 @@ extension _Field on RunSimulation {
   }
 
   /// 大群でも、敵の数はここまでに抑える（重くなりすぎないように）
-  int get _waveCap => config.maxEnemies + 250;
+  int get _waveCap => config.maxEnemies + 400;
 
   /// 取り囲む輪（通路では上下の列）。数が多いときは輪を何重にも重ねる
   void _spawnRing(WaveEvent w) {
