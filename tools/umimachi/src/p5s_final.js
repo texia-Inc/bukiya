@@ -1,8 +1,8 @@
-/* ---------- the end of the second story: with the five children home, the gate under the sea opens and its master comes.
-   The morning after the fifth child Kurosaki calls: Oceangate will mend the radio mast and raise the barrier again, but not
+/* ---------- the end of the second story: with the three children home, the gate under the sea opens and its master comes.
+   The morning after the third child Kurosaki calls: Oceangate will mend the radio mast and raise the barrier again, but not
    before dawn. That night, from the command table, the last fight: the shadow drones and the shadows on the coast road, then
-   the master rising in the bay, and round it Mio's ring of rails of light (the fight itself is in p5y_giant.js): ridden round,
-   the ring of light wears it down, and the third time it reels the lighthouse's beam finishes it. Dawn: the mast lit red again, Mio and the children going home into the light, Natsumi meeting her
+   the master rising in the bay; its body is out on 鏡の海, and there it is fought (p5y_master.js): its hands burnt in rings of
+   line, then its head, and Mio's light finishes it; back in the bay it sinks. Dawn: the mast lit red again, Mio and the children going home into the light, Natsumi meeting her
    at last (d2_done). Back home that morning, the third story begins at once (d3_open in p5w_d3.js). ---------- */
 const BOSS_AT={x:-50,z:352},BOSS_S=30;
 // the master as seen: its figure and its three red eyes (BOSS.y is where it is rising or sinking to)
@@ -35,7 +35,7 @@ function updateD2End(dt){if(SAVE.flags.mochi_gone&&BEACH_CAT)BEACH_CAT.g.visible
 const FINAL_EVENTS=[
   {id:'d2_c1',when:{flags:{ex1_done:1,d2c:0},test:()=>(d2().nest||0)>=KIDS&&d2().last<SAVE.day&&!URA.on},script:[
     ['say','','朝。ポケットの無線が、ザザッと鳴った。'],
-    ['say','黒崎','（無線の声）……聞こえるか、海街の。海の底で、門が開きかけている。','核をこわされた異界の者どもが、門の向こうの「主」を呼んでいる。……今夜、やつが来るぞ。'],
+    ['say','黒崎','（無線の声）……聞こえるか、海街の。海の底で、門が開きかけている。','子どもたちをうばい返された異界の者どもが、門の向こうの「主」を呼んでいる。……今夜、やつが来るぞ。'],
     ['say','黒崎','（無線の声）オーシャンゲートは、電波塔を直して結界を張りなおす。だが、それには夜明けまでかかる。'],
     ['say','tome','（無線の声）……それまで、わたしたちで町を守りきるってことだね。'],
     ['call',()=>ex1Marble(true)],
@@ -59,14 +59,15 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['say','黒崎','（無線の声）主だ……！ 電波塔は、まだか！'],
   ['say','master','（無線の声）あと少しだ！ 夜明けまで、もたせてくれ！'],
   ['call',()=>ex1Marble(true)],
-  ['say','ミオの声','（ナギ、見て。あいつのまわりに、光のレールをかけたよ。桟橋の先から跳び乗って）','（レールで、あいつのまわりをぐるっと回るの。光の輪でしめつけて、三回よろけさせたら、わたしが灯台の光をあいつに向ける）'],
+  ['say','ミオの声','（ナギ、あれは影だよ。あいつの本体は、裏海街の海……鏡の海にいる。わたしが連れていく）','（あいつのまわりに、光のレールをかけておく。レールで背中を回って、あいつをまるごと囲んで。最後は、わたしが灯台の光をとどける）'],
   ['call',()=>ex1Marble(false)],
   ['cam','off'],
-  ['call',giantP],
-  // it sinks
+  ['call',masterP],
+  // back in the bay (still black from the mirror), it sinks
+  ['warp',BOSS_AT.x-0.6,SHORE+1,0],['call',()=>{P.foot=true;}],['time',4.8,0],
   ['cam',[BOSS_AT.x+14,G(BOSS_AT.x,SHORE)+2.4,SHORE+1],[BOSS_AT.x,SEA_Y+18,BOSS_AT.z],1.2,'cut'],
-  ['call',()=>{BOSS.y=SEA_Y-70;}],['wait',3.5],
-  ['say','','三度目の光につらぬかれて、主は、声にならない声をあげた。','そして、門といっしょに、海の底へしずんでいった。'],
+  ['fade','in'],['call',()=>{BOSS.y=SEA_Y-70;}],['wait',3.5],
+  ['say','','鏡の海でミオの光につらぬかれて、湾の主も、声にならない声をあげた。','そして、門といっしょに、海の底へしずんでいった。'],
   ['set','mast_lit'],['say','','……そのとき、山の上の電波塔に、赤い灯りがともった。'],
   ['say','master','（無線の声）結界、張りなおした！ ……門が、閉じていく！'],
   ['call',()=>bossShow(false)],
@@ -76,7 +77,7 @@ function finalScript(){const N=nightPlan(d2().night+4);return[
   ['say','','夜が明けた。','波打ちぎわから、小さな光がいくつも、白みはじめた空へのぼっていく。'],
   ['say','mio','……ナギ。'],
   ['say','nagi','ミオ！ ……ほんとうに、ミオだ。'],
-  ['say','mio','核にとじこめられてた子たち、みんな、光のほうへ帰っていくよ。……ナギの灯りのおかげ。'],
+  ['say','mio','影にとじこめられてた子たち、みんな、光のほうへ帰っていくよ。……ナギの灯りのおかげ。'],
   ['say','natsumi','……ミオ？'],
   ['say','mio','ナツミちゃん。……おとなになったね。'],
   ['say','natsumi','ミオ……ごめんね。あの夜、いっしょに行ってあげられなくて。ずっと、ずっと……'],
