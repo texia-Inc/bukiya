@@ -280,6 +280,8 @@ class _HudTickerState extends State<_HudTicker> {
       s.boss?.enraged,
       s.skills.totalLevels,
       widget.fx.bossEnraged > 0,
+      s.elite == null ? null : (s.elite!.hp / s.elite!.maxHp * 100).ceil(),
+      widget.fx.eliteWarning > 0,
     );
   }
 
@@ -427,6 +429,27 @@ class _Hud extends StatelessWidget {
           _BossBar(boss: boss),
           const SizedBox(height: 6),
         ],
+        if (sim.elite case final elite?) ...[
+          _BossBar(boss: elite),
+          const SizedBox(height: 6),
+        ],
+        if (fx.eliteWarning > 0 && sim.elite != null)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xCC3D2A08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFFD45E)),
+              ),
+              child: Text('中ボス出現！ ${eliteName(sim.elite!.kind)}',
+                  style: const TextStyle(
+                      color: Color(0xFFFFD45E),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
         if (fx.bossWarning > 0 && boss != null)
           Center(
             child: Container(
@@ -506,6 +529,9 @@ class _Hud extends StatelessWidget {
 String _bossName(EnemyKind kind) => switch (kind) {
       EnemyKind.ogre => 'オーガ',
       EnemyKind.kingSlime => 'キングスライム',
+      EnemyKind.flowerQueen => '大輪の人食い花',
+      EnemyKind.scorpionKing => 'サソリの王',
+      EnemyKind.demonLord => '魔王',
       _ => '',
     };
 
@@ -520,13 +546,19 @@ class _BossBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-            boss.enraged ? '${_bossName(boss.kind)}（怒り）' : _bossName(boss.kind),
+            boss.elite
+                ? '中ボス：${eliteName(boss.kind)}'
+                : boss.enraged
+                    ? '${_bossName(boss.kind)}（怒り）'
+                    : _bossName(boss.kind),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFFF8A8A),
-                shadows: [Shadow(offset: Offset(1, 1))])),
+                color: boss.elite
+                    ? const Color(0xFFFFD45E)
+                    : const Color(0xFFFF8A8A),
+                shadows: const [Shadow(offset: Offset(1, 1))])),
         const SizedBox(height: 2),
         Container(
           height: 10,
@@ -542,15 +574,17 @@ class _BossBar extends StatelessWidget {
                 widthFactor: (boss.hp / boss.maxHp).clamp(0.0, 1.0),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: boss.enraged
-                        ? const Color(0xFFFF6B3D)
-                        : const Color(0xFFE5484D),
+                    color: boss.elite
+                        ? const Color(0xFFE0A93A)
+                        : boss.enraged
+                            ? const Color(0xFFFF6B3D)
+                            : const Color(0xFFE5484D),
                     borderRadius: BorderRadius.circular(5),
                   ),
                 ),
               ),
               // 半分の目印：ここを切ると怒る
-              if (!boss.enraged)
+              if (!boss.enraged && !boss.elite)
                 const Align(
                   alignment: Alignment.center,
                   child: SizedBox(

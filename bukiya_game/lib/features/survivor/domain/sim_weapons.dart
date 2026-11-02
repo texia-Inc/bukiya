@@ -79,7 +79,7 @@ extension _Weapons on RunSimulation {
       for (final e in enemies) {
         if (!_hittable(e) || s.hit.contains(e)) continue;
         final dx = e.x - px, dy = e.y - py;
-        final reach = s.radius + e.stats.radius;
+        final reach = s.radius + e.radius;
         if (dx * dx + dy * dy > reach * reach) continue;
         var rel = (atan2(dy, dx) - s.startAngle) % (2 * pi);
         if (rel < 0) rel += 2 * pi;
@@ -139,7 +139,7 @@ extension _Weapons on RunSimulation {
       a.life -= dt;
       for (final e in enemies) {
         if (!_hittable(e) || a.hit.contains(e)) continue;
-        final r = e.stats.radius + 4;
+        final r = e.radius + 4;
         final dx = e.x - a.x, dy = e.y - a.y;
         if (dx * dx + dy * dy > r * r) continue;
         a.hit.add(e);
@@ -170,9 +170,9 @@ extension _Weapons on RunSimulation {
         // 槍の線分と敵の円が重なるか
         final dx = e.x - px, dy = e.y - py;
         final along = dx * ux + dy * uy;
-        if (along < 0 || along > reach + e.stats.radius) continue;
+        if (along < 0 || along > reach + e.radius) continue;
         final side = (dx * uy - dy * ux).abs();
-        if (side > SpearThrust.width / 2 + e.stats.radius) continue;
+        if (side > SpearThrust.width / 2 + e.radius) continue;
         t.hit.add(e);
         _damage(e, t.damage, w,
             knockFromX: px - ux * 20, knockFromY: py - uy * 20);
@@ -218,7 +218,7 @@ extension _Weapons on RunSimulation {
       if (!explode) {
         for (final e in enemies) {
           if (!_hittable(e)) continue;
-          final r = e.stats.radius + 6;
+          final r = e.radius + 6;
           final dx = e.x - f.x, dy = e.y - f.y;
           if (dx * dx + dy * dy < r * r) {
             explode = true;
@@ -264,7 +264,7 @@ extension _Weapons on RunSimulation {
     _emit(RunEvent(RunEventType.blast, x, y));
     for (final e in enemies) {
       if (!_hittable(e)) continue;
-      final r = radius + e.stats.radius;
+      final r = radius + e.radius;
       final dx = e.x - x, dy = e.y - y;
       if (dx * dx + dy * dy > r * r) continue;
       _damage(e, damage, w, knockFromX: x, knockFromY: y);

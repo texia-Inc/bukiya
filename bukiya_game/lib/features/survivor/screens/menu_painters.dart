@@ -215,6 +215,12 @@ class StageArtPainter extends CustomPainter {
         _sprites.kingSlime(canvas, e, time, 0, 400);
       case EnemyKind.ogre:
         _sprites.ogre(canvas, e, time, 0, 400);
+      case EnemyKind.flowerQueen:
+        _sprites.flowerQueen(canvas, e, time, 0, 400);
+      case EnemyKind.scorpionKing:
+        _sprites.scorpionKing(canvas, e, time, 0, 400);
+      case EnemyKind.demonLord:
+        _sprites.demonLord(canvas, e, time, 0, 400);
       default:
         break;
     }

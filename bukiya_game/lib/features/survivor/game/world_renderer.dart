@@ -135,6 +135,8 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
     _drawArenaShade(canvas, view);
     _drawGate(canvas);
     _drawBossTelegraphs(canvas);
+    _drawHazards(canvas);
+    _drawEliteAuras(canvas);
     _drawBlasts(canvas);
     _drawArrows(canvas);
     _drawThrusts(canvas);
@@ -419,6 +421,10 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
         _sprites.chest(canvas, p.x, p.y, sim.time);
         return;
       }
+      if (p.kind == PickupKind.miniChest) {
+        _sprites.miniChest(canvas, p.x, p.y, sim.time);
+        return;
+      }
       final m = p.material;
       if (m == null) {
         // まとめられて価値が高い宝石は大きく緑に
@@ -518,7 +524,7 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
         playerDrawn = true;
       }
       propsUpTo(e.y);
-      if (atlas != null && EnemyAtlas.supports(e.kind)) {
+      if (atlas != null && EnemyAtlas.supports(e.kind) && !e.elite) {
         // 雑魚敵はアトラスから切り抜いて溜め、まとめて描く
         _batch.add(_atlas.frameOf(e, sim.time, sim.px), e.x,
             _cy + (e.y - _cy) * tilt, e.bodyScale, e.hitFlash > 0);
@@ -612,6 +618,12 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           _sprites.ogre(canvas, e, sim.time, sim.px, sim.py);
         case EnemyKind.kingSlime:
           _sprites.kingSlime(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.flowerQueen:
+          _sprites.flowerQueen(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.scorpionKing:
+          _sprites.scorpionKing(canvas, e, sim.time, sim.px, sim.py);
+        case EnemyKind.demonLord:
+          _sprites.demonLord(canvas, e, sim.time, sim.px, sim.py);
       }
     }
   }
@@ -619,20 +631,19 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
   /// ボスの大技の予告（突進線・叩きの範囲・投石の向き・着地点など）と、叩きの衝撃波
   void _drawBossTelegraphs(Canvas canvas) {
     for (final e in sim.enemies) {
-      if (!e.isBoss) continue;
+      if (!e.heavy) continue;
       final blink = 0.25 + 0.2 * sin(sim.time * 30).abs();
       final p = bossWindupProgress(e);
       if (e.bossState == BossState.windup) {
         switch (e.attack) {
           case BossAttack.charge:
-            final len = ogreChargeSpeed * ogreChargeTime + e.stats.radius;
+            final len = chargeLengthOf(e);
             canvas.save();
             canvas.translate(e.x, e.y);
             canvas.rotate(atan2(e.dirY, e.dirX));
             _fill.color = Color.fromRGBO(229, 72, 77, blink);
             canvas.drawRect(
-                Rect.fromLTWH(0, -e.stats.radius, len, e.stats.radius * 2),
-                _fill);
+                Rect.fromLTWH(0, -e.radius, len, e.radius * 2), _fill);
             canvas.restore();
           case BossAttack.smash:
             final r = ogreSmashRadiusOf(e);
@@ -678,7 +689,69 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
               ..strokeWidth = 3;
             canvas.drawCircle(
                 Offset(e.x, e.y), e.stats.radius + 8 + 30 * p, _stroke);
-          case BossAttack.jump:
+          case BossAttack.seeds:
+            // 種が飛ぶ向きに線
+            final n = e.enraged ? 7 : 5;
+            final base = atan2(e.dirY, e.dirX);
+            _stroke
+              ..color = Color.fromRGBO(123, 211, 137, 0.3 + blink)
+              ..strokeWidth = 3;
+            for (var i = 0; i < n; i++) {
+              final a = base + (i - (n - 1) / 2) * 0.22;
+              final from = e.radius + 6, to = from + 50 + 120 * p;
+              canvas.drawLine(Offset(e.x + cos(a) * from, e.y + sin(a) * from),
+                  Offset(e.x + cos(a) * to, e.y + sin(a) * to), _stroke);
+            }
+          case BossAttack.sting:
+            // 毒針の届く扇形
+            final a = atan2(e.dirY, e.dirX);
+            final rect = Rect.fromCircle(
+                center: Offset(e.x, e.y),
+                radius: scorpionStingRange + e.radius);
+            _fill.color = Color.fromRGBO(229, 72, 77, 0.12 + 0.25 * p);
+            canvas.drawArc(rect, a - scorpionStingHalfAngle,
+                scorpionStingHalfAngle * 2, true, _fill);
+            _stroke
+              ..color = Color.fromRGBO(229, 72, 77, 0.5 + blink)
+              ..strokeWidth = 2.5;
+            canvas.drawArc(rect, a - scorpionStingHalfAngle,
+                scorpionStingHalfAngle * 2, true, _stroke);
+          case BossAttack.orbs:
+            final n = e.enraged ? 20 : 16;
+            final volley = e.repeatsTotal - e.repeatsLeft;
+            final offset = volley * pi / n;
+            _stroke
+              ..color = Color.fromRGBO(154, 107, 217, 0.4 + blink)
+              ..strokeWidth = 3;
+            for (var i = 0; i < n; i++) {
+              final a = offset + i * 2 * pi / n;
+              final from = e.radius + 4, to = from + 10 + 26 * p;
+              canvas.drawLine(Offset(e.x + cos(a) * from, e.y + sin(a) * from),
+                  Offset(e.x + cos(a) * to, e.y + sin(a) * to), _stroke);
+            }
+          case BossAttack.pillars:
+            // 柱が噴き上がる列の向き
+            final base = atan2(e.dirY, e.dirX);
+            _stroke
+              ..color = Color.fromRGBO(154, 107, 217, 0.3 + blink)
+              ..strokeWidth = 4;
+            for (final off in e.enraged ? [-0.5, 0.0, 0.5] : [0.0]) {
+              final a = base + off;
+              canvas.drawLine(
+                  Offset(e.x + cos(a) * 40, e.y + sin(a) * 40),
+                  Offset(e.x + cos(a) * (40 + 330 * p),
+                      e.y + sin(a) * (40 + 330 * p)),
+                  _stroke);
+            }
+          case BossAttack.teleport || BossAttack.knights:
+            _stroke
+              ..color = Color.fromRGBO(154, 107, 217, 0.4 + blink)
+              ..strokeWidth = 3;
+            canvas.drawCircle(Offset(e.x, e.y), e.radius + 8 + 30 * p, _stroke);
+          case BossAttack.jump ||
+                BossAttack.roots ||
+                BossAttack.burrow ||
+                BossAttack.poison:
             break;
         }
       }
@@ -693,15 +766,97 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
         canvas.drawCircle(
             Offset(e.x, e.y), ogreSmashRadiusOf(e) * (0.4 + 0.6 * t), _stroke);
       }
-      if (e.kind == EnemyKind.kingSlime && e.airborne) {
+      if (e.airborne) {
+        // 着地点・飛び出す場所の予告
         final ap = e.airProgress;
+        final r = bossLandRadius(e.kind);
         _fill.color = Color.fromRGBO(229, 72, 77, 0.15 + 0.25 * ap);
-        canvas.drawCircle(Offset(e.toX, e.toY), kingSlimeSlamRadius, _fill);
+        canvas.drawCircle(Offset(e.toX, e.toY), r, _fill);
         _stroke
           ..color = const Color(0xCCE5484D)
           ..strokeWidth = 2;
-        canvas.drawCircle(Offset(e.toX, e.toY),
-            kingSlimeSlamRadius * (0.3 + 0.7 * ap), _stroke);
+        canvas.drawCircle(Offset(e.toX, e.toY), r * (0.3 + 0.7 * ap), _stroke);
+      }
+    }
+  }
+
+  /// 中ボスの足元に、金色に光る輪
+  void _drawEliteAuras(Canvas canvas) {
+    for (final e in sim.enemies) {
+      if (!e.elite || !_cull.contains(Offset(e.x, e.y))) continue;
+      final pulse = 0.5 + 0.5 * sin(sim.time * 5);
+      _fill.color = Color.fromRGBO(255, 212, 94, 0.18 + 0.12 * pulse);
+      canvas.drawCircle(Offset(e.x, e.y), e.radius * 1.5, _fill);
+      _stroke
+        ..color = Color.fromRGBO(255, 212, 94, 0.6 + 0.3 * pulse)
+        ..strokeWidth = 2.5;
+      canvas.drawCircle(Offset(e.x, e.y), e.radius * 1.5, _stroke);
+    }
+  }
+
+  /// 地面に出る攻撃：噴き出す前は赤い円で予告し、噴き出すと、とげ・毒・闇の柱になる
+  void _drawHazards(Canvas canvas) {
+    for (final h in sim.hazards) {
+      if (!_cull.contains(Offset(h.x, h.y))) continue;
+      final c = Offset(h.x, h.y);
+      if (!h.erupted) {
+        final warn = (1 - h.delay / 1.2).clamp(0.0, 1.0);
+        final poison = h.kind == HazardKind.poison;
+        _fill.color = poison
+            ? Color.fromRGBO(140, 220, 90, 0.12 + 0.25 * warn)
+            : Color.fromRGBO(229, 72, 77, 0.12 + 0.25 * warn);
+        canvas.drawCircle(c, h.radius, _fill);
+        _stroke
+          ..color = poison ? const Color(0xCC8CDC5A) : const Color(0xCCE5484D)
+          ..strokeWidth = 2;
+        canvas.drawCircle(c, h.radius * (0.3 + 0.7 * warn), _stroke);
+        continue;
+      }
+      switch (h.kind) {
+        case HazardKind.poison:
+          final fadeIn = (h.age / 0.2).clamp(0.0, 1.0);
+          final fadeOut = h.life.clamp(0.0, 0.5) / 0.5;
+          final a = fadeIn * fadeOut;
+          _fill.color = Color.fromRGBO(110, 200, 70, 0.55 * a);
+          canvas.drawCircle(c, h.radius, _fill);
+          _fill.color = Color.fromRGBO(170, 240, 110, 0.6 * a);
+          for (var i = 0; i < 4; i++) {
+            final t = (sim.time * 0.8 + i * 0.27) % 1;
+            canvas.drawCircle(
+                c +
+                    Offset(cos(i * 1.7) * h.radius * 0.5,
+                        sin(i * 2.3) * h.radius * 0.5),
+                3 + 4 * t,
+                _fill);
+          }
+        case HazardKind.rootSpike:
+          final t = (h.age / 0.4).clamp(0.0, 1.0);
+          _upright(canvas, h.x, h.y);
+          _fill.color = Color.fromRGBO(107, 74, 53, 1 - t * 0.6);
+          for (var i = 0; i < 5; i++) {
+            final dx = (i - 2) * h.radius * 0.3;
+            final hgt = h.radius * (0.9 + 0.3 * (i % 2)) * (1 - t * 0.5);
+            final spike = Path()
+              ..moveTo(h.x + dx - 6, h.y)
+              ..lineTo(h.x + dx, h.y - hgt)
+              ..lineTo(h.x + dx + 6, h.y)
+              ..close();
+            canvas.drawPath(spike, _fill);
+            canvas.drawPath(spike, _outline);
+          }
+          canvas.restore();
+        case HazardKind.pillar:
+          final t = (h.age / 0.4).clamp(0.0, 1.0);
+          _upright(canvas, h.x, h.y);
+          _fill.color = Color.fromRGBO(154, 107, 217, 0.7 * (1 - t));
+          canvas.drawRect(
+              Rect.fromLTWH(h.x - h.radius * 0.6, h.y - 90, h.radius * 1.2, 90),
+              _fill);
+          _fill.color = Color.fromRGBO(230, 200, 255, 0.8 * (1 - t));
+          canvas.drawRect(
+              Rect.fromLTWH(h.x - h.radius * 0.2, h.y - 90, h.radius * 0.4, 90),
+              _fill);
+          canvas.restore();
       }
     }
   }
@@ -729,6 +884,28 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
           canvas.drawPath(_rockPath(r), _outline);
           _fill.color = const Color(0xFF9C8B72);
           canvas.drawCircle(Offset(-r * 0.3, -r * 0.3), r * 0.35, _fill);
+        case BossShotKind.seed:
+          canvas.rotate(atan2(s.vy, s.vx));
+          _fill.color = const Color(0xFF6E5A2E);
+          canvas.drawOval(
+              Rect.fromCenter(
+                  center: Offset.zero, width: r * 2.2, height: r * 1.3),
+              _fill);
+          canvas.drawOval(
+              Rect.fromCenter(
+                  center: Offset.zero, width: r * 2.2, height: r * 1.3),
+              _outline);
+          _fill.color = const Color(0xFF8BD06B);
+          canvas.drawCircle(Offset(-r * 0.6, 0), r * 0.35, _fill);
+        case BossShotKind.darkOrb:
+          final pulse = 1 + 0.15 * sin(s.life * 20);
+          _fill.color = const Color(0x669A6BD9);
+          canvas.drawCircle(Offset.zero, r * 1.6 * pulse, _fill);
+          _fill.color = const Color(0xFF5A2E9A);
+          canvas.drawCircle(Offset.zero, r, _fill);
+          canvas.drawCircle(Offset.zero, r, _outline);
+          _fill.color = const Color(0xFFE6C8FF);
+          canvas.drawCircle(Offset(-r * 0.3, -r * 0.3), r * 0.3, _fill);
         case BossShotKind.slime:
           final wob = 1 + 0.12 * sin(s.life * 25);
           canvas.scale(wob, 1 / wob);

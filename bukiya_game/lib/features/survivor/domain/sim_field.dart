@@ -82,7 +82,7 @@ extension _Field on RunSimulation {
     final a = arena;
     for (final e in enemies) {
       if (e.airborne) continue;
-      final r = e.stats.radius;
+      final r = e.radius;
       if (c != null) e.x = e.x.clamp(-c + r, c - r);
       if (a == null) continue;
       if (e.inArena) {
@@ -126,7 +126,7 @@ extension _Field on RunSimulation {
     for (final e in enemies) {
       e.inArena = a.contains(e.x, e.y);
       // 一騎打ちにするため、檻の中にいた雑魚は煙とともに消える（経験値は出ない）
-      if (e.inArena && !e.isBoss) {
+      if (e.inArena && !e.heavy) {
         e.dead = true;
         _burst(e.x, e.y, 0xFFB9BECB, 3);
       }
@@ -151,6 +151,7 @@ extension _Field on RunSimulation {
     final a = arena!;
     arena = null;
     bossShots.clear();
+    hazards.clear();
     for (final e in enemies) {
       e.inArena = false;
     }

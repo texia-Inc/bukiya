@@ -50,6 +50,7 @@ class SurvivorAudio {
     Sfx.blast: 0.08,
     Sfx.thrust: 0.06,
     Sfx.splat: 0.1,
+    Sfx.slam: 0.12,
   };
 
   static const Map<Sfx, double> _volume = {

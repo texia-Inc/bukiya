@@ -54,6 +54,9 @@ class StageDef {
   final List<SpawnRule> spawns;
   final List<BossSpawn> bosses;
 
+  /// 中ボス（雑魚を大きく強くしたもの）が出る時刻
+  final List<BossSpawn> midBosses;
+
   /// ホーム画面のステージの絵に立たせるボス
   final EnemyKind mascot;
 
@@ -79,6 +82,7 @@ class StageDef {
     required this.description,
     required this.spawns,
     required this.bosses,
+    this.midBosses = const [],
     required this.mascot,
     this.waves = const [],
     this.corridorHalfWidth,
@@ -105,6 +109,10 @@ const forestStage = StageDef(
   bosses: [
     BossSpawn(120, EnemyKind.ogre),
     BossSpawn(240, EnemyKind.kingSlime),
+  ],
+  midBosses: [
+    BossSpawn(60, EnemyKind.goblin),
+    BossSpawn(180, EnemyKind.skeleton),
   ],
   mascot: EnemyKind.kingSlime,
   waves: [
@@ -141,6 +149,10 @@ const graveyardStage = StageDef(
     BossSpawn(120, EnemyKind.ogre),
     BossSpawn(240, EnemyKind.kingSlime),
   ],
+  midBosses: [
+    BossSpawn(60, EnemyKind.skeleton),
+    BossSpawn(180, EnemyKind.ghost),
+  ],
   mascot: EnemyKind.ogre,
   waves: [
     WaveEvent(45, WaveType.swarm, EnemyKind.bat, 215, hpScale: 0.35),
@@ -174,6 +186,10 @@ const canyonStage = StageDef(
   bosses: [
     BossSpawn(120, EnemyKind.ogre),
     BossSpawn(240, EnemyKind.kingSlime),
+  ],
+  midBosses: [
+    BossSpawn(60, EnemyKind.goblin),
+    BossSpawn(180, EnemyKind.skeleton),
   ],
   mascot: EnemyKind.kingSlime,
   waves: [
@@ -210,6 +226,10 @@ const volcanoStage = StageDef(
     BossSpawn(120, EnemyKind.ogre),
     BossSpawn(240, EnemyKind.kingSlime),
   ],
+  midBosses: [
+    BossSpawn(60, EnemyKind.imp),
+    BossSpawn(180, EnemyKind.goblin),
+  ],
   mascot: EnemyKind.ogre,
   waves: [
     WaveEvent(40, WaveType.ring, EnemyKind.imp, 200, hpScale: 0.35),
@@ -243,6 +263,10 @@ const snowfieldStage = StageDef(
     BossSpawn(120, EnemyKind.kingSlime),
     BossSpawn(240, EnemyKind.ogre),
   ],
+  midBosses: [
+    BossSpawn(60, EnemyKind.wolf),
+    BossSpawn(180, EnemyKind.skeleton),
+  ],
   mascot: EnemyKind.kingSlime,
   waves: [
     WaveEvent(50, WaveType.swarm, EnemyKind.wolf, 125, hpScale: 0.4),
@@ -275,9 +299,13 @@ const farmStage = StageDef(
   ],
   bosses: [
     BossSpawn(120, EnemyKind.kingSlime),
-    BossSpawn(240, EnemyKind.ogre),
+    BossSpawn(240, EnemyKind.flowerQueen),
   ],
-  mascot: EnemyKind.kingSlime,
+  midBosses: [
+    BossSpawn(60, EnemyKind.sprout),
+    BossSpawn(180, EnemyKind.goblin),
+  ],
+  mascot: EnemyKind.flowerQueen,
   waves: [
     WaveEvent(45, WaveType.ring, EnemyKind.sprout, 220, hpScale: 0.35),
     WaveEvent(100, WaveType.swarm, EnemyKind.bat, 230, hpScale: 0.4),
@@ -308,9 +336,13 @@ const desertStage = StageDef(
   ],
   bosses: [
     BossSpawn(120, EnemyKind.ogre),
-    BossSpawn(240, EnemyKind.kingSlime),
+    BossSpawn(240, EnemyKind.scorpionKing),
   ],
-  mascot: EnemyKind.ogre,
+  midBosses: [
+    BossSpawn(60, EnemyKind.scorpion),
+    BossSpawn(180, EnemyKind.skeleton),
+  ],
+  mascot: EnemyKind.scorpionKing,
   waves: [
     WaveEvent(45, WaveType.swarm, EnemyKind.scorpion, 160, hpScale: 0.3),
     WaveEvent(95, WaveType.ring, EnemyKind.bat, 230, hpScale: 0.4),
@@ -341,9 +373,13 @@ const castleStage = StageDef(
   ],
   bosses: [
     BossSpawn(120, EnemyKind.ogre),
-    BossSpawn(240, EnemyKind.kingSlime),
+    BossSpawn(240, EnemyKind.demonLord),
   ],
-  mascot: EnemyKind.ogre,
+  midBosses: [
+    BossSpawn(60, EnemyKind.knight),
+    BossSpawn(180, EnemyKind.knight),
+  ],
+  mascot: EnemyKind.demonLord,
   waves: [
     WaveEvent(45, WaveType.ring, EnemyKind.imp, 220, hpScale: 0.35),
     WaveEvent(100, WaveType.swarm, EnemyKind.ghost, 230, hpScale: 0.4),
