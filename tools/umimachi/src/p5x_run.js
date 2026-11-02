@@ -16,7 +16,7 @@ const RUN_AREAS=[{id:'eki',name:'駅前',x:61,z:186,r:30,hp:6},{id:'saka',name:'
 // the children held out there; each one comes home when a night's three cores are broken
 const NEST_FREED=['（……ありがとう、おねえちゃん。やっと、海の音が聞こえる）','（まっくらだったの。……灯り、あったかいね）','（ラムネのビー玉、まだ持ってるよ。……帰れるかな）',
   '（お祭りの太鼓が、ずっと遠くで鳴ってた。……もうすぐ、帰れる）','（坂の上から、灯台が見えた。……ありがとう）'];
-const KIDS=NEST_FREED.length;
+const KIDS=3;   // three nights on the mirror bring them home (the first three of these voices)
 function D2_last(){const D=d2();D.last=SAVE.day;save();}
 const RUN_START=[0,150,Math.PI],RUN_DUR=300,RUN_SAFE=90,RUN_ERODE=45,RUN_STEP=0.5,RUN_GAP=14,RUN_CLOSE=2.6,RUN_MAX=900;
 const RUN_FOE={normal:{hp:1,sp:3.2,s:1,xp:10},fast:{hp:1,sp:5,s:0.9,xp:14},big:{hp:3,sp:2.2,s:1.6,xp:40},red:{hp:1,sp:2.8,s:1.05,xp:25}};
