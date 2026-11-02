@@ -489,6 +489,11 @@ class WorldRenderer extends Component with HasGameReference<SurvivorGame> {
       }
       propsUpTo(e.y);
       _upright(canvas, e.x, e.y);
+      if (e.bodyScale != 1) {
+        canvas.translate(e.x, e.y);
+        canvas.scale(e.bodyScale);
+        canvas.translate(-e.x, -e.y);
+      }
       _drawEnemy(canvas, e);
       canvas.restore();
     }
