@@ -80,7 +80,7 @@ function trickAir(dt){TRICK.airT+=dt;
   // catching a rail on the way down
   // no catching while slow, or just after leaving a rail (otherwise a stop on the rail drops you straight back onto it)
   if(P.vy>4||P.v<2.5||clock<(P.grindCD||0))return;const F=[Math.sin(P.yaw),Math.cos(P.yaw)];
-  for(const r of RAILS){if(r.run&&!RUN.go||r.mst&&!MST.on||r.off)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
+  for(const r of RAILS){if(r.run&&!RUN.go||r.mst&&!MST.on||r.mprop&&MST.on||r.off)continue;const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L;
     const t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0,1),px=r.x0+dx*t,pz=r.z0+dz*t;if(Math.hypot(P.x-px,P.z-pz)>0.8)continue;
     const ry=railY(r,px,pz),al=F[0]*ux+F[1]*uz;if(P.y<ry-0.5||P.y>ry+1.1||Math.abs(al)<0.7||t<=0||t>=1)continue;
     // a board still flipping cannot catch the rail; caught clean, it is a landing

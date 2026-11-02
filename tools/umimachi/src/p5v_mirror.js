@@ -26,7 +26,8 @@ const MIR_BOATS=[[-12,-30,0.9,8,2.6,0.8],[36,10,-0.2,7,2.4,0.7]];
 const MIR_RAMPS=[[-15,-12,Math.PI/2,6,3,1.3],[-23,-58,Math.PI/2,6,3,1.3],[12,6,-0.6,6,3,1.2],[-14,40,2.4,6,3,1.2],[40,-14,-2.2,6,3,1.3],[-22,-44,0.5,7,3,1.4],[-40,10,1.2,6,3,1.2]];
 const MIR_TORII=[[0,-12],[-8,-58]];
 // the height of the mirror's floor: hip roofs and boat hulls (a ridge with four slopes), and the planks of the kickers
-function mirG(x,z){const lx=x-MIR_X;let y=0;
+function mirG(x,z){if(MST.on)return 0;const lx=x-MIR_X;let y=0;   // the master's night: only the flat mirror
+
   for(const [rx,rz,a,L,W,h] of MIR_ROOFS.concat(MIR_BOATS)){const dx=lx-rx,dz=z-rz,al=dx*Math.sin(a)+dz*Math.cos(a),pe=dx*Math.cos(a)-dz*Math.sin(a);
     const k=Math.min(1-Math.abs(pe)/(W/2),(L/2-Math.abs(al))/(W/2));if(k>0)y=Math.max(y,h*Math.min(1,k));}
   for(const [rx,rz,a,L,W,h] of MIR_RAMPS){const dx=lx-rx,dz=z-rz,al=dx*Math.sin(a)+dz*Math.cos(a),pe=dx*Math.cos(a)-dz*Math.sin(a);
@@ -57,7 +58,8 @@ function mirBuild(){if(MIR.g)return;const g=new THREE.Group();scene.add(g);MIR.g
   for(let k=0;k<16;k++){const a=k/16*TAU+0.2,r=MIR_R+4+(k%3)*3,x=MIR_X+Math.cos(a)*r,z=Math.sin(a)*r,hh=2.4+(k%2)*1.2;
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.11,hh,6),tm('#3a3f48'));pole.position.set(x,hh/2,z);pole.rotation.z=(k%4-1.5)*0.06;g.add(pole);
     const l=glow('#ffd9a0',x,hh+0.15,z,2.4);scene.remove(l);l.visible=true;g.add(l);}
-  mirProps(g);
+  // the drowned town's things in a group of their own (put away for the master's night), and their rails marked so
+  {const pg=new THREE.Group();g.add(pg);MIR.props=pg;const n0=RAILS.length;mirProps(pg);for(let i=n0;i<RAILS.length;i++)RAILS[i].mprop=true;}
   // the line of light: a bright core and a soft halo, rebuilt from the trail every frame
   const rib=(w,col)=>{const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(MIR_MAX*6),3));geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(MIR_MAX*6),3));
     const idx=[];for(let i=0;i<MIR_MAX-1;i++){const a=i*2;idx.push(a,a+1,a+2,a+1,a+3,a+2);}geo.setIndex(idx);
@@ -207,7 +209,7 @@ function mirMap(){const V=150,S=mapc.width/V,W=mapc.width,H=mapc.height,toM=(x,z
   const [cx,cz]=toM(MIR_X,0);mg.fillStyle='#0f1c30';mg.beginPath();mg.arc(cx,cz,MIR_R*S,0,TAU);mg.fill();mg.strokeStyle='#4a7ab8';mg.lineWidth=1.5;mg.stroke();
   const line=(T,col)=>{mg.strokeStyle=col;mg.lineWidth=2;mg.beginPath();T.forEach((p,k)=>{const [x,y]=toM(p.x,p.z);k?mg.lineTo(x,y):mg.moveTo(x,y);});mg.stroke();};
   line(MIR.trail,'#9fd4ff');if(MIR.ml)line(MIR.ml.pts,'#8f9cff');
-  mg.fillStyle='#4a5260';for(const [x0,z0,a,L,W] of MIR_ROOFS.concat(MIR_BOATS,MIR_RAMPS)){const [x,y]=toM(MIR_X+x0,z0);mg.save();mg.translate(x,y);mg.rotate(-a);mg.fillRect(-W/2*S,-L/2*S,W*S,L*S);mg.restore();}
+  mg.fillStyle='#4a5260';if(!MST.on)for(const [x0,z0,a,L,W] of MIR_ROOFS.concat(MIR_BOATS,MIR_RAMPS)){const [x,y]=toM(MIR_X+x0,z0);mg.save();mg.translate(x,y);mg.rotate(-a);mg.fillRect(-W/2*S,-L/2*S,W*S,L*S);mg.restore();}
   for(const f of MIR.foes){if(f.gone)continue;const [x,y]=toM(f.g.position.x,f.g.position.z);mg.fillStyle=f.kind==='boss'?'#b070ff':f.kind==='red'?'#ff8070':'#ff4030';mg.beginPath();mg.arc(x,y,f.kind==='boss'?6:f.kind==='big'?4:f.kind==='swarm'?2:2.6,0,TAU);mg.fill();}
   mstMap(toM);
   mg.save();mg.translate(W/2,H/2);mg.rotate(-P.yaw+Math.PI);mg.fillStyle='#fff';mg.beginPath();mg.moveTo(0,-7);mg.lineTo(5,5);mg.lineTo(-5,5);mg.closePath();mg.fill();mg.restore();}
@@ -268,8 +270,8 @@ function mirFinish(won){if(MIR.end)return;const R=MIR.rule;
 // out from the command table (rule: a night of the third story, D3_RULE; none for a practice night)
 function mirScript(rule){const first=!SAVE.seen.mir_first;SAVE.seen.mir_first=1;return[
   ['fade','out'],['call',()=>{applyD2();mirEnter();MIR.rule=rule||null;MIR.dur=rule&&(rule.final||rule.master)?3600:180;if(rule&&rule.echo)echoStart(rule);if(rule&&rule.master)mstStart(rule);
-    const tw=d3Tower();if(!tw.parent)MIR.g.add(tw);tw.visible=!!(rule&&rule.n>=4)||!!SAVE.flags.d3_done;D3.lamp.visible=!rule&&!!SAVE.flags.d3_done;}],['time',23.3,0],['warp',MIR_X,30,Math.PI],['call',rideNow],
-  ['cam',...(rule&&rule.master?[[MIR_X+MST_AT[0]-14,5,MST_AT[1]+78],[MIR_X+MST_AT[0],22,MST_AT[1]]]:[[MIR_X+10,5,38],[MIR_X,0.8,28]]),1.2,'cut'],['fade','in'],
+    const tw=d3Tower();if(!tw.parent)MIR.g.add(tw);tw.visible=(!!(rule&&rule.n>=4)||!!SAVE.flags.d3_done)&&!(rule&&rule.master);D3.lamp.visible=!rule&&!!SAVE.flags.d3_done;}],['time',23.3,0],['warp',MIR_X,rule&&rule.master?60:30,Math.PI],['call',rideNow],
+  ['cam',...(rule&&rule.master?[[MIR_X+MST_AT[0]-22,6,MST_AT[1]+66],[MIR_X+MST_AT[0],40,MST_AT[1]]]:[[MIR_X+10,5,38],[MIR_X,0.8,28]]),1.2,'cut'],['fade','in'],
   ['say','tome','（無線の声）……ここが、裏海街の海さ。水がひいて、まるで鏡みたいだろう。',
     ...(first?['スケボーで走ると、ランタンの光が足もとに線になって残る。','その線で、影をぐるっと囲んでごらん。線がつながったら、中の影はまとめて消えるよ。','たくさん囲むほど、いっぺんに追いはらえる。','ミオのビー玉も持っておいき。投げると、転がった先まで青い光の線がのびる。その線につなげても、囲めるよ。',
      '技を出して飛んでいるあいだと、手すりをすべっているあいだは、影にさわられない。大きな技を決めて着地すれば、まわりの影をはじき飛ばせるよ。','技を決めて着地すると、ビー玉が早くたまる。屋根のてっぺんや鳥居をすべったり、技を出して飛んだり、マニュアルで走ったりすると、線が金色になる。すべっているあいだは線が消えにくくなるし、金の線で囲めば点も上がるさ。',...(!rule||rule.kid?['……三分、もちこたえな。']:[])]:rule&&!rule.kid?[]:['今夜も、光の線で囲んでやりな。ビー玉も、技も使うんだよ。']),...(rule?rule.intro||D3_INTRO[rule.n]||[]:[])],
