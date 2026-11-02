@@ -1,11 +1,13 @@
 /* ---------- the master of the sea, fought out on 鏡の海 (a night of p5v_mirror.js with MIR.rule.master): the last fight of the
    second story, and a practice from the command table. It stands at the far edge of the mirror, from the waist up, and reaches
-   in with its two hands. A hand rises, hangs over where Nagi is going (its red shadow on the mirror), and slams down; then it
-   lies on the mirror a while, and a ring of line closed round it burns it (gold line twice as hard, the armoury's third level one
-   more). Both hands burnt, the master falls forward with its head on the mirror, breathing out shadows; three rings round the
-   head, and Mio's light comes down on it and it sinks. In the story her hearts come back when they are gone (Mio's voice); in
+   in with its two hands. Round it Mio has hung rails of light: from the mirror on either side of it they climb and run round its
+   back, high over the open sea behind the mirror, with a gap at the back to jump. Ridden round its back and brought back to her
+   line on the mirror, the ring closes round the whole master: three of those and it falls forward with its head on the mirror,
+   breathing out shadows; three rings round the head, and Mio's light comes down on it and it sinks. Its hands get in the way:
+   one rises, hangs over where Nagi is going (its red shadow on the mirror) and slams down; then it lies on the mirror a while,
+   and a ring closed round it burns it (gold line twice as hard, the armoury's third level one more), and a burnt hand is still. In the story her hearts come back when they are gone (Mio's voice); in
    practice that is the end of the night. ---------- */
-const MST_AT=[30,-62],MST_S=20,MST_HAND=4,MST_HEAD=3,MST_BODY=10;   // where it stands (from the middle of the mirror; clear of the roofs, so its head falls on open mirror), its size, the rings a hand and the head take, how near she can ride to it
+const MST_AT=[30,-62],MST_S=20,MST_HAND=4,MST_HEAD=3,MST_BODY=10,MST_RINGS=3,MST_RR=14;   // …and the radius of the rails round it   // where it stands (from the middle of the mirror; clear of the roofs, so its head falls on open mirror), its size, the rings a hand and the head take, how near she can ride to it
 const MST={on:false,g:null,body:null,eyes:[],hands:[],head:null,phase:0,t:0,turn:0,cd:0,breath:0,tilt:0,beam:null,res:null,rule:null};
 function mstBuild(){if(MST.g)return;const g=new THREE.Group();MIR.g.add(g);MST.g=g;
   const h=makeHuman(SHADE);h.g.scale.setScalar(MST_S);g.add(h.g);MST.body=h;
@@ -21,9 +23,23 @@ function mstBuild(){if(MST.g)return;const g=new THREE.Group();MIR.g.add(g);MST.g
     return{g:hg,core,arm,mark:flat(new THREE.RingGeometry(3.4,3.9,40),'#b070ff',0.5),warn:flat(new THREE.CircleGeometry(5,40),'#ff3020',0),sd,x:0,z:0,y:0,tx:0,tz:0,st:'rest',t:0,hp:MST_HAND,dead:false,fade:0};};
   MST.hands=[hand(-1),hand(1)];
   MST.head={core:gl('#b070ff',7),mark:flat(new THREE.RingGeometry(5.6,6.2,48),'#b070ff',0),x:0,y:0,z:0,hp:MST_HEAD};
+  mstRails(g);
   MST.beam=new THREE.Mesh(new THREE.CylinderGeometry(4,6,160,24,1,true),new THREE.MeshBasicMaterial({color:'#fff1c8',transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));g.add(MST.beam);}
+// the rails of light: two arcs round the master at MST_RR, each low on the mirror at the front and high (8 m) round its back,
+// a gap between them at the back to jump; each arc is a chain of straight lengths (r.mst: only there to catch in this fight)
+function mstRails(g){const bx=MIR_X+MST_AT[0],bz=MST_AT[1],at=a=>[bx+MST_RR*Math.sin(a),bz+MST_RR*Math.cos(a)],D=Math.PI/180;
+  const hi=8,lo=0.35,sm=u=>u*u*(3-2*u),mat=new THREE.MeshBasicMaterial({color:'#ffe6a0',fog:false}),
+    halo=new THREE.MeshBasicMaterial({color:'#ffcf70',transparent:true,opacity:0.25,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
+  const arc=(a0,a1,yAt)=>{let prev=null;const n=Math.round(Math.abs(a1-a0)/10);
+    for(let k=0;k<n;k++){const u0=a0+(a1-a0)*k/n,u1=a0+(a1-a0)*(k+1)/n,[x0,z0]=at(u0*D),[x1,z1]=at(u1*D),r={x0,z0,x1,z1,y0:yAt(u0),y1:yAt(u1),mst:true,keep:9};
+      if(prev){prev.nx=r;r.pv=prev;}prev=r;RAILS.push(r);
+      const p0=new THREE.Vector3(x0,r.y0,z0),p1=new THREE.Vector3(x1,r.y1,z1),d=p1.clone().sub(p0),L=d.length(),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+      for(const [m,w] of [[mat,0.09],[halo,0.32]]){const c=new THREE.Mesh(new THREE.CylinderGeometry(w,w,L,8,1,true),m);c.position.copy(p0).add(p1).multiplyScalar(0.5);c.quaternion.copy(q);g.add(c);}}};
+  arc(20,180,a=>a<100?lo+(hi-lo)*sm((a-20)/80):hi);arc(192,340,a=>a>260?lo+(hi-lo)*sm((340-a)/80):hi);
+  // where to jump on: a soft ring of light on the mirror under each low end
+  for(const a of [20,340]){const [x,z]=at(a*D),m=new THREE.Mesh(new THREE.RingGeometry(1.2,1.6,32),halo);m.rotation.x=-Math.PI/2;m.position.set(x,0.05,z);g.add(m);}}
 // out onto the mirror (from mirScript): the master up at the edge, a hand to either side of it
-function mstStart(rule){mstBuild();Object.assign(MST,{on:true,rule,phase:0,t:0,turn:0,cd:4,breath:6,tilt:0});MST.g.visible=true;
+function mstStart(rule){mstBuild();Object.assign(MST,{on:true,rule,phase:0,t:0,turn:0,cd:5,breath:6,tilt:0,hp:MST_RINGS});MST.g.visible=true;
   const b=MST.body.g;b.position.set(MIR_X+MST_AT[0],-0.92*MST_S,MST_AT[1]);b.rotation.set(0,0,0);b.scale.setScalar(MST_S);
   MST.hands.forEach((H,k)=>{Object.assign(H,{x:MIR_X+MST_AT[0]+H.sd*12,z:MST_AT[1]+22,y:0,st:'rest',t:0,hp:MST_HAND,dead:false,fade:0});H.g.visible=H.arm.visible=H.core.visible=true;H.g.scale.setScalar(1);H.warn.material.opacity=0;});
   MST.head.hp=MST_HEAD;MST.head.core.visible=false;MST.head.mark.material.opacity=0;MST.beam.material.opacity=0;for(const e of MST.eyes)e.visible=true;}
@@ -65,8 +81,8 @@ function mstStep(dt,busy){if(!MST.on)return;const b=MST.body.g,S=MST_S,run=MIR.g
     // the arm: from the shoulder to the wrist
     const wx=H.x-Math.sin(H.g.rotation.y)*2.5,wz=H.z-Math.cos(H.g.rotation.y)*2.5,wy=H.y+0.8,d=new THREE.Vector3(wx-sx,wy-sy,wz-sz),L=d.length();
     H.arm.position.set((sx+wx)/2,(sy+wy)/2,(sz+wz)/2);H.arm.scale.set(1,L,1);H.arm.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());});
-  // both hands gone: it falls forward, its head on the mirror, breathing out shadows
-  if(MST.phase===0&&MST.hands.every(H=>H.dead)){MST.phase=1;MST.breath=4;toast('主が、くずれおちる！ 頭のまわりを、光の線で囲め',true);buzz('heavy',true);}
+  // ringed three times: it falls forward, its head on the mirror, breathing out shadows (a hand still up goes down with it)
+  if(MST.phase===0&&MST.hp<=0){MST.phase=1;MST.breath=4;for(const H of MST.hands)H.dead=true;toast('主が、くずれおちる！ 頭のまわりを、光の線で囲め',true);buzz('heavy',true);}
   const Hd=MST.head;Hd.x=hx;Hd.z=hz;Hd.y=hy;
   if(MST.phase===1){Hd.core.visible=MST.tilt>0.6;Hd.core.position.set(hx,Math.max(hy,mirG(hx,hz)+1.5),hz);Hd.core.material.opacity=0.6+0.3*Math.sin(MST.t*3);
     Hd.mark.position.set(hx,mirG(hx,hz)+0.06,hz);Hd.mark.material.opacity=MST.tilt>0.6?0.35+0.25*Math.sin(MST.t*4):0;
@@ -78,16 +94,20 @@ function mstStep(dt,busy){if(!MST.on)return;const b=MST.body.g,S=MST_S,run=MIR.g
 // a ring closed: a hand lying inside it, or the head, burns
 function mstRing(inside,gold){if(!MST.on||MST.phase===2)return null;const n=mstDmg(gold);
   if(MST.phase===0){let msg=null;
+    if(inside(MIR_X+MST_AT[0],MST_AT[1])){MST.hp--;sparks(new THREE.Vector3(MIR_X+MST_AT[0],12,MST_AT[1]),60,'#ffe6a0',14,0.2);buzz('heavy',true);
+      msg=MST.hp>0?`主をまるごと囲んだ！　のこり ${MST.hp}`:'主をしめつけた！';}
     for(const H of MST.hands){if(H.dead||H.st!=='rest'||!inside(H.x,H.z))continue;H.hp-=n;sparks(new THREE.Vector3(H.x,H.y+1.5,H.z),30,'#d8c0ff',9,0.16);
-      if(H.hp<=0){H.dead=true;msg=`主の${H.sd<0?'右':'左'}手を焼いた！`;}else msg=`主の手が焼ける！　のこり ${H.hp}`;}
+      if(H.hp<=0){H.dead=true;msg=msg||`主の${H.sd<0?'右':'左'}手を焼いた！`;}else msg=msg||`主の手が焼ける！　のこり ${H.hp}`;}
     return msg;}
   const Hd=MST.head;if(MST.tilt<0.6||!inside(Hd.x,Hd.z))return null;Hd.hp-=n;sparks(new THREE.Vector3(Hd.x,Hd.y+2,Hd.z),40,'#d8c0ff',10,0.18);
   if(Hd.hp>0)return`主の頭を焼いた！　のこり ${Hd.hp}`;
   MST.phase=2;MST.t2=0;for(const f of MIR.foes)f.gone=1;buzz('heavy',true);return'ミオの光が、主をつらぬく！';}
 function mstHUD(){if(!MST.on)return null;
-  return{step:MST.phase===0?'手がたたいたら、そのすきに手のまわりを線で囲め。赤い影の下からは逃げろ':'くずれた主の頭のまわりを、線で囲め',
-    meter:`主の手 ${MST.hands.map(H=>H.dead?'×':'■'.repeat(Math.max(0,Math.ceil(H.hp)))).join(' / ')}${MST.phase>=1?`　頭 ${'■'.repeat(Math.max(0,MST.head.hp))}`:''}`};}
-function mstMap(toM){if(!MST.on)return;mg.fillStyle='#b070ff';
+  return{step:MST.phase===0?'低いはしからレールに跳び乗って主のうしろを回り、主をまるごと囲め。たたいたあとの手も、囲めば焼ける':'くずれた主の頭のまわりを、線で囲め',
+    meter:MST.phase===0?`主 ${'■'.repeat(Math.max(0,MST.hp))}　手 ${MST.hands.map(H=>H.dead?'×':'■'.repeat(Math.max(0,Math.ceil(H.hp)))).join(' / ')}`:`頭 ${'■'.repeat(Math.max(0,MST.head.hp))}`};}
+function mstMap(toM){if(!MST.on)return;const [cx,cy]=toM(MIR_X+MST_AT[0],MST_AT[1]),[ex]=toM(MIR_X+MST_AT[0]+MST_RR,MST_AT[1]);
+  if(MST.phase===0){mg.strokeStyle='#ffe6a0';mg.lineWidth=2;mg.beginPath();mg.arc(cx,cy,ex-cx,0,TAU);mg.stroke();}
+  mg.fillStyle='#b070ff';
   for(const H of MST.hands){if(H.dead)continue;const [x,y]=toM(H.x,H.z);mg.beginPath();mg.arc(x,y,H.st==='rest'?5:3,0,TAU);mg.fill();}
   if(MST.phase===1){const [x,y]=toM(MST.head.x,MST.head.z);mg.beginPath();mg.arc(x,y,7,0,TAU);mg.fill();}
   const [x,y]=toM(MIR_X+MST_AT[0],MST_AT[1]);mg.fillStyle='#3a1c52';mg.beginPath();mg.arc(x,y,6,0,TAU);mg.fill();}
@@ -100,5 +120,6 @@ async function mstStoryEnd(){const r=MST.res;await fadeP(true);mirExit();if(r)r(
 const MST_RULE={
   story:{master:true,practice:false,title:'最後の戦い：海の主',intro:[]},
   practice:{master:true,practice:true,title:'海の主（練習）',intro:['あれが、海の主さ。……練習だから、やられても物語は進まないよ。',
-    '主の手が上がったら、鏡に赤い影が落ちる。そこから逃げな。たたいたあとの手は、しばらく鏡の上で止まる。そのまわりを線で囲めば、焼けるよ。',
-    '両手を焼いたら、主はくずれおちる。最後は、頭のまわりを三回囲むんだ。金の線なら、よく効くよ。']}};
+    '主のまわりに、ミオちゃんが光のレールをかけてくれた。鏡の上の低いはしに向かって跳べば、乗れるよ。レールは主の背中を回って、反対がわへおりてくる。うしろのすき間は、跳びこえな。',
+    'レールで背中を回って、鏡の上の線とつなげば、主をまるごと囲める。三回囲めば、主はくずれおちる。最後は、頭のまわりを三回囲むんだ。',
+    '主の手が上がったら、鏡に赤い影が落ちる。そこから逃げな。たたいたあとの手も、囲めば焼ける。焼いた手は、もう動かないよ。']}};
