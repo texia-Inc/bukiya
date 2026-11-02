@@ -1,5 +1,9 @@
 <script>
-function main(){
+// the loading bar: set(p, what) moves it; tick(p, what) also lets the page draw it (at most every 40 ms, so the start is barely slower)
+const LD={p:0,last:0,set(p,step){LD.p=Math.max(LD.p,p);const f=document.getElementById('ldFill'),s=document.getElementById('ldStep');
+    if(f)f.style.width=(LD.p*100).toFixed(1)+'%';if(s&&step)s.textContent=step+'　'+Math.round(LD.p*100)+'%';},
+  async tick(p,step){LD.set(p,step);if(performance.now()-LD.last<40)return;await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));LD.last=performance.now();}};
+async function main(){
 "use strict";
 const $=id=>document.getElementById(id);
 if(!window.THREE){$('loading').textContent='3Dライブラリを読み込めませんでした。再読み込みしてください。';return;}

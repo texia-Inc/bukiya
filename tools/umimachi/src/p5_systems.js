@@ -655,7 +655,8 @@ function updateMarkers(){const calm=!!(DLG||modal||ST.run||URA.on);for(const q o
   if(t){const y=G(t[0],t[1]);tMark.position.set(t[0],y+2.9+Math.sin(clock*3)*0.12,t[1]);beam.position.set(t[0],y+20,t[1]);beam.material.opacity=clamp(Math.hypot(P.x-t[0],P.z-t[1])/60,0,1)*0.22;}
   const pq=QBY('photo'),ps=stepOf(pq);SPOTS.forEach((p,k)=>{camMarks[k].visible=state==='play'&&!calm&&(!ps||!SAVE.spots.includes(p.id));camMarks[k].position.y=G(p.x,p.z)+2.6+Math.sin(clock*2+k)*0.08;});}
 let placeT=0;
-function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;
+const FADE=$('fade'),DLGBOX=$('dialog');   // the wait sign on a black screen, but not under words on it
+function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;clock+=dt;FADE.classList.toggle('wait',FADE.style.opacity==='1'&&DLGBOX.hidden);
   WIND.t.value=clock;updateGrass();updateWindLines(dt);updateStory(dt);
   if(state==='play'){if(talkNpc&&!ST.run&&Math.hypot(P.x-talkNpc.x,P.z-talkNpc.z)>6){DLG=null;$('dialog').hidden=true;talkNpc=null;}
     if(ST.run&&!storyFree())jumpQ=kickQ=footQ=trickQ=false;updateTricks(dt);
@@ -699,18 +700,20 @@ function renderSlots(){const box=$('slots');box.innerHTML='';
     if(k===SLOT&&s)row.style.boxShadow='inset 0 0 0 2px var(--sea)';box.appendChild(row);}}
 renderSlots();
 updateFolk(0,P.x,P.z,true);
-$('loading').hidden=true;$('title').hidden=false;
+LD.set(1,'できあがり');$('loading').hidden=true;$('title').hidden=false;
 requestAnimationFrame(t=>{last=t;requestAnimationFrame(frame);});
 }
 const fontReady=document.fonts&&document.fonts.load?Promise.race([Promise.all([document.fonts.load('700 20px "Zen Maru Gothic"'),document.fonts.load('700 20px "Kaisei Decol"')]),new Promise(r=>setTimeout(r,2500))]).catch(()=>{}):Promise.resolve();
+const DL={h:0,m:0},dlBar=()=>LD.set(0.48*(DL.h*0.6+DL.m*0.4),'ナギとミオを読み込んでいます');LD.set(0.01,'読み込んでいます');
 // the heroine model sits next to the page; if it cannot be fetched the game falls back to the procedural skater
 const heroineReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader)return res();const t=setTimeout(res,25000);
   const ok=g=>{window.HEROINE_GLTF=g;clearTimeout(t);res();},fail=()=>{clearTimeout(t);res();},ld=new THREE.GLTFLoader();
   const emb=document.getElementById('heroineGLB');   // the single-file build carries the model inline
   if(emb){try{const bin=Uint8Array.from(atob(emb.textContent.trim()),c=>c.charCodeAt(0));ld.parse(bin.buffer,'',ok,fail);}catch(e){fail();}}
-  else ld.load('heroine.glb',ok,undefined,fail);});
+  else ld.load('heroine.glb',ok,e=>{if(e.total){DL.h=e.loaded/e.total;dlBar();}},fail);});
 // Mio's model, the same way (the procedural figure stays if it cannot be fetched; the single-file build does without it)
 const mioReady=new Promise(res=>{if(!window.THREE||!THREE.GLTFLoader||document.getElementById('heroineGLB'))return res();const t=setTimeout(res,25000);
-  new THREE.GLTFLoader().load('mio.glb',g=>{window.MIO_GLTF=g;clearTimeout(t);res();},undefined,()=>{clearTimeout(t);res();});});
-Promise.all([fontReady,heroineReady,mioReady,window.APP&&APP.ready]).then(main);
+  new THREE.GLTFLoader().load('mio.glb',g=>{window.MIO_GLTF=g;clearTimeout(t);res();},e=>{if(e.total){DL.m=e.loaded/e.total;dlBar();}},()=>{clearTimeout(t);res();});});
+Promise.all([fontReady,heroineReady,mioReady,window.APP&&APP.ready]).then(()=>{LD.set(0.5,'町をつくっています');return main();})
+  .catch(e=>{console.error(e);const l=document.getElementById('loading');if(l){l.hidden=false;l.textContent='海街を準備できませんでした。再読み込みしてください。';}});
 </script>

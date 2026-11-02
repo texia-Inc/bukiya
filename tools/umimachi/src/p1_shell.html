@@ -190,6 +190,16 @@ body.riding #bJump,body.riding #bKick,body.riding #bFoot,body.riding #bTrick{dis
   .keys dt.tc{display:block;min-width:4.5em}
 }
 #loading{position:fixed;inset:0;display:grid;place-items:center;background:#cfe8f5;font-weight:900;color:var(--sea-deep);font-size:16px}
+.ldbox{width:min(320px,78vw);text-align:center}
+.ldbar{height:10px;border-radius:5px;background:rgba(255,255,255,.6);overflow:hidden;margin:12px 0 8px}
+#ldFill{display:block;height:100%;width:0;background:var(--sea-deep);border-radius:5px;transition:width .2s}
+#ldStep{font-size:12px;opacity:.75;min-height:1.4em}
+/* the wait on a black screen: shown only once it has been black a while (it moves on its own, even while the page is busy) */
+.fwait{position:absolute;left:50%;bottom:22%;width:min(220px,60vw);transform:translateX(-50%);text-align:center;color:#d8d2c8;font-weight:700;font-size:13px;opacity:0;transition:opacity .15s}
+#fade.wait .fwait{opacity:1;transition:opacity .3s 1.4s}
+.fwait .ldbar{height:6px;background:rgba(255,255,255,.15);margin:8px 0 0}
+.fwait .ldbar i{display:block;width:35%;height:100%;border-radius:3px;background:#ffcf8a;animation:fwait 1.1s ease-in-out infinite}
+@keyframes fwait{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
 #menuBtn{display:none}
 /* phones: a quieter screen. The tools fold into one menu button, the top-left cards get smaller (tap the tracker to fold it),
    the map and the round buttons shrink, the place name goes (the map shows it) */
@@ -315,7 +325,7 @@ body.battle #wrow,body.battle #place,body.battle #bag{display:none!important}
   <details id="gachaEx"><summary>かけら交換・コレクション</summary><div id="gachaShop"></div></details>
   <div class="gbar"><button class="btn ghost" id="gachaClose">とじる</button></div></div></div>
 <div id="flash"></div>
-<div class="cbar" id="cbarT"></div><div class="cbar" id="cbarB"></div><div id="fade"></div>
+<div class="cbar" id="cbarT"></div><div class="cbar" id="cbarB"></div><div id="fade"><div class="fwait"><span>準備中…</span><div class="ldbar"><i></i></div></div></div>
 <div id="credits" hidden><div><h2>海街スケート</h2><p>真ルート「灯台」</p><p style="margin-top:18px">汐見ナギ ・ トメばあちゃん ・ ミオ ・ ナツミ<br>こむぎ堂の主人 ・ ソウタと海街少年探偵団 ・ おもち<br>そして、海街のみなさん</p>
 <p style="margin-top:18px">主人公モデル：VRoid Studio で作成</p><p class="sm" id="creditsEnd">夏休みは、まだ続く。（クリックでとじる）</p></div></div>
 
@@ -327,6 +337,6 @@ body.battle #wrow,body.battle #place,body.battle #bag{display:none!important}
     <p style="margin:12px 0 0;font-size:11px;opacity:.6">主人公モデル：VRoid Studio で作成</p>
   </div>
 </div>
-<div id="loading">海街を準備しています…</div>
+<div id="loading"><div class="ldbox"><div>海街を準備しています…</div><div class="ldbar"><i id="ldFill"></i></div><div id="ldStep"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
