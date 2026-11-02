@@ -10055,15 +10055,15 @@ function mstBuild(){if(MST.g)return;const g=new THREE.Group();MIR.g.add(g);MST.g
   mstRails(g);
   MST.beam=new THREE.Mesh(new THREE.CylinderGeometry(4,6,160,24,1,true),new THREE.MeshBasicMaterial({color:'#fff1c8',transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));g.add(MST.beam);}
 // the rails of light: two arcs round the master at MST_RR, each low on the mirror at the front and high (8 m) round its back,
-// a gap between them at the back to jump; each arc is a chain of straight lengths (r.mst: only there to catch in this fight)
+// a gap between them at the back to jump; each arc is a chain of short straight lengths (3°, so the board turns smoothly round it),
+// drawn as one smooth tube (r.mst: only there to catch in this fight)
 function mstRails(g){const bx=MIR_X+MST_AT[0],bz=MST_AT[1],at=a=>[bx+MST_RR*Math.sin(a),bz+MST_RR*Math.cos(a)],D=Math.PI/180;
   const hi=8,lo=0.35,sm=u=>u*u*(3-2*u),mat=new THREE.MeshBasicMaterial({color:'#ffe6a0',fog:false}),
     halo=new THREE.MeshBasicMaterial({color:'#ffcf70',transparent:true,opacity:0.25,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
-  const arc=(a0,a1,yAt)=>{let prev=null;const n=Math.round(Math.abs(a1-a0)/10);
-    for(let k=0;k<n;k++){const u0=a0+(a1-a0)*k/n,u1=a0+(a1-a0)*(k+1)/n,[x0,z0]=at(u0*D),[x1,z1]=at(u1*D),r={x0,z0,x1,z1,y0:yAt(u0),y1:yAt(u1),mst:true,keep:9};
-      if(prev){prev.nx=r;r.pv=prev;}prev=r;RAILS.push(r);
-      const p0=new THREE.Vector3(x0,r.y0,z0),p1=new THREE.Vector3(x1,r.y1,z1),d=p1.clone().sub(p0),L=d.length(),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
-      for(const [m,w] of [[mat,0.09],[halo,0.32]]){const c=new THREE.Mesh(new THREE.CylinderGeometry(w,w,L,8,1,true),m);c.position.copy(p0).add(p1).multiplyScalar(0.5);c.quaternion.copy(q);g.add(c);}}};
+  const arc=(a0,a1,yAt)=>{let prev=null;const n=Math.round(Math.abs(a1-a0)/3),pts=[];
+    for(let k=0;k<=n;k++){const u=a0+(a1-a0)*k/n,[x,z]=at(u*D);pts.push(new THREE.Vector3(x,yAt(u),z));}
+    for(let k=0;k<n;k++){const p=pts[k],q=pts[k+1],r={x0:p.x,z0:p.z,x1:q.x,z1:q.z,y0:p.y,y1:q.y,mst:true,keep:9};if(prev){prev.nx=r;r.pv=prev;}prev=r;RAILS.push(r);}
+    const cv=new THREE.CatmullRomCurve3(pts);for(const [m,w] of [[mat,0.09],[halo,0.32]])g.add(new THREE.Mesh(new THREE.TubeGeometry(cv,n*3,w,8,false),m));};
   arc(20,180,a=>a<100?lo+(hi-lo)*sm((a-20)/80):hi);arc(192,340,a=>a>260?lo+(hi-lo)*sm((340-a)/80):hi);
   // where to jump on: a soft ring of light on the mirror under each low end
   for(const a of [20,340]){const [x,z]=at(a*D),m=new THREE.Mesh(new THREE.RingGeometry(1.2,1.6,32),halo);m.rotation.x=-Math.PI/2;m.position.set(x,0.05,z);g.add(m);}}
