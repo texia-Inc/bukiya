@@ -10139,6 +10139,10 @@ const mstDmg=gold=>(gold?2:1)+(hqLv('arm')>=3?1:0),_mstV=new THREE.Vector3();
 // a trick landed clean back onto its body's rails (P.catchR: the rail just caught): every three seconds of it, a ring's worth
 function mstTrick(b){const r=P.catchR;if(!MST.on||MST.phase!==0||!r||!r.body||b<=0)return;const d=Math.min(1.5,b/3*(r.crown?2:1));MST.hp-=d;
   sparks(new THREE.Vector3(P.x,P.y+1,P.z),40,'#ffe6a0',12,0.2);buzz('heavy',true);TRICK.sub=`主の${r.crown?'頭の上':'体の上'}で技！ −${d.toFixed(1)}`;TRICK.shown=Math.max(TRICK.shown,1.6);trickHUD();renderHUD();}
+// up onto the arm from a jump over the hand, the board along it toward the neck (a board still flipping cannot land on it)
+function mstOnArm(r){const dx=r.x1-r.x0,dz=r.z1-r.z0,L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L,t=clamp(((P.x-r.x0)*ux+(P.z-r.z0)*uz)/L,0.02,0.3);
+  TRICK.manQ=0;P.catchR=r;if(P.trick){trickLand(false);P.trick=null;}else trickLand(true);P.catchR=null;
+  P.grind={r,t,dir:1,L,ux,uz,sc:0,rot:0};P.air=false;P.vy=0;P.x=r.x0+dx*t;P.z=r.z0+dz*t;P.y=railY(r,P.x,P.z);P.yaw=Math.atan2(ux,uz);P.v=Math.max(P.v,r.keep);trickAdd('grind');}
 // a hand slams down where she is heading: away from the master, inside the open water
 function mstAim(H){const v=Math.min(P.v,12);let x=P.x+Math.sin(P.yaw)*v,z=P.z+Math.cos(P.yaw)*v;const l=Math.hypot(x-MIR_X,z);
   if(l>MIR_R-6){x=MIR_X+(x-MIR_X)/l*(MIR_R-6);z=z/l*(MIR_R-6);}
@@ -10187,13 +10191,16 @@ function mstStep(dt,busy){if(!MST.on)return;const b=MST.body.g,S=MST_S,run=MIR.g
     H.warn.visible=H.st==='aim';H.warn.position.set(H.tx,mirG(H.tx,H.tz)+0.07,H.tz);
     H.mark.visible=H.st==='rest';H.mark.position.set(H.x,gy+0.06,H.z);H.mark.material.opacity=0.35+0.25*Math.sin(MST.t*4+k);
     H.core.position.set(H.x,H.y+1.6*MST_HS,H.z);H.core.material.opacity=0.6+0.3*Math.sin(MST.t*5+k);
-    // the arm: from the shoulder to the wrist; lying still, a rail from the wrist up to the ring round the neck
+    // the arm: from the shoulder to the wrist; lying still, a rail from the top of the hand up to the ring round the neck
     const wx=H.x-Math.sin(H.g.rotation.y)*2.5*MST_HS,wz=H.z-Math.cos(H.g.rotation.y)*2.5*MST_HS,wy=H.y+0.8*MST_HS,d=new THREE.Vector3(wx-sx,wy-sy,wz-sz),L=d.length();
     H.arm.position.set((sx+wx)/2,(sy+wy)/2,(sz+wz)/2);H.arm.scale.set(1,L,1);H.arm.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
     // (not where the wrist lies on one of the rings: there she would catch the ring instead)
     const R=H.rail,wr=Math.hypot(wx-bx,wz-bz),up=H.st==='rest'&&MST.phase===0&&Math.abs(wr-MST_RI)>3&&Math.abs(wr-MST_RO)>3,cx=bx+H.sd*MST_RC;
-    if(up&&!(P.grind&&P.grind.r===R))Object.assign(R,{x0:wx,z0:wz,y0:wy+0.3,x1:cx,z1:bz,y1:MST_YC});
-    R.off=!up;if(P.grind&&P.grind.r===R)MST.via=H;
+    if(up&&!(P.grind&&P.grind.r===R))Object.assign(R,{x0:H.x,z0:H.z,y0:gy+1.3*MST_HS,x1:cx,z1:bz,y1:MST_YC});
+    R.off=!up;
+    // a jump anywhere over the hand (inside its ring) puts her up on the arm, heading for the neck
+    if(up&&run&&P.air&&!P.grind&&P.y<8&&clock>=(P.grindCD||0)&&Math.hypot(P.x-H.x,P.z-H.z)<MST_HIT)mstOnArm(R);
+    if(P.grind&&P.grind.r===R)MST.via=H;
     H.lit.visible=up;if(up){const a=new THREE.Vector3(R.x0,R.y0,R.z0),c=new THREE.Vector3(R.x1,R.y1,R.z1),e=c.clone().sub(a);H.lit.position.copy(a).add(c).multiplyScalar(0.5);H.lit.scale.set(1,e.length(),1);H.lit.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),e.normalize());}});
   // its body's rails: lit while an arm leads up to them; once she is on them, only while the hand she came up from stays down
   {const onB=!!(P.grind&&P.grind.r.body),on=MST.phase===0&&(onB?!!MST.via&&!MST.via.rail.off:MST.hands.some(H=>!H.rail.off));
@@ -10225,7 +10232,7 @@ function mstRing(inside,gold){if(!MST.on||MST.phase===2)return null;const n=mstD
   if(Hd.hp>0)return`主の頭を焼いた！　のこり ${Hd.hp}`;
   MST.phase=2;MST.t2=0;for(const f of MIR.foes)f.gone=1;buzz('heavy',true);return'ミオの光が、主をつらぬく！';}
 function mstHUD(){if(!MST.on)return null;
-  return{step:MST.phase===0?(P.grind&&P.grind.r.body?'主の体の上！ 跳んで技を出して、体のレールに着地しろ。目のそばを通れば目が焼ける':'レールで主のうしろを回って、主をまるごと囲め（分かれ道は左右に倒す）。たたいたあとの腕からは、主の体へのぼれる'):'しずんだ主の頭のまわりを、線で囲め',
+  return{step:MST.phase===0?(P.grind&&P.grind.r.body?'主の体の上！ 跳んで技を出して、体のレールに着地しろ。目のそばを通れば目が焼ける':'レールで主のうしろを回って、主をまるごと囲め（分かれ道は左右に倒す）。たたいたあとの手の上で跳べば、腕から主の体へのぼれる'):'しずんだ主の頭のまわりを、線で囲め',
     meter:MST.phase===0?`主 ${'■'.repeat(Math.max(0,Math.ceil(MST.hp)))}${MST.eyeOn.some(e=>!e)?`　目 ${MST.eyeOn.map(e=>e?'●':'×').join('')}`:''}　手 ${MST.hands.map(H=>H.dead?'×':'■'.repeat(Math.max(0,Math.ceil(H.hp)))).join(' / ')}`:`頭 ${'■'.repeat(Math.max(0,MST.head.hp))}`};}
 function mstMap(toM){if(!MST.on)return;
   if(MST.phase===0){mg.lineWidth=2;for(const c of MST.chunks){if(c.segs[0].off&&!c.warn)continue;mg.strokeStyle=c.warn?'#ff6a5a':'#ffe6a0';mg.beginPath();
@@ -10246,7 +10253,7 @@ const MST_RULE={
     '主のまわりに、ミオちゃんが光のレールを二重にかけてくれた。鏡の上の低いはしに向かって跳べば、乗れるよ。レールは主の背中を回って、反対がわへおりてくる。すき間は跳びこえな。',
     '内の輪は短くて早いけど、主の手のそばを通る。外の輪は高くて遠回りだけど、安全だ。分かれ道で左右に倒せば、乗りかえられる。',
     'こんなに大きいと、鏡の上を走るだけじゃ、ひと回りする前に線が消えちまう。でもレールに乗っているあいだは、線は消えない。','レールで背中を回って、鏡の上の線とつなげば、主をまるごと囲める。三回囲めば、主は鏡にしずむ。最後は、頭のまわりを三回囲むんだ。',
-    '主の手が鏡をたたいたら、その腕は光る。腕をのぼれば、首のまわりの輪に出られる。そこを一周すれば、それだけで主を囲めるよ。手が動きだす前にね。',
+    '主の手が鏡をたたいたら、その腕は光る。手のまわりの紫の輪の中で跳べば、腕に乗れる。腕をのぼれば、首のまわりの輪に出られる。そこを一周すれば、それだけで主を囲めるよ。手が動きだす前にね。',
     '首の輪から上には、頭のまわりの輪と、頭をこえるアーチがある。体のレールの上で跳んで技を出して、また体のレールに着地すれば、それが主への一撃になる。頭の上のアーチなら、倍だよ。目のそばを通れば、目も焼ける。',
     '主の体の上にいるあいだは、のぼった腕の手は動かない。でも十秒もすれば、ふり落とされるからね。',
     '主はときどき、レールをこわす。赤く光ったら、すぐにほかの道へ。たたいたあとの手も、囲めば焼ける。焼いた手は、もう動かないよ。']}};
