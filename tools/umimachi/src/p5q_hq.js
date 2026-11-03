@@ -11,10 +11,10 @@ const dlc2Owned=()=>true;
 const HQ_IN=[3,0,Math.PI/2],HQ_EXIT=[1.2,0];
 // the rooms: who keeps them, where they stand, and what a level does
 const FAC={
-  arm:{name:'武器庫',npc:'baker',at:[14,-9.6],yaw:0,use:'光の線で、海の主を焼く力が上がる（Lv3から）。ドローンを撃つ力も',what:lv=>`撃つ力 ×${[1,1.5,2,2.5,3][lv-1]}`},
-  dojo:{name:'鍛錬場',npc:'okami',at:[26,-9.6],yaw:0,use:'出撃や戦いで、やられるまでのハート♥が増える',what:lv=>`ハート♥ ${[5,6,7,8,10][lv-1]}`},
+  arm:{name:'武器庫',npc:'baker',at:[14,-9.6],yaw:0,use:'鏡の海で、大きな技を決めて着地したとき、影をはじき飛ばす広さが上がる。光の線で海の主を焼く力も（Lv3から）、ドローンを撃つ力も',what:lv=>`技の衝撃 ${[7,8.5,10,11.5,13][lv-1]}m・撃つ力 ×${[1,1.5,2,2.5,3][lv-1]}`},
+  dojo:{name:'鍛錬場',npc:'okami',at:[26,-9.6],yaw:0,use:'出撃や戦いで、やられるまでのハート♥が増える。鏡の海で、スケボーが速くなる',what:lv=>`ハート♥ ${[5,6,7,8,10][lv-1]}・速さ ×${[1,1.04,1.08,1.12,1.16][lv-1]}`},
   lamp:{name:'灯りの工房',npc:'neko',at:[14,9.6],yaw:Math.PI,use:'鏡の海で光の線が長く残る。ランタン（影を足止めする光）も強くなる',what:lv=>`線 +${(lv-1)*0.5}秒・ランタン ${[3,4,4,5,6][lv-1]}回・光の広さ ${[13,14.5,16,17.5,19][lv-1]}m`},
-  radio:{name:'通信室',npc:'master',at:[26,9.6],yaw:Math.PI,use:'鏡の海でビー玉が早くたまる。町の戦いでは、オーシャンゲートのドローンが影をうってくれる',what:lv=>`ビー玉 ${MIR_MCD-(lv-1)*0.5}秒${lv<2?'':`・援護ドローン ${lv>=4?2:1}機`}`},
+  radio:{name:'通信室',npc:'master',at:[26,9.6],yaw:Math.PI,use:'鏡の海でビー玉が早くたまって、速く遠くまで転がる。町の戦いでは、オーシャンゲートのドローンが影をうってくれる',what:lv=>`ビー玉 ${MIR_MCD-(lv-1)*0.5}秒・転がる速さ ×${[1,1.08,1.16,1.24,1.32][lv-1]}${lv<2?'':`・援護ドローン ${lv>=4?2:1}機`}`},
   cmd:{name:'作戦室',npc:'tome',at:[38.5,0],yaw:-Math.PI/2}};
 const FAC_COST=[null,null,{m:300,s:3},{m:800,s:8},{m:1600,s:15},{m:3000,s:25}];   // to reach level 2…5
 const d2=()=>SAVE.d2||(SAVE.d2={lv:{arm:1,dojo:1,lamp:1,radio:1},night:0,last:0});
@@ -185,14 +185,15 @@ function nightPlan(n){return{drones:Math.min(4+2*n,16),boss:n%3===0,shadows:Math
 async function hqCommand(){const D=d2(),ph=phaseOf(SAVE.hour),dark=ph==='evening'||ph==='night',done=D.last===SAVE.day,f=SAVE.flags;
   const nests=D.nest||0,last=!!f.d2c&&!f.d2_done,sortie=!last&&!f.d2_done&&nests<KIDS;
   const opts=[...(dark&&!done&&last?['最後の戦いに出る']:[]),...(dark&&!done&&sortie?[`鏡の海へ出撃する（帰ってきた子 ${nests}/${KIDS}）`]:[]),...(dark&&d3Tonight()?[d3Label()]:[]),
-    ...(!dark?['日が暮れるまで休む']:[]),'鏡の海で練習（物語は進まない）','海の主と戦う（練習・物語は進まない）','話を聞く','やめる'];
+    ...(!dark?['日が暮れるまで休む']:[]),'鏡の海のステージへ（新しい場所）','鏡の海で練習（物語は進まない）','海の主と戦う（練習・物語は進まない）','話を聞く','やめる'];
   const msg=!dark?'やつらが動くのは、日が暮れてからだよ。':d3Tonight()?'鏡の海が、呼んでるね。':done&&!f.d2_done?'今夜は、もう十分だ。……ゆっくりお休み。':last?'今夜が、最後の戦いだよ。':sortie?'今夜も、鏡の海へ行くかい？':'今夜は、静かな夜だね。';
   const i=await askP('tome',msg,opts),pick=opts[i];
   if(pick==='日が暮れるまで休む'){await steps([['fade','out'],['time',18.6,0],['fade','in']]);return;}
   if(pick==='話を聞く'){await sayP('tome',f.d2_done?['施設をきたえても、もう戦う相手はいないけどね。……鏡の海で、すべるのは自由さ。']:[
     '施設は、お金と影のかけらで強くなる。かけらは、裏海街で影をたおすと手に入る。やられても、拾ったかけらは持って帰れるよ。',
-    '武器庫は主を焼く力、鍛錬場はハート、灯りの工房は光の線の長さ、通信室はビー玉のたまる早さ。……どれも、鏡の海で効いてくる。',
+    '武器庫は技の衝撃の広さと主を焼く力、鍛錬場はハートとスケボーの速さ、灯りの工房は光の線の長さ、通信室はビー玉のたまる早さと転がる速さ。……どれも、鏡の海で効いてくる。',
     nests<KIDS?`向こうに残された子は、あと${KIDS-nests}人。鏡の海で、夜明けまでもちこたえれば、ひとり帰ってこられる。日が暮れたら、ここから出撃しな。`:'子どもたちは、みんな帰ってきた。……あとは、海の底の、あの大きな気配だ。']);return;}
+  if(pick==='鏡の海のステージへ（新しい場所）'){const k=await stgPick();if(k!=null)await steps(mirScript(stgRule(k)));return;}
   if(pick==='鏡の海で練習（物語は進まない）'){await steps(mirScript());return;}
   if(pick==='海の主と戦う（練習・物語は進まない）'){await steps(mirScript(MST_RULE.practice));return;}
   if(pick&&pick===d3Label()&&d3Tonight()){await steps(mirScript(D3_RULE[d3n()+1]));return;}
