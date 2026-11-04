@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>退去シミュレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#2b2622;--paper:#fffaf0;--line:#d9cdb8;--accent:#e2573b;--ok:#2f8f5b;--blue:#2f6fae;--muted:#7d7266}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#dfe9ef;font-family:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN',system-ui,sans-serif;color:var(--ink);-webkit-user-select:none;user-select:none;touch-action:none}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;color:inherit;cursor:pointer;border:0}
+.hidden{display:none!important}
+#hud{position:fixed;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 0;pointer-events:none}
+.chip{pointer-events:auto;background:rgba(255,250,240,.94);border:2px solid var(--ink);border-radius:12px;padding:6px 10px;box-shadow:0 3px 0 rgba(0,0,0,.18);font-weight:800;font-size:14px;line-height:1.3}
+.chip small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
+#clock b{font-size:20px}
+#rightHud{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+#docsBtn,#backBtn,#startInspBtn{pointer-events:auto}
+#docsBtn{background:#fff3c4}
+#hearts{color:var(--accent);letter-spacing:1px}
+#found{position:fixed;left:12px;top:calc(76px + env(safe-area-inset-top));pointer-events:none}
+#backBtn{position:fixed;left:12px;bottom:calc(16px + env(safe-area-inset-bottom));background:#fff;font-weight:800}
+#startInspBtn{position:fixed;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));background:var(--accent);color:#fff;font-weight:800;font-size:15px;padding:10px 14px}
+#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));background:rgba(43,38,34,.82);color:#fff;border-radius:20px;padding:6px 14px;font-size:13px;pointer-events:none;white-space:nowrap}
+.sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));width:min(560px,calc(100% - 20px));background:var(--paper);border:3px solid var(--ink);border-radius:16px;padding:14px 14px 12px;box-shadow:0 6px 0 rgba(0,0,0,.2)}
+.sheet h3{margin:0 0 4px;font-size:18px}
+.sheet p{margin:0 0 10px;font-size:14px;line-height:1.6}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{background:#fff;border:2px solid var(--ink);border-radius:10px;padding:8px 12px;font-weight:800;font-size:14px;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.good{background:#e6f4ea}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btn small{font-weight:500;font-size:11px;margin-left:4px}
+#dialog .who{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 10px;font-size:12px;font-weight:800;margin-bottom:6px}
+#dialog .who.me{background:var(--blue)}
+#dialog .bill{display:flex;justify-content:space-between;align-items:center;background:#fff;border:2px dashed var(--line);border-radius:10px;padding:6px 10px;margin:0 0 10px;font-weight:800}
+#dialog .bill .amt{color:var(--accent);font-size:20px}
+#dialog .bill .amt.zero{color:var(--ok)}
+#dialog .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#dialog .choices .btn{text-align:left;font-size:13px;padding:8px 10px}
+#dialog .choices .btn.acc{grid-column:1/-1;text-align:center;background:#f1ece2}
+.overlay{position:fixed;inset:0;background:rgba(30,26,22,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.panel{background:var(--paper);border:3px solid var(--ink);border-radius:18px;width:min(560px,100%);max-height:calc(100% - 20px);overflow:auto;padding:18px;box-shadow:0 8px 0 rgba(0,0,0,.25);-webkit-user-select:text;user-select:text;touch-action:pan-y}
+.logo{font-size:34px;font-weight:800;line-height:1.15;text-align:center;margin:6px 0 4px}
+.logo small{display:block;font-size:15px;color:var(--accent)}
+.tag{text-align:center;font-size:14px;line-height:1.8;margin:10px 0 16px}
+.center{text-align:center}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{background:#efe7d8;border:2px solid var(--ink);border-radius:10px;padding:6px 10px;font-weight:800;font-size:13px}
+.tabs button.on{background:var(--ink);color:#fff}
+.doc{font-size:14px;line-height:1.7}
+.doc h4{margin:10px 0 4px;font-size:15px}
+.doc ul{margin:0;padding-left:20px}
+.doc table{border-collapse:collapse;width:100%}
+.doc td{border-bottom:1px solid var(--line);padding:4px 2px;vertical-align:top}
+.stamp{display:inline-block;border:2px solid var(--accent);color:var(--accent);border-radius:6px;padding:0 6px;font-weight:800;font-size:12px;transform:rotate(-4deg)}
+.album{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.album figure{margin:0;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;font-size:12px}
+.album .ph{height:90px;border-radius:4px;background:#efe9df center/contain no-repeat}
+.res table{width:100%;border-collapse:collapse;font-size:13px}
+.res td,.res th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.res th{font-size:12px;color:var(--muted)}
+.res .num{text-align:right;white-space:nowrap}
+.res s{color:var(--muted)}
+.res .why{font-size:12px;color:var(--muted);line-height:1.5}
+.big{font-size:30px;font-weight:800}
+.rank{font-size:56px;font-weight:800;color:var(--accent);line-height:1}
+.guide{background:#f4f8ef;border:1px solid #cfe0c2;border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.6;margin:0 0 10px;-webkit-user-select:text;user-select:text}
+.guide>div+div{margin-top:4px}
+.guide .links{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.guide .links a{display:inline-block;background:#fff;border:1.5px solid #e59a2b;color:#8a4b00;border-radius:999px;padding:2px 10px;text-decoration:none;font-weight:800}
+.guide .links span{font-size:11px;color:var(--muted)}
+.res .guide{margin:6px 0 0}
+details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight:800;margin-top:4px}
+#spotSheet{max-height:70vh;overflow:auto;touch-action:pan-y}
+#toast{position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:12px;padding:8px 14px;font-weight:800;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div class="chip" id="clock"><small id="phaseLbl">準備</small><b id="clockTxt">9:00</b> <span id="clockSub" style="font-size:11px;font-weight:500">立ち会い 12:00</span></div>
+  <div id="rightHud">
+    <div class="chip" id="depositChip"><small>敷金</small><span id="depTxt"></span></div>
+    <div class="chip hidden" id="heartChip"><small>信用</small><span id="hearts"></span></div>
+    <button class="chip" id="docsBtn" type="button">📄 書類</button>
+  </div>
+</div>
+<div class="chip hidden" id="found"></div>
+<button class="chip hidden" id="backBtn" type="button">← 部屋全体</button>
+<button class="chip hidden" id="startInspBtn" type="button">立ち会いを始める ▶</button>
+<div id="hint" class="hidden">ドラッグで回転・タップで調べる</div>
+
+<div id="spotSheet" class="sheet hidden">
+  <h3 id="spotName"></h3>
+  <p id="spotDesc"></p>
+  <div class="btns" id="spotBtns"></div>
+</div>
+
+<div id="dialog" class="sheet hidden">
+  <div class="who" id="dlgWho">業者</div>
+  <p id="dlgText"></p>
+  <div class="bill hidden" id="dlgBill"><span id="dlgLabel"></span><span class="amt" id="dlgAmt"></span></div>
+  <div class="choices" id="dlgChoices"></div>
+</div>
+
+<div id="title" class="overlay">
+  <div class="panel">
+    <div class="logo">退去シミュレーター<small>〜 敷金を守りぬけ 〜</small></div>
+    <div class="tag">今日はアパートの退去日。<br>12時に、管理会社の業者が立ち会いに来る。<br><b>午前中に部屋を片づけ</b>、立ち会いでは<br><b>不当な請求に言い返して</b>、敷金を取り戻そう。</div>
+    <div class="center"><button class="btn primary" id="startBtn" type="button" style="font-size:18px;padding:10px 26px">はじめる</button></div>
+  </div>
+</div>
+
+<div id="docs" class="overlay hidden">
+  <div class="panel">
+    <div class="tabs" id="docTabs">
+      <button data-t="contract" class="on" type="button">契約書</button>
+      <button data-t="album" type="button">入居時チェック表</button>
+      <button data-t="guide" type="button">ガイドラインメモ</button>
+      <button data-t="real" type="button">実際の退去ガイド</button>
+    </div>
+    <div class="doc" id="docBody"></div>
+    <div class="center" style="margin-top:12px"><button class="btn" id="docsClose" type="button">閉じる</button></div>
+  </div>
+</div>
+
+<div id="result" class="overlay hidden">
+  <div class="panel res" id="resBody"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const yen = n => '¥' + Math.round(n).toLocaleString();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------- 部屋の寸法（内側）----------
+const RX = 1.8, RZ = 2.7, RH = 2.4;
+// 水回り（左の壁の向こう）：洗面所 z>PZ、浴室 z<PZ
+const WX0 = -3.6, BZ = 0.5, PZ = 1.55;
+const START_MIN = 9 * 60, END_MIN = 12 * 60;
+
+// ---------- 契約と、その回の状態 ----------
+let C, S;
+function newContract() {
+  const rent = pick([52000, 58000, 64000, 70000]);
+  return {
+    rent, deposit: rent * 2, years: pick([2, 3, 4, 5, 7]),
+    smoker: Math.random() < 0.3, cleaningClause: Math.random() < 0.5, keyLost: Math.random() < 0.25,
+  };
+}
+// クロスは6年で残存価値1円（経過年数を考慮した負担額）
+const depRate = () => Math.max(0, 1 - C.years / 6);
+const dep = base => C.years >= 6 ? 1 : Math.max(1, Math.round(base * depRate() / 100) * 100);
+const depLabel = () => `入居${C.years}年を考慮`;
+const depReply = () => C.years >= 6
+  ? `…入居${C.years}年だと、クロスの価値はもう残ってないですね。1円にしておきます。`
+  : `…入居${C.years}年なら、クロスの価値は${Math.round(depRate() * 100)}%残りですね。その分だけにします。`;
+
+// ---------- 傷・汚れの定義 ----------
+// kind: owner=通常損耗（貸主負担） tenant=借主負担 premove=入居前から
+// steps: 正しく言い返すと進む減額の段階。k は有効な言い分
+const CLOTH = 15000;
+const DEFS = {
+  pins: { name: '画鋲の穴', wall: 'L', pos: [-RX, 1.5, -2.05], size: [.5, .4], kind: 'owner',
+    desc: 'カレンダーを貼っていた画鋲の小さな穴がいくつかある。',
+    claim: () => ({ say: '壁に画鋲の穴がありますね。クロスの張替えになります。', label: 'クロス張替え（1面）', amt: CLOTH,
+      steps: [{ k: 'normal', amt: 0, reply: '…まあ、画鋲くらいなら普通の生活の範囲ですね。これは結構です。' }] }),
+    why: '画鋲・ピンの穴（下地ボードの張替えが要らない程度）は通常損耗で、貸主の負担。' },
+  sunburn: { name: 'ポスターの日焼け跡', wall: 'B', pos: [-1.33, 1.4, -RZ], size: [.62, .82], kind: 'owner',
+    desc: 'ポスターを貼っていた所だけ白く、まわりが日に焼けている。',
+    claim: () => ({ say: 'ポスターの跡がくっきり残ってますね。張替えです。', label: 'クロス張替え（1面）', amt: CLOTH,
+      steps: [{ k: 'normal', amt: 0, reply: '…日焼けは住んでいれば仕方ないですね。わかりました。' }] }),
+    why: '日差しによるクロスの変色（ポスターの跡を含む）は通常損耗で、貸主の負担。' },
+  fridge: { name: '冷蔵庫の後ろの黒ずみ', wall: 'R', pos: [RX, 1.0, 0.75], size: [.7, 1.3], kind: 'owner',
+    desc: '冷蔵庫を置いていた後ろの壁が、黒く変色している。',
+    claim: () => ({ say: '冷蔵庫の裏、真っ黒ですね。ここは張替えさせてもらいます。', label: 'クロス張替え（1面）', amt: CLOTH,
+      steps: [{ k: 'normal', amt: 0, reply: '…電気ヤケは冷蔵庫を使えば出ますからね。結構です。' }] }),
+    why: '冷蔵庫など家電の後ろの壁の黒ずみ（電気ヤケ）は通常損耗で、貸主の負担。' },
+  dents: { name: 'ベッドの脚のへこみ', wall: 'F0', pos: [-1.3, 0, -1.65], size: [1.0, 2.0], kind: 'owner',
+    desc: 'ベッドを置いていた所の床に、脚の跡のへこみが4つある。',
+    claim: () => ({ say: '床にへこみが4か所。フローリングの補修ですね。', label: 'フローリング補修', amt: 22000,
+      steps: [{ k: 'normal', amt: 0, reply: '…家具を置いた跡ですか。それは普通の使い方ですね。' }] }),
+    why: '家具を置いたことによる床のへこみや跡は通常損耗で、貸主の負担。' },
+  screw: { name: '棚を付けたネジ穴', wall: 'R', pos: [RX, 1.6, -2.0], size: [.42, .32], kind: 'tenant',
+    desc: '壁に棚を付けたときのネジ穴が4つ。下地のボードまで穴があいている。',
+    fix: { label: 'パテで埋める', t: 30, rate: 0.7 },
+    claim: s => ({ say: s.patchFail ? 'ネジ穴、自分で埋めました？ 色が違ってかえって目立ちますね。部屋全体で張替えます。'
+        : 'ネジ穴ですね。ボードまで開いてますから、部屋全体のクロス張替えです。',
+      label: 'クロス張替え（部屋全面）', amt: 60000,
+      steps: [{ k: 'partial', amt: CLOTH, label: 'クロス張替え（1面）', reply: '…確かに、張替えはその面だけで足りますね。1面分にします。' },
+              { k: 'dep', amt: dep(CLOTH), label: `クロス1面（${depLabel()}）`, reply: depReply() }] }),
+    why: 'ネジ穴・くぎ穴（ボードの張替えが必要な程度）は借主の負担。ただし負担は傷んだ面の分だけで、クロスは6年で価値がほぼ1円になる。' },
+  caster: { name: '椅子のキャスター傷', wall: 'F0', pos: [0.95, 0, -1.55], size: [1.0, 1.0], kind: 'tenant',
+    desc: '机の椅子を動かしていた所の床に、こすれた傷が広がっている。',
+    claim: () => ({ say: 'キャスターの傷ですね。床は全部張替えになります。', label: 'フローリング張替え（全面）', amt: 110000,
+      steps: [{ k: 'partial', amt: 28000, label: 'フローリング部分補修', reply: '…まあ、傷の範囲だけの補修でいけますね。' }],
+      rebut: { dep: 'フローリングの部分補修は、住んだ年数は関係ないんですよ。' } }),
+    why: 'キャスター付きの椅子などによる床の傷は借主の負担。ただし補修は傷の範囲だけで、フローリングの部分補修は経過年数を考慮しない。' },
+  hole: { name: '壁の穴', wall: 'R', pos: [RX, 0.45, -0.6], size: [.32, .32], kind: 'tenant',
+    desc: '物をぶつけて、壁に穴があいてしまった。自分では直せそうにない。',
+    claim: () => ({ say: '穴があいてますね。ボードの補修と、クロスは部屋全体で張替えです。', label: 'ボード補修＋クロス全面', amt: 72000,
+      steps: [{ k: 'partial', amt: 12000 + CLOTH, label: 'ボード補修＋クロス1面', reply: '…そうですね、張替えはこの面だけにしましょう。' },
+              { k: 'dep', amt: 12000 + dep(CLOTH), label: `ボード補修＋クロス1面（${depLabel()}）`, reply: '…クロス分は年数で割り引きます。ボードの補修代はそのままですよ。' }] }),
+    why: '不注意で開けた穴は借主の負担。ただしクロスは面の分だけで、経過年数も考慮する（ボードの補修代は別）。' },
+  stain: { name: 'ジュースのシミ', wall: 'F0', pos: [0.2, 0, 0.45], size: [.6, .6], kind: 'tenant',
+    desc: 'こぼしたジュースを放っておいたシミ。がんばれば落ちそう。', clean: { label: 'シミ抜きをする', t: 40 },
+    claim: () => ({ say: '床にシミがありますね。こぼしたのを放っておきました？ 補修します。', label: 'フローリングのシミ補修', amt: 18000, steps: [],
+      rebut: { normal: '飲みこぼしを放っておいたシミは、普通の使い方とは言えないですね。' } }),
+    why: '飲みこぼしなどを放置してできたシミは借主の負担。退去前に落とせば請求されない。' },
+  grease: { name: 'コンロまわりの油汚れ', wall: 'R', pos: [RX, 1.2, 2.2], size: [.62, .5], kind: 'tenant',
+    desc: 'コンロの奥の壁に油がこびりついている。洗剤でこすれば落ちそう。', clean: { label: '油汚れを落とす', t: 30 },
+    claim: () => ({ say: 'コンロまわり、油でギトギトですね。クリーニング代をいただきます。', label: 'キッチン油汚れの清掃', amt: 16500, steps: [],
+      rebut: { normal: '掃除をしないで溜まった油汚れは、お手入れ不足ですから。' } }),
+    why: '手入れを怠ってこびりついた油汚れは借主の負担。退去前に落とせば請求されない。' },
+  mold: { name: '窓際のカビ', wall: 'B', pos: [1.15, 0.3, -RZ], size: [.62, .5], kind: 'tenant',
+    desc: '結露を放っておいたせいで、窓の横の壁に黒いカビが出ている。', clean: { label: 'カビを落とす', t: 30 },
+    claim: () => ({ say: '窓のところ、カビが広がってますね。張替えです。', label: 'クロス張替え（1面）', amt: CLOTH,
+      steps: [{ k: 'dep', amt: dep(CLOTH), label: `クロス1面（${depLabel()}）`, reply: depReply() }],
+      rebut: { normal: '結露を拭かずに放っておいてカビを広げたのは、住む人の管理の問題ですね。' } }),
+    why: '結露そのものは建物の問題でも、放置してカビを広げたら借主の負担。ただしクロスは経過年数を考慮する。' },
+  scribble: { name: '壁の落書き', wall: 'L', pos: [-RX, 0.6, 0.95], size: [.6, .45], kind: 'tenant',
+    desc: '遊びに来た甥っ子がクレヨンで描いた落書き。消せるかもしれない。', clean: { label: '消しゴムで消す', t: 20 },
+    claim: () => ({ say: 'クレヨンの落書きですね。張替えです。', label: 'クロス張替え（1面）', amt: CLOTH,
+      steps: [{ k: 'dep', amt: dep(CLOTH), label: `クロス1面（${depLabel()}）`, reply: depReply() }],
+      rebut: { normal: '落書きは普通の使い方じゃないですね。' } }),
+    why: '落書きは借主の負担（クロスなので経過年数は考慮する）。消せるうちに消しておくのが一番。' },
+  doorScratch: { name: '玄関ドアの傷', wall: 'F', pos: [0.47, 0.32, RZ], size: [.42, .26], kind: 'premove',
+    desc: '玄関ドアの下の方に傷がある。…入居したときからあった気がする。',
+    claim: () => ({ say: '玄関ドアに傷がありますね。ドアの補修です。', label: 'ドア補修', amt: 22000,
+      steps: [{ k: 'photo', amt: 0, reply: '…チェック表に載ってますね。失礼しました、これは入居前からですね。' }],
+      rebut: { normal: 'ぶつけた傷ですから、普通に使ってできるものじゃないですね。' } }),
+    why: '入居前からあった傷は借主の負担にならない。入居時のチェック表や写真が証拠になる。' },
+  entranceDent: { name: '入口近くの床のへこみ', wall: 'F0', pos: [-0.55, 0, 2.15], size: [.34, .34], kind: 'premove',
+    desc: '入口近くの床に丸いへこみがある。…これも入居したときからだった気がする。',
+    claim: () => ({ say: '入口の床、へこんでますね。補修です。', label: 'フローリング部分補修', amt: 20000,
+      steps: [{ k: 'photo', amt: 0, reply: '…あ、チェック表にありますね。これは結構です。' }],
+      rebut: { normal: '重い物を落としたへこみですよね。' } }),
+    why: '入居前からあった傷は借主の負担にならない。入居時のチェック表や写真が証拠になる。' },
+  nicotine: { name: 'タバコのヤニ', wall: 'B', pos: [1.35, 1.85, -RZ], size: [.6, .5], kind: 'tenant',
+    desc: '部屋で吸っていたタバコのヤニで、壁が全体的に黄ばんでいる。掃除では落ちない。',
+    claim: () => ({ say: '壁が全体にヤニで黄色いですね。部屋全面の張替えです。', label: 'クロス張替え（部屋全面）', amt: 60000,
+      steps: [{ k: 'dep', amt: dep(60000), label: `クロス全面（${depLabel()}）`, reply: depReply() }],
+      rebut: { partial: 'ヤニは部屋じゅうに付いてますから、全面の張替えが必要ですね。', normal: 'タバコのヤニは、普通の使い方の範囲を超えてるんですよ。' } }),
+    why: 'タバコのヤニ・臭いでクロスを張替えるのは借主の負担（部屋全体でもよい）。ただし経過年数は考慮される。' },
+  bathMold: { name: '浴室のカビ', wall: 'B2', pos: [-2.95, 0.66, BZ], size: [1.1, .28], kind: 'tenant',
+    desc: '浴槽のふちのゴムパッキンに、黒カビがびっしり。', clean: { label: 'カビ取りをする', t: 30 },
+    claim: () => ({ say: 'お風呂のカビがひどいですね。カビの除去と、コーキングの打ち替えです。', label: 'カビ除去＋コーキング打ち替え', amt: 22000, steps: [],
+      rebut: { normal: 'お風呂のカビは、日ごろのお手入れで防げるものなので。' } }),
+    why: '風呂・洗面台の水アカやカビは、手入れを怠った結果なら借主の負担。退去前に落とせば請求されない。' },
+  mirrorScale: { name: '鏡の水アカ', wall: 'L2', pos: [WX0, 1.55, 2.2], size: [.5, .55], kind: 'tenant',
+    desc: '洗面台の鏡に、白いウロコ状の水アカがこびりついている。', clean: { label: 'クエン酸で磨く', t: 20 },
+    claim: () => ({ say: '鏡がウロコだらけですね。クリーニング代をいただきます。', label: '洗面台の鏡のクリーニング', amt: 8800, steps: [],
+      rebut: { normal: '水アカを放っておいたのは、お手入れ不足ですね。' } }),
+    why: '鏡や蛇口の水アカ（ウロコ）を放置したものは、手入れ不足として借主の負担になりうる。' },
+  drainHair: { name: '排水口のつまり', wall: 'F0', pos: [-2.1, 0.056, 0.85], size: [.3, .3], kind: 'tenant',
+    desc: '浴室の排水口に髪の毛がたまって、水の流れが悪い。', clean: { label: '排水口を掃除する', t: 10 },
+    claim: () => ({ say: '排水口が髪の毛でつまってますね。排水管の高圧洗浄です。', label: '排水管の高圧洗浄', amt: 16500, steps: [],
+      rebut: { normal: '髪の毛のつまりは、ふだんの掃除不足ですね。' } }),
+    why: '排水口の髪の毛やぬめりによるつまりは、掃除不足として借主の負担。' },
+  faucetLeak: { name: 'シャワー水栓の水漏れ', wall: 'B2', pos: [-2.1, 0.95, BZ], size: [.3, .5], kind: 'owner',
+    desc: 'シャワーの水栓から、ずっと水がポタポタ垂れている。何年も使ううちにこうなった。',
+    claim: () => ({ say: 'シャワー水栓から水が漏れてますね。壊しました？ 水栓の交換です。', label: 'シャワー水栓の交換', amt: 25000,
+      steps: [{ k: 'normal', amt: 0, reply: '…中のパッキンの劣化ですね。年数がたてば起きることなので、こちらで直します。' }] }),
+    why: '設備が古くなって起きた故障（パッキンの劣化など）は貸主の負担。ただし気づいていて放置し、被害を広げたら借主の負担になることも。' },
+  cfDent: { name: '洗面所の床のラック跡', wall: 'F0', pos: [-2.85, 0.004, 2.5], size: [.42, .3], kind: 'owner',
+    desc: '洗面所のクッションフロアに、収納ラックの脚の跡が残っている。',
+    claim: () => ({ say: '洗面所の床、へこみがありますね。クッションフロアの張替えです。', label: 'クッションフロア張替え', amt: 19800,
+      steps: [{ k: 'normal', amt: 0, reply: '…ラックを置いた跡ですか。家具の跡は通常の使い方ですね。' }] }),
+    why: '家具や家電を置いたことによる床のへこみや跡は通常損耗で、貸主の負担。' },
+  sinkCrack: { name: '洗面ボウルのひび', wall: 'F0', pos: [-3.33, 0.832, 2.2], size: [.28, .28], kind: 'premove',
+    desc: '洗面ボウルに細いひびがある。…入居したときからあった気がする。',
+    claim: () => ({ say: '洗面ボウルにひびが入ってますね。交換になります。', label: '洗面ボウル交換', amt: 45000,
+      steps: [{ k: 'photo', amt: 0, reply: '…あ、チェック表に載ってますね。入居前からでしたか、失礼しました。' }],
+      rebut: { normal: '物を落とさない限り、ひびは入らないですよ。' } }),
+    why: '入居前からあった傷は借主の負担にならない。入居時のチェック表や写真が証拠になる。' },
+  trash: { name: '段ボールとゴミ袋', obj: true, pos: [-0.65, 0.3, 1.35], kind: 'tenant',
+    desc: '引っ越しで出た段ボールとゴミ袋が残っている。', clean: { label: 'ゴミを出す', t: 20 },
+    claim: () => ({ say: '段ボールとゴミが残ってますね。処分費をいただきます。', label: '残置物の処分', amt: 11000, steps: [],
+      rebut: { normal: '置いていった物の処分は、借主さんの負担ですね。' } }),
+    why: '部屋に残した物の処分費は借主の負担。退去前に片づけておけばかからない。' },
+  dust: { name: '床のホコリ', obj: true, pos: [-1.5, 0.05, 1.3], kind: 'task', noClaim: true,
+    desc: '部屋のすみにホコリがたまっている。掃除機をかけておこうか。', clean: { label: '掃除機をかける', t: 40 } },
+};
+
+// 書類の上での請求（最後に玄関で）
+function paperClaims() {
+  const out = [];
+  if (C.cleaningClause) out.push({ id: 'cleaning', name: 'ハウスクリーニング', say: 'あと、ハウスクリーニング代ですね。契約書の特約どおりです。', label: 'ハウスクリーニング（特約）', amt: 33000, steps: [],
+    rebut: { normal: '契約書の特約に、金額まで書いて合意してもらってますので。' },
+    why: '次の入居者のためのクリーニングは本来は貸主の負担。ただし契約書に金額などがはっきり書かれた特約があれば、借主の負担になりうる。' });
+  else if (S.vacuumed) out.push({ id: 'cleaning', name: 'ハウスクリーニング', say: 'あと、ハウスクリーニング代をお願いします。', label: 'ハウスクリーニング', amt: 38500,
+    steps: [{ k: 'normal', amt: 0, reply: '…特約もないですし、お掃除もされてますね。次の方向けのクリーニングはこちらで持ちます。' }],
+    why: '特約がなければ、次の入居者のためのクリーニングは貸主の負担。借主はふだんの掃除をしておけばよい。' });
+  else out.push({ id: 'cleaning', name: 'ハウスクリーニング', say: '床にホコリが残ってますね。ハウスクリーニング代をお願いします。', label: 'ハウスクリーニング', amt: 38500, steps: [],
+    rebut: { normal: '特約がなくても、ふだんのお掃除もしていない分はご負担なんですよ。' },
+    why: '特約がなくても、掃除をせずに退去すると清掃費は借主の負担になる。掃除機がけくらいはしておこう。' });
+  if (C.keyLost) out.push({ id: 'key', name: '鍵の交換', say: '鍵が1本足りませんね。鍵の交換代です。', label: '鍵交換', amt: 16500, steps: [],
+    rebut: { normal: '鍵をなくした場合の交換は、借主さんのご負担です。' }, why: '鍵をなくしたときの交換費用は借主の負担。' });
+  else out.push({ id: 'key', name: '鍵の交換', say: 'それと、次の方のための鍵の交換代です。', label: '鍵交換', amt: 16500,
+    steps: [{ k: 'normal', amt: 0, reply: '…なくされてないなら、防犯のための交換はこちらの負担でした。' }],
+    why: '鍵をなくしていなければ、入れ替えのときの鍵交換は貸主の負担（防犯のための費用）。' });
+  if (C.smoker) out.push({ id: 'ac', name: 'エアコン洗浄', say: 'エアコンもヤニが付いてますので、内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200, steps: [],
+    rebut: { normal: 'タバコのヤニが付いた分は、普通の使い方を超えてますね。' }, why: 'タバコのヤニや臭いが付いたエアコンの洗浄は借主の負担。' });
+  else out.push({ id: 'ac', name: 'エアコン洗浄', say: '最後に、エアコンの内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200,
+    steps: [{ k: 'normal', amt: 0, reply: '…タバコも吸われてないなら、普通に使った範囲ですね。' }],
+    why: 'タバコを吸っていなければ、エアコンの内部洗浄は普通に使った範囲で貸主の負担。' });
+  return out;
+}
+
+// ---------- 実際の退去で役立つ情報（直し方と、Amazon での商品検索）----------
+// fix: 自分でできる対処、note: 気をつけること、buy: Amazon の検索語
+const GUIDE = {
+  pins: { fix: '通常損耗なので、基本はそのままでOK。気になるなら壁紙用の穴埋め剤で目立たなくできる。', note: '請求されたら「画鋲の穴は通常損耗」と伝える。', buy: ['壁紙 ピン穴 補修'] },
+  sunburn: { fix: '通常損耗なので何もしなくてよい。', note: '漂白剤や研磨剤でこすると、かえって壁紙を傷めて借主負担になりかねない。', buy: [] },
+  fridge: { fix: '通常損耗なので何もしなくてよい。', note: '強くこすると壁紙が傷む。ホコリを軽く拭く程度に。', buy: [] },
+  dents: { fix: '通常損耗なので何もしなくてよい。', note: '次に住むときは、家具の脚に保護パッドを付けておくと安心。', buy: ['家具 脚 保護パッド'] },
+  screw: { fix: '小さなネジ穴は、壁紙用の補修材（ジョイントコーク・パテ）で埋める。壁紙に近い色を選び、はみ出しは固く絞った布ですぐ拭く。', note: '色が合わないと逆に目立つ。自信がなければ触らず、「1面分だけ」「経過年数を考慮」で交渉する。', buy: ['ジョイントコーク 壁紙 補修', '壁 ネジ穴 補修 パテ'] },
+  caster: { fix: '浅い傷は、フローリング用の補修クレヨンや補修ペンで色を合わせると目立たなくなる。', note: '深い傷は無理をしない。請求されたら「傷の範囲だけの部分補修」を求める。次はチェアマットを敷こう。', buy: ['フローリング 補修 クレヨン', 'フローリング 補修ペン', 'チェアマット'] },
+  hole: { fix: '小さな穴なら、石膏ボード用の壁穴補修キット（裏当て→パテ→やすり→上から壁紙）で直せる。', note: '大きな穴は、業者に部分補修を頼むほうが安く済むことも。請求は「1面分」と「経過年数」を確認。', buy: ['壁 穴 補修 キット 石膏ボード'] },
+  stain: { fix: '薄めた中性洗剤を含ませて固く絞った布で、叩くように拭く。落ちなければメラミンスポンジで軽くこする。', note: 'メラミンスポンジはワックスや表面を削るので、強くこすらない。目立たない所で試してから。', buy: ['フローリング 中性洗剤', 'メラミンスポンジ'] },
+  grease: { fix: 'セスキ炭酸ソーダかアルカリ電解水を吹き付けて数分置き、拭き取る。こびりつきは、吹き付けてからラップでパックすると落ちやすい。', note: 'アルカリ性の洗剤を使うときは手袋をする。', buy: ['セスキ炭酸ソーダ スプレー', 'アルカリ電解水'] },
+  mold: { fix: '壁紙のカビは、消毒用エタノールを吹き付けて拭き取る。', note: '塩素系のカビ取り剤は、壁紙が変色することがあるので目立たない所で試す。結露はこまめに拭こう。', buy: ['消毒用エタノール スプレー', '壁紙 カビ取り'] },
+  scribble: { fix: 'クレヨンは消しゴムか、メラミンスポンジで軽くこする。油性ペンは壁紙用の落書き落としを使う。', note: '強くこすると壁紙の表面がはがれる。少しずつ。', buy: ['メラミンスポンジ', '壁紙 落書き落とし'] },
+  doorScratch: { fix: '入居したときに、もとからある傷を日付入りの写真に撮り、チェック表に書いて管理会社に出しておく。', note: '退去の立ち会いには、その写真とチェック表を持っていく。', buy: [] },
+  entranceDent: { fix: '入居したときに、もとからある傷を日付入りの写真に撮り、チェック表に書いて管理会社に出しておく。', note: '退去の立ち会いには、その写真とチェック表を持っていく。', buy: [] },
+  nicotine: { fix: '中性洗剤やアルカリ電解水で拭くと多少は薄くなるが、全面の張替えは避けにくい。', note: '請求されたら、必ず「経過年数を考慮した金額」になっているか確認する。', buy: ['アルカリ電解水 ヤニ'] },
+  bathMold: { fix: 'ゴムパッキンやコーキングの黒カビは、塩素系のカビ取り剤を吹き付けて、キッチンペーパーでパックして数分置き、よく洗い流す。', note: '換気をして、酸性の洗剤（クエン酸など）とは絶対に混ぜない（有毒ガスが出る）。根まで入ったカビは落ちないこともある。', buy: ['カビ取り剤 ジェル', '浴室 カビ取り'] },
+  mirrorScale: { fix: 'クエン酸水を吹き付けてキッチンペーパーでパックし、しばらく置いてからスポンジでこする。', note: '研磨剤入りのスポンジは鏡を傷つけることがある。塩素系の洗剤と混ぜない。', buy: ['クエン酸 スプレー', '鏡 ウロコ取り'] },
+  drainHair: { fix: '髪の毛を取り除き、ぬめりはブラシでこする。奥のつまりにはパイプ用の洗浄剤を流す。', note: 'それでも流れが悪いときは、早めに管理会社に相談する。', buy: ['パイプクリーナー', '排水口 ネット'] },
+  faucetLeak: { fix: '水漏れに気づいたら、自分で分解せずに早めに管理会社に連絡する（古くなって壊れたなら貸主の負担で直してもらえる）。', note: '知っていて放置して床などが傷むと、借主の負担になることがある。', buy: [] },
+  cfDent: { fix: '通常損耗なので何もしなくてよい。', note: 'クッションフロアは跡が付きやすい。次は家具の脚に保護マットを。', buy: ['家具 保護マット'] },
+  sinkCrack: { fix: '入居したときに、もとからある傷を日付入りの写真に撮り、チェック表に書いて管理会社に出しておく。', note: '退去の立ち会いには、その写真とチェック表を持っていく。', buy: [] },
+  trash: { fix: '自治体の粗大ごみの収集日は、予約が数週間先になることもあるので早めに確認。段ボールは資源回収へ。', note: '残した物は処分費を請求される。', buy: [] },
+  dust: { fix: '掃除機とフロアワイパーで床、ざっと水回り・換気扇・エアコンのフィルターも。', note: 'ふだんの掃除をしていないと、クリーニング代を請求されることがある。', buy: ['フロアワイパー'] },
+  cleaning: { fix: '契約書に「ハウスクリーニング特約」があるか、金額が書いてあるかを確認する。', note: '特約がなければ、次の入居者のためのクリーニングは貸主の負担。', buy: [] },
+  key: { fix: '鍵をなくしたら、早めに管理会社に伝える。', note: 'なくしていなければ、入れ替えの鍵交換は貸主の負担。', buy: [] },
+  ac: { fix: 'フィルターのホコリくらいは掃除しておく。', note: 'タバコを吸っていなければ、内部洗浄は貸主の負担。', buy: [] },
+};
+const amazonUrl = q => 'https://www.amazon.co.jp/s?k=' + encodeURIComponent(q);
+function guideHTML(id) {
+  const g = GUIDE[id]; if (!g) return '';
+  const links = g.buy.map(q => `<a href="${amazonUrl(q)}" target="_blank" rel="noopener">🛒 ${q.replace(/ /g, ' ')}</a>`).join('');
+  return `<div class="guide"><div><b>🔧 直し方：</b>${g.fix}</div><div><b>⚠️ 注意：</b>${g.note}</div>${links ? `<div class="links">${links}<span>（Amazon の検索結果が開きます）</span></div>` : ''}</div>`;
+}
+
+const DECOYS = [['浴室の鏡', 'くもりあり'], ['キッチンの扉', '小さな傷あり'], ['ベランダの網戸', 'ほつれあり'], ['トイレの床', '変色あり']];
+
+// ---------- 三次元 ----------
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdfe9ef);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 100);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a58a, 0.75));
+const sun = new THREE.DirectionalLight(0xfff1dc, 0.85);
+sun.position.set(1.5, 6, -7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 20 });
+scene.add(sun);
+const fill = new THREE.PointLight(0xffe2b8, 0.35, 12);
+fill.position.set(0, 2.2, 0.5);
+scene.add(fill);
+
+function texCanvas(w, h, draw) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = 4;
+  t.userData = { canvas: c };
+  return t;
+}
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+const floorTex = texCanvas(512, 512, (g, w, h) => {
+  const rows = 8;
+  for (let r = 0; r < rows; r++) {
+    let x = -rnd(0, 200);
+    while (x < w) {
+      const len = rnd(160, 300), l = rnd(58, 68);
+      g.fillStyle = `hsl(32,45%,${l}%)`;
+      g.fillRect(x, r * h / rows, len, h / rows);
+      g.globalAlpha = .12;
+      for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#7a5130' : '#f6d9a8'; g.fillRect(x, r * h / rows + rnd(2, h / rows - 2), len, 1.5); }
+      g.globalAlpha = 1;
+      g.fillStyle = 'rgba(80,50,25,.45)';
+      g.fillRect(x, r * h / rows, 2, h / rows);
+      x += len;
+    }
+    g.fillStyle = 'rgba(80,50,25,.35)';
+    g.fillRect(0, r * h / rows, w, 2);
+  }
+});
+floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
+floorTex.repeat.set(2.4, 3.6);
+const wallTex = texCanvas(256, 256, (g, w, h) => {
+  g.fillStyle = '#f4f1ea'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2500; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(0,0,0,.035)' : 'rgba(255,255,255,.5)'; g.fillRect(rnd(0, w), rnd(0, h), 2, 2); }
+});
+wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping;
+wallTex.repeat.set(3, 2);
+
+const M = (color, o = {}) => new THREE.MeshLambertMaterial(Object.assign({ color }, o));
+const matWall = new THREE.MeshLambertMaterial({ map: wallTex });
+const matFloor = new THREE.MeshLambertMaterial({ map: floorTex });
+function box(w, h, d, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.castShadow = m.receiveShadow = true;
+  (parent || scene).add(m);
+  return m;
+}
+
+// 床（部屋の外側に土台）
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(RX * 2, RZ * 2), matFloor);
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+box(RX * 2 + 0.24, 0.3, RZ * 2 + 0.24, M(0xcfc6b8), 0, -0.151, 0);
+// 玄関のたたき
+box(1.0, 0.02, 0.6, M(0x9a958c), 0.48, 0.0, RZ - 0.3);
+
+// 壁（グループごとに、カメラが外側に来たら隠す）
+// axis/at: 壁の面、out: 部屋の外側の向き、lo/hi: 壁の広がり
+const walls = {};
+function wallGroup(key, axis, at, out, lo, hi) { const g = new THREE.Group(); g.userData = { axis, at, out, lo, hi }; walls[key] = g; scene.add(g); return g; }
+const gB = wallGroup('B', 'z', -RZ, -1, -RX, RX), gF = wallGroup('F', 'z', RZ, 1, WX0, RX);
+const gL = wallGroup('L', 'x', -RX, -1, -RZ, RZ), gR = wallGroup('R', 'x', RX, 1, -RZ, RZ);
+const gL2 = wallGroup('L2', 'x', WX0, -1, BZ, RZ), gB2 = wallGroup('B2', 'z', BZ, -1, WX0, -RX), gP = wallGroup('P', 'z', PZ, 1, WX0, -RX);
+const T = 0.1, baseMat = M(0xe9e2d6);
+// 奥の壁：掃き出し窓
+const WX = 0.85, WT = 2.05;
+box(RX - WX, RH, T, matWall, -(RX + WX) / 2, RH / 2, -RZ - T / 2, gB);
+box(RX - WX, RH, T, matWall, (RX + WX) / 2, RH / 2, -RZ - T / 2, gB);
+box(WX * 2, RH - WT, T, matWall, 0, (RH + WT) / 2, -RZ - T / 2, gB);
+const alu = M(0xb8bcc0);
+box(WX * 2, 0.05, 0.12, alu, 0, 0.025, -RZ - 0.05, gB);
+box(WX * 2, 0.05, 0.12, alu, 0, WT, -RZ - 0.05, gB);
+box(0.05, WT, 0.12, alu, -WX, WT / 2, -RZ - 0.05, gB);
+box(0.05, WT, 0.12, alu, WX, WT / 2, -RZ - 0.05, gB);
+box(0.04, WT, 0.06, alu, 0, WT / 2, -RZ - 0.05, gB);
+const glass = new THREE.Mesh(new THREE.PlaneGeometry(WX * 2, WT), new THREE.MeshLambertMaterial({ color: 0xbfe0f2, transparent: true, opacity: 0.28 }));
+glass.position.set(0, WT / 2, -RZ - 0.05); gB.add(glass);
+box(WX * 2 + 0.4, 0.03, 0.05, M(0x8d8a85), 0, WT + 0.12, -RZ + 0.06, gB); // カーテンレール
+// ベランダ
+box(RX * 2, 0.12, 1.1, M(0xb9b4aa), 0, -0.1, -RZ - 0.65, gB);
+box(RX * 2, 0.9, 0.06, M(0xd8d4cc), 0, 0.45, -RZ - 1.2, gB);
+// 左の壁：クローゼット、浴室の扉、エアコン
+const DZ0 = 1.58, DZ1 = 2.32; // 洗面所への出入り口
+box(T, RH, DZ0 + RZ + T, matWall, -RX - T / 2, RH / 2, (DZ0 - RZ - T) / 2, gL);
+box(T, RH, RZ + T - DZ1, matWall, -RX - T / 2, RH / 2, (DZ1 + RZ + T) / 2, gL);
+box(T, RH - 2.0, DZ1 - DZ0, matWall, -RX - T / 2, 2.2, (DZ0 + DZ1) / 2, gL);
+box(T + 0.04, 0.05, DZ1 - DZ0, M(0xb59a74), -RX - T / 2, 2.0, (DZ0 + DZ1) / 2, gL);
+const doorMat = M(0xd9c3a0), doorMat2 = M(0xc9b28d);
+box(0.03, 2.0, 0.78, doorMat, -RX + 0.015, 1.0, -0.8, gL);
+box(0.03, 2.0, 0.78, doorMat, -RX + 0.015, 1.0, 0.0, gL);
+box(0.04, 0.12, 0.02, M(0x777777), -RX + 0.04, 1.0, -0.43, gL);
+box(0.04, 0.12, 0.02, M(0x777777), -RX + 0.04, 1.0, -0.37, gL);
+box(0.24, 0.28, 0.8, M(0xf6f6f2), -RX + 0.12, 2.12, -2.0, gL);
+box(0.02, 0.03, 0.7, M(0xcfcfcf), -RX + 0.245, 2.0, -2.0, gL);
+// 右の壁：キッチン、冷蔵庫置き場
+box(T, RH, RZ * 2 + T * 2, matWall, RX + T / 2, RH / 2, 0, gR);
+const tile = texCanvas(128, 128, (g, w, h) => { g.fillStyle = '#f7f7f2'; g.fillRect(0, 0, w, h); g.strokeStyle = '#cfcac0'; g.lineWidth = 2; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32, h); g.moveTo(0, i * 32); g.lineTo(w, i * 32); g.stroke(); } });
+tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(4, 2);
+box(0.012, 0.65, 1.45, new THREE.MeshLambertMaterial({ map: tile }), RX - 0.006, 1.2, 1.925, gR);
+box(0.4, 0.15, 0.7, M(0xd7d7d7), RX - 0.2, 2.05, 2.2, gR); // レンジフード
+box(0.12, 0.08, 0.08, M(0xffffff), RX - 0.06, 0.3, -1.2, gR); // コンセント
+box(0.12, 0.08, 0.08, M(0xffffff), RX - 0.06, 0.3, 0.6, gR);
+// キッチン台（床置き）
+const counter = new THREE.Group(); scene.add(counter);
+box(0.6, 0.82, 1.45, M(0xe8e1d4), RX - 0.3, 0.41, 1.925, counter);
+box(0.62, 0.04, 1.47, M(0xb9bec2), RX - 0.31, 0.84, 1.925, counter);
+box(0.4, 0.06, 0.5, M(0x8f969b), RX - 0.32, 0.83, 1.55, counter); // シンク
+box(0.03, 0.25, 0.03, M(0xc8c8c8), RX - 0.12, 0.98, 1.55, counter);
+box(0.4, 0.04, 0.55, M(0x2c2c2c), RX - 0.3, 0.87, 2.25, counter); // コンロ
+for (const z of [2.1, 2.4]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 6, 16), M(0x666666)); r.rotation.x = Math.PI / 2; r.position.set(RX - 0.3, 0.9, z); counter.add(r); }
+for (let i = 0; i < 3; i++) box(0.01, 0.6, 0.45, M(0xe0d7c6), RX - 0.605, 0.42, 1.43 + i * 0.48, counter);
+// 手前の壁：玄関ドア
+box(RX - WX0 + T * 2, RH, T, matWall, (RX + WX0) / 2, RH / 2, RZ + T / 2, gF); // まるごと置いてからドアを重ねる
+box(0.85, 2.05, 0.05, M(0x6f7f8c), 0.47, 1.025, RZ - 0.02, gF);
+box(0.12, 0.05, 0.06, M(0xcfcfcf), 0.15, 1.0, RZ - 0.06, gF);
+// 幅木
+box(RX * 2, 0.06, 0.012, baseMat, 0, 0.03, -RZ + 0.006, gB);
+box(0.012, 0.06, DZ0 + RZ, baseMat, -RX + 0.006, 0.03, (DZ0 - RZ) / 2, gL);
+box(0.012, 0.06, RZ * 2, baseMat, RX - 0.006, 0.03, 0, gR);
+// ---------- 水回り ----------
+box(-RX - WX0 + 0.12, 0.3, RZ - BZ + 0.24, M(0xcfc6b8), (WX0 - RX) / 2 - 0.06, -0.151, (RZ + BZ) / 2);
+const cfTex = texCanvas(128, 128, (g, w, h) => { g.fillStyle = '#e9e4da'; g.fillRect(0, 0, w, h); g.fillStyle = '#d8d1c3'; for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) if ((x + y) % 2) g.fillRect(x * 32, y * 32, 32, 32); });
+cfTex.wrapS = cfTex.wrapT = THREE.RepeatWrapping; cfTex.repeat.set(3, 2);
+const cf = new THREE.Mesh(new THREE.PlaneGeometry(-RX - WX0, RZ - PZ), new THREE.MeshLambertMaterial({ map: cfTex }));
+cf.rotation.x = -Math.PI / 2; cf.position.set((WX0 - RX) / 2, 0.001, (RZ + PZ) / 2); cf.receiveShadow = true; scene.add(cf);
+box(-RX - WX0, 0.05, PZ - BZ, M(0xc9d3d8), (WX0 - RX) / 2, 0.025, (PZ + BZ) / 2); // 浴室の床
+box(T, RH, RZ - BZ + T, matWall, WX0 - T / 2, RH / 2, (RZ + BZ) / 2, gL2);
+box(-RX - WX0 + T, RH, T, matWall, (WX0 - RX) / 2, RH / 2, BZ - T / 2, gB2);
+// 洗面所と浴室のしきり（折れ戸のぶんだけ開けておく）
+const OX0 = -3.0, OX1 = -2.3;
+box(OX0 - WX0, RH, 0.08, matWall, (WX0 + OX0) / 2, RH / 2, PZ, gP);
+box(-RX - OX1, RH, 0.08, matWall, (OX1 - RX) / 2, RH / 2, PZ, gP);
+box(OX1 - OX0, RH - 2.0, 0.08, matWall, (OX0 + OX1) / 2, 2.2, PZ, gP);
+// 浴室の壁パネル（浴室側の面に貼る）
+const panelMat = M(0xdfe8ec);
+function panel(w, h, x, y, z, ry, g) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), panelMat); m.position.set(x, y, z); m.rotation.y = ry; m.receiveShadow = true; g.add(m); }
+panel(-RX - WX0, RH, (WX0 - RX) / 2, RH / 2, BZ + 0.002, 0, gB2);
+panel(PZ - BZ, RH, WX0 + 0.002, RH / 2, (PZ + BZ) / 2, Math.PI / 2, gL2);
+panel(PZ - BZ, RH, -RX - 0.002, RH / 2, (PZ + BZ) / 2, -Math.PI / 2, gL);
+// 浴槽、水栓、シャワー
+const white = M(0xf7f7f5);
+box(1.2, 0.55, 0.7, white, -2.95, 0.3, BZ + 0.38);
+box(1.05, 0.02, 0.55, M(0xa9cfe0), -2.95, 0.5, BZ + 0.38);
+box(0.22, 0.06, 0.08, M(0xc8ccd0), -2.1, 0.9, BZ + 0.05, gB2);
+box(0.03, 0.9, 0.03, M(0xc8ccd0), -2.1, 1.45, BZ + 0.03, gB2);
+box(0.12, 0.05, 0.1, M(0xc8ccd0), -2.1, 1.85, BZ + 0.07, gB2);
+// 洗面台、鏡、洗濯機の防水パン
+box(0.5, 0.8, 0.7, M(0xf1ece2), WX0 + 0.25, 0.4, 2.2);
+box(0.52, 0.03, 0.72, white, WX0 + 0.26, 0.815, 2.2);
+const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.012, 24), M(0xe9ecee)); bowl.scale.z = 1.25; bowl.position.set(-3.33, 0.826, 2.2); scene.add(bowl);
+box(0.12, 0.2, 0.03, M(0xc8ccd0), WX0 + 0.05, 0.92, 2.2);
+const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.62), new THREE.MeshLambertMaterial({ color: 0xbfd2dc }));
+mirror.position.set(WX0 + 0.004, 1.55, 2.2); mirror.rotation.y = Math.PI / 2; gL2.add(mirror);
+box(0.6, 0.07, 0.6, white, -2.15, 0.035, 2.38);
+box(0.12, 0.02, 0.12, M(0x8a8f93), -2.15, 0.075, 2.38);
+
+// 天井の照明（ぶら下がり）
+const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.08, 24), new THREE.MeshBasicMaterial({ color: 0xfff8e6 }));
+lamp.position.set(0, RH - 0.05, -0.3); scene.add(lamp);
+
+// ---------- 傷・汚れの絵 ----------
+const DRAW = {
+  pins(g, w, h) { for (const [x, y] of [[.2, .3], [.8, .28], [.22, .75], [.78, .77], [.5, .2], [.52, .55]]) { g.fillStyle = 'rgba(60,50,40,.9)'; g.beginPath(); g.arc(x * w, y * h, 4, 0, 7); g.fill(); g.strokeStyle = 'rgba(120,110,90,.4)'; g.lineWidth = 2; g.beginPath(); g.arc(x * w, y * h, 7, 0, 7); g.stroke(); } },
+  screw(g, w, h) { for (const [x, y] of [[.2, .3], [.8, .3], [.2, .72], [.8, .72]]) { g.fillStyle = 'rgba(205,200,190,1)'; g.beginPath(); g.arc(x * w, y * h, 13, 0, 7); g.fill(); g.fillStyle = 'rgba(40,32,26,1)'; g.beginPath(); g.arc(x * w, y * h, 7, 0, 7); g.fill(); g.strokeStyle = 'rgba(90,80,70,.6)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x * w + 8, y * h); g.lineTo(x * w + 22, y * h + 9); g.stroke(); } },
+  sunburn(g, w, h) { const gr = g.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w * .7); gr.addColorStop(0, 'rgba(225,200,140,0)'); gr.addColorStop(.6, 'rgba(225,200,140,.35)'); gr.addColorStop(1, 'rgba(225,200,140,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.98)'; g.fillRect(w * .12, h * .1, w * .76, h * .8); g.fillStyle = 'rgba(70,60,50,.8)'; for (const [x, y] of [[.15, .13], [.85, .13], [.15, .87], [.85, .87]]) { g.beginPath(); g.arc(x * w, y * h, 3, 0, 7); g.fill(); } },
+  fridge(g, w, h) { const gr = g.createRadialGradient(w / 2, h * .45, 5, w / 2, h * .45, w * .55); gr.addColorStop(0, 'rgba(40,36,32,.75)'); gr.addColorStop(.7, 'rgba(70,62,52,.35)'); gr.addColorStop(1, 'rgba(70,62,52,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(40,35,30,.25)'; g.lineWidth = 6; for (let i = 0; i < 6; i++) { const x = rnd(.25, .75) * w; g.beginPath(); g.moveTo(x, h * .2); g.lineTo(x + rnd(-6, 6), h * .9); g.stroke(); } },
+  dents(g, w, h) { for (const [x, y] of [[.12, .07], [.88, .07], [.12, .93], [.88, .93]]) { const gr = g.createRadialGradient(x * w, y * h, 1, x * w, y * h, 16); gr.addColorStop(0, 'rgba(70,40,20,.85)'); gr.addColorStop(1, 'rgba(70,40,20,0)'); g.fillStyle = gr; g.fillRect(x * w - 18, y * h - 18, 36, 36); } },
+  caster(g, w, h) { g.lineCap = 'round'; for (let i = 0; i < 40; i++) { const r = rnd(30, 110), a = rnd(0, 6.28); g.strokeStyle = Math.random() < .5 ? 'rgba(255,240,215,.75)' : 'rgba(90,60,35,.45)'; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.arc(w / 2 + rnd(-15, 15), h / 2 + rnd(-15, 15), r, a, a + rnd(.3, 1.1)); g.stroke(); } },
+  hole(g, w, h) { g.fillStyle = 'rgba(235,230,220,1)'; g.beginPath(); for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28, r = rnd(42, 58); g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); } g.fill(); g.fillStyle = 'rgba(25,20,18,1)'; g.beginPath(); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28, r = rnd(26, 40); g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); } g.fill(); g.strokeStyle = 'rgba(80,70,60,.8)'; g.lineWidth = 2; for (let i = 0; i < 5; i++) { const a = rnd(0, 6.28); g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * 45, h / 2 + Math.sin(a) * 45); g.lineTo(w / 2 + Math.cos(a) * 62, h / 2 + Math.sin(a) * 62); g.stroke(); } },
+  stain(g, w, h) { g.fillStyle = 'rgba(120,60,20,.55)'; g.beginPath(); for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28, r = rnd(60, 100); g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r * .8); } g.fill(); g.strokeStyle = 'rgba(90,40,10,.6)'; g.lineWidth = 5; g.stroke(); for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(rnd(.15, .85) * w, rnd(.15, .85) * h, rnd(5, 14), 0, 7); g.fill(); } },
+  grease(g, w, h) { for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(${150 + rnd(0, 40)},${100 + rnd(0, 30)},30,${rnd(.2, .5)})`; g.beginPath(); g.arc(rnd(.1, .9) * w, rnd(.2, .9) * h, rnd(3, 16), 0, 7); g.fill(); } g.strokeStyle = 'rgba(150,100,30,.4)'; g.lineWidth = 4; for (let i = 0; i < 6; i++) { const x = rnd(.2, .8) * w, y = rnd(.3, .6) * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + rnd(30, 80)); g.stroke(); } },
+  mold(g, w, h) { for (let i = 0; i < 450; i++) { const x = Math.pow(Math.random(), 1.8), y = Math.pow(Math.random(), 1.8); const a = (1 - x) * (1 - y); g.fillStyle = `rgba(25,30,25,${rnd(.3, .85) * Math.min(1, a * 1.8)})`; g.beginPath(); g.arc(x * w * .95 + 4, (1 - y) * h - 2, rnd(1, 4.5), 0, 7); g.fill(); } },
+  scribble(g, w, h) { g.lineCap = 'round'; g.lineWidth = 7; g.strokeStyle = 'rgba(220,60,50,.9)'; g.beginPath(); g.arc(w * .22, h * .3, 30, 0, 7); g.stroke(); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; g.beginPath(); g.moveTo(w * .22 + Math.cos(a) * 40, h * .3 + Math.sin(a) * 40); g.lineTo(w * .22 + Math.cos(a) * 55, h * .3 + Math.sin(a) * 55); g.stroke(); } g.strokeStyle = 'rgba(40,90,200,.85)'; g.beginPath(); g.moveTo(w * .45, h * .85); g.lineTo(w * .62, h * .45); g.lineTo(w * .8, h * .85); g.closePath(); g.stroke(); g.strokeStyle = 'rgba(40,160,70,.85)'; g.beginPath(); for (let x = 0; x < w; x += 20) g.lineTo(x, h * .92 + Math.sin(x / 15) * 8); g.stroke(); },
+  doorScratch(g, w, h) { g.lineCap = 'round'; for (let i = 0; i < 9; i++) { g.strokeStyle = 'rgba(210,215,220,.9)'; g.lineWidth = rnd(1.5, 3); const x = rnd(.1, .6) * w, y = rnd(.2, .8) * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x + rnd(40, 110), y + rnd(-12, 12)); g.stroke(); } },
+  entranceDent(g, w, h) { const gr = g.createRadialGradient(w * .45, h * .45, 4, w / 2, h / 2, w * .42); gr.addColorStop(0, 'rgba(60,35,15,.75)'); gr.addColorStop(.7, 'rgba(60,35,15,.25)'); gr.addColorStop(1, 'rgba(60,35,15,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
+  nicotine(g, w, h) { const gr = g.createRadialGradient(w / 2, h * .3, 10, w / 2, h * .3, w * .6); gr.addColorStop(0, 'rgba(170,130,50,.65)'); gr.addColorStop(1, 'rgba(170,130,50,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
+  bathMold(g, w, h) { for (let i = 0; i < 500; i++) { const x = rnd(0, w), y = h * (.55 + (Math.random() - .5) * Math.random() * .9); g.fillStyle = `rgba(20,25,22,${rnd(.35, .9)})`; g.beginPath(); g.arc(x, y, rnd(1, 3.5), 0, 7); g.fill(); } },
+  mirrorScale(g, w, h) { for (let i = 0; i < 160; i++) { const x = rnd(0, w), y = rnd(0, h), r = rnd(3, 12); g.strokeStyle = `rgba(255,255,255,${rnd(.4, .85)})`; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); if (Math.random() < .4) { g.fillStyle = 'rgba(255,255,255,.35)'; g.fill(); } } },
+  drainHair(g, w, h) { g.fillStyle = '#9aa0a6'; g.beginPath(); g.arc(w / 2, h / 2, w * .42, 0, 7); g.fill(); g.fillStyle = '#3b3f43'; for (let i = 0; i < 5; i++) g.fillRect(w * .25, h * (.28 + i * .1), w * .5, h * .04); g.strokeStyle = 'rgba(20,15,12,.9)'; g.lineWidth = 2; for (let i = 0; i < 14; i++) { g.beginPath(); let x = rnd(.2, .8) * w, y = rnd(.2, .8) * h; g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += rnd(-40, 40); y += rnd(-40, 40); g.quadraticCurveTo(x + rnd(-20, 20), y + rnd(-20, 20), x, y); } g.stroke(); } },
+  faucetLeak(g, w, h) { const gr = g.createLinearGradient(0, h * .25, 0, h); gr.addColorStop(0, 'rgba(160,110,60,.55)'); gr.addColorStop(1, 'rgba(160,110,60,0)'); g.fillStyle = gr; g.fillRect(w * .4, h * .25, w * .2, h * .75); g.fillStyle = 'rgba(120,180,220,.8)'; for (const y of [.45, .62, .8]) { g.beginPath(); g.ellipse(w / 2, y * h, 7, 11, 0, 0, 7); g.fill(); } },
+  cfDent(g, w, h) { for (const [x, y] of [[.12, .15], [.88, .15], [.12, .85], [.88, .85]]) { g.fillStyle = 'rgba(70,60,50,.55)'; g.fillRect(x * w - 12, y * h - 12, 24, 24); } },
+  sinkCrack(g, w, h) { g.strokeStyle = 'rgba(70,65,60,.85)'; g.lineWidth = 2.5; g.beginPath(); let x = w * .2, y = h * .3; g.moveTo(x, y); for (let i = 0; i < 7; i++) { x += rnd(15, 30); y += rnd(-5, 25); g.lineTo(x, y); } g.stroke(); g.lineWidth = 1.5; g.beginPath(); g.moveTo(w * .5, h * .5); g.lineTo(w * .6, h * .75); g.stroke(); },
+  patch(g, w, h) { for (const [x, y] of [[.2, .3], [.8, .3], [.2, .72], [.8, .72]]) { g.fillStyle = 'rgba(250,250,248,.95)'; g.beginPath(); g.arc(x * w, y * h, 14, 0, 7); g.fill(); } },
+  patchFail(g, w, h) { for (const [x, y] of [[.2, .3], [.8, .3], [.2, .72], [.8, .72]]) { g.fillStyle = 'rgba(232,226,196,.95)'; g.beginPath(); g.ellipse(x * w, y * h, 30, 20, rnd(0, 3), 0, 7); g.fill(); g.strokeStyle = 'rgba(160,150,120,.7)'; g.lineWidth = 2; g.stroke(); } },
+};
+
+const NORMALS = { B: [0, 0, 1], F: [0, 0, -1], L: [1, 0, 0], R: [-1, 0, 0], F0: [0, 1, 0], L2: [1, 0, 0], B2: [0, 0, 1] };
+const inWet = p => p.x < -RX, inBath = p => p.x < -RX && p.z < PZ;
+let spots = [], decalSeq = 0;
+function makeDecal(id, def, drawKey) {
+  const tex = texCanvas(256, Math.round(256 * def.size[1] / def.size[0]), DRAW[drawKey || id]);
+  const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 - decalSeq, polygonOffsetUnits: -2 });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(def.size[0], def.size[1]), mat);
+  const n = new THREE.Vector3(...NORMALS[def.wall]);
+  const off = 0.006 + 0.001 * (decalSeq++ % 4);
+  m.position.set(def.pos[0], def.pos[1], def.pos[2]).addScaledVector(n, def.wall === 'F' ? 0.05 : off);
+  if (def.wall === 'F0') m.rotation.x = -Math.PI / 2;
+  else m.lookAt(m.position.clone().add(n));
+  m.receiveShadow = true;
+  return m;
+}
+
+// 物のスポット：段ボール・ゴミ袋、ホコリ
+function makeTrash() {
+  const g = new THREE.Group(); g.position.set(-0.55, 0, -0.4);
+  const card = M(0xc89a62), bag = M(0x5f6b74, { transparent: true, opacity: .95 });
+  box(0.5, 0.36, 0.4, card, -0.25, 0.18, 1.75, g).rotation.y = 0.2;
+  box(0.42, 0.3, 0.36, card, -0.2, 0.51, 1.72, g).rotation.y = -0.15;
+  box(0.6, 0.06, 0.45, card, 0.35, 0.03, 1.9, g);
+  for (const [x, z] of [[0.35, 1.5], [0.6, 1.62]]) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), bag); s.scale.set(1, 1.15, 1); s.position.set(x, 0.22, z); s.castShadow = true; g.add(s); }
+  return g;
+}
+function makeDust() {
+  const g = new THREE.Group(), mat = M(0x6f6a63);
+  for (const [x, z] of [[-1.55, 1.3], [-1.6, -2.45], [1.55, -2.45], [-0.2, -2.5], [1.5, 0.15], [-1.6, 0.55]]) {
+    for (let i = 0; i < 3; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(rnd(0.03, 0.06), 6, 5), mat); s.scale.y = 0.45; s.position.set(x + rnd(-0.1, 0.1), 0.015, z + rnd(-0.1, 0.1)); g.add(s); }
+  }
+  return g;
+}
+
+// ニコチンの全体の黄ばみ
+let yellowing = [];
+function addYellowing() {
+  const mat = new THREE.MeshBasicMaterial({ color: 0xc9a85a, transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const add = (w, h, pos, n, g) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.copy(pos).addScaledVector(n, 0.003); m.lookAt(m.position.clone().add(n)); g.add(m); yellowing.push(m); };
+  add(RX - WX, RH, new THREE.Vector3(-(RX + WX) / 2, RH / 2, -RZ), new THREE.Vector3(0, 0, 1), gB);
+  add(RX - WX, RH, new THREE.Vector3((RX + WX) / 2, RH / 2, -RZ), new THREE.Vector3(0, 0, 1), gB);
+  add(DZ0 + RZ, RH, new THREE.Vector3(-RX, RH / 2, (DZ0 - RZ) / 2), new THREE.Vector3(1, 0, 0), gL);
+  add(RZ * 2, RH, new THREE.Vector3(RX, RH / 2, 0), new THREE.Vector3(-1, 0, 0), gR);
+}
+
+// ---------- 業者 ----------
+function makeInspector() {
+  const g = new THREE.Group();
+  const navy = M(0x2f4a6b), skin = M(0xf0c9a5), dark = M(0x2a2a2a);
+  const legs = [];
+  for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 0.1, 0.82, 0); const l = box(0.13, 0.8, 0.14, navy, 0, -0.4, 0, p); box(0.14, 0.08, 0.24, dark, 0, -0.78, 0.04, p); g.add(p); legs.push(p); }
+  box(0.42, 0.62, 0.24, navy, 0, 1.13, 0, g);
+  box(0.43, 0.06, 0.25, M(0xe8b32a), 0, 1.02, 0, g);
+  const arms = [];
+  for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 0.27, 1.4, 0); box(0.11, 0.56, 0.12, navy, 0, -0.27, 0, p); box(0.1, 0.1, 0.1, skin, 0, -0.58, 0, p); g.add(p); arms.push(p); }
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), skin); head.position.y = 1.62; head.castShadow = true; g.add(head);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), navy); cap.position.y = 1.65; g.add(cap);
+  box(0.2, 0.02, 0.12, navy, 0, 1.66, 0.15, g);
+  for (const s of [-1, 1]) box(0.03, 0.03, 0.02, dark, s * 0.06, 1.64, 0.15, g);
+  const clip = box(0.22, 0.3, 0.02, M(0x8b6a43), 0, 0, 0, arms[0]); clip.position.set(0.06, -0.5, 0.12); clip.rotation.x = -0.6;
+  box(0.18, 0.24, 0.005, M(0xffffff), 0.06, -0.495, 0.132, arms[0]).rotation.x = -0.6;
+  g.userData = { legs, arms };
+  g.visible = false;
+  scene.add(g);
+  return g;
+}
+const insp = makeInspector();
+let inspTarget = null, inspResolve = null, inspWalk = 0;
+function walkTo(x, z) { return new Promise(r => { inspTarget = new THREE.Vector3(x, 0, z); inspResolve = r; }); }
+async function walkPath(x, z) {
+  const fromWet = insp.position.x < -RX, toWet = x < -RX;
+  if (fromWet !== toWet) {
+    const a = fromWet ? [-2.2, 1.95] : [-1.4, 1.95], b = fromWet ? [-1.4, 1.95] : [-2.2, 1.95];
+    await walkTo(...a); await walkTo(...b);
+  }
+  await walkTo(x, z);
+}
+function facePoint(p) { insp.rotation.y = Math.atan2(p.x - insp.position.x, p.z - insp.position.z); }
+
+// ---------- カメラ ----------
+const cam = { az: -0.72, pol: 0.92, r: 9.6, target: new THREE.Vector3(-0.9, 0.5, 0), focus: null };
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(-0.9, 0.5, 0);
+function overviewPos(out) { return out.set(cam.target.x + cam.r * Math.sin(cam.pol) * Math.sin(cam.az), cam.target.y + cam.r * Math.cos(cam.pol), cam.target.z + cam.r * Math.sin(cam.pol) * Math.cos(cam.az)); }
+overviewPos(camPos);
+function clampIn(v) { v.x = Math.max(-RX + 0.25, Math.min(RX - 0.25, v.x)); v.z = Math.max(-RZ + 0.25, Math.min(RZ - 0.25, v.z)); v.y = Math.min(RH - 0.15, v.y); return v; }
+function spotView(def) {
+  const p = new THREE.Vector3(...def.pos), n = def.obj ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(...NORMALS[def.wall]);
+  // 浴室は狭いので、洗面所の上から見下ろす
+  if (inBath(p)) return { pos: new THREE.Vector3(p.x + 0.3, 2.3, 2.5), look: p };
+  if (inWet(p)) return { pos: new THREE.Vector3(-1.1, 1.9, p.z - 0.2), look: p };
+  if (def.wall === 'F0' || def.obj) {
+    const toC = new THREE.Vector3(-p.x, 0, -p.z * 0.6).normalize();
+    if (toC.lengthSq() < 0.01) toC.set(0, 0, -1);
+    return { pos: clampIn(p.clone().addScaledVector(toC, 1.7).add(new THREE.Vector3(0, 1.9, 0))), look: p };
+  }
+  const side = new THREE.Vector3().crossVectors(n, new THREE.Vector3(0, 1, 0));
+  return { pos: clampIn(p.clone().addScaledVector(n, 2.3).addScaledVector(side, 0.5).setY(Math.max(1.2, p.y + 0.5))), look: p };
+}
+function standPos(def) {
+  const p = new THREE.Vector3(...def.pos);
+  let s;
+  if (def.wall === 'F0' || def.obj) { const toC = new THREE.Vector3(-p.x, 0, -p.z).normalize(); s = p.clone().addScaledVector(toC, 0.75); }
+  else { const n = new THREE.Vector3(...NORMALS[def.wall]); s = p.clone().addScaledVector(n, 0.7).addScaledVector(new THREE.Vector3().crossVectors(n, new THREE.Vector3(0, 1, 0)), -0.55); }
+  // 水回りでは、カメラと見る所の間に立たないよう横にずれる
+  if (inBath(p)) return new THREE.Vector3(-2.1, 0, PZ + 0.3);
+  if (inWet(p)) return new THREE.Vector3(-2.65, 0, p.z > 2.25 ? 1.8 : 2.55);
+  s.y = 0; clampIn(s);
+  if (s.x > RX - 0.75 && s.z > 1.0) s.x = RX - 0.8; // キッチン台をよける
+  return s;
+}
+function focusOn(view) { cam.focus = view; $('#backBtn').classList.toggle('hidden', !view || S.phase !== 'prep'); }
+
+// 操作：ドラッグで回転、ピンチ・ホイールで寄る、タップで調べる
+const ptrs = new Map(); let downAt = null, moved = 0, pinch0 = 0;
+canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); downAt = { x: e.clientX, y: e.clientY }; moved = 0; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
+canvas.addEventListener('pointermove', e => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) cam.r = Math.max(4.5, Math.min(14, cam.r * pinch0 / d)); pinch0 = d; return; }
+  if (moved > 6 && !cam.focus && S && S.phase === 'prep') { cam.az -= dx * 0.008; cam.pol = Math.max(0.35, Math.min(1.25, cam.pol - dy * 0.006)); }
+  else if (moved > 6 && cam.focus && S && S.phase === 'prep') { focusOn(null); closeSheet(); }
+});
+canvas.addEventListener('pointerup', e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (moved <= 6 && downAt && ptrs.size === 0) onTap(e.clientX, e.clientY); });
+canvas.addEventListener('pointercancel', e => ptrs.delete(e.pointerId));
+canvas.addEventListener('wheel', e => { cam.r = Math.max(4.5, Math.min(14, cam.r * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: true });
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function shown(o) { for (; o; o = o.parent) if (!o.visible) return false; return true; }
+function onTap(x, y) {
+  if (!S || S.phase !== 'prep') return;
+  ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(spots.filter(s => !s.done).map(s => s.hit), true).filter(h => shown(h.object));
+  if (!hits.length) { if (cam.focus) { focusOn(null); closeSheet(); } return; }
+  let o = hits[0].object; while (o && !o.userData.spot) o = o.parent;
+  openSpot(o.userData.spot);
+}
+
+// ---------- 画面の文字 ----------
+const toastEl = $('#toast'); let toastT = 0;
+function toast(s) { toastEl.textContent = s; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 1800); }
+const clockStr = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+function updateHud() {
+  $('#clockTxt').textContent = clockStr(S.clock);
+  $('#depTxt').textContent = yen(C.deposit);
+  $('#hearts').textContent = '♥'.repeat(S.hearts) + '♡'.repeat(3 - S.hearts);
+  const vis = spots.filter(s => !s.def.noClaim);
+  $('#found').textContent = `見つけた傷・汚れ ${vis.filter(s => s.found).length} / ${vis.length}`;
+}
+
+// ---------- 一回分を作る ----------
+function buildRound() {
+  for (const s of spots) { s.mesh.parent && s.mesh.parent.remove(s.mesh); if (s.hit !== s.mesh) s.hit.parent && s.hit.parent.remove(s.hit); if (s.marker) scene.remove(s.marker); }
+  for (const y of yellowing) y.parent.remove(y);
+  spots = []; yellowing = []; decalSeq = 0;
+  C = newContract();
+  S = { phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [] };
+  const ids = [
+    ...shuffle(['pins', 'sunburn', 'fridge', 'dents']).slice(0, 3),
+    ...shuffle(['screw', 'caster', 'hole']).slice(0, 2),
+    ...shuffle(['stain', 'grease', 'mold', 'scribble']).slice(0, 3),
+    ...shuffle(['bathMold', 'mirrorScale', 'drainHair']).slice(0, 2),
+    pick(['faucetLeak', 'cfDent']),
+    pick(['doorScratch', 'entranceDent', 'sinkCrack']),
+    'trash', 'dust',
+  ];
+  if (C.smoker) { ids.push('nicotine'); addYellowing(); }
+  for (const id of ids) {
+    const def = DEFS[id];
+    let mesh, hit;
+    if (id === 'trash') { mesh = makeTrash(); scene.add(mesh); hit = mesh; }
+    else if (id === 'dust') { mesh = makeDust(); scene.add(mesh); hit = mesh; }
+    else {
+      mesh = makeDecal(id, def);
+      const g = def.wall === 'F0' ? scene : walls[def.wall];
+      g.add(mesh);
+      // 小さい絵でもタップしやすいよう、見えない当たり板を重ねる
+      hit = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(.55, def.size[0]), Math.max(.55, def.size[1])), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      hit.position.copy(mesh.position); hit.quaternion.copy(mesh.quaternion); g.add(hit);
+    }
+    const spot = { id, def, mesh, hit, found: false, done: false };
+    hit.userData.spot = spot; mesh.userData.spot = spot;
+    spots.push(spot);
+  }
+  S.album = shuffle([...spots.filter(s => s.def.kind === 'premove').map(s => ({ name: s.def.name, note: '傷あり', tex: s.mesh.material.map })), ...shuffle(DECOYS.slice()).slice(0, 2).map(([n, t]) => ({ name: n, note: t }))]);
+  updateHud();
+}
+
+// ---------- 準備のフェーズ ----------
+function openSpot(spot) {
+  if (!spot.found) { spot.found = true; updateHud(); }
+  focusOn(spotView(spot.def));
+  const d = spot.def;
+  $('#spotName').textContent = d.name;
+  $('#spotDesc').textContent = d.desc;
+  const btns = $('#spotBtns'); btns.innerHTML = '';
+  if (GUIDE[spot.id]) {
+    const det = document.createElement('details'); det.className = 'real'; det.style.width = '100%';
+    det.innerHTML = `<summary>📌 実際の退去では？（直し方・おすすめ商品）</summary>${guideHTML(spot.id)}`;
+    btns.appendChild(det);
+  }
+  const left = END_MIN - S.clock;
+  const act = (label, t, fn, cls = '') => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.type = 'button'; b.innerHTML = `${label}<small>${t}分</small>`; if (t > left) b.disabled = true; b.onclick = () => fn(); btns.appendChild(b); };
+  if (d.clean) act(d.clean.label, d.clean.t, () => doClean(spot), 'primary');
+  else if (d.fix && !spot.patched) act(d.fix.label, d.fix.t, () => doFix(spot), 'primary');
+  else { const p = document.createElement('p'); p.style.cssText = 'font-size:12px;color:#7d7266;margin:0 0 8px;width:100%'; p.textContent = spot.patched ? (S.patchFail ? '埋めたけど、色が合わずに目立ってしまった…。' : 'パテできれいに埋めた。') : '自分ではどうにもできない。立ち会いで何と言うか考えておこう。'; btns.appendChild(p); }
+  const close = document.createElement('button'); close.className = 'btn'; close.type = 'button'; close.textContent = '閉じる'; close.onclick = () => { closeSheet(); focusOn(null); }; btns.appendChild(close);
+  $('#spotSheet').classList.remove('hidden');
+  $('#hint').classList.add('hidden');
+}
+function closeSheet() { $('#spotSheet').classList.add('hidden'); }
+function spend(t) { S.clock += t; updateHud(); if (S.clock >= END_MIN) setTimeout(() => { toast('ピンポーン。業者が来た！'); startInspection(); }, 900); }
+function fadeOut(obj, ms = 900) {
+  const mats = []; obj.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.transparent = true; mats.push([o.material, o.material.opacity]); } });
+  const t0 = performance.now();
+  (function step() { const k = Math.min(1, (performance.now() - t0) / ms); for (const [m, o] of mats) m.opacity = o * (1 - k); if (k < 1) requestAnimationFrame(step); else obj.visible = false; })();
+}
+function doClean(spot) {
+  closeSheet();
+  spot.done = true;
+  if (spot.id === 'dust') S.vacuumed = true;
+  fadeOut(spot.mesh);
+  toast(`${spot.def.clean.label} … きれいになった！`);
+  setTimeout(() => focusOn(null), 900);
+  spend(spot.def.clean.t);
+}
+function doFix(spot) {
+  closeSheet();
+  spot.patched = true;
+  const ok = Math.random() < spot.def.fix.rate;
+  const g = spot.mesh.parent; g.remove(spot.mesh);
+  if (ok) { spot.done = true; spot.mesh = makeDecal('screw', spot.def, 'patch'); g.add(spot.mesh); toast('パテで埋めた。ほとんど分からない！'); }
+  else { S.patchFail = true; spot.mesh = makeDecal('screw', spot.def, 'patchFail'); spot.mesh.userData.spot = spot; g.add(spot.mesh); toast('うーん…色が合わなくて、かえって目立つ'); }
+  setTimeout(() => focusOn(null), 900);
+  spend(spot.def.fix.t);
+}
+
+// ---------- 書類 ----------
+let docTab = 'contract';
+function renderDocs() {
+  document.querySelectorAll('#docTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === docTab));
+  const el = $('#docBody');
+  if (docTab === 'contract') {
+    el.innerHTML = `<h4>賃貸借契約書（抜粋）</h4><table>
+      <tr><td>物件</td><td>コーポ汐見 203号室（1K）</td></tr>
+      <tr><td>家賃</td><td>${yen(C.rent)} ／月</td></tr>
+      <tr><td>敷金</td><td><b>${yen(C.deposit)}</b>（家賃2か月分）</td></tr>
+      <tr><td>入居</td><td><b>${C.years}年前</b>の春</td></tr>
+      <tr><td>特約</td><td>${C.cleaningClause ? '<b>退去時のハウスクリーニング費用 33,000円（税込）は借主の負担とする。</b> <span class="stamp">合意</span>' : 'なし'}</td></tr></table>
+      <h4>自分のメモ</h4><ul>
+      <li>${C.smoker ? '部屋でタバコを吸っていた。' : 'タバコは吸わない。'}</li>
+      <li>${C.keyLost ? '鍵を1本なくしてしまった…。' : '鍵は2本とも返せる。'}</li></ul>`;
+  } else if (docTab === 'album') {
+    el.innerHTML = `<h4>入居時チェック表（${C.years}年前・写真つき）</h4><p style="font-size:12px;color:#7d7266;margin:0 0 8px">入居したときに管理会社と確認した、もとからあった傷や汚れ。</p><div class="album">${S.album.map(a => `<figure><div class="ph" style="${a.tex ? `background-image:url(${a.tex.userData.canvas.toDataURL()})` : ''}">${a.tex ? '' : '<div style="padding-top:34px;text-align:center;color:#aaa">写真</div>'}</div><b>${a.name}</b><br>${a.note}</figure>`).join('')}</div>`;
+  } else if (docTab === 'real') {
+    const names = Object.assign({}, ...Object.entries(DEFS).map(([k, d]) => ({ [k]: d.name })), { cleaning: 'ハウスクリーニング代', key: '鍵の交換代', ac: 'エアコンの内部洗浄代' });
+    el.innerHTML = `<h4>実際の退去で気をつけること</h4><ul>
+      <li><b>入居したとき</b>：もとからある傷や汚れを日付入りの写真に撮り、チェック表にして管理会社に出しておく。</li>
+      <li><b>退去の前</b>：契約書の特約（クリーニング代など）を確認。掃除とゴミ出しは済ませる。自分で補修するなら目立たない所で試してから。</li>
+      <li><b>立ち会いのとき</b>：その場で精算書にサインしない。「どこを・何㎡・単価いくら」の明細をもらう。</li>
+      <li><b>納得できないとき</b>：国土交通省「原状回復をめぐるトラブルとガイドライン」をもとに話し合う。消費者ホットライン <b>188</b> でも相談できる。</li></ul>
+      <h4>傷・汚れ別の直し方</h4>
+      ${Object.keys(GUIDE).map(k => `<div style="margin-bottom:8px"><b>${names[k] || k}</b>${guideHTML(k)}</div>`).join('')}
+      <p style="font-size:11px;color:#7d7266">※ゲーム内の金額は目安です。実際の負担は、契約の内容や傷みの程度、地域によって変わります。</p>`;
+  } else {
+    el.innerHTML = `<h4>原状回復のガイドライン（国土交通省）のメモ</h4>
+      <p style="font-size:12px;color:#7d7266;margin:0 0 6px">普通に暮らしてできた傷み（通常損耗）や年月による劣化（経年変化）は、家賃に含まれている＝貸主の負担。</p>
+      <h4>🙆 借主が払わなくていいもの</h4><ul><li>画鋲・ピンの穴</li><li>日焼けによるクロスの変色・ポスター跡</li><li>冷蔵庫など家電の後ろの黒ずみ</li><li>家具を置いた床のへこみ</li><li>鍵の交換（なくしていなければ）</li><li>次の入居者のためのクリーニング（特約がなく、ふだんの掃除をしていれば）</li><li>エアコンの内部洗浄（タバコを吸っていなければ）</li><li>入居前からあった傷（チェック表が証拠）</li></ul>
+      <h4>🙅 借主が払うもの</h4><ul><li>ネジ穴・くぎ穴、不注意でつけた穴や傷</li><li>放っておいたシミ・カビ・油汚れ、落書き</li><li>タバコのヤニ・臭い</li><li>残していった物の処分</li><li>鍵をなくしたときの交換</li><li>金額まではっきり書かれた特約（クリーニングなど）</li></ul>
+      <h4>💡 払うときも、減らせるポイント</h4><ul><li>張替えは<b>傷んだ面の分だけ</b>（ヤニなど部屋じゅうの汚れは別）</li><li>クロスは<b>6年で価値がほぼ1円</b>。住んだ年数の分だけ割り引かれる</li><li>フローリングの<b>部分補修</b>は年数で割り引かれない</li></ul>`;
+  }
+}
+$('#docsBtn').onclick = () => { renderDocs(); $('#docs').classList.remove('hidden'); };
+$('#docsClose').onclick = () => $('#docs').classList.add('hidden');
+$('#docTabs').onclick = e => { const t = e.target.closest('button'); if (t) { docTab = t.dataset.t; renderDocs(); } };
+
+// ---------- 立ち会い ----------
+const CHOICES = [
+  ['normal', '普通に住んでできたもの（通常損耗）では？'],
+  ['photo', '入居したときからありました'],
+  ['dep', '住んだ年数で割り引かれるのでは？'],
+  ['partial', 'その部分だけの補修で足りるのでは？'],
+];
+const DEFAULT_REBUT = {
+  normal: '普通に暮らしてできたものとは言えないですね。',
+  photo: '入居時のチェック表には、ここは書いてないですよ。',
+  dep: 'これは年数で割り引くものじゃないですね。',
+  partial: 'もう必要な範囲だけですよ。',
+};
+let choiceResolve = null;
+function say(who, text, bill) {
+  $('#dlgWho').textContent = who === 'me' ? 'あなた' : '業者・権田';
+  $('#dlgWho').classList.toggle('me', who === 'me');
+  $('#dlgText').textContent = text;
+  const b = $('#dlgBill');
+  if (bill) { b.classList.remove('hidden'); $('#dlgLabel').textContent = bill.label; const a = $('#dlgAmt'); a.textContent = yen(bill.amt); a.classList.toggle('zero', bill.amt === 0); }
+  else b.classList.add('hidden');
+  $('#dlgChoices').innerHTML = '';
+  $('#dialog').classList.remove('hidden');
+}
+function choose(opts) {
+  return new Promise(res => {
+    const el = $('#dlgChoices'); el.innerHTML = '';
+    for (const [k, label, cls] of opts) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + (cls || ''); b.textContent = label; b.onclick = () => res(k); el.appendChild(b); }
+  });
+}
+async function argue(claim) {
+  let amt = claim.amt, label = claim.label, step = 0;
+  const first = { amt, label };
+  say('them', claim.say, { label, amt });
+  while (true) {
+    if (amt === 0) { await choose([['ok', '次へ', 'acc']]); break; }
+    const opts = S.hearts > 0 ? CHOICES.map(c => [...c]) : [];
+    opts.push(['accept', S.hearts > 0 ? '認める（このまま払う）' : '…わかりました（信用がなく、もう言い返せない）', 'acc']);
+    const k = await choose(opts);
+    if (k === 'accept') { say('me', 'わかりました。', { label, amt }); await sleep(500); break; }
+    say('me', CHOICES.find(c => c[0] === k)[1], { label, amt });
+    await sleep(800);
+    const st = claim.steps[step];
+    if (st && st.k === k) {
+      amt = st.amt; label = st.label || label; step++;
+      say('them', st.reply, { label, amt });
+    } else {
+      S.hearts--; updateHud();
+      const used = claim.steps.slice(0, step).some(s => s.k === k);
+      const msg = used ? 'それはもう考慮しましたよ。' : (claim.rebut && claim.rebut[k]) || DEFAULT_REBUT[k];
+      say('them', msg + (S.hearts === 0 ? '　…あの、あまりゴネられると困るんですよね。' : ''), { label, amt });
+      toast(S.hearts > 0 ? '信用が下がった…' : '信用がなくなった！');
+    }
+  }
+  return { first, final: { amt, label } };
+}
+async function startInspection() {
+  if (S.phase !== 'prep') return;
+  S.phase = 'insp';
+  closeSheet(); focusOn(null);
+  ['#startInspBtn', '#found', '#hint', '#backBtn'].forEach(s => $(s).classList.add('hidden'));
+  $('#heartChip').classList.remove('hidden');
+  $('#phaseLbl').textContent = '立ち会い';
+  $('#clockSub').textContent = '';
+  S.clock = Math.max(S.clock, END_MIN);
+  updateHud();
+  insp.visible = true; insp.position.set(0.47, 0, RZ - 0.3); insp.rotation.y = Math.PI;
+  cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.4) };
+  say('them', 'どうも、管理会社から来ました権田です。お部屋を確認させていただきますね。');
+  await choose([['ok', 'お願いします', 'acc']]);
+  // 部屋の奥から順に見ていく
+  const targets = spots.filter(s => !s.def.noClaim && !s.done).sort((a, b) => (a.def.pos[0] < -RX) - (b.def.pos[0] < -RX) || a.def.pos[2] - b.def.pos[2]);
+  if (!targets.length) { say('them', 'おお…きれいに使われてますね。お部屋の中は問題ないです。'); await choose([['ok', '次へ', 'acc']]); }
+  for (const s of targets) {
+    $('#dialog').classList.add('hidden');
+    cam.focus = null; // 歩いている間は部屋全体を見せる
+    const sp = standPos(s.def);
+    await walkPath(sp.x, sp.z);
+    facePoint(new THREE.Vector3(...s.def.pos));
+    cam.focus = spotView(s.def);
+    await sleep(350);
+    const claim = s.def.claim(S);
+    const r = await argue(claim);
+    S.log.push({ id: s.id, name: s.def.name, why: s.def.why, ...r });
+  }
+  $('#dialog').classList.add('hidden');
+  cam.focus = null;
+  await walkPath(0.45, RZ - 0.75);
+  facePoint(new THREE.Vector3(-0.3, 0, 0));
+  cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.75) };
+  say('them', 'お部屋はこれで全部ですね。あとは書類の上での費用です。');
+  await choose([['ok', 'はい', 'acc']]);
+  for (const c of paperClaims()) { const r = await argue(c); S.log.push({ id: c.id, name: c.name, why: c.why, ...r }); }
+  say('them', 'では、こちらが精算書になります。');
+  await choose([['ok', '精算書を見る', 'acc']]);
+  $('#dialog').classList.add('hidden');
+  showResult();
+}
+
+// ---------- 精算書 ----------
+function bestCase() {
+  // 準備を全部こなし、すべて正しく言い返したときの負担
+  let sum = 0;
+  for (const s of spots) {
+    const d = s.def;
+    if (d.noClaim || d.clean || d.fix) continue;
+    const c = d.claim({ patchFail: false });
+    sum += c.steps.length ? c.steps[c.steps.length - 1].amt : c.amt;
+  }
+  sum += C.cleaningClause ? 33000 : 0;
+  sum += C.keyLost ? 16500 : 0;
+  sum += C.smoker ? 13200 : 0;
+  return sum;
+}
+function showResult() {
+  S.phase = 'done';
+  const total = S.log.reduce((a, l) => a + l.final.amt, 0);
+  const firstTotal = S.log.reduce((a, l) => a + l.first.amt, 0);
+  const refund = Math.max(0, C.deposit - total), extra = Math.max(0, total - C.deposit);
+  const best = Math.max(0, C.deposit - bestCase());
+  const ratio = best > 0 ? refund / best : (refund >= best ? 1 : 0);
+  const rank = ratio >= 0.99 ? 'S' : ratio >= 0.9 ? 'A' : ratio >= 0.75 ? 'B' : ratio >= 0.5 ? 'C' : 'D';
+  const comment = { S: '完ぺき！ 敷金を守りぬいた。', A: 'お見事。ほとんど取り戻せた。', B: 'まずまず。もう少し言い返せたかも。', C: '取られすぎ…。ガイドラインを読み直そう。', D: '業者の言いなりだった…。' }[rank];
+  $('#resBody').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div><div style="font-size:13px;color:#7d7266">敷金精算書</div><div class="big">${extra ? '追加で ' + yen(extra) + ' 請求' : '返金 ' + yen(refund)}</div>
+      <div style="font-size:13px">敷金 ${yen(C.deposit)} − 負担 ${yen(total)}　<span style="color:#7d7266">（最初の請求 ${yen(firstTotal)}）</span></div></div>
+      <div class="center"><div class="rank">${rank}</div><div style="font-size:11px;color:#7d7266">最高で ${yen(best)}</div></div>
+    </div>
+    <p style="margin:8px 0;font-weight:800">${comment}</p>
+    <table><tr><th>項目</th><th class="num">請求</th><th class="num">確定</th></tr>
+    ${S.log.map(l => `<tr><td><b>${l.name}</b><div class="why">${l.why}</div>${GUIDE[l.id] ? `<details class="real"><summary>実際の退去では？</summary>${guideHTML(l.id)}</details>` : ''}</td><td class="num">${l.first.amt !== l.final.amt ? `<s>${yen(l.first.amt)}</s>` : yen(l.first.amt)}</td><td class="num"><b style="color:${l.final.amt ? '#e2573b' : '#2f8f5b'}">${yen(l.final.amt)}</b></td></tr>`).join('')}
+    </table>
+    <div class="center" style="margin-top:14px"><button class="btn primary" id="againBtn" type="button" style="font-size:16px;padding:10px 22px">別の部屋でもう一度</button></div>`;
+  $('#result').classList.remove('hidden');
+  $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
+}
+
+// ---------- 開始 ----------
+function startRound() {
+  buildRound();
+  insp.visible = false;
+  cam.az = -0.72; cam.pol = 0.92; cam.r = baseR(); cam.focus = null;
+  $('#phaseLbl').textContent = '準備';
+  $('#clockSub').textContent = '立ち会い 12:00';
+  ['#hud', '#found', '#startInspBtn', '#hint'].forEach(s => $(s).classList.remove('hidden'));
+  $('#heartChip').classList.add('hidden');
+  $('#backBtn').classList.add('hidden');
+  updateHud();
+  docTab = 'contract'; renderDocs(); $('#docs').classList.remove('hidden');
+}
+$('#startBtn').onclick = () => { $('#title').classList.add('hidden'); startRound(); };
+$('#startInspBtn').onclick = () => startInspection();
+$('#backBtn').onclick = () => { closeSheet(); focusOn(null); };
+
+// ---------- ループ ----------
+const baseR = () => innerWidth / innerHeight < 0.8 ? 13 : 9.6;
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.fov = camera.aspect < 0.8 ? 62 : 45; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+const tmpV = new THREE.Vector3(); let last = performance.now();
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // 業者の歩き
+  if (inspTarget) {
+    const d = tmpV.copy(inspTarget).sub(insp.position); d.y = 0;
+    const dist = d.length();
+    if (dist < 0.04) { inspTarget = null; const r = inspResolve; inspResolve = null; r && r(); }
+    else { const st = Math.min(dist, 1.3 * dt); insp.position.addScaledVector(d.normalize(), st); insp.rotation.y = Math.atan2(d.x, d.z); inspWalk += dt * 9; }
+  }
+  const sw = inspTarget ? Math.sin(inspWalk) * 0.5 : 0;
+  const u = insp.userData;
+  if (u.legs) { u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; u.arms[0].rotation.x = inspTarget ? -sw * 0.3 : -0.5; u.arms[1].rotation.x = sw * 0.6; }
+  // カメラ
+  const want = cam.focus ? cam.focus.pos : overviewPos(tmpV.clone());
+  const look = cam.focus ? cam.focus.look : cam.target;
+  const k = 1 - Math.exp(-dt * 4);
+  camPos.lerp(want, k); camLook.lerp(look, k);
+  camera.position.copy(camPos); camera.lookAt(camLook);
+  // カメラ側の壁を隠す
+  // 全体を見るとき：カメラが壁の外側にあれば隠す。寄るとき：カメラと見る点の間をさえぎる壁を隠す
+  for (const key in walls) {
+    const g = walls[key], w = g.userData;
+    if (!cam.focus) { g.visible = !((camPos[w.axis] - w.at) * w.out > 0.15); continue; }
+    const da = camPos[w.axis] - w.at, db = camLook[w.axis] - w.at;
+    let block = false;
+    if (da * db < 0) {
+      const t = da / (da - db), o = w.axis === 'z' ? 'x' : 'z';
+      const c = camPos[o] + (camLook[o] - camPos[o]) * t;
+      block = t < 0.98 && c > w.lo - 0.25 && c < w.hi + 0.25;
+    }
+    g.visible = !block;
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+// 何も始まっていない間も、部屋を見せておく
+buildRound();
+window.__t = { get S() { return S; }, get C() { return C; }, spots: () => spots, startInspection, openSpot, cam, insp };
+</script>
+</body>
+</html>
