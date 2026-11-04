@@ -22,7 +22,7 @@ const RUN_START=[0,150,Math.PI],RUN_DUR=300,RUN_SAFE=90,RUN_ERODE=45,RUN_STEP=0.
 const RUN_FOE={normal:{hp:1,sp:3.2,s:1,xp:10},fast:{hp:1,sp:5,s:0.9,xp:14},big:{hp:3,sp:2.2,s:1.6,xp:40},red:{hp:1,sp:2.8,s:1.05,xp:25}};
 const RUN={on:false,go:false,end:false,t:0,night:0,trail:[],foes:[],cores:[],fx:[],deco:[],light:100,max:100,hearts:5,inv:0,xp:0,lv:1,lvQ:0,picking:false,kills:0,
   spawnT:0,hudT:0,jumps:0,maxJ:1,spd:1,life:10,perk:{},auraT:0,orbs:[],core:null,halo:null,head:null,g:null};
-const runSpd=()=>RUN.go?RUN.spd:1;
+const runSpd=()=>RUN.go?RUN.spd:MIR.on&&MIR.go?mirSpd():1;
 const runNeed=lv=>40+lv*35;
 // the powers of the night: a name, what it does, how many times it can be taken, and what it changes
 const RUN_PERKS={
