@@ -342,7 +342,7 @@ const DEFS = {
       steps: [{ k: 'photo', amt: 0, reply: '…チェック表に載ってますね。失礼しました、これは入居前からですね。' }],
       rebut: { normal: 'ぶつけた傷ですから、普通に使ってできるものじゃないですね。' } }),
     why: '入居前からあった傷は借主の負担にならない。入居時のチェック表や写真が証拠になる。' },
-  entranceDent: { name: '入口近くの床のへこみ', wall: 'F0', pos: [-0.55, 0, 2.15], size: [.34, .34], kind: 'premove',
+  entranceDent: { name: '入口近くの床のへこみ', wall: 'F0', pos: [0.95, 0, 2.25], size: [.34, .34], kind: 'premove',
     desc: '入口近くの床に丸いへこみがある。…これも入居したときからだった気がする。',
     claim: () => ({ say: '入口の床、へこんでますね。補修です。', label: 'フローリング部分補修', amt: 20000,
       steps: [{ k: 'photo', amt: 0, reply: '…あ、チェック表にありますね。これは結構です。' }],
@@ -369,7 +369,7 @@ const DEFS = {
     claim: () => ({ say: '排水口が髪の毛でつまってますね。排水管の高圧洗浄です。', label: '排水管の高圧洗浄', amt: 16500, steps: [],
       rebut: { normal: '髪の毛のつまりは、ふだんの掃除不足ですね。' } }),
     why: '排水口の髪の毛やぬめりによるつまりは、掃除不足として借主の負担。' },
-  toiletStain: { name: 'トイレの黄ばみ', wall: 'F0', pos: [-2.15, 0.392, 2.33], size: [.24, .28], kind: 'tenant',
+  toiletStain: { name: 'トイレの黄ばみ', wall: 'F0', pos: [-0.73, 0.392, 2.15], size: [.28, .24], kind: 'tenant',
     desc: 'トイレの便器の水たまりのふちに、黄ばみと尿石がこびりついている。', clean: { label: 'トイレ用洗剤でこする', t: 15 },
     claim: () => ({ say: 'トイレの便器、黄ばみと尿石がこびりついてますね。クリーニング代です。', label: 'トイレのクリーニング', amt: 11000, steps: [],
       rebut: { normal: '尿石は、ふだんのお掃除で防げるものなので。' } }),
@@ -886,22 +886,39 @@ box(1.05, 0.02, 0.55, M(0xa9cfe0), -2.95, 0.5, BZ + 0.38);
 box(0.22, 0.06, 0.08, M(0xc8ccd0), -2.1, 0.9, BZ + 0.05, gB2);
 box(0.03, 0.9, 0.03, M(0xc8ccd0), -2.1, 1.45, BZ + 0.03, gB2);
 box(0.12, 0.05, 0.1, M(0xc8ccd0), -2.1, 1.85, BZ + 0.07, gB2);
-// 洗面台、鏡
+// 洗面台、鏡、洗濯機の防水パン
 box(0.5, 0.8, 0.7, M(0xf1ece2), WX0 + 0.25, 0.4, 2.2);
 box(0.52, 0.03, 0.72, white, WX0 + 0.26, 0.815, 2.2);
 const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.012, 24), M(0xe9ecee)); bowl.scale.z = 1.25; bowl.position.set(-3.33, 0.826, 2.2); scene.add(bowl);
 box(0.12, 0.2, 0.03, M(0xc8ccd0), WX0 + 0.05, 0.92, 2.2);
 const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.62), new THREE.MeshLambertMaterial({ color: 0xbfd2dc }));
 mirror.position.set(WX0 + 0.004, 1.55, 2.2); mirror.rotation.y = Math.PI / 2; gL2.add(mirror);
-// トイレ（洗面所の中、入口の横。タンクを手前の壁に付ける。洗面台の前はあけておく）
-const TX = -2.15;
-box(0.4, 0.42, 0.2, white, TX, 0.62, RZ - 0.11);
-box(0.42, 0.03, 0.22, white, TX, 0.845, RZ - 0.11);
-box(0.06, 0.03, 0.03, M(0xc8ccd0), TX - 0.14, 0.79, RZ - 0.22);
-const toiletBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.15, 0.38, 24), white); toiletBowl.scale.z = 1.3; toiletBowl.position.set(TX, 0.19, 2.33); scene.add(toiletBowl);
-const toiletSeat = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 24), M(0xeeeeea)); toiletSeat.rotation.x = Math.PI / 2; toiletSeat.scale.y = 1.3; toiletSeat.position.set(TX, 0.395, 2.33); scene.add(toiletSeat);
-const toiletWater = new THREE.Mesh(new THREE.CircleGeometry(0.13, 24), M(0xcfe3ea)); toiletWater.rotation.x = -Math.PI / 2; toiletWater.scale.y = 1.3; toiletWater.position.set(TX, 0.39, 2.33); scene.add(toiletWater);
-box(0.1, 0.12, 0.12, M(0xf2f2ee), -RX - T - 0.05, 0.75, 2.5); // ペーパーホルダー（入口の横の壁）
+box(0.6, 0.07, 0.6, white, -2.15, 0.035, 2.38);
+box(0.12, 0.02, 0.12, M(0x8a8f93), -2.15, 0.075, 2.38);
+
+// ---------- トイレ（玄関の横の個室。ドアは玄関側）----------
+const TX0 = -1.1, TX1 = -0.15, TZ0 = 1.55, TDZ0 = 1.8, TDZ1 = 2.5;
+const gTW = wallGroup('TW', 'x', TX0, -1, TZ0, RZ), gTN = wallGroup('TN', 'z', TZ0, -1, TX0, TX1), gTE = wallGroup('TE', 'x', TX1, 1, TZ0, RZ);
+for (const g of [gTW, gTN, gTE]) g.userData.c = new THREE.Vector3((TX0 + TX1) / 2, 0, (TZ0 + RZ) / 2); // 全体のときは、トイレの中心から見てカメラ側の壁を隠す
+box(0.08, RH, RZ - TZ0, matWall, TX0, RH / 2, (TZ0 + RZ) / 2, gTW);
+box(TX1 - TX0 + 0.08, RH, 0.08, matWall, (TX0 + TX1) / 2, RH / 2, TZ0, gTN);
+box(0.08, RH, TDZ0 - TZ0, matWall, TX1, RH / 2, (TZ0 + TDZ0) / 2, gTE);
+box(0.08, RH, RZ - TDZ1, matWall, TX1, RH / 2, (TDZ1 + RZ) / 2, gTE);
+box(0.08, RH - 2.0, TDZ1 - TDZ0, matWall, TX1, 2.2, (TDZ0 + TDZ1) / 2, gTE);
+box(0.04, 2.0, TDZ1 - TDZ0, doorMat, TX1 + 0.02, 1.0, (TDZ0 + TDZ1) / 2, gTE);
+box(0.05, 0.03, 0.12, M(0x777777), TX1 + 0.06, 1.0, TDZ0 + 0.1, gTE);
+const toiletFloor = new THREE.Mesh(new THREE.PlaneGeometry(TX1 - TX0, RZ - TZ0), new THREE.MeshLambertMaterial({ map: cfTex }));
+toiletFloor.rotation.x = -Math.PI / 2; toiletFloor.position.set((TX0 + TX1) / 2, 0.006, (TZ0 + RZ) / 2); toiletFloor.receiveShadow = true; scene.add(toiletFloor);
+// 便器：タンクを奥（左）の壁に付けて、ドアのほうを向く
+const TCZ = 2.15;
+box(0.2, 0.42, 0.4, white, TX0 + 0.14, 0.62, TCZ);
+box(0.22, 0.03, 0.42, white, TX0 + 0.14, 0.845, TCZ);
+box(0.03, 0.03, 0.06, M(0xc8ccd0), TX0 + 0.25, 0.79, TCZ - 0.14);
+const toiletBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.15, 0.38, 24), white); toiletBowl.scale.x = 1.3; toiletBowl.position.set(-0.73, 0.19, TCZ); scene.add(toiletBowl);
+const toiletSeat = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 24), M(0xeeeeea)); toiletSeat.rotation.x = Math.PI / 2; toiletSeat.scale.x = 1.3; toiletSeat.position.set(-0.73, 0.395, TCZ); scene.add(toiletSeat);
+const toiletWater = new THREE.Mesh(new THREE.CircleGeometry(0.13, 24), M(0xcfe3ea)); toiletWater.rotation.x = -Math.PI / 2; toiletWater.scale.x = 1.3; toiletWater.position.set(-0.73, 0.39, TCZ); scene.add(toiletWater);
+box(0.12, 0.12, 0.1, M(0xf2f2ee), -0.6, 0.75, TZ0 + 0.09); // ペーパーホルダー
+const inToilet = p => p.x > TX0 && p.x < TX1 && p.z > TZ0;
 
 // ---------- 和室の畳・障子・ふすま（和室の回だけ見せる）----------
 const TZ = 0.0; // 畳は奥の壁から z=TZ まで（6畳）
@@ -1026,7 +1043,7 @@ function makeDecal(id, def, drawKey) {
 
 // 物のスポット：段ボール・ゴミ袋、ホコリ
 function makeTrash() {
-  const g = new THREE.Group(); g.position.set(-0.55, 0, -0.4);
+  const g = new THREE.Group(); g.position.set(-0.55, 0, -0.7);
   const card = M(0xc89a62), bag = M(0x5f6b74, { transparent: true, opacity: .95 });
   box(0.5, 0.36, 0.4, card, -0.25, 0.18, 1.75, g).rotation.y = 0.2;
   box(0.42, 0.3, 0.36, card, -0.2, 0.51, 1.72, g).rotation.y = -0.15;
@@ -1082,13 +1099,25 @@ function makeInspector() {
 const insp = makeInspector();
 let inspTarget = null, inspResolve = null, inspWalk = 0, stepAcc = 0;
 function walkTo(x, z) { return new Promise(r => { inspTarget = new THREE.Vector3(x, 0, z); inspResolve = r; }); }
+// トイレの個室を通り抜けないよう、角を回って歩く
+const TOI = [TX0 - 0.25, TX1 + 0.25, TZ0 - 0.25], TOI_C = [[TOI[1] + 0.05, TOI[2] - 0.05], [TOI[0] - 0.05, TOI[2] - 0.05]];
+function crossesToilet(ax, az, bx, bz) { for (let i = 1; i < 30; i++) { const t = i / 30, x = ax + (bx - ax) * t, z = az + (bz - az) * t; if (x > TOI[0] && x < TOI[1] && z > TOI[2]) return true; } return false; }
+async function walkAround(x, z) {
+  const p = insp.position;
+  if (crossesToilet(p.x, p.z, x, z)) {
+    const cs = p.x > (TX0 + TX1) / 2 ? TOI_C : [TOI_C[1], TOI_C[0]];
+    await walkTo(...cs[0]);
+    if (crossesToilet(insp.position.x, insp.position.z, x, z)) await walkTo(...cs[1]);
+  }
+  await walkTo(x, z);
+}
 async function walkPath(x, z) {
   const from = zoneOf(insp.position.x, insp.position.z), to = zoneOf(x, z);
   if (from !== to) {
     if (from !== 'main') { await walkTo(...DOORS[from][1]); await walkTo(...DOORS[from][0]); }
-    if (to !== 'main') { await walkTo(...DOORS[to][0]); await walkTo(...DOORS[to][1]); }
+    if (to !== 'main') { await walkAround(...DOORS[to][0]); await walkTo(...DOORS[to][1]); }
   }
-  await walkTo(x, z);
+  await walkAround(x, z);
 }
 function facePoint(p) { insp.rotation.y = Math.atan2(p.x - insp.position.x, p.z - insp.position.z); }
 
@@ -1106,6 +1135,7 @@ function spotView(def) {
   // 浴室は狭いので、洗面所の上から見下ろす
   if (inBath(p)) return { pos: new THREE.Vector3(p.x + 0.3, 2.3, 2.5), look: p };
   if (inWet(p)) return { pos: new THREE.Vector3(-1.1, 1.9, p.z - 0.2), look: p };
+  if (inToilet(p)) return { pos: new THREE.Vector3(0.35, 2.1, 1.35), look: p }; // トイレは玄関側の上から
   if (inR2(p)) {
     if (def.wall === 'F0') { const toC = new THREE.Vector3(-3.6 - p.x, 0, -1.1 - p.z).normalize(); if (toC.lengthSq() < 0.01) toC.set(1, 0, 0); return { pos: clampR2(p.clone().addScaledVector(toC, 1.6).add(new THREE.Vector3(0, 1.9, 0))), look: p }; }
     const n2 = new THREE.Vector3(...NORMALS[def.wall]), side2 = new THREE.Vector3().crossVectors(n2, new THREE.Vector3(0, 1, 0));
@@ -1128,6 +1158,7 @@ function standPos(def) {
   // 水回りでは、カメラと見る所の間に立たないよう横にずれる
   if (inBath(p)) return new THREE.Vector3(-2.1, 0, PZ + 0.3);
   if (inWet(p)) return new THREE.Vector3(-2.65, 0, p.z > 2.25 ? 1.8 : 2.55);
+  if (inToilet(p)) return new THREE.Vector3(0.25, 0, 2.1); // トイレのドアの前
   if (inR2(p)) { s.y = 0; return clampR2(s, 0.4); }
   s.y = 0; clampIn(s);
   if (s.x > RX - 0.75 && s.z > 1.0) s.x = RX - 0.8; // キッチン台をよける
@@ -1142,6 +1173,7 @@ const AREAS = {
   room2: { label: '奥の部屋', target: [-3.7, 0.8, -1.1], r: 3.3, az: 1.35, pol: 1.0 },
   kitchen: { label: 'キッチン', target: [1.2, 1.0, 1.6], r: 3.0, az: -1.9, pol: 1.0 },
   entrance: { label: '玄関', target: [0.4, 0.8, 2.2], r: 2.8, az: 2.6, pol: 1.05 },
+  toilet: { label: 'トイレ', target: [-0.65, 0.6, 2.15], r: 2.6, az: 2.4, pol: 0.75 },
   wash: { label: '洗面所', target: [-3.0, 1.15, 2.15], r: 2.8, az: 1.6, pol: 1.15 },
   bath: { label: 'お風呂', target: [-2.7, 0.6, 1.0], r: 2.5, az: 0.25, pol: 0.75 },
 };
@@ -1222,7 +1254,7 @@ function buildRound() {
   ];
   if (C.smoker) { ids.push('nicotine'); addYellowing(); }
   // 決まった場所の物を先に置き、そのあと場所が変わる物を重ならないように置く
-  S.placed = [{ k: 'F0', a: -0.5, b: 1.3, ha: 0.65, hb: 0.35 }]; // 段ボールとゴミ袋
+  S.placed = [{ k: 'F0', a: -0.5, b: 1.0, ha: 0.65, hb: 0.35 }]; // 段ボールとゴミ袋
   for (const id of ids) { const d = DEFS[id]; if (!d.place && d.size && d.pos && d.wall) S.placed.push(surfRect(d)); }
   for (const id of ids.slice()) {
     const d = DEFS[id];
@@ -1977,7 +2009,7 @@ function tick(now) {
   for (const key in walls) {
     const g = walls[key], w = g.userData;
     if (w.multi && !(S && S.multi)) { g.visible = false; continue; }
-    const da = camPos[w.axis] - w.at, db = camLook[w.axis] - w.at;
+    const da = camPos[w.axis] - w.at, db = (overview && w.c ? w.c : camLook)[w.axis] - w.at;
     let block = false;
     if (overview) block = da * db < 0; // 全体：部屋の中心から見てカメラ側にある壁はすべて隠す（ドールハウス）
     else if (da * db < 0) {
