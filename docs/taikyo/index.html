@@ -19,7 +19,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:0}
 .chip small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
 #clock b{font-size:20px}
 #rightHud{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-#docsBtn,#backBtn,#startInspBtn{pointer-events:auto}
+#docsBtn,#backBtn,#startInspBtn,#soundBtn{pointer-events:auto}
 #docsBtn{background:#fff3c4}
 #hearts{color:var(--accent);letter-spacing:1px}
 #found{position:fixed;left:12px;top:calc(76px + env(safe-area-inset-top));pointer-events:none}
@@ -116,6 +116,7 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
     <div class="chip" id="depositChip"><small>敷金</small><span id="depTxt"></span></div>
     <div class="chip hidden" id="heartChip"><small>信用</small><span id="hearts"></span></div>
     <button class="chip" id="docsBtn" type="button">📄 書類</button>
+    <button class="chip" id="soundBtn" type="button" aria-label="音のオン・オフ">🔊</button>
   </div>
 </div>
 <div class="chip hidden" id="found"></div>
@@ -185,16 +186,65 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.f
 const yen = n => '¥' + Math.round(n).toLocaleString();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// ---------- 効果音（Web Audio でその場で作る）----------
+const SFX = (() => {
+  let ac = null, master = null, noiseBuf = null, on = true;
+  try { on = localStorage.getItem('taikyo_sound') !== 'off'; } catch (e) {}
+  const ensure = () => {
+    if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination); }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  };
+  const env = (g, t0, dur, vol) => { g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); };
+  const tone = (f, t0, dur, type = 'sine', vol = 0.3, f2) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+    env(g, t0, dur, vol); o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.05);
+  };
+  const noise = (t0, dur, vol = 0.2, freq = 1200, q = 1, f2) => {
+    if (!noiseBuf) { noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.setValueAtTime(freq, t0); if (f2) bp.frequency.exponentialRampToValueAtTime(f2, t0 + dur); bp.Q.value = q;
+    env(g, t0, dur, vol); src.connect(bp); bp.connect(g); g.connect(master); src.start(t0); src.stop(t0 + dur + 0.05);
+  };
+  const P = {
+    tap: t => tone(1100, t, 0.06, 'sine', 0.12),
+    clean: t => { for (let i = 0; i < 4; i++) noise(t + i * 0.11, 0.1, 0.2, 2500, 2, 5000); tone(1320, t + 0.5, 0.25, 'sine', 0.2); tone(1760, t + 0.62, 0.4, 'sine', 0.18); },
+    good: t => { tone(660, t, 0.12, 'triangle', 0.25); tone(880, t + 0.1, 0.12, 'triangle', 0.25); tone(1320, t + 0.2, 0.3, 'triangle', 0.25); },
+    bad: t => { tone(330, t, 0.18, 'square', 0.1, 220); tone(220, t + 0.16, 0.3, 'square', 0.1, 150); },
+    bell: t => { tone(659, t, 1.0, 'sine', 0.3); tone(523, t + 0.45, 1.5, 'sine', 0.3); },
+    stamp: t => { noise(t, 0.08, 0.35, 300, 0.7); tone(120, t, 0.12, 'sine', 0.3, 60); },
+    step: t => noise(t, 0.05, 0.07, 500, 1.5),
+    paper: t => noise(t, 0.18, 0.12, 3000, 0.8, 1500),
+    fanfare: t => [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.12, i === 3 ? 0.7 : 0.15, 'triangle', 0.25)),
+    ok: t => { tone(587, t, 0.15, 'triangle', 0.2); tone(784, t + 0.15, 0.4, 'triangle', 0.2); },
+    sad: t => [392, 349, 311, 262].forEach((f, i) => tone(f, t + i * 0.18, 0.32, 'triangle', 0.2)),
+  };
+  return {
+    play(n) { if (!on) return; const a = ensure(); if (!a) return; try { P[n](a.currentTime + 0.01); } catch (e) {} },
+    unlock() { if (on) ensure(); },
+    get on() { return on; },
+    toggle() { on = !on; try { localStorage.setItem('taikyo_sound', on ? 'on' : 'off'); } catch (e) {} if (on) ensure(); return on; },
+  };
+})();
+addEventListener('pointerdown', () => SFX.unlock());
+// ボタンを押したときの軽い音
+document.addEventListener('click', e => { if (e.target.closest('button') && !e.target.closest('#soundBtn')) SFX.play('tap'); }, true);
+const rankSound = r => SFX.play(r === 'S' || r === 'A' ? 'fanfare' : r === 'D' ? 'sad' : 'ok');
+
 // ---------- 部屋の寸法（内側）----------
 const RX = 1.8, RZ = 2.7, RH = 2.4;
 // 水回り（左の壁の向こう）：洗面所 z>PZ、浴室 z<PZ
 const WX0 = -3.6, BZ = 0.5, PZ = 1.55;
+// 1LDK・2K の2部屋目（左奥、浴室の裏）：x R2X..-RX、z -RZ..BZ。入口は左の壁の z R2D0..R2D1
+const R2X = -5.4, R2D0 = -0.95, R2D1 = -0.25;
 const START_MIN = 9 * 60, END_MIN = 12 * 60;
 
 // ---------- 契約と、その回の状態 ----------
 let C, S;
-function newContract() {
-  const rent = pick([52000, 58000, 64000, 70000]);
+const MULTI = r => r === '1ldk' || r === '2k';
+function newContract(room) {
+  const rent = MULTI(room) ? pick([76000, 84000, 92000]) : pick([52000, 58000, 64000, 70000]);
   return {
     rent, deposit: rent * 2, years: pick([2, 3, 4, 5, 7]),
     smoker: Math.random() < 0.3, cleaningClause: Math.random() < 0.5, keyLost: Math.random() < 0.25,
@@ -386,28 +436,58 @@ const DEFS = {
     desc: '部屋のすみにホコリがたまっている。掃除機をかけておこうか。', clean: { label: '掃除機をかける', t: 40 } },
 };
 
+Object.assign(DEFS, {
+  r2Pins: { ...DEFS.pins, name: '奥の部屋の画鋲の穴', wall: 'L3', pos: [R2X, 1.5, -2.2], draw: 'pins', desc: '奥の部屋の壁に、画鋲の小さな穴がいくつか。', room2: true },
+  r2Dents: { ...DEFS.dents, name: '奥の部屋のベッドのへこみ', pos: [-4.3, 0, -1.4], draw: 'dents', desc: '奥の部屋の床に、ベッドの脚の跡のへこみが4つ。', room2: true },
+  r2FloorSun: { name: '奥の部屋の床の日焼け', wall: 'F0', pos: [-3.6, 0, -2.3], size: [1.5, 0.6], kind: 'owner', draw: 'tatamiSun', room2: true,
+    desc: '窓ぎわのフローリングが、日差しで色あせている。',
+    claim: () => ({ say: '床が日焼けで色あせてますね。フローリングの張替えです。', label: 'フローリング張替え（1部屋）', amt: 80000,
+      steps: [{ k: 'normal', amt: 0, reply: '…日焼けは避けようがないですね。結構です。' }] }),
+    why: '日差しによるフローリングの色あせは通常損耗で、貸主の負担。' },
+  r2DoorHole: { name: '入口わきの壁のへこみ', wall: 'Lb', pos: [-RX - 0.1, 0.95, -1.3], size: [.3, .3], kind: 'tenant', draw: 'hole', room2: true,
+    desc: '家具を運び出すときにぶつけて、奥の部屋の入口わきの壁にへこみと穴ができた。',
+    claim: () => ({ say: '入口のわき、壁に穴がありますね。ボードの補修と、クロスは部屋全体で張替えです。', label: 'ボード補修＋クロス全面', amt: 72000,
+      steps: [{ k: 'partial', amt: 12000 + CLOTH, label: 'ボード補修＋クロス1面', reply: '…そうですね、張替えはこの面だけにしましょう。' },
+              { k: 'dep', amt: 12000 + dep(CLOTH), label: `ボード補修＋クロス1面（${depLabel()}）`, reply: '…クロス分は年数で割り引きます。ボードの補修代はそのままですよ。' }] }),
+    why: '物をぶつけて開けた穴は借主の負担。ただしクロスは面の分だけで、経過年数も考慮する（ボードの補修代は別）。' },
+  r2Mold: { ...DEFS.mold, claim: () => ({ ...DEFS.mold.claim(), say: '部屋のすみ、カビが出てますね。張替えです。' }), name: '奥の部屋のすみのカビ', wall: 'L3', pos: [R2X, 0.35, -2.35], draw: 'mold', desc: 'たんすの裏になっていた壁のすみに、カビが出ている。', clean: { label: 'カビを落とす', t: 25 }, room2: true },
+  r2TatamiSun: { ...DEFS.tatamiSun, name: '和室の畳の日焼け', pos: [-3.6, 0, -2.2], draw: 'tatamiSun', room2: true },
+  r2TatamiBurn: { ...DEFS.tatamiBurn, name: '和室の畳の焦げ跡', pos: [-3.0, 0, -1.0], draw: 'tatamiBurn', desc: 'タバコの灰を落としてできた焦げ跡が、畳に残っている。', room2: true },
+  r2Fusuma: { ...DEFS.fusumaTear, name: '和室のふすまの破れ', wall: 'L3', pos: [R2X, 0.9, -1.2], draw: 'fusumaTear', room2: true },
+});
+
+// 立ち会いで出す言い返しを、請求の種類に合わせてしぼる（意味の通らない選択肢を出さない）
+// 清掃費：部分補修・年数の割引は当てはまらない。設備の故障・ひび：同じ。残置物：通常損耗か明細だけ
+{
+  const CLEAN_FEE = ['normal', 'photo', 'detail', 'none'], EQUIP = ['normal', 'photo', 'detail', 'none'];
+  for (const id of ['grease', 'mirrorScale', 'drainHair', 'petHair', 'bathMold']) Object.assign(DEFS[id], { menu: CLEAN_FEE, dirt: true });
+  for (const id of ['faucetLeak', 'sinkCrack']) DEFS[id].menu = EQUIP;
+  DEFS.trash.menu = ['normal', 'detail'];
+  for (const id of ['stain', 'tatamiStain', 'mold', 'scribble', 'r2Mold']) DEFS[id].dirt = true;
+}
+
 // 書類の上での請求（最後に玄関で）
 function paperClaims() {
   const out = [];
-  if (C.cleaningClause) out.push({ id: 'cleaning', name: 'ハウスクリーニング', say: 'あと、ハウスクリーニング代ですね。契約書の特約どおりです。', label: 'ハウスクリーニング（特約）', amt: 33000, steps: [],
+  if (C.cleaningClause) out.push({ paper: true, ask: '次の人のためのクリーニングは、貸主の負担では？', id: 'cleaning', name: 'ハウスクリーニング', say: 'あと、ハウスクリーニング代ですね。契約書の特約どおりです。', label: 'ハウスクリーニング（特約）', amt: 33000, sayInflated: 'あと、ハウスクリーニング代です。', steps: [],
     rebut: { normal: '契約書の特約に、金額まで書いて合意してもらってますので。' },
     why: '次の入居者のためのクリーニングは本来は貸主の負担。ただし契約書に金額などがはっきり書かれた特約があれば、借主の負担になりうる。' });
-  else if (S.vacuumed) out.push({ id: 'cleaning', name: 'ハウスクリーニング', say: 'あと、ハウスクリーニング代をお願いします。', label: 'ハウスクリーニング', amt: 38500,
+  else if (S.vacuumed) out.push({ paper: true, ask: '次の人のためのクリーニングは、貸主の負担では？', id: 'cleaning', name: 'ハウスクリーニング', say: 'あと、ハウスクリーニング代をお願いします。', label: 'ハウスクリーニング', amt: 38500,
     steps: [{ k: 'normal', amt: 0, reply: '…特約もないですし、お掃除もされてますね。次の方向けのクリーニングはこちらで持ちます。' }],
     why: '特約がなければ、次の入居者のためのクリーニングは貸主の負担。借主はふだんの掃除をしておけばよい。' });
-  else out.push({ id: 'cleaning', name: 'ハウスクリーニング', say: '床にホコリが残ってますね。ハウスクリーニング代をお願いします。', label: 'ハウスクリーニング', amt: 38500, steps: [],
+  else out.push({ paper: true, ask: '次の人のためのクリーニングは、貸主の負担では？', id: 'cleaning', name: 'ハウスクリーニング', say: '床にホコリが残ってますね。ハウスクリーニング代をお願いします。', label: 'ハウスクリーニング', amt: 38500, steps: [],
     rebut: { normal: '特約がなくても、ふだんのお掃除もしていない分はご負担なんですよ。' },
     why: '特約がなくても、掃除をせずに退去すると清掃費は借主の負担になる。掃除機がけくらいはしておこう。' });
-  if (C.keyLost) out.push({ id: 'key', name: '鍵の交換', say: '鍵が1本足りませんね。鍵の交換代です。', label: '鍵交換', amt: 16500, steps: [],
+  if (C.keyLost) out.push({ paper: true, ask: '防犯のための鍵交換は、貸主の負担では？', id: 'key', name: '鍵の交換', say: '鍵が1本足りませんね。鍵の交換代です。', label: '鍵交換', amt: 16500, steps: [],
     rebut: { normal: '鍵をなくした場合の交換は、借主さんのご負担です。' }, why: '鍵をなくしたときの交換費用は借主の負担。' });
-  else out.push({ id: 'key', name: '鍵の交換', say: 'それと、次の方のための鍵の交換代です。', label: '鍵交換', amt: 16500,
+  else out.push({ paper: true, ask: '防犯のための鍵交換は、貸主の負担では？', id: 'key', name: '鍵の交換', say: 'それと、次の方のための鍵の交換代です。', label: '鍵交換', amt: 16500,
     steps: [{ k: 'normal', amt: 0, reply: '…なくされてないなら、防犯のための交換はこちらの負担でした。' }],
     why: '鍵をなくしていなければ、入れ替えのときの鍵交換は貸主の負担（防犯のための費用）。' });
-  if (S.room === 'pet') out.push({ id: 'petodor', name: 'ペットの消臭', say: 'ペットを飼われてたので、消臭の費用です。', label: 'ペットの消臭・クリーニング', amt: 22000, steps: [],
+  if (S.room === 'pet') out.push({ paper: true, ask: '消臭は、貸主の負担では？', id: 'petodor', name: 'ペットの消臭', say: 'ペットを飼われてたので、消臭の費用です。', label: 'ペットの消臭・クリーニング', amt: 22000, steps: [],
     rebut: { normal: 'ペットの臭いは、通常の使い方を超えるものなんですよ。' }, why: 'ペットの臭いの消臭やクリーニングは、ペット可の物件でも借主の負担。' });
-  if (C.smoker) out.push({ id: 'ac', name: 'エアコン洗浄', say: 'エアコンもヤニが付いてますので、内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200, steps: [],
+  if (C.smoker) out.push({ paper: true, ask: '普通に使っただけなので、貸主の負担では？', id: 'ac', name: 'エアコン洗浄', say: 'エアコンもヤニが付いてますので、内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200, steps: [],
     rebut: { normal: 'タバコのヤニが付いた分は、普通の使い方を超えてますね。' }, why: 'タバコのヤニや臭いが付いたエアコンの洗浄は借主の負担。' });
-  else out.push({ id: 'ac', name: 'エアコン洗浄', say: '最後に、エアコンの内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200,
+  else out.push({ paper: true, ask: '普通に使っただけなので、貸主の負担では？', id: 'ac', name: 'エアコン洗浄', say: '最後に、エアコンの内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200,
     steps: [{ k: 'normal', amt: 0, reply: '…タバコも吸われてないなら、普通に使った範囲ですね。' }],
     why: 'タバコを吸っていなければ、エアコンの内部洗浄は普通に使った範囲で貸主の負担。' });
   return out;
@@ -454,6 +534,8 @@ const GUIDE = {
 };
 // Amazon アソシエイト（トラッキングID）。リンクの近くに開示文を出す
 const AMAZON_TAG = 'wesblog-22';
+Object.assign(GUIDE, { r2Pins: GUIDE.pins, r2Dents: GUIDE.dents, r2DoorHole: GUIDE.hole, r2Mold: GUIDE.mold, r2TatamiSun: GUIDE.tatamiSun, r2TatamiBurn: GUIDE.tatamiBurn, r2Fusuma: GUIDE.fusumaTear,
+  r2FloorSun: { fix: '通常損耗なので何もしなくてよい。', note: 'カーテンやラグで日差しをやわらげると、色あせをおさえられる。', buy: ['遮光カーテン'] } });
 const amazonUrl = q => 'https://www.amazon.co.jp/s?k=' + encodeURIComponent(q) + '&tag=' + AMAZON_TAG;
 const AMAZON_NOTE = 'Amazonのアソシエイトとして、当サイトは適格販売により収入を得ています。';
 function guideHTML(id) {
@@ -571,14 +653,16 @@ box(RX * 2, 0.12, 1.1, M(0xb9b4aa), 0, -0.1, -RZ - 0.65, gB);
 box(RX * 2, 0.9, 0.06, M(0xd8d4cc), 0, 0.45, -RZ - 1.2, gB);
 // 左の壁：クローゼット、浴室の扉、エアコン
 const DZ0 = 1.58, DZ1 = 2.32; // 洗面所への出入り口
-box(T, RH, DZ0 + RZ + T, matWall, -RX - T / 2, RH / 2, (DZ0 - RZ - T) / 2, gL);
+box(T, RH, R2D0 + RZ + T, matWall, -RX - T / 2, RH / 2, (R2D0 - RZ - T) / 2, gL);
+const r2Plug = box(T, RH, R2D1 - R2D0, matWall, -RX - T / 2, RH / 2, (R2D0 + R2D1) / 2, gL);  // 1Kのときの壁
+const r2Head = box(T, RH - 2.0, R2D1 - R2D0, matWall, -RX - T / 2, 2.2, (R2D0 + R2D1) / 2, gL); // 1LDK・2Kの入口の上
+box(T, RH, DZ0 - R2D1, matWall, -RX - T / 2, RH / 2, (DZ0 + R2D1) / 2, gL);
 box(T, RH, RZ + T - DZ1, matWall, -RX - T / 2, RH / 2, (DZ1 + RZ + T) / 2, gL);
 box(T, RH - 2.0, DZ1 - DZ0, matWall, -RX - T / 2, 2.2, (DZ0 + DZ1) / 2, gL);
 box(T + 0.04, 0.05, DZ1 - DZ0, M(0xb59a74), -RX - T / 2, 2.0, (DZ0 + DZ1) / 2, gL);
 const doorMat = M(0xd9c3a0), doorMat2 = M(0xc9b28d);
 const closetDoors = [box(0.03, 2.0, 0.78, doorMat, -RX + 0.015, 1.0, -0.8, gL), box(0.03, 2.0, 0.78, doorMat, -RX + 0.015, 1.0, 0.0, gL)];
-box(0.04, 0.12, 0.02, M(0x777777), -RX + 0.04, 1.0, -0.43, gL);
-box(0.04, 0.12, 0.02, M(0x777777), -RX + 0.04, 1.0, -0.37, gL);
+closetDoors.push(box(0.04, 0.12, 0.02, M(0x777777), -RX + 0.04, 1.0, -0.43, gL), box(0.04, 0.12, 0.02, M(0x777777), -RX + 0.04, 1.0, -0.37, gL));
 box(0.24, 0.28, 0.8, M(0xf6f6f2), -RX + 0.12, 2.12, -2.0, gL);
 box(0.02, 0.03, 0.7, M(0xcfcfcf), -RX + 0.245, 2.0, -2.0, gL);
 // 右の壁：キッチン、冷蔵庫置き場
@@ -664,10 +748,49 @@ const shoji = new THREE.Mesh(new THREE.PlaneGeometry(WX * 2, WT - 0.05), new THR
 shoji.position.set(0, WT / 2, -RZ + 0.07); shoji.visible = false; gB.add(shoji);
 const fusumaTex = texCanvas(128, 256, (g, w, h) => { g.fillStyle = '#efe6cf'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(160,140,100,.25)'; for (let i = 0; i < 9; i++) { g.beginPath(); g.arc(rnd(0, w), rnd(0, h), rnd(6, 16), 0, 7); g.fill(); } g.fillStyle = '#3a2c20'; g.fillRect(w * .78, h * .48, 10, 18); g.strokeStyle = '#2a1f17'; g.lineWidth = 6; g.strokeRect(0, 0, w, h); });
 const fusumaMat = new THREE.MeshLambertMaterial({ map: fusumaTex });
+
+// ---------- 2部屋目（1LDK の寝室、2K の和室）----------
+const room2 = new THREE.Group(); scene.add(room2);
+box(-RX - R2X + 0.12, 0.3, BZ + RZ + 0.12, M(0xcfc6b8), (R2X - RX) / 2 - 0.06, -0.151, (BZ - RZ) / 2 - 0.06, room2);
+const floor2 = new THREE.Mesh(new THREE.PlaneGeometry(-RX - R2X, BZ + RZ), matFloor);
+floor2.rotation.x = -Math.PI / 2; floor2.position.set((R2X - RX) / 2, 0, (BZ - RZ) / 2); floor2.receiveShadow = true; room2.add(floor2);
+const tatami2 = new THREE.Mesh(new THREE.PlaneGeometry(-RX - R2X, RZ), new THREE.MeshLambertMaterial({ map: tatamiTex }));
+tatami2.rotation.x = -Math.PI / 2; tatami2.position.set((R2X - RX) / 2, 0.003, -RZ / 2); tatami2.receiveShadow = true; room2.add(tatami2);
+const gB3 = wallGroup('B3', 'z', -RZ, -1, R2X, -RX), gL3 = wallGroup('L3', 'x', R2X, -1, -RZ, BZ), gF3 = wallGroup('F3', 'z', BZ, 1, R2X, WX0);
+for (const g of [gB3, gL3, gF3]) g.userData.multi = true;
+// 奥の壁と腰窓
+const W2a = -4.4, W2b = -2.8, W2y0 = 0.9, W2y1 = 2.0;
+box(W2a - R2X + T, RH, T, matWall, (R2X + W2a) / 2 - T / 2, RH / 2, -RZ - T / 2, gB3);
+box(-RX - W2b, RH, T, matWall, (W2b - RX) / 2, RH / 2, -RZ - T / 2, gB3);
+box(W2b - W2a, W2y0, T, matWall, (W2a + W2b) / 2, W2y0 / 2, -RZ - T / 2, gB3);
+box(W2b - W2a, RH - W2y1, T, matWall, (W2a + W2b) / 2, (RH + W2y1) / 2, -RZ - T / 2, gB3);
+for (const [w, h, x, y] of [[W2b - W2a, 0.05, (W2a + W2b) / 2, W2y0], [W2b - W2a, 0.05, (W2a + W2b) / 2, W2y1], [0.05, W2y1 - W2y0, W2a, (W2y0 + W2y1) / 2], [0.05, W2y1 - W2y0, W2b, (W2y0 + W2y1) / 2]]) box(w, h, 0.12, alu, x, y, -RZ - 0.05, gB3);
+const glass2 = new THREE.Mesh(new THREE.PlaneGeometry(W2b - W2a, W2y1 - W2y0), glass.material);
+glass2.position.set((W2a + W2b) / 2, (W2y0 + W2y1) / 2, -RZ - 0.05); gB3.add(glass2);
+box(-RX - R2X, 0.06, 0.012, baseMat, (R2X - RX) / 2, 0.03, -RZ + 0.006, gB3);
+// 左の壁と押し入れ（2K ではふすま）
+box(T, RH, BZ + RZ + T, matWall, R2X - T / 2, RH / 2, (BZ - RZ) / 2, gL3);
+const closet2 = [box(0.03, 2.0, 0.78, doorMat, R2X + 0.015, 1.0, -1.2, gL3), box(0.03, 2.0, 0.78, doorMat, R2X + 0.015, 1.0, -0.4, gL3)];
+box(0.012, 0.06, BZ + RZ, baseMat, R2X + 0.006, 0.03, (BZ - RZ) / 2, gL3);
+// 手前の壁（浴室の裏の壁 B2 とつながる）
+box(WX0 - R2X + T, RH, T, matWall, (R2X + WX0) / 2 - T / 2, RH / 2, BZ + T / 2, gF3);
+const lamp2 = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.08, 24), new THREE.MeshBasicMaterial({ color: 0xfff8e6 }));
+lamp2.position.set(-3.6, RH - 0.05, -1.1); room2.add(lamp2);
 function setRoomLook(room) {
+  const multi = MULTI(room);
   tatami.visible = shoji.visible = room === 'washitsu';
-  for (const d of closetDoors) d.material = room === 'washitsu' ? fusumaMat : doorMat;
+  for (const d of closetDoors) { d.visible = !multi; if (d.geometry.parameters.height > 1) d.material = room === 'washitsu' ? fusumaMat : doorMat; }
+  r2Plug.visible = !multi; r2Head.visible = multi;
+  room2.visible = multi; tatami2.visible = room === '2k';
+  for (const d of closet2) d.material = room === '2k' ? fusumaMat : doorMat;
 }
+
+// 全体を見るときは、壁を腰の高さで切った見取り図にする（寄ると元の高さ）
+renderer.localClippingEnabled = true;
+const CUT_Y = 1.15, cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 100);
+function applyCut(o) { o.traverse(m => { if (m.material) { m.material.clippingPlanes = [cutPlane]; m.material.clipShadows = true; } }); }
+for (const k in walls) applyCut(walls[k]);
+fusumaMat.clippingPlanes = doorMat.clippingPlanes = [cutPlane];
 
 // 天井の照明（ぶら下がり）
 const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.08, 24), new THREE.MeshBasicMaterial({ color: 0xfff8e6 }));
@@ -706,12 +829,14 @@ const DRAW = {
   patchFail(g, w, h) { for (const [x, y] of [[.2, .3], [.8, .3], [.2, .72], [.8, .72]]) { g.fillStyle = 'rgba(232,226,196,.95)'; g.beginPath(); g.ellipse(x * w, y * h, 30, 20, rnd(0, 3), 0, 7); g.fill(); g.strokeStyle = 'rgba(160,150,120,.7)'; g.lineWidth = 2; g.stroke(); } },
 };
 
-const NORMALS = { B: [0, 0, 1], F: [0, 0, -1], L: [1, 0, 0], R: [-1, 0, 0], F0: [0, 1, 0], L2: [1, 0, 0], B2: [0, 0, 1] };
-const inWet = p => p.x < -RX, inBath = p => p.x < -RX && p.z < PZ;
+const NORMALS = { B: [0, 0, 1], F: [0, 0, -1], L: [1, 0, 0], R: [-1, 0, 0], F0: [0, 1, 0], L2: [1, 0, 0], B2: [0, 0, 1], B3: [0, 0, 1], L3: [1, 0, 0], Lb: [-1, 0, 0] };
+const zoneOf = (x, z) => x >= -RX ? 'main' : z < BZ - 0.05 ? 'r2' : 'wet';
+const inWet = p => zoneOf(p.x, p.z) === 'wet', inBath = p => inWet(p) && p.z < PZ, inR2 = p => zoneOf(p.x, p.z) === 'r2';
+const DOORS = { wet: [[-1.4, 1.95], [-2.2, 1.95]], r2: [[-1.4, -0.6], [-2.2, -0.6]] }; // [部屋側, 向こう側]
 let spots = [], decalSeq = 0;
 function makeDecal(id, def, drawKey) {
   const tex = texCanvas(256, Math.round(256 * def.size[1] / def.size[0]), DRAW[drawKey || def.draw || id]);
-  const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 - decalSeq, polygonOffsetUnits: -2 });
+  const mat = new THREE.MeshLambertMaterial({ clippingPlanes: def.wall === 'F0' ? null : [cutPlane], map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 - decalSeq, polygonOffsetUnits: -2 });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(def.size[0], def.size[1]), mat);
   const n = new THREE.Vector3(...NORMALS[def.wall]);
   const off = 0.006 + 0.001 * (decalSeq++ % 4);
@@ -743,7 +868,7 @@ function makeDust() {
 // ニコチンの全体の黄ばみ
 let yellowing = [];
 function addYellowing() {
-  const mat = new THREE.MeshBasicMaterial({ color: 0xc9a85a, transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const mat = new THREE.MeshBasicMaterial({ clippingPlanes: [cutPlane], color: 0xc9a85a, transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   const add = (w, h, pos, n, g) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.copy(pos).addScaledVector(n, 0.003); m.lookAt(m.position.clone().add(n)); g.add(m); yellowing.push(m); };
   add(RX - WX, RH, new THREE.Vector3(-(RX + WX) / 2, RH / 2, -RZ), new THREE.Vector3(0, 0, 1), gB);
   add(RX - WX, RH, new THREE.Vector3((RX + WX) / 2, RH / 2, -RZ), new THREE.Vector3(0, 0, 1), gB);
@@ -778,13 +903,13 @@ function makeInspector() {
   return g;
 }
 const insp = makeInspector();
-let inspTarget = null, inspResolve = null, inspWalk = 0;
+let inspTarget = null, inspResolve = null, inspWalk = 0, stepAcc = 0;
 function walkTo(x, z) { return new Promise(r => { inspTarget = new THREE.Vector3(x, 0, z); inspResolve = r; }); }
 async function walkPath(x, z) {
-  const fromWet = insp.position.x < -RX, toWet = x < -RX;
-  if (fromWet !== toWet) {
-    const a = fromWet ? [-2.2, 1.95] : [-1.4, 1.95], b = fromWet ? [-1.4, 1.95] : [-2.2, 1.95];
-    await walkTo(...a); await walkTo(...b);
+  const from = zoneOf(insp.position.x, insp.position.z), to = zoneOf(x, z);
+  if (from !== to) {
+    if (from !== 'main') { await walkTo(...DOORS[from][1]); await walkTo(...DOORS[from][0]); }
+    if (to !== 'main') { await walkTo(...DOORS[to][0]); await walkTo(...DOORS[to][1]); }
   }
   await walkTo(x, z);
 }
@@ -795,12 +920,19 @@ const cam = { az: -0.72, pol: 0.92, r: 9.6, target: new THREE.Vector3(-0.9, 0.5,
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(-0.9, 0.5, 0);
 function overviewPos(out) { return out.set(cam.target.x + cam.r * Math.sin(cam.pol) * Math.sin(cam.az), cam.target.y + cam.r * Math.cos(cam.pol), cam.target.z + cam.r * Math.sin(cam.pol) * Math.cos(cam.az)); }
 overviewPos(camPos);
+function clampR2(v, m = 0.3) { v.x = Math.max(R2X + m, Math.min(-RX - m, v.x)); v.z = Math.max(-RZ + m, Math.min(BZ - m, v.z)); v.y = Math.min(RH - 0.15, v.y); return v; }
 function clampIn(v) { v.x = Math.max(-RX + 0.25, Math.min(RX - 0.25, v.x)); v.z = Math.max(-RZ + 0.25, Math.min(RZ - 0.25, v.z)); v.y = Math.min(RH - 0.15, v.y); return v; }
 function spotView(def) {
   const p = new THREE.Vector3(...def.pos), n = def.obj ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(...NORMALS[def.wall]);
   // 浴室は狭いので、洗面所の上から見下ろす
   if (inBath(p)) return { pos: new THREE.Vector3(p.x + 0.3, 2.3, 2.5), look: p };
   if (inWet(p)) return { pos: new THREE.Vector3(-1.1, 1.9, p.z - 0.2), look: p };
+  if (inR2(p)) {
+    if (def.wall === 'F0') { const toC = new THREE.Vector3(-3.6 - p.x, 0, -1.1 - p.z).normalize(); if (toC.lengthSq() < 0.01) toC.set(1, 0, 0); return { pos: clampR2(p.clone().addScaledVector(toC, 1.6).add(new THREE.Vector3(0, 1.9, 0))), look: p }; }
+    const n2 = new THREE.Vector3(...NORMALS[def.wall]), side2 = new THREE.Vector3().crossVectors(n2, new THREE.Vector3(0, 1, 0));
+    if (def.wall === 'Lb') return { pos: new THREE.Vector3(-3.4, 1.6, -1.6), look: p };
+    return { pos: clampR2(p.clone().addScaledVector(n2, 2.3).addScaledVector(side2, 0.4).setY(Math.max(1.2, p.y + 0.5))), look: p };
+  }
   if (def.wall === 'F0' || def.obj) {
     const toC = new THREE.Vector3(-p.x, 0, -p.z * 0.6).normalize();
     if (toC.lengthSq() < 0.01) toC.set(0, 0, -1);
@@ -817,6 +949,7 @@ function standPos(def) {
   // 水回りでは、カメラと見る所の間に立たないよう横にずれる
   if (inBath(p)) return new THREE.Vector3(-2.1, 0, PZ + 0.3);
   if (inWet(p)) return new THREE.Vector3(-2.65, 0, p.z > 2.25 ? 1.8 : 2.55);
+  if (inR2(p)) { s.y = 0; return clampR2(s, 0.4); }
   s.y = 0; clampIn(s);
   if (s.x > RX - 0.75 && s.z > 1.0) s.x = RX - 0.8; // キッチン台をよける
   return s;
@@ -827,15 +960,23 @@ function focusOn(view) { cam.focus = view; $('#backBtn').classList.toggle('hidde
 const AREAS = {
   all: { label: '全体', target: [-0.9, 0.5, 0], az: -0.72, pol: 0.92 },
   room: { label: '窓側', target: [0, 0.9, -1.5], r: 3.8, az: 0.35, pol: 0.95 },
+  room2: { label: '奥の部屋', target: [-3.7, 0.8, -1.1], r: 3.3, az: 1.35, pol: 1.0 },
   kitchen: { label: 'キッチン', target: [1.2, 1.0, 1.6], r: 3.0, az: -1.9, pol: 1.0 },
   entrance: { label: '玄関', target: [0.4, 0.8, 2.2], r: 2.8, az: 2.6, pol: 1.05 },
   wash: { label: '洗面所', target: [-3.0, 1.15, 2.15], r: 2.8, az: 1.6, pol: 1.15 },
   bath: { label: 'お風呂', target: [-2.7, 0.6, 1.0], r: 2.5, az: 0.25, pol: 0.75 },
 };
-const rRange = () => cam.area === 'all' ? [4.5, 14] : [1.4, 6];
+const rRange = () => cam.area === 'all' ? [4.5, 16] : [1.4, 6];
+function updateAreaBar() {
+  const b = document.querySelector('#areaBar button[data-k=room2]');
+  b.style.display = S && S.multi ? '' : 'none';
+  b.textContent = S && S.room === '2k' ? '和室' : '寝室';
+  document.querySelector('#areaBar button[data-k=room]').textContent = S && S.room === '1ldk' ? 'リビング' : '窓側';
+}
 function setArea(k) {
-  const a = AREAS[k];
+  const a = AREAS[k], multi = S && S.multi;
   cam.area = k; cam.target.set(...a.target); cam.az = a.az; cam.pol = a.pol; cam.r = a.r || baseR();
+  if (k === 'all' && multi) { cam.target.set(-1.8, 0.5, -0.1); cam.r = baseR() * 1.15; }
   focusOn(null); closeSheet();
   document.querySelectorAll('#areaBar button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
 }
@@ -862,7 +1003,8 @@ function onTap(x, y) {
   if (!S || S.phase !== 'prep') return;
   ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hits = ray.intersectObjects(spots.filter(s => !s.done).map(s => s.hit), true).filter(h => shown(h.object));
+  const cut = !cam.focus && cam.area === 'all';
+  const hits = ray.intersectObjects(spots.filter(s => !s.done).map(s => s.hit), true).filter(h => shown(h.object) && (!cut || h.point.y < CUT_Y));
   if (!hits.length) { if (cam.focus) { focusOn(null); closeSheet(); } return; }
   let o = hits[0].object; while (o && !o.userData.spot) o = o.parent;
   openSpot(o.userData.spot);
@@ -883,8 +1025,9 @@ function buildRound() {
   for (const s of spots) { s.mesh.parent && s.mesh.parent.remove(s.mesh); if (s.hit !== s.mesh) s.hit.parent && s.hit.parent.remove(s.hit); if (s.marker) scene.remove(s.marker); }
   for (const y of yellowing) y.parent.remove(y);
   spots = []; yellowing = []; decalSeq = 0;
-  C = newContract();
-  S = { room: pick(['western', 'washitsu', 'pet']), phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [], boss: pick(['honest', 'normal', 'normal', 'crook', 'crook']), signed: true };
+  const room = pick(['western', 'washitsu', 'pet', '1ldk', '2k']);
+  C = newContract(room);
+  S = { room, multi: MULTI(room), phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [], boss: pick(['honest', 'normal', 'normal', 'crook', 'crook']), signed: true };
   setRoomLook(S.room);
   const W = S.room === 'washitsu';
   const ids = [
@@ -892,6 +1035,8 @@ function buildRound() {
     ...shuffle(W ? ['tatamiBurn', 'fusumaTear', 'shojiHole', 'screw', 'hole'] : ['screw', 'caster', 'hole']).slice(0, W ? 3 : 2),
     ...shuffle(W ? ['tatamiStain', 'grease', 'mold', 'scribble'] : ['stain', 'grease', 'mold', 'scribble']).slice(0, 3),
     ...(S.room === 'pet' ? ['petScratch', 'petUrine', 'petHair'] : []),
+    ...(S.room === '1ldk' ? [...shuffle(['r2Pins', 'r2Dents', 'r2FloorSun']).slice(0, 2), 'r2DoorHole', 'r2Mold'] : []),
+    ...(S.room === '2k' ? ['r2TatamiSun', ...shuffle(['r2TatamiBurn', 'r2Fusuma', 'r2DoorHole']).slice(0, 2), 'r2Mold'] : []),
     ...shuffle(['bathMold', 'mirrorScale', 'drainHair']).slice(0, 2),
     pick(['faucetLeak', 'cfDent']),
     pick(['doorScratch', 'entranceDent', 'sinkCrack']),
@@ -905,7 +1050,7 @@ function buildRound() {
     else if (id === 'dust') { mesh = makeDust(); scene.add(mesh); hit = mesh; }
     else {
       mesh = makeDecal(id, def);
-      const g = def.wall === 'F0' ? scene : walls[def.wall];
+      const g = def.wall === 'F0' ? (def.room2 ? room2 : scene) : walls[def.wall === 'Lb' ? 'L' : def.wall];
       g.add(mesh);
       // 小さい絵でもタップしやすいよう、見えない当たり板を重ねる
       hit = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(.55, def.size[0]), Math.max(.55, def.size[1])), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
@@ -922,6 +1067,7 @@ function buildRound() {
 // ---------- 準備のフェーズ ----------
 function openSpot(spot) {
   if (!spot.found) { spot.found = true; updateHud(); }
+  SFX.play('tap');
   focusOn(spotView(spot.def));
   const d = spot.def;
   if (S.mode === 'agent') return openSpotAgent(spot);
@@ -953,6 +1099,7 @@ function doClean(spot) {
   closeSheet();
   spot.done = true;
   if (spot.id === 'dust') S.vacuumed = true;
+  SFX.play('clean');
   fadeOut(spot.mesh);
   toast(`${spot.def.clean.label} … きれいになった！`);
   setTimeout(() => focusOn(null), 900);
@@ -962,6 +1109,7 @@ function doFix(spot) {
   closeSheet();
   spot.patched = true;
   const ok = Math.random() < spot.def.fix.rate;
+  SFX.play(ok ? 'good' : 'bad');
   const g = spot.mesh.parent; g.remove(spot.mesh);
   if (ok) { spot.done = true; spot.mesh = makeDecal('screw', spot.def, 'patch'); g.add(spot.mesh); toast('パテで埋めた。ほとんど分からない！'); }
   else { S.patchFail = true; spot.mesh = makeDecal('screw', spot.def, 'patchFail'); spot.mesh.userData.spot = spot; g.add(spot.mesh); toast('うーん…色が合わなくて、かえって目立つ'); }
@@ -976,7 +1124,7 @@ function renderDocs() {
   const el = $('#docBody');
   if (docTab === 'contract') {
     el.innerHTML = `<h4>賃貸借契約書（抜粋）</h4><table>
-      <tr><td>物件</td><td>コーポ汐見 203号室（${{ western: '1K・洋室', washitsu: '1K・和室6畳', pet: '1K・洋室・ペット可（小型犬1匹まで）' }[S.room]}）</td></tr>
+      <tr><td>物件</td><td>コーポ汐見 203号室（${{ western: '1K・洋室', washitsu: '1K・和室6畳', pet: '1K・洋室・ペット可（小型犬1匹まで）', '1ldk': '1LDK・寝室は洋室', '2k': '2K・洋室＋和室6畳' }[S.room]}）</td></tr>
       <tr><td>家賃</td><td>${yen(C.rent)} ／月</td></tr>
       <tr><td>敷金</td><td><b>${yen(C.deposit)}</b>（家賃2か月分）</td></tr>
       <tr><td>入居</td><td><b>${C.years}年前</b>の春</td></tr>
@@ -1008,7 +1156,9 @@ function renderDocs() {
       <h4>🐶 ペット可の部屋</h4><ul><li>ペット可でも、ペットの傷・シミ・臭いは借主の負担</li></ul>`;
   }
 }
-$('#docsBtn').onclick = () => { renderDocs(); $('#docs').classList.remove('hidden'); };
+$('#soundBtn').textContent = SFX.on ? '🔊' : '🔇';
+$('#soundBtn').onclick = () => { $('#soundBtn').textContent = SFX.toggle() ? '🔊' : '🔇'; SFX.play('tap'); };
+$('#docsBtn').onclick = () => { SFX.play('paper'); renderDocs(); $('#docs').classList.remove('hidden'); };
 $('#docsClose').onclick = () => $('#docs').classList.add('hidden');
 $('#docTabs').onclick = e => { const t = e.target.closest('button'); if (t) { docTab = t.dataset.t; renderDocs(); } };
 
@@ -1032,7 +1182,7 @@ const FAKES = [
   { name: '床のキズ（？）', wall: 'F0', pos: [0.9, 0, 0.9], say: 'ここの床、キズがありますね。補修です。', label: 'フローリング部分補修', amt: 22000 },
   { name: '壁の汚れ（？）', wall: 'R', pos: [RX, 1.3, -1.1], say: 'この壁、汚れてますね。張替えです。', label: 'クロス張替え（1面）', amt: 15000 },
   { name: '窓ガラスのヒビ（？）', wall: 'B', pos: [0.4, 1.2, -RZ], say: '窓ガラスにヒビが入ってますね。交換です。', label: 'ガラス交換', amt: 30000 },
-  { name: 'クローゼットの扉のキズ（？）', wall: 'L', pos: [-RX, 1.0, -0.4], say: 'クローゼットの扉、キズがありますね。', label: '扉の補修', amt: 18000 },
+  { closet: true, name: 'クローゼットの扉のキズ（？）', wall: 'L', pos: [-RX, 1.0, -0.4], say: 'クローゼットの扉、キズがありますね。', label: '扉の補修', amt: 18000 },
 ];
 const fairOf = c => c.steps.length ? c.steps[c.steps.length - 1].amt : c.amt;
 function shapeClaim(c) {
@@ -1042,7 +1192,7 @@ function shapeClaim(c) {
     if (fair > 0 && c.steps.length) { const last = c.steps[c.steps.length - 1]; return { ...c, amt: fair, label: last.label || c.label, steps: [], fair }; }
     return { ...c, fair };
   }
-  if (S.boss === 'crook' && fair > 0) return { ...c, inflate: 1.3, fair };
+  if (S.boss === 'crook' && fair > 0) return { ...c, inflate: 1.3, fair, say: c.sayInflated || c.say };
   return { ...c, fair };
 }
 
@@ -1052,16 +1202,25 @@ const CHOICES = [
   ['photo', '入居したときからありました'],
   ['dep', '住んだ年数で割り引かれるのでは？'],
   ['partial', 'その部分だけの補修で足りるのでは？'],
-  ['detail', '明細（単価・面積）を見せてください'],
-  ['none', 'そこに傷はありませんよ'],
+  ['detail', '明細（単価・数量）を見せてください'],
+  ['none', 'そこには何もありませんよ'],
 ];
 const DEFAULT_REBUT = {
   normal: '普通に暮らしてできたものとは言えないですね。',
   photo: '入居時のチェック表には、ここは書いてないですよ。',
   dep: 'これは年数で割り引くものじゃないですね。',
   partial: 'もう必要な範囲だけですよ。',
-  detail: 'はい、これが明細です。単価も面積も、ふつうの金額ですよ。',
+  detail: 'はい、これが明細です。単価も数量も、ふつうの金額ですよ。',
   none: 'いや、ほら、ここにありますよね。',
+};
+// 書類の上での費用（クリーニング・鍵・エアコンなど）に的外れな返しをしたとき
+const PAPER_REBUT = {
+  normal: 'これは部屋の傷みの話ではなくて、退去にかかる費用の話なんですよ。',
+  photo: 'これは入居したときの傷の話ではないですよ。',
+  dep: '費用の話なので、住んだ年数は関係ないですね。',
+  partial: 'これは一式の費用なので、一部分だけというのはないんですよ。',
+  detail: '明細はこのとおり、一式の金額です。相場どおりですよ。',
+  none: '傷の話ではなくて、費用の話ですよ。',
 };
 let choiceResolve = null;
 function say(who, text, bill) {
@@ -1088,25 +1247,28 @@ async function argue(claim) {
   say('them', claim.say, { label, amt });
   while (true) {
     if (amt === 0) { await choose([['ok', '次へ', 'acc']]); break; }
-    const opts = S.hearts > 0 ? CHOICES.map(c => [...c]) : [];
+    const menu = claim.paper ? [['normal', claim.ask || '貸主の負担では？'], ['detail', '金額の根拠（契約書・明細）を見せてください']]
+      : CHOICES.filter(c => !claim.menu || claim.menu.includes(c[0])).map(c => c[0] === 'none' && claim.dirt ? ['none', 'そんな汚れはありませんよ'] : c);
+    const opts = S.hearts > 0 ? menu.map(c => [...c]) : [];
     opts.push(['accept', S.hearts > 0 ? '認める（このまま払う）' : '…わかりました（信用がなく、もう言い返せない）', 'acc']);
     const k = await choose(opts);
-    if (k === 'accept') { moves.push({ k, ok: true }); say('me', 'わかりました。', { label, amt }); await sleep(500); break; }
-    say('me', CHOICES.find(c => c[0] === k)[1], { label, amt });
+    if (k === 'accept') { moves.push({ k, ok: true }); SFX.play('stamp'); say('me', 'わかりました。', { label, amt }); await sleep(500); break; }
+    say('me', menu.find(c => c[0] === k)[1], { label, amt });
     await sleep(800);
     const st = claim.steps[step];
     const good = (k === 'detail' && f > 1) || (st && st.k === k);
     moves.push({ k, ok: !!good });
     if (k === 'detail' && f > 1) {
-      f = 1; amt = show();
-      say('them', '…あ、単価を高く書いてましたね。正しい金額に直します。', { label, amt });
+      f = 1; amt = show(); SFX.play('good');
+      say('them', !claim.paper ? '…あ、単価を高く書いてましたね。正しい金額に直します。'
+        : claim.id === 'cleaning' && C.cleaningClause ? '…あ、契約書の特約の金額（33,000円）と違ってましたね。直します。' : '…あ、金額を高く書いてましたね。正しい金額に直します。', { label, amt });
     } else if (st && st.k === k) {
-      base = st.amt; label = st.label || label; step++; amt = show();
+      base = st.amt; label = st.label || label; step++; amt = show(); SFX.play('good');
       say('them', st.reply, { label, amt });
     } else {
-      S.hearts--; updateHud();
+      S.hearts--; updateHud(); SFX.play('bad');
       const used = claim.steps.slice(0, step).some(s => s.k === k);
-      const msg = used ? 'それはもう考慮しましたよ。' : (claim.rebut && claim.rebut[k]) || DEFAULT_REBUT[k];
+      const msg = used ? 'それはもう考慮しましたよ。' : (claim.rebut && claim.rebut[k]) || (claim.paper ? PAPER_REBUT : DEFAULT_REBUT)[k];
       say('them', msg + (S.hearts === 0 ? '　…あの、あまりゴネられると困るんですよね。' : ''), { label, amt });
       toast(S.hearts > 0 ? '信用が下がった…' : '信用がなくなった！');
     }
@@ -1116,6 +1278,7 @@ async function argue(claim) {
 }
 async function startInspection() {
   if (S.phase !== 'prep') return;
+  SFX.play('bell');
   S.phase = 'insp';
   closeSheet(); focusOn(null);
   ['#startInspBtn', '#found', '#hint', '#backBtn', '#areaBar'].forEach(s => $(s).classList.add('hidden'));
@@ -1134,10 +1297,12 @@ async function startInspection() {
   say('them', boss.hello);
   await choose([['ok', 'お願いします', 'acc']]);
   // 部屋の奥から順に見ていく
-  const targets = spots.filter(s => !s.def.noClaim && !s.done).map(s => ({ id: s.id, def: s.def, claim: () => s.def.claim(S) }));
-  if (S.boss === 'crook') for (const fk of shuffle(FAKES.slice()).slice(0, 2)) targets.push({ id: null, def: { ...fk, why: '悪質な業者が、ない傷を請求してきた。請求された場所を自分の目で確かめ、身に覚えのないものははっきり断る。' }, fake: true,
+  const targets = spots.filter(s => !s.def.noClaim && !s.done).map(s => ({ id: s.id, def: s.def, claim: () => ({ ...s.def.claim(S), menu: s.def.menu, dirt: s.def.dirt }) }));
+  const fakes = FAKES.filter(f => !(S.multi && f.closet)).map(f => f.closet && S.room === 'washitsu' ? { ...f, name: '押し入れのふすまのキズ（？）', say: '押し入れのふすま、キズがありますね。', label: 'ふすまの補修' } : f);
+  if (S.boss === 'crook') for (const fk of shuffle(fakes).slice(0, 2)) targets.push({ id: null, def: { ...fk, why: '悪質な業者が、ない傷を請求してきた。請求された場所を自分の目で確かめ、身に覚えのないものははっきり断る。' }, fake: true,
     claim: () => ({ say: fk.say, label: fk.label, amt: fk.amt, steps: [{ k: 'none', amt: 0, reply: '…あれ、見間違いでしたかね。失礼しました。' }], rebut: { normal: 'いや、通常損耗とかじゃなくて、キズがあるんですよ。' } }) });
-  targets.sort((a, b) => (a.def.pos[0] < -RX) - (b.def.pos[0] < -RX) || a.def.pos[2] - b.def.pos[2]);
+  const ZR = { main: 0, r2: 1, wet: 2 };
+  targets.sort((a, b) => ZR[zoneOf(a.def.pos[0], a.def.pos[2])] - ZR[zoneOf(b.def.pos[0], b.def.pos[2])] || a.def.pos[2] - b.def.pos[2]);
   if (!targets.length) { say('them', 'おお…きれいに使われてますね。お部屋の中は問題ないです。'); await choose([['ok', '次へ', 'acc']]); }
   for (const s of targets) {
     $('#dialog').classList.add('hidden');
@@ -1151,7 +1316,7 @@ async function startInspection() {
     if (!claim) continue;
     const r = await argue(claim);
     const ref = spots.find(x => x.id === s.id);
-    S.log.push({ id: s.id, name: s.def.name, why: s.def.why, kind: s.fake ? 'fake' : s.def.kind, clean: s.def.clean, patchFail: !!(ref && ref.patched && S.patchFail), ...r });
+    S.log.push({ id: s.id, name: s.def.name, why: s.def.why, kind: s.fake ? 'fake' : s.def.kind, clean: s.def.clean, dirt: s.def.dirt, patchFail: !!(ref && ref.patched && S.patchFail), ...r });
   }
   $('#dialog').classList.add('hidden');
   cam.focus = null;
@@ -1161,8 +1326,8 @@ async function startInspection() {
   say('them', 'お部屋はこれで全部ですね。あとは書類の上での費用です。');
   await choose([['ok', 'はい', 'acc']]);
   const papers = paperClaims();
-  if (S.boss === 'crook') papers.push({ id: null, name: '室内消毒（抗菌施工）', say: 'それと、室内の消毒代です。みなさんにお願いしてるんで。', label: '室内消毒（抗菌施工）', amt: 16500,
-    steps: [{ k: 'detail', amt: 0, reply: '…契約書には書いてないですね。外しておきます。' }], rebut: { normal: 'みなさん払ってますよ？' },
+  if (S.boss === 'crook') papers.push({ paper: true, ask: '頼んでいない消毒代は、払わなくていいのでは？', id: null, name: '室内消毒（抗菌施工）', say: 'それと、室内の消毒代です。みなさんにお願いしてるんで。', label: '室内消毒（抗菌施工）', amt: 16500,
+    steps: [{ k: 'normal', amt: 0, reply: '…契約書には書いてないですね。外しておきます。' }], rebut: { detail: '明細は「室内消毒 一式」です。みなさん払ってますよ？' },
     why: '契約書に書かれていない消毒料などは払う必要がない。何の費用か、契約のどこに書いてあるかを確かめる。' });
   for (const c0 of papers) { const c = shapeClaim(c0); if (!c) continue; const r = await argue(c); S.log.push({ id: c.id, name: c.name, why: c.why, kind: (c.fair ?? fairOf(c)) > 0 ? 'tenant' : 'owner', paper: true, ...r }); }
   say('them', BOSSES[S.boss].sign);
@@ -1183,17 +1348,18 @@ function renderAd() {
 }
 
 // ---------- 答え合わせ ----------
-const SAY = { normal: '通常損耗では？', photo: '入居時からあった', dep: '年数で割り引いて', partial: '部分補修で足りる', detail: '明細を見せて', none: '傷はない', accept: '認めた' };
+const SAY = { normal: '通常損耗では？', photo: '入居時からあった', dep: '年数で割り引いて', partial: '部分補修で足りる', detail: '明細を見せて', none: '何もない', accept: '認めた' };
 const KIND = { owner: ['貸主の負担（通常損耗・経年変化）', 'o'], tenant: ['借主の負担', 't'], premove: ['入居前からの傷（借主は払わない）', 'o'], fake: ['存在しない傷', 'o'] };
+const sayOf = (l, k) => l.paper ? ({ normal: '貸主の負担では？', detail: '根拠を見せて' }[k] || SAY[k]) : k === 'none' && l.dirt ? '汚れはない' : SAY[k];
 function pathText(l) {
-  const q = l.path.map(k => `「${SAY[k]}」`).join(' → ');
+  const q = l.path.map(k => `「${sayOf(l, k)}」`).join(' → ');
   if (l.fair === 0) return q ? `${q}と言えば0円になる。` : '請求に応じる必要はない。';
   return q ? `${q}と言い返して、残りの ${yen(l.fair)} は認める。` : `借主の負担で、金額も妥当。認めるのが正解。`;
 }
 function answerHTML(l) {
   const diff = l.final.amt - l.fair, ok = diff <= 0;
   const [kl, kc] = KIND[l.kind] || KIND.tenant;
-  const mv = l.moves.length ? l.moves.map(m => m.k === 'accept' ? '認めた' : `${SAY[m.k]}<span class="${m.ok ? 'o' : 'x'}">${m.ok ? '✓' : '✗'}</span>`).join(' → ') : '（請求が0円になった）';
+  const mv = l.moves.length ? l.moves.map(m => m.k === 'accept' ? '認めた' : `${sayOf(l, m.k)}<span class="${m.ok ? 'o' : 'x'}">${m.ok ? '✓' : '✗'}</span>`).join(' → ') : '（請求が0円になった）';
   const prep = l.clean ? `準備で「${l.clean.label}」（${l.clean.t}分）をしていれば、請求されなかった。` : l.patchFail ? 'パテ埋めに失敗して、かえって目立ってしまった。' : '';
   return `<div class="ans ${ok ? '' : 'ng'}">
     <div class="ah"><b>${l.name}</b><span class="kind ${kc}">${kl}</span></div>
@@ -1271,12 +1437,15 @@ function showResult() {
     <div class="adslot" id="adSlot"></div>`;
   renderAd();
   $('#result').classList.remove('hidden');
+  rankSound(rank);
   $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
 }
 
 // ---------- 業者モード ----------
 // 点検 → 見積もり → 入居者への説明 → 評価（大家さんの満足と入居者の納得）
 const ADESC = {
+  r2Pins: '奥の部屋の壁に画鋲の穴。', r2Dents: '奥の部屋の床にベッドのへこみ。', r2FloorSun: '奥の部屋の窓ぎわの床が日焼けで色あせている。', r2DoorHole: '奥の部屋の入口わきの壁に、ぶつけた穴。',
+  r2Mold: '奥の部屋のすみにカビ。', r2TatamiSun: '和室の畳が日焼けで変色している。', r2TatamiBurn: '和室の畳にタバコの焦げ跡。', r2Fusuma: '和室のふすまに破れた穴。',
   pins: '壁に小さな画鋲の穴がいくつか。', sunburn: 'ポスターを貼っていた跡だけ白く、まわりが日焼けしている。', fridge: '冷蔵庫を置いていた後ろの壁が黒ずんでいる。',
   dents: 'ベッドの脚の跡のへこみが床に4つ。', screw: '棚を付けたネジ穴が4つ。下地のボードまで開いている。', caster: '椅子のキャスターでこすれた傷が床に広がっている。',
   hole: '壁に物をぶつけた穴。', stain: '飲みこぼしを放置したシミ。', grease: 'コンロの奥に油汚れがこびりついている。', mold: '窓の横の壁に、結露を放置したカビ。',
@@ -1312,7 +1481,8 @@ function buildEstimate() {
   for (const sp of spots.filter(x => x.rec && !x.done && !x.def.noClaim)) {
     const c = sp.def.claim(S), chain = [{ label: c.label, amt: c.amt }];
     for (const st of c.steps) if (st.amt > 0) chain.push({ label: st.label || c.label, amt: st.amt });
-    const opts = [{ label: '請求しない（通常損耗・経年変化）', amt: 0, k: 'owner' }, { label: '請求しない（入居前から）', amt: 0, k: 'pre' }, ...chain.map((o, i) => ({ ...o, k: 'c' + i }))];
+    const canPre = !sp.def.menu || sp.def.menu.includes('photo');
+    const opts = [{ label: '請求しない（通常損耗・経年変化）', amt: 0, k: 'owner' }, ...(canPre ? [{ label: '請求しない（入居前から）', amt: 0, k: 'pre' }] : []), ...chain.map((o, i) => ({ ...o, k: 'c' + i }))];
     const fairK = sp.def.kind === 'owner' ? 'owner' : sp.def.kind === 'premove' ? 'pre' : 'c' + (chain.length - 1);
     items.push({ id: sp.id, name: sp.def.name, why: sp.def.why, kind: sp.def.kind, opts, fairK, steps: c.steps, chain, pick: null });
   }
@@ -1368,6 +1538,7 @@ async function agentExplain() {
   $('#phaseLbl').textContent = '業者モード'; $('#clockTxt').textContent = '説明'; $('#clockSub').textContent = '';
   const who = $('#dlgWho');
   const tsay = (text, bill) => { say('them', text, bill); who.textContent = t.name; };
+  SFX.play('bell');
   tsay(t.hello);
   await choose([['ok', '（精算書を見せて説明を始める）', 'acc']]);
   S.trouble = []; S.dispute = 0;
@@ -1380,10 +1551,10 @@ async function agentExplain() {
     await sleep(700);
     if (o.amt > fair) {
       if (S.tenant === 'timid') { tsay('…はい、わかりました。', bill); it.silentOver = true; it.note = '取りすぎたが、小川さんは黙って払った（あとで気づかれるかも）'; await choose([['ok', '次へ', 'acc']]); continue; }
-      tsay(overReason(it), bill);
+      SFX.play('bad'); tsay(overReason(it), bill);
       const k = await choose([['fix', 'おっしゃるとおりです。直します'], ['keep', 'いえ、このままでお願いします']]);
       it.note = k === 'fix' ? '取りすぎを指摘され、適正な金額に直した' : '取りすぎを指摘されたのに断って、もめた';
-      if (k === 'fix') { it.final = fair; tsay(fair ? `…${yen(fair)}ですね。それなら納得です。` : 'はい、ありがとうございます。', { label: o.label, amt: fair }); }
+      if (k === 'fix') { it.final = fair; SFX.play('good'); tsay(fair ? `…${yen(fair)}ですね。それなら納得です。` : 'はい、ありがとうございます。', { label: o.label, amt: fair }); }
       else { S.dispute++; tsay(S.tenant === 'savvy' ? '…ガイドラインと違いますよね。この件は、消費生活センターに相談します。' : 'ふざけないでよ！ 出るとこ出るからね！', bill); if (S.tenant === 'savvy' || Math.random() < 0.5) it.lawsuit = true; }
     } else {
       if (S.tenant === 'claimer') {
@@ -1455,6 +1626,7 @@ function showAgentResult() {
     <div class="adslot" id="adSlot"></div>`;
   renderAd();
   $('#result').classList.remove('hidden');
+  rankSound(rank);
   $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
   $('#toTitleBtn').onclick = () => { $('#result').classList.add('hidden'); $('#title').classList.remove('hidden'); };
 }
@@ -1465,6 +1637,7 @@ function startRound() {
   buildRound();
   S.mode = MODE;
   insp.visible = false;
+  updateAreaBar();
   setArea('all');
   $('#phaseLbl').textContent = '準備';
   $('#clockSub').textContent = '立ち会い 12:00';
@@ -1505,6 +1678,7 @@ function tick(now) {
     if (dist < 0.04) { inspTarget = null; const r = inspResolve; inspResolve = null; r && r(); }
     else { const st = Math.min(dist, 1.3 * dt); insp.position.addScaledVector(d.normalize(), st); insp.rotation.y = Math.atan2(d.x, d.z); inspWalk += dt * 9; }
   }
+  if (inspTarget && insp.visible) { stepAcc += dt; if (stepAcc > 0.36) { stepAcc = 0; SFX.play('step'); } }
   const sw = inspTarget ? Math.sin(inspWalk) * 0.5 : 0;
   const u = insp.userData;
   if (u.legs) { u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; u.arms[0].rotation.x = inspTarget ? -sw * 0.3 : -0.5; u.arms[1].rotation.x = sw * 0.6; }
@@ -1514,11 +1688,15 @@ function tick(now) {
   const k = 1 - Math.exp(-dt * 4);
   camPos.lerp(want, k); camLook.lerp(look, k);
   camera.position.copy(camPos); camera.lookAt(camLook);
+  const overview = !cam.focus && cam.area === 'all';
+  cutPlane.constant = overview ? CUT_Y : 100;
+  lamp.visible = lamp2.visible = !overview;
   // カメラ側の壁を隠す
   // 全体を見るとき：カメラが壁の外側にあれば隠す。寄るとき：カメラと見る点の間をさえぎる壁を隠す
   for (const key in walls) {
     const g = walls[key], w = g.userData;
-    if (!cam.focus && cam.area === 'all') { g.visible = !((camPos[w.axis] - w.at) * w.out > 0.15); continue; }
+    if (w.multi && !(S && S.multi)) { g.visible = false; continue; }
+    if (!cam.focus && cam.area === 'all') { g.visible = true; continue; }
     const da = camPos[w.axis] - w.at, db = camLook[w.axis] - w.at;
     let block = false;
     if (da * db < 0) {
