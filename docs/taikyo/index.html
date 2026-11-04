@@ -81,6 +81,13 @@ button{font:inherit;color:inherit;cursor:pointer;border:0}
 .res .guide{margin:6px 0 0}
 details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight:800;margin-top:4px}
 #spotSheet{max-height:70vh;overflow:auto;touch-action:pan-y}
+.est .item{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;background:#fff}
+.est .item b{font-size:14px}
+.est .opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.est .opts button{background:#f4efe6;border:2px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12.5px;font-weight:800}
+.est .opts button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.est .item.todo{border-color:var(--accent)}
+#docs{z-index:5}
 #toast{position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:12px;padding:8px 14px;font-weight:800;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1}
 </style>
@@ -118,8 +125,8 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
 <div id="title" class="overlay">
   <div class="panel">
     <div class="logo">退去シミュレーター<small>〜 敷金を守りぬけ 〜</small></div>
-    <div class="tag">今日はアパートの退去日。<br>12時に、管理会社の業者が立ち会いに来る。<br><b>午前中に部屋を片づけ</b>、立ち会いでは<br><b>不当な請求に言い返して</b>、敷金を取り戻そう。</div>
-    <div class="center"><button class="btn primary" id="startBtn" type="button" style="font-size:18px;padding:10px 26px">はじめる</button></div>
+    <div class="tag"><b>入居者として</b>：午前中に部屋を片づけ、立ち会いで不当な請求に言い返して敷金を取り戻す。<br><b>業者として</b>：退去した部屋を点検して見積もりを作り、入居者に説明する。取りすぎても取らなすぎてもダメ。</div>
+    <div class="center btns" style="justify-content:center"><button class="btn primary" id="startBtn" type="button" style="font-size:17px;padding:10px 20px">入居者として</button><button class="btn" id="startAgentBtn" type="button" style="font-size:17px;padding:10px 20px;background:#2f4a6b;color:#fff">業者として</button></div>
   </div>
 </div>
 
@@ -133,6 +140,18 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
     </div>
     <div class="doc" id="docBody"></div>
     <div class="center" style="margin-top:12px"><button class="btn" id="docsClose" type="button">閉じる</button></div>
+  </div>
+</div>
+
+<div id="estimate" class="overlay hidden">
+  <div class="panel est">
+    <h3 style="margin:0 0 4px">見積もり（敷金 <span id="estDep"></span>）</h3>
+    <p style="font-size:12px;color:#7d7266;margin:0 0 8px">点検で記録した所と、書類の上での費用。それぞれ誰の負担か・いくら請求するかを選ぶ。契約書・入居時チェック表は「書類」で見られる。</p>
+    <div id="estList"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <b>請求の合計 <span id="estTotal" style="color:#e2573b"></span></b>
+      <div class="btns"><button class="btn" id="estDocs" type="button">📄 書類</button><button class="btn" id="estBack" type="button">← 点検にもどる</button><button class="btn primary" id="estGo" type="button">入居者に説明する ▶</button></div>
+    </div>
   </div>
 </div>
 
@@ -630,15 +649,16 @@ function makeInspector() {
   for (const s of [-1, 1]) { const p = new THREE.Group(); p.position.set(s * 0.27, 1.4, 0); box(0.11, 0.56, 0.12, navy, 0, -0.27, 0, p); box(0.1, 0.1, 0.1, skin, 0, -0.58, 0, p); g.add(p); arms.push(p); }
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), skin); head.position.y = 1.62; head.castShadow = true; g.add(head);
   const cap = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), navy); cap.position.y = 1.65; g.add(cap);
-  box(0.2, 0.02, 0.12, navy, 0, 1.66, 0.15, g);
+  const brim = box(0.2, 0.02, 0.12, navy, 0, 1.66, 0.15, g);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.2), M(0x3a2a20)); hair.position.y = 1.64; hair.visible = false; g.add(hair);
   for (const s of [-1, 1]) box(0.03, 0.03, 0.02, dark, s * 0.06, 1.64, 0.15, g);
   const clip = box(0.22, 0.3, 0.02, M(0x8b6a43), 0, 0, 0, arms[0]); clip.position.set(0.06, -0.5, 0.12); clip.rotation.x = -0.6;
-  box(0.18, 0.24, 0.005, M(0xffffff), 0.06, -0.495, 0.132, arms[0]).rotation.x = -0.6;
+  const paper = box(0.18, 0.24, 0.005, M(0xffffff), 0.06, -0.495, 0.132, arms[0]); paper.rotation.x = -0.6;
   const shades = new THREE.Group();
   for (const s of [-1, 1]) box(0.09, 0.05, 0.02, M(0x111111), s * 0.06, 1.64, 0.16, shades);
   box(0.05, 0.015, 0.02, M(0x111111), 0, 1.65, 0.16, shades);
   g.add(shades);
-  g.userData = { legs, arms, cloth: navy, shades };
+  g.userData = { legs, arms, cloth: navy, shades, worker: [cap, brim, clip, paper], hair };
   g.visible = false;
   scene.add(g);
   return g;
@@ -739,7 +759,7 @@ const toastEl = $('#toast'); let toastT = 0;
 function toast(s) { toastEl.textContent = s; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 1800); }
 const clockStr = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 function updateHud() {
-  $('#clockTxt').textContent = clockStr(S.clock);
+  if (S.mode !== 'agent') $('#clockTxt').textContent = clockStr(S.clock);
   $('#depTxt').textContent = yen(C.deposit);
   $('#hearts').textContent = '♥'.repeat(S.hearts) + '♡'.repeat(3 - S.hearts);
 }
@@ -787,6 +807,7 @@ function openSpot(spot) {
   if (!spot.found) { spot.found = true; updateHud(); }
   focusOn(spotView(spot.def));
   const d = spot.def;
+  if (S.mode === 'agent') return openSpotAgent(spot);
   $('#spotName').textContent = d.name;
   $('#spotDesc').textContent = d.desc;
   const btns = $('#spotBtns'); btns.innerHTML = '';
@@ -843,9 +864,11 @@ function renderDocs() {
       <tr><td>敷金</td><td><b>${yen(C.deposit)}</b>（家賃2か月分）</td></tr>
       <tr><td>入居</td><td><b>${C.years}年前</b>の春</td></tr>
       <tr><td>特約</td><td>${C.cleaningClause ? '<b>退去時のハウスクリーニング費用 33,000円（税込）は借主の負担とする。</b> <span class="stamp">合意</span>' : 'なし'}</td></tr></table>
-      <h4>自分のメモ</h4><ul>
+      ${S.mode === 'agent' ? `<h4>入居者からの申告</h4><ul>
+      <li>${C.smoker ? '部屋でタバコを吸っていた。' : 'タバコは吸っていない。'}</li>
+      <li>${C.keyLost ? '鍵を1本なくした（返却は1本）。' : '鍵は2本とも返却済み。'}</li></ul>` : `<h4>自分のメモ</h4><ul>
       <li>${C.smoker ? '部屋でタバコを吸っていた。' : 'タバコは吸わない。'}</li>
-      <li>${C.keyLost ? '鍵を1本なくしてしまった…。' : '鍵は2本とも返せる。'}</li></ul>`;
+      <li>${C.keyLost ? '鍵を1本なくしてしまった…。' : '鍵は2本とも返せる。'}</li></ul>`}`;
   } else if (docTab === 'album') {
     el.innerHTML = `<h4>入居時チェック表（${C.years}年前・写真つき）</h4><p style="font-size:12px;color:#7d7266;margin:0 0 8px">入居したときに管理会社と確認した、もとからあった傷や汚れ。</p><div class="album">${S.album.map(a => `<figure><div class="ph" style="${a.tex ? `background-image:url(${a.tex.userData.canvas.toDataURL()})` : ''}">${a.tex ? '' : '<div style="padding-top:34px;text-align:center;color:#aaa">写真</div>'}</div><b>${a.name}</b><br>${a.note}</figure>`).join('')}</div>`;
   } else if (docTab === 'real') {
@@ -982,6 +1005,7 @@ async function startInspection() {
   updateHud();
   const boss = BOSSES[S.boss];
   insp.userData.cloth.color.setHex(boss.color); insp.userData.shades.visible = boss.shades;
+  insp.userData.worker.forEach(m => m.visible = true); insp.userData.hair.visible = false;
   $('#phaseLbl').textContent = '立ち会い（業者：' + boss.name + '）';
   insp.visible = true; insp.position.set(0.47, 0, RZ - 0.3); insp.rotation.y = Math.PI;
   cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.4) };
@@ -1073,21 +1097,196 @@ function showResult() {
   $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
 }
 
+// ---------- 業者モード ----------
+// 点検 → 見積もり → 入居者への説明 → 評価（大家さんの満足と入居者の納得）
+const ADESC = {
+  pins: '壁に小さな画鋲の穴がいくつか。', sunburn: 'ポスターを貼っていた跡だけ白く、まわりが日焼けしている。', fridge: '冷蔵庫を置いていた後ろの壁が黒ずんでいる。',
+  dents: 'ベッドの脚の跡のへこみが床に4つ。', screw: '棚を付けたネジ穴が4つ。下地のボードまで開いている。', caster: '椅子のキャスターでこすれた傷が床に広がっている。',
+  hole: '壁に物をぶつけた穴。', stain: '飲みこぼしを放置したシミ。', grease: 'コンロの奥に油汚れがこびりついている。', mold: '窓の横の壁に、結露を放置したカビ。',
+  scribble: '壁にクレヨンの落書き。', doorScratch: '玄関ドアの下の方に傷。', entranceDent: '入口近くの床に丸いへこみ。', nicotine: 'タバコのヤニで壁全体が黄ばんでいる。',
+  trash: '段ボールとゴミ袋が残されている。', bathMold: '浴槽のふちのゴムパッキンに黒カビ。', mirrorScale: '洗面台の鏡に水アカのウロコ。', drainHair: '浴室の排水口に髪の毛がつまっている。',
+  faucetLeak: 'シャワー水栓から水がポタポタ漏れている。', cfDent: '洗面所の床に収納ラックの脚の跡。', sinkCrack: '洗面ボウルに細いひび。',
+};
+function openSpotAgent(spot) {
+  const d = spot.def;
+  $('#spotName').textContent = d.name;
+  $('#spotDesc').textContent = ADESC[spot.id] || d.desc;
+  const btns = $('#spotBtns'); btns.innerHTML = '';
+  const b = document.createElement('button'); b.type = 'button';
+  const paint = () => { b.className = 'btn ' + (spot.rec ? 'good' : 'primary'); b.textContent = spot.rec ? '✓ 記録した（外す）' : '見積もりの候補に記録する'; };
+  b.onclick = () => { spot.rec = !spot.rec; paint(); toast(spot.rec ? '記録した' : '記録から外した'); };
+  paint(); btns.appendChild(b);
+  const close = document.createElement('button'); close.className = 'btn'; close.type = 'button'; close.textContent = '閉じる'; close.onclick = () => { closeSheet(); focusOn(null); }; btns.appendChild(close);
+  $('#spotSheet').classList.remove('hidden');
+  $('#hint').classList.add('hidden');
+}
+// 入居者が退去前にどこまで片づけたか（業者モードでは、来たときにはもう済んでいる）
+function simulateTenantPrep() {
+  for (const sp of spots) {
+    if (!sp.def.clean) continue;
+    if (Math.random() < (sp.id === 'dust' ? 0.6 : 0.45)) { sp.done = true; sp.mesh.visible = false; if (sp.id === 'dust') S.vacuumed = true; }
+  }
+}
+// 見積もりの選択肢：請求しない（理由）＋ 金額の段階（大きい順）。fair が適正
+function buildEstimate() {
+  const items = [];
+  for (const sp of spots.filter(x => x.rec && !x.done && !x.def.noClaim)) {
+    const c = sp.def.claim(S), chain = [{ label: c.label, amt: c.amt }];
+    for (const st of c.steps) if (st.amt > 0) chain.push({ label: st.label || c.label, amt: st.amt });
+    const opts = [{ label: '請求しない（通常損耗・経年変化）', amt: 0, k: 'owner' }, { label: '請求しない（入居前から）', amt: 0, k: 'pre' }, ...chain.map((o, i) => ({ ...o, k: 'c' + i }))];
+    const fairK = sp.def.kind === 'owner' ? 'owner' : sp.def.kind === 'premove' ? 'pre' : 'c' + (chain.length - 1);
+    items.push({ id: sp.id, name: sp.def.name, why: sp.def.why, kind: sp.def.kind, opts, fairK, steps: c.steps, chain, pick: null });
+  }
+  for (const pc of paperClaims()) {
+    const fair = fairOf(pc);
+    items.push({ id: pc.id, name: pc.name, why: pc.why, kind: fair ? 'tenant' : 'owner', opts: [{ label: '請求しない', amt: 0, k: 'owner' }, { label: pc.label, amt: pc.amt, k: 'c0' }], fairK: fair ? 'c0' : 'owner', chain: [{ label: pc.label, amt: pc.amt }], steps: pc.steps, pick: null });
+  }
+  return items;
+}
+const optOf = it => it.opts.find(o => o.k === it.pick);
+const fairAmt = it => it.opts.find(o => o.k === it.fairK).amt;
+function renderEstimate() {
+  const el = $('#estList');
+  el.innerHTML = S.est.map((it, i) => `<div class="item ${it.pick ? '' : 'todo'}"><b>${it.name}</b><div class="opts">${it.opts.map(o => `<button type="button" data-i="${i}" data-k="${o.k}" class="${it.pick === o.k ? 'on' : ''}">${o.amt ? o.label + ' ' + yen(o.amt) : o.label}</button>`).join('')}</div></div>`).join('') || '<p>記録した所がない。</p>';
+  $('#estTotal').textContent = yen(S.est.reduce((a, it) => a + (it.pick ? optOf(it).amt : 0), 0));
+  $('#estGo').disabled = S.est.some(it => !it.pick);
+}
+$('#estList').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.est[+b.dataset.i].pick = b.dataset.k; renderEstimate(); };
+$('#estBack').onclick = () => { $('#estimate').classList.add('hidden'); S.phase = 'prep'; ['#startInspBtn', '#hint', '#areaBar'].forEach(x => $(x).classList.remove('hidden')); };
+$('#estDocs').onclick = () => { renderDocs(); $('#docs').classList.remove('hidden'); };
+function openEstimate() {
+  const old = S.est || [];
+  S.est = buildEstimate();
+  for (const it of S.est) { const o = old.find(x => x.id === it.id); if (o) it.pick = o.pick; }
+  S.phase = 'est'; closeSheet(); focusOn(null);
+  ['#startInspBtn', '#hint', '#areaBar', '#backBtn'].forEach(x => $(x).classList.add('hidden'));
+  $('#estDep').textContent = yen(C.deposit);
+  renderEstimate();
+  $('#estimate').classList.remove('hidden');
+}
+const TENANTS = {
+  savvy: { name: '入居者・森さん', hello: 'よろしくお願いします。国交省のガイドラインも読んできたので、明細を一つずつ見せてください。', color: 0x7a5aa0 },
+  timid: { name: '入居者・小川さん', hello: 'あ、あの…よろしくお願いします。こういうの、よく分からなくて…。', color: 0x6aa4c8 },
+  claimer: { name: '入居者・大声さん', hello: 'で？ いくら取る気なの？ 普通に住んでただけなんだから、1円も払いたくないんだけど。', color: 0xc0573a },
+};
+// 取りすぎのとき、入居者が持ち出す理由
+function overReason(it) {
+  if (it.kind === 'owner') return it.id === 'cleaning' ? '特約もないし、掃除もしましたよね。次の人のためのクリーニングは大家さん負担では？' : it.id === 'key' ? '鍵はなくしてないので、交換は大家さん負担ですよね？' : it.id === 'ac' ? 'タバコは吸ってないので、エアコンの洗浄は普通の使用の範囲ですよね？' : 'これって、普通に住んでできたもの（通常損耗）ですよね？';
+  if (it.kind === 'premove') return 'これ、入居したときからありましたよ。チェック表にも載ってますよね？';
+  const idx = +it.pick.slice(1), next = it.steps.filter(st => st.amt > 0 || true)[idx];
+  const k = next && next.k;
+  return k === 'partial' ? '張替えは、傷んだ面だけで足りるんじゃないですか？' : k === 'dep' ? `入居${C.years}年なので、クロスは経過年数で割り引かれるはずですよね？` : 'その金額、高すぎませんか？';
+}
+async function agentExplain() {
+  $('#estimate').classList.add('hidden');
+  S.phase = 'insp';
+  const t = TENANTS[S.tenant];
+  insp.userData.cloth.color.setHex(t.color); insp.userData.shades.visible = false;
+  insp.userData.worker.forEach(m => m.visible = false); insp.userData.hair.visible = true;
+  insp.visible = true; insp.position.set(0.3, 0, RZ - 0.7); insp.rotation.y = Math.PI;
+  setArea('all');
+  cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.3, 1.0, RZ - 0.7) };
+  $('#phaseLbl').textContent = '業者モード'; $('#clockTxt').textContent = '説明'; $('#clockSub').textContent = '';
+  const who = $('#dlgWho');
+  const tsay = (text, bill) => { say('them', text, bill); who.textContent = t.name; };
+  tsay(t.hello);
+  await choose([['ok', '（精算書を見せて説明を始める）', 'acc']]);
+  S.trouble = []; S.dispute = 0;
+  for (const it of S.est) {
+    const o = optOf(it), fair = fairAmt(it);
+    it.final = o.amt;
+    if (o.amt === 0) continue;
+    const bill = { label: o.label, amt: o.amt };
+    say('me', `${it.name}は、${o.label}で${yen(o.amt)}になります。`, bill); who.textContent = 'あなた（業者）';
+    await sleep(700);
+    if (o.amt > fair) {
+      if (S.tenant === 'timid') { tsay('…はい、わかりました。', bill); it.silentOver = true; await choose([['ok', '次へ', 'acc']]); continue; }
+      tsay(overReason(it), bill);
+      const k = await choose([['fix', 'おっしゃるとおりです。直します'], ['keep', 'いえ、このままでお願いします']]);
+      if (k === 'fix') { it.final = fair; tsay(fair ? `…${yen(fair)}ですね。それなら納得です。` : 'はい、ありがとうございます。', { label: o.label, amt: fair }); }
+      else { S.dispute++; tsay(S.tenant === 'savvy' ? '…ガイドラインと違いますよね。この件は、消費生活センターに相談します。' : 'ふざけないでよ！ 出るとこ出るからね！', bill); if (S.tenant === 'savvy' || Math.random() < 0.5) it.lawsuit = true; }
+    } else {
+      if (S.tenant === 'claimer') {
+        tsay('高すぎ！ 普通に住んでただけでしょ！ まけてよ！', bill);
+        const k = await choose([['explain', 'ガイドラインでは借主の負担です（理由を説明する）'], ['discount', 'では、半額にします']]);
+        if (k === 'discount') { it.final = Math.round(o.amt / 2 / 100) * 100; tsay('最初からそうしてよね。', { label: o.label, amt: it.final }); }
+        else tsay(Math.random() < 0.7 ? '…ふーん。そういう決まりなら、まあ仕方ないか。' : '…納得いかないけど、もういいわよ。', bill);
+      } else tsay(S.tenant === 'savvy' ? '…ガイドラインどおりですね。わかりました。' : '…はい、わかりました。', bill);
+    }
+    await choose([['ok', '次へ', 'acc']]);
+  }
+  tsay('…これで全部ですね。');
+  await choose([['ok', '評価を見る', 'acc']]);
+  $('#dialog').classList.add('hidden');
+  showAgentResult();
+}
+function showAgentResult() {
+  S.phase = 'done';
+  const est = S.est, notes = [];
+  // 見落とし：入居者の負担なのに記録しなかった所
+  const missed = spots.filter(sp => !sp.done && !sp.def.noClaim && !sp.rec && sp.def.kind === 'tenant').map(sp => { const c = sp.def.claim(S); return { name: sp.def.name, fair: fairOf(c), why: sp.def.why, id: sp.id }; });
+  for (const it of est) if (it.lawsuit) { it.final = fairAmt(it); notes.push(`${it.name}：入居者が相談・訴えを起こし、適正な金額に直すことになった（手間と費用がかかった）`); }
+  const fairTotal = est.reduce((a, it) => a + fairAmt(it), 0) + missed.reduce((a, m) => a + m.fair, 0);
+  const got = est.reduce((a, it) => a + Math.min(it.final, fairAmt(it)), 0);
+  const over = est.reduce((a, it) => a + Math.max(0, it.final - fairAmt(it)), 0);
+  const lawsuits = est.filter(it => it.lawsuit).length;
+  let reviews = 0;
+  for (const it of est) if (it.silentOver && Math.random() < 0.4) reviews++;
+  if (reviews) notes.push(`あとで入居者が取られすぎに気づき、管理会社の口コミに星1をつけた（${reviews}件分）`);
+  const owner = Math.max(0, Math.round((fairTotal ? got / fairTotal : 1) * 100) - lawsuits * 10);
+  const tenant = Math.max(0, Math.round(100 - over / 1000 * 1.5 - S.dispute * 10 - reviews * 15 - lawsuits * 10));
+  const sc = Math.min(owner, tenant);
+  const rank = sc >= 95 ? 'S' : sc >= 85 ? 'A' : sc >= 70 ? 'B' : sc >= 50 ? 'C' : 'D';
+  const total = est.reduce((a, it) => a + it.final, 0);
+  const comment = { S: '完ぺきな立ち会い。大家さんも入居者も納得した。', A: 'いい仕事。ほぼ適正な精算だった。', B: 'まずまず。見落としや取りすぎがあった。', C: 'トラブルの種が残った…。', D: 'クレームの嵐…。ガイドラインを読み直そう。' }[rank];
+  const row = it => { const fair = fairAmt(it), ok = it.final === fair; return `<tr><td><b>${it.name}</b><div class="why">${it.why}</div></td><td class="num">${yen(optOf(it).amt)}</td><td class="num">${yen(fair)}</td><td class="num"><b style="color:${ok ? '#2f8f5b' : '#e2573b'}">${yen(it.final)}${ok ? '' : (it.final > fair ? ' ↑' : ' ↓')}</b></td></tr>`; };
+  $('#resBody').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div><div style="font-size:13px;color:#7d7266">立ち会いの評価（入居者：${TENANTS[S.tenant].name.replace('入居者・', '')}）</div>
+      <div class="big" style="font-size:22px">大家さんの満足 ${owner}<br>入居者の納得 ${tenant}</div>
+      <div style="font-size:13px">請求の合計 ${yen(total)}（敷金 ${yen(C.deposit)}）</div></div>
+      <div class="center"><div class="rank">${rank}</div></div>
+    </div>
+    <p style="margin:8px 0;font-weight:800">${comment}</p>
+    ${notes.length ? `<p style="font-size:13px;margin:0 0 6px">${notes.join('<br>')}</p>` : ''}
+    ${missed.length ? `<p style="font-size:13px;color:#e2573b;margin:0 0 6px">見落とし（請求できたのに記録しなかった）：${missed.map(m => m.name + ' ' + yen(m.fair)).join('、')}</p>` : ''}
+    <table><tr><th>項目</th><th class="num">見積もり</th><th class="num">適正</th><th class="num">確定</th></tr>${est.map(row).join('')}</table>
+    <div class="center btns" style="margin-top:14px;justify-content:center"><button class="btn primary" id="againBtn" type="button" style="font-size:16px;padding:10px 22px">次の部屋へ</button><button class="btn" id="toTitleBtn" type="button">タイトルへ</button></div>`;
+  $('#result').classList.remove('hidden');
+  $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
+  $('#toTitleBtn').onclick = () => { $('#result').classList.add('hidden'); $('#title').classList.remove('hidden'); };
+}
+
 // ---------- 開始 ----------
+let MODE = 'tenant';
 function startRound() {
   buildRound();
+  S.mode = MODE;
   insp.visible = false;
   setArea('all');
   $('#phaseLbl').textContent = '準備';
   $('#clockSub').textContent = '立ち会い 12:00';
+  $('#startInspBtn').textContent = '立ち会いを始める ▶';
+  $('#hint').textContent = 'ドラッグで回転・タップで調べる';
+  if (MODE === 'agent') {
+    simulateTenantPrep();
+    S.tenant = pick(['savvy', 'timid', 'claimer']); S.est = null;
+    $('#phaseLbl').textContent = '業者モード';
+    $('#clockTxt').textContent = '点検';
+    $('#clockSub').textContent = '見落としに注意';
+    $('#startInspBtn').textContent = '見積もりを作る ▶';
+    $('#hint').textContent = '傷・汚れをタップして記録する';
+  }
   ['#hud', '#startInspBtn', '#hint', '#areaBar'].forEach(s => $(s).classList.remove('hidden'));
   $('#heartChip').classList.add('hidden');
   $('#backBtn').classList.add('hidden');
-  updateHud();
+  if (MODE !== 'agent') updateHud();
   docTab = 'contract'; renderDocs(); $('#docs').classList.remove('hidden');
 }
-$('#startBtn').onclick = () => { $('#title').classList.add('hidden'); startRound(); };
-$('#startInspBtn').onclick = () => startInspection();
+$('#startBtn').onclick = () => { MODE = 'tenant'; $('#title').classList.add('hidden'); startRound(); };
+$('#startAgentBtn').onclick = () => { MODE = 'agent'; $('#title').classList.add('hidden'); startRound(); };
+$('#startInspBtn').onclick = () => S.mode === 'agent' ? openEstimate() : startInspection();
+$('#estGo').onclick = () => agentExplain();
 $('#backBtn').onclick = () => { closeSheet(); focusOn(null); };
 
 // ---------- ループ ----------
