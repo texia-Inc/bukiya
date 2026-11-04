@@ -403,7 +403,7 @@ const DEFS = {
     why: '飲みこぼしを放置したシミは借主の負担。畳表は消耗品なので経過年数は考慮しない。' },
   fusumaTear: { name: 'ふすまの破れ', wall: 'L', pos: [-RX, 0.9, -0.8], size: [.36, .36], kind: 'tenant', room: 'washitsu', off: 0.036,
     desc: '押し入れのふすまに、ひじをぶつけて破れた穴がある。',
-    claim: () => ({ say: 'ふすまが破れてますね。4枚とも張替えです。', label: 'ふすまの張替え（4枚）', amt: 16000,
+    claim: () => ({ say: 'ふすまが破れてますね。2枚とも張替えです。', label: 'ふすまの張替え（2枚）', amt: 8000,
       steps: [{ k: 'partial', amt: 4000, label: 'ふすまの張替え（1枚）', reply: '…破れたのは1枚ですね。その分だけにします。' }],
       rebut: { dep: 'ふすま紙は消耗品なので、年数で割り引くものじゃないんですよ。' } }),
     why: '不注意で破ったふすまは借主の負担。ふすま紙は消耗品なので経過年数は考慮しないが、負担は破れた枚数だけ。' },
@@ -454,9 +454,9 @@ Object.assign(DEFS, {
       steps: [{ k: 'partial', amt: 12000 + CLOTH, label: 'ボード補修＋クロス1面', reply: '…そうですね、張替えはこの面だけにしましょう。' },
               { k: 'dep', amt: 12000 + dep(CLOTH), label: `ボード補修＋クロス1面（${depLabel()}）`, reply: '…クロス分は年数で割り引きます。ボードの補修代はそのままですよ。' }] }),
     why: '物をぶつけて開けた穴は借主の負担。ただしクロスは面の分だけで、経過年数も考慮する（ボードの補修代は別）。' },
-  r2Mold: { ...DEFS.mold, claim: () => ({ ...DEFS.mold.claim(), say: '部屋のすみ、カビが出てますね。張替えです。' }), name: '奥の部屋のすみのカビ', wall: 'L3', pos: [R2X, 0.35, -2.35], draw: 'mold', desc: 'たんすの裏になっていた壁のすみに、カビが出ている。', clean: { label: 'カビを落とす', t: 25 }, room2: true },
+  r2Mold: { ...DEFS.mold, claim: () => ({ ...DEFS.mold.claim(), say: '奥の部屋の壁、カビが出てますね。張替えです。' }), name: '奥の部屋の壁のカビ', wall: 'L3', pos: [R2X, 0.35, -2.35], draw: 'mold', desc: '奥の部屋の壁の下のほうに、結露を放っておいたせいでカビが出ている。', clean: { label: 'カビを落とす', t: 25 }, room2: true },
   r2TatamiSun: { ...DEFS.tatamiSun, name: '和室の畳の日焼け', pos: [-3.6, 0, -2.2], draw: 'tatamiSun', room2: true },
-  r2TatamiBurn: { ...DEFS.tatamiBurn, name: '和室の畳の焦げ跡', pos: [-3.0, 0, -1.0], draw: 'tatamiBurn', desc: 'タバコの灰を落としてできた焦げ跡が、畳に残っている。', room2: true },
+  r2TatamiBurn: { ...DEFS.tatamiBurn, name: '和室の畳の焦げ跡', pos: [-3.0, 0, -1.0], draw: 'tatamiBurn', desc: 'ヘアアイロンを置いてしまってできた焦げ跡が、畳に残っている。', room2: true },
   r2Fusuma: { ...DEFS.fusumaTear, name: '和室のふすまの破れ', wall: 'L3', pos: [R2X, 0.9, -1.2], draw: 'fusumaTear', room2: true },
 });
 
@@ -658,8 +658,8 @@ function guideHTML(id) {
 // ASP（A8.net・もしもアフィリエイトなど）で提携した広告のリンクを url に入れると、その分野の「直し方」と結果画面に出る。
 // 計測用の 1px 画像があれば img に入れる。url が空のあいだは何も出さない（?ads=preview で場所だけ見せる）。
 const PRO_LINKS = {
-  wall: { label: '壁紙・クロスの補修をプロに頼む', note: '穴やはがれの部分補修', url: '', img: '' },
-  floor: { label: 'フローリングの補修をプロに頼む', note: '傷・へこみ・シミのリペア', url: '', img: '' },
+  wall: { label: '壁紙・クロスの張替えをプロに頼む', note: '破れ・穴・汚れた面の張替え', url: '', img: '' },
+  floor: { label: '床の張替えをプロに頼む', note: 'フローリング・クッションフロア', url: '', img: '' },
   tatami: { label: '畳・ふすま・障子の張替えを頼む', note: '1枚から頼める業者も', url: '', img: '' },
   clean: { label: '退去前のハウスクリーニングを頼む', note: '水回り・換気扇・エアコン', url: '', img: '' },
   water: { label: '水回りのつまり・修理を頼む', note: '排水口・蛇口', url: '', img: '' },
@@ -1361,8 +1361,13 @@ const fairOf = c => c.steps.length ? c.steps[c.steps.length - 1].amt : c.amt;
 function shapeClaim(c) {
   const fair = fairOf(c);
   if (S.boss === 'honest') {
+    if (c.dup && fair === 0) return null; // 二重になる請求はしない
     if (fair === 0 && Math.random() < 0.7) return null; // 通常損耗はそもそも請求しない
-    if (fair > 0 && c.steps.length) { const last = c.steps[c.steps.length - 1]; return { ...c, amt: fair, label: last.label || c.label, steps: [], fair }; }
+    if (fair > 0 && c.steps.length) {
+      const last = c.steps[c.steps.length - 1], head = c.say.split('。')[0] + '。';
+      const say = c.dup ? head + 'クロスはさっきの張替えに含まれるので、ボードの補修代だけお願いします。' : head + `${last.label || c.label}の分だけ、ご負担をお願いします。`;
+      return { ...c, say, amt: fair, label: last.label || c.label, steps: [], done: c.steps.flatMap(st => [].concat(st.k)), fair };
+    }
     return { ...c, fair };
   }
   if (S.boss === 'crook' && fair > 0) return { ...c, inflate: 1.3, fair, say: c.sayInflated || c.say };
@@ -1459,8 +1464,12 @@ async function argue(claim) {
       base = st.amt; label = st.label || label; step++; amt = show(); SFX.play('good');
       say('them', st.reply, { label, amt });
     } else {
-      const used = claim.steps.slice(0, step).some(s => stepHit(s, k));
-      const msg = used ? 'それはもう考慮しましたよ。' : (claim.rebut && claim.rebut[k]) || (claim.paper ? PAPER_REBUT : DEFAULT_REBUT)[k];
+      const used = claim.steps.slice(0, step).some(s => stepHit(s, k)) || (claim.done || []).includes(k);
+      // 先の段階の言い分（範囲を決める前に年数の割引など）は、「まだ早い」と返す。クロスなのに「年数は関係ない」とは言わない
+      const later = claim.steps.slice(step + 1).some(s => stepHit(s, k));
+      const msg = used ? 'それはもう考慮しましたよ。'
+        : later ? (k === 'dep' ? '年数で割り引く前に、まず張替えの範囲の話ですね。' : 'その話は、もう一つ決めることがあってからですね。')
+        : (claim.rebut && claim.rebut[k]) || (k === 'dep' && !claim.paper && /クロス/.test(label) ? 'いえ、年数の割引の前に、そもそも張替えが必要なんですよ。' : (claim.paper ? PAPER_REBUT : DEFAULT_REBUT)[k]);
       SFX.play('bad');
       if (S.hearts === 0) { // 信用0で的外れなら、この項目は打ち切り（次の項目ではまた言い返せる）
         say('them', msg + '　…もういいですか？ この件は、このままでお願いします。', { label, amt });
@@ -1502,7 +1511,7 @@ async function startInspection() {
     .map(f => f.closet && W ? { ...f, name: '押し入れのふすまのキズ（？）', say: '押し入れのふすま、キズがありますね。', label: 'ふすまの補修' } : W && f.place.floor === 'main' ? { ...f, place: { floor: 'flooring' } } : f)
     .map(f => { const d = placeDef(f, S.placed); if (d) S.placed.push(surfRect(d)); return d; }).filter(Boolean);
   if (S.boss === 'crook') for (const fk of shuffle(fakes).slice(0, 2)) targets.push({ id: null, def: { ...fk, why: '悪質な業者が、ない傷を請求してきた。請求された場所を自分の目で確かめ、身に覚えのないものははっきり断る。' }, fake: true,
-    claim: () => ({ dupable: true, say: fk.say, label: fk.label, amt: fk.amt, steps: [{ k: 'none', amt: 0, reply: '…あれ、見間違いでしたかね。失礼しました。' }], rebut: { normal: 'いや、通常損耗とかじゃなくて、キズがあるんですよ。' } }) });
+    claim: () => ({ dupable: /クロス|フローリング/.test(fk.label), say: fk.say, label: fk.label, amt: fk.amt, steps: [{ k: 'none', amt: 0, reply: '…あれ、見間違いでしたかね。失礼しました。' }], rebut: { normal: 'いや、通常損耗とかじゃなくて、キズがあるんですよ。' } }) });
   const ZR = { main: 0, r2: 1, wet: 2 };
   targets.sort((a, b) => ZR[zoneOf(a.def.pos[0], a.def.pos[2])] - ZR[zoneOf(b.def.pos[0], b.def.pos[2])] || wideFirst(a.def) - wideFirst(b.def) || a.def.pos[2] - b.def.pos[2]);
   if (!targets.length) { say('them', 'おお…きれいに使われてますね。お部屋の中は問題ないです。'); await choose([['ok', '次へ', 'acc']]); }
@@ -1652,7 +1661,7 @@ function showResult() {
 // 点検 → 見積もり → 入居者への説明 → 評価（大家さんの満足と入居者の納得）
 const ADESC = {
   r2Pins: '奥の部屋の壁に画鋲の穴。', r2Dents: '奥の部屋の床にベッドのへこみ。', r2FloorSun: '奥の部屋の窓ぎわの床が日焼けで色あせている。', r2DoorHole: '奥の部屋の入口わきの壁に、ぶつけた穴。',
-  r2Mold: '奥の部屋のすみにカビ。', r2TatamiSun: '和室の畳が日焼けで変色している。', r2TatamiBurn: '和室の畳にタバコの焦げ跡。', r2Fusuma: '和室のふすまに破れた穴。',
+  r2Mold: '奥の部屋の壁の下のほうに、結露を放置したカビ。', r2TatamiSun: '和室の畳が日焼けで変色している。', r2TatamiBurn: '和室の畳にヘアアイロンの焦げ跡。', r2Fusuma: '和室のふすまに破れた穴。',
   pins: '壁に小さな画鋲の穴がいくつか。', sunburn: 'ポスターを貼っていた跡だけ白く、まわりが日焼けしている。', fridge: '冷蔵庫を置いていた後ろの壁が黒ずんでいる。',
   dents: 'ベッドの脚の跡のへこみが床に4つ。', screw: '棚を付けたネジ穴が4つ。下地のボードまで開いている。', caster: '椅子のキャスターでこすれた傷が床に広がっている。',
   hole: '壁に物をぶつけた穴。', stain: '飲みこぼしを放置したシミ。', grease: 'コンロの奥に油汚れがこびりついている。', mold: '壁の下のほうに、結露を放置したカビ。',
@@ -1776,7 +1785,7 @@ async function agentExplain() {
         it.note = k === 'discount' ? '正しい請求なのに、まけて半額にした（大家さんの損）' : '正しい請求の理由を説明した';
         if (k === 'discount') { it.final = Math.round(o.amt / 2 / 100) * 100; tsay('最初からそうしてよね。', { label: o.label, amt: it.final }); }
         else tsay(Math.random() < 0.7 ? '…ふーん。そういう決まりなら、まあ仕方ないか。' : '…納得いかないけど、もういいわよ。', bill);
-      } else tsay(S.tenant === 'savvy' ? '…ガイドラインどおりですね。わかりました。' : '…はい、わかりました。', bill);
+      } else tsay(S.tenant === 'savvy' ? (o.amt === fair ? '…ガイドラインどおりですね。わかりました。' : '…（思ったより安いな）はい、それでお願いします。') : '…はい、わかりました。', bill);
     }
     await choose([['ok', '次へ', 'acc']]);
   }
