@@ -369,6 +369,11 @@ const DEFS = {
     claim: () => ({ say: '排水口が髪の毛でつまってますね。排水管の高圧洗浄です。', label: '排水管の高圧洗浄', amt: 16500, steps: [],
       rebut: { normal: '髪の毛のつまりは、ふだんの掃除不足ですね。' } }),
     why: '排水口の髪の毛やぬめりによるつまりは、掃除不足として借主の負担。' },
+  toiletStain: { name: 'トイレの黄ばみ', wall: 'F0', pos: [-2.15, 0.392, 2.33], size: [.24, .28], kind: 'tenant',
+    desc: 'トイレの便器の水たまりのふちに、黄ばみと尿石がこびりついている。', clean: { label: 'トイレ用洗剤でこする', t: 15 },
+    claim: () => ({ say: 'トイレの便器、黄ばみと尿石がこびりついてますね。クリーニング代です。', label: 'トイレのクリーニング', amt: 11000, steps: [],
+      rebut: { normal: '尿石は、ふだんのお掃除で防げるものなので。' } }),
+    why: '便器の黄ばみや尿石を放っておいて落ちなくなったものは、手入れ不足として借主の負担になりうる。' },
   faucetLeak: { name: 'シャワー水栓の水漏れ', wall: 'B2', pos: [-2.1, 0.95, BZ], size: [.3, .5], kind: 'owner',
     desc: 'シャワーの水栓から、ずっと水がポタポタ垂れている。何年も使ううちにこうなった。',
     claim: () => ({ say: 'シャワー水栓から水が漏れてますね。壊しました？ 水栓の交換です。', label: 'シャワー水栓の交換', amt: 25000,
@@ -576,7 +581,7 @@ function placeDef(base, placed) {
 // 清掃費：部分補修・年数の割引は当てはまらない。設備の故障・ひび：同じ。残置物：通常損耗か明細だけ
 {
   const CLEAN_FEE = ['normal', 'photo', 'detail', 'none'], EQUIP = ['normal', 'photo', 'detail', 'none'];
-  for (const id of ['grease', 'mirrorScale', 'drainHair', 'petHair', 'bathMold']) Object.assign(DEFS[id], { menu: CLEAN_FEE, dirt: true });
+  for (const id of ['grease', 'mirrorScale', 'drainHair', 'toiletStain', 'petHair', 'bathMold']) Object.assign(DEFS[id], { menu: CLEAN_FEE, dirt: true });
   for (const id of ['faucetLeak', 'sinkCrack']) DEFS[id].menu = EQUIP;
   DEFS.trash.menu = ['normal', 'detail'];
   for (const id of ['stain', 'tatamiStain', 'mold', 'scribble', 'r2Mold']) DEFS[id].dirt = true;
@@ -639,6 +644,7 @@ const GUIDE = {
   bathMold: { fix: 'ゴムパッキンやコーキングの黒カビは、塩素系のカビ取り剤を吹き付けて、キッチンペーパーでパックして数分置き、よく洗い流す。', note: '換気をして、酸性の洗剤（クエン酸など）とは絶対に混ぜない（有毒ガスが出る）。根まで入ったカビは落ちないこともある。', buy: ['カビ取り剤 ジェル', '浴室 カビ取り'] },
   mirrorScale: { fix: 'クエン酸水を吹き付けてキッチンペーパーでパックし、しばらく置いてからスポンジでこする。', note: '研磨剤入りのスポンジは鏡を傷つけることがある。塩素系の洗剤と混ぜない。', buy: ['クエン酸 スプレー', '鏡 ウロコ取り'] },
   drainHair: { fix: '髪の毛を取り除き、ぬめりはブラシでこする。奥のつまりにはパイプ用の洗浄剤を流す。', note: 'それでも流れが悪いときは、早めに管理会社に相談する。', buy: ['パイプクリーナー', '排水口 ネット'] },
+  toiletStain: { fix: '酸性のトイレ用洗剤を便器のふちにかけ、トイレットペーパーでパックして30分ほど置き、ブラシでこする。', note: '塩素系の洗剤とは絶対に混ぜない（有毒ガスが出る）。固まった尿石は、専用の除去剤や業者でないと落ちないこともある。', buy: ['トイレ 尿石 除去剤', 'トイレ用 酸性洗剤'] },
   faucetLeak: { fix: '水漏れに気づいたら、自分で分解せずに早めに管理会社に連絡する（古くなって壊れたなら貸主の負担で直してもらえる）。', note: '知っていて放置して床などが傷むと、借主の負担になることがある。', buy: [] },
   cfDent: { fix: '通常損耗なので何もしなくてよい。', note: 'クッションフロアは跡が付きやすい。次は家具の脚に保護マットを。', buy: ['家具 保護マット'] },
   sinkCrack: { fix: '入居したときに、もとからある傷を日付入りの写真に撮り、チェック表に書いて管理会社に出しておく。', note: '退去の立ち会いには、その写真とチェック表を持っていく。', buy: [] },
@@ -678,7 +684,7 @@ const PRO_OF = {
   screw: 'wall', hole: 'wall', scribble: 'wall', mold: 'wall', petScratch: 'wall', nicotine: 'wall', r2DoorHole: 'wall', r2Mold: 'wall',
   caster: 'floor', stain: 'floor', petUrine: 'floor',
   tatamiBurn: 'tatami', tatamiStain: 'tatami', fusumaTear: 'tatami', shojiHole: 'tatami', r2TatamiBurn: 'tatami', r2Fusuma: 'tatami',
-  grease: 'clean', bathMold: 'clean', mirrorScale: 'clean', dust: 'clean', petHair: 'clean', petodor: 'clean', cleaning: 'clean', ac: 'clean',
+  grease: 'clean', bathMold: 'clean', mirrorScale: 'clean', toiletStain: 'clean', dust: 'clean', petHair: 'clean', petodor: 'clean', cleaning: 'clean', ac: 'clean',
   drainHair: 'water', trash: 'trash',
 };
 const PRO_PREVIEW = /[?&]ads=preview/.test(location.search);
@@ -880,15 +886,22 @@ box(1.05, 0.02, 0.55, M(0xa9cfe0), -2.95, 0.5, BZ + 0.38);
 box(0.22, 0.06, 0.08, M(0xc8ccd0), -2.1, 0.9, BZ + 0.05, gB2);
 box(0.03, 0.9, 0.03, M(0xc8ccd0), -2.1, 1.45, BZ + 0.03, gB2);
 box(0.12, 0.05, 0.1, M(0xc8ccd0), -2.1, 1.85, BZ + 0.07, gB2);
-// 洗面台、鏡、洗濯機の防水パン
+// 洗面台、鏡
 box(0.5, 0.8, 0.7, M(0xf1ece2), WX0 + 0.25, 0.4, 2.2);
 box(0.52, 0.03, 0.72, white, WX0 + 0.26, 0.815, 2.2);
 const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.012, 24), M(0xe9ecee)); bowl.scale.z = 1.25; bowl.position.set(-3.33, 0.826, 2.2); scene.add(bowl);
 box(0.12, 0.2, 0.03, M(0xc8ccd0), WX0 + 0.05, 0.92, 2.2);
 const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.62), new THREE.MeshLambertMaterial({ color: 0xbfd2dc }));
 mirror.position.set(WX0 + 0.004, 1.55, 2.2); mirror.rotation.y = Math.PI / 2; gL2.add(mirror);
-box(0.6, 0.07, 0.6, white, -2.15, 0.035, 2.38);
-box(0.12, 0.02, 0.12, M(0x8a8f93), -2.15, 0.075, 2.38);
+// トイレ（洗面所の中、入口の横。タンクを手前の壁に付ける。洗面台の前はあけておく）
+const TX = -2.15;
+box(0.4, 0.42, 0.2, white, TX, 0.62, RZ - 0.11);
+box(0.42, 0.03, 0.22, white, TX, 0.845, RZ - 0.11);
+box(0.06, 0.03, 0.03, M(0xc8ccd0), TX - 0.14, 0.79, RZ - 0.22);
+const toiletBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.15, 0.38, 24), white); toiletBowl.scale.z = 1.3; toiletBowl.position.set(TX, 0.19, 2.33); scene.add(toiletBowl);
+const toiletSeat = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 24), M(0xeeeeea)); toiletSeat.rotation.x = Math.PI / 2; toiletSeat.scale.y = 1.3; toiletSeat.position.set(TX, 0.395, 2.33); scene.add(toiletSeat);
+const toiletWater = new THREE.Mesh(new THREE.CircleGeometry(0.13, 24), M(0xcfe3ea)); toiletWater.rotation.x = -Math.PI / 2; toiletWater.scale.y = 1.3; toiletWater.position.set(TX, 0.39, 2.33); scene.add(toiletWater);
+box(0.1, 0.12, 0.12, M(0xf2f2ee), -RX - T - 0.05, 0.75, 2.5); // ペーパーホルダー（入口の横の壁）
 
 // ---------- 和室の畳・障子・ふすま（和室の回だけ見せる）----------
 const TZ = 0.0; // 畳は奥の壁から z=TZ まで（6畳）
@@ -979,6 +992,7 @@ const DRAW = {
   mirrorScale(g, w, h) { for (let i = 0; i < 160; i++) { const x = rnd(0, w), y = rnd(0, h), r = rnd(3, 12); g.strokeStyle = `rgba(255,255,255,${rnd(.4, .85)})`; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); if (Math.random() < .4) { g.fillStyle = 'rgba(255,255,255,.35)'; g.fill(); } } },
   drainHair(g, w, h) { g.fillStyle = '#9aa0a6'; g.beginPath(); g.arc(w / 2, h / 2, w * .42, 0, 7); g.fill(); g.fillStyle = '#3b3f43'; for (let i = 0; i < 5; i++) g.fillRect(w * .25, h * (.28 + i * .1), w * .5, h * .04); g.strokeStyle = 'rgba(20,15,12,.9)'; g.lineWidth = 2; for (let i = 0; i < 14; i++) { g.beginPath(); let x = rnd(.2, .8) * w, y = rnd(.2, .8) * h; g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += rnd(-40, 40); y += rnd(-40, 40); g.quadraticCurveTo(x + rnd(-20, 20), y + rnd(-20, 20), x, y); } g.stroke(); } },
   faucetLeak(g, w, h) { const gr = g.createLinearGradient(0, h * .25, 0, h); gr.addColorStop(0, 'rgba(160,110,60,.55)'); gr.addColorStop(1, 'rgba(160,110,60,0)'); g.fillStyle = gr; g.fillRect(w * .4, h * .25, w * .2, h * .75); g.fillStyle = 'rgba(120,180,220,.8)'; for (const y of [.45, .62, .8]) { g.beginPath(); g.ellipse(w / 2, y * h, 7, 11, 0, 0, 7); g.fill(); } },
+  toiletStain(g, w, h) { g.strokeStyle = 'rgba(190,150,60,.8)'; g.lineWidth = 10; g.beginPath(); g.ellipse(w / 2, h / 2, w * .4, h * .4, 0, 0, 7); g.stroke(); for (let i = 0; i < 40; i++) { const a = rnd(0, 7), r = rnd(.32, .46); g.fillStyle = `rgba(160,120,50,${rnd(.3, .7)})`; g.beginPath(); g.arc(w / 2 + Math.cos(a) * w * r, h / 2 + Math.sin(a) * h * r, rnd(2, 6), 0, 7); g.fill(); } },
   cfDent(g, w, h) { for (const [x, y] of [[.12, .15], [.88, .15], [.12, .85], [.88, .85]]) { g.fillStyle = 'rgba(70,60,50,.55)'; g.fillRect(x * w - 12, y * h - 12, 24, 24); } },
   sinkCrack(g, w, h) { g.strokeStyle = 'rgba(70,65,60,.85)'; g.lineWidth = 2.5; g.beginPath(); let x = w * .2, y = h * .3; g.moveTo(x, y); for (let i = 0; i < 7; i++) { x += rnd(15, 30); y += rnd(-5, 25); g.lineTo(x, y); } g.stroke(); g.lineWidth = 1.5; g.beginPath(); g.moveTo(w * .5, h * .5); g.lineTo(w * .6, h * .75); g.stroke(); },
   tatamiSun(g, w, h) { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(190,150,70,.55)'); gr.addColorStop(1, 'rgba(190,150,70,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
@@ -1201,7 +1215,7 @@ function buildRound() {
     ...(S.room === 'pet' ? ['petScratch', 'petUrine', 'petHair'] : []),
     ...(S.room === '1ldk' ? [...shuffle(['r2Pins', 'r2Dents', 'r2FloorSun']).slice(0, 2), 'r2DoorHole', 'r2Mold'] : []),
     ...(S.room === '2k' ? ['r2TatamiSun', ...shuffle(['r2TatamiBurn', 'r2Fusuma', 'r2DoorHole']).slice(0, 2), 'r2Mold'] : []),
-    ...shuffle(['bathMold', 'mirrorScale', 'drainHair']).slice(0, 2),
+    ...shuffle(['bathMold', 'mirrorScale', 'drainHair', 'toiletStain']).slice(0, 2),
     pick(['faucetLeak', 'cfDent']),
     pick(['doorScratch', 'entranceDent', 'sinkCrack']),
     'trash', 'dust',
@@ -1699,7 +1713,7 @@ const ADESC = {
   dents: 'ベッドの脚の跡のへこみが床に4つ。', screw: '棚を付けたネジ穴が4つ。下地のボードまで開いている。', caster: '椅子のキャスターでこすれた傷が床に広がっている。',
   hole: '壁に物をぶつけた穴。', stain: '飲みこぼしを放置したシミ。', grease: 'コンロの奥に油汚れがこびりついている。', mold: '壁の下のほうに、結露を放置したカビ。',
   scribble: '壁にクレヨンの落書き。', doorScratch: '玄関ドアの下の方に傷。', entranceDent: '入口近くの床に丸いへこみ。', nicotine: 'タバコのヤニで壁全体が黄ばんでいる。',
-  trash: '段ボールとゴミ袋が残されている。', bathMold: '浴槽のふちのゴムパッキンに黒カビ。', mirrorScale: '洗面台の鏡に水アカのウロコ。', drainHair: '浴室の排水口に髪の毛がつまっている。',
+  trash: '段ボールとゴミ袋が残されている。', bathMold: '浴槽のふちのゴムパッキンに黒カビ。', mirrorScale: '洗面台の鏡に水アカのウロコ。', drainHair: '浴室の排水口に髪の毛がつまっている。', toiletStain: 'トイレの便器に黄ばみと尿石。',
   tatamiSun: '窓ぎわの畳が日焼けで変色している。', tatamiDent: '畳にたんすの脚のへこみ。', tatamiBurn: '畳にアイロンの焦げ跡。', tatamiStain: '畳に飲みこぼしのシミ。',
   fusumaTear: 'ふすまに破れた穴。', shojiHole: '障子に穴。', petScratch: '壁の下の方にペットのひっかき傷。', petUrine: '床にペットのおしっこのシミ（変色）。', petHair: '床のすみにペットの抜け毛。',
   faucetLeak: 'シャワー水栓から水がポタポタ漏れている。', cfDent: '洗面所の床に収納ラックの脚の跡。', sinkCrack: '洗面ボウルに細いひび。',
