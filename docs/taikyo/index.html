@@ -101,6 +101,10 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
 .ans .prep{color:#8a5a00}
 .sum{background:#fff;border:2px dashed var(--line);border-radius:10px;padding:8px 10px;margin:0 0 10px;font-size:13px;line-height:1.7}
 .sum b{font-size:14px}
+.pro{position:relative;display:block;margin-top:6px;background:#fff;border:1.5px solid #4f8a5b;border-radius:10px;padding:6px 10px 6px 40px;text-decoration:none;color:#24452b}
+.pro i{position:absolute;left:8px;top:7px;font-style:normal;font-size:10px;font-weight:800;background:#4f8a5b;color:#fff;border-radius:4px;padding:1px 4px}
+.pro b{display:block;font-size:13px}.pro span{font-size:11px;color:var(--muted)}
+.probox{margin:14px 0 0}.probox h4{margin:0 0 4px}.probox small{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px}
 .adslot{margin:14px 0 0;min-height:100px;display:flex;align-items:center;justify-content:center}
 .adslot.preview{border:2px dashed var(--line);border-radius:10px;color:var(--muted);font-size:12px}
 #toast{position:fixed;left:50%;top:calc(90px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:12px;padding:8px 14px;font-weight:800;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
@@ -647,7 +651,42 @@ const AMAZON_NOTE = 'Amazonのアソシエイトとして、当サイトは適�
 function guideHTML(id) {
   const g = GUIDE[id]; if (!g) return '';
   const links = g.buy.map(q => `<a href="${amazonUrl(q)}" target="_blank" rel="noopener sponsored">🛒 ${q.replace(/ /g, ' ')}</a>`).join('');
-  return `<div class="guide"><div><b>🔧 直し方：</b>${g.fix}</div><div><b>⚠️ 注意：</b>${g.note}</div>${links ? `<div class="links">${links}<span>（Amazon の検索結果が開きます。${AMAZON_NOTE}）</span></div>` : ''}</div>`;
+  return `<div class="guide"><div><b>🔧 直し方：</b>${g.fix}</div><div><b>⚠️ 注意：</b>${g.note}</div>${links ? `<div class="links">${links}<span>（Amazon の検索結果が開きます。${AMAZON_NOTE}）</span></div>` : ''}${proHTML(PRO_OF[id])}</div>`;
+}
+
+// ---------- 業者の広告（アフィリエイト） ----------
+// ASP（A8.net・もしもアフィリエイトなど）で提携した広告のリンクを url に入れると、その分野の「直し方」と結果画面に出る。
+// 計測用の 1px 画像があれば img に入れる。url が空のあいだは何も出さない（?ads=preview で場所だけ見せる）。
+const PRO_LINKS = {
+  wall: { label: '壁紙・クロスの補修をプロに頼む', note: '穴やはがれの部分補修', url: '', img: '' },
+  floor: { label: 'フローリングの補修をプロに頼む', note: '傷・へこみ・シミのリペア', url: '', img: '' },
+  tatami: { label: '畳・ふすま・障子の張替えを頼む', note: '1枚から頼める業者も', url: '', img: '' },
+  clean: { label: '退去前のハウスクリーニングを頼む', note: '水回り・換気扇・エアコン', url: '', img: '' },
+  water: { label: '水回りのつまり・修理を頼む', note: '排水口・蛇口', url: '', img: '' },
+  trash: { label: '不用品・粗大ごみの回収を頼む', note: '収集日を待てないときに', url: '', img: '' },
+  moving: { label: '引っ越しの見積もりをくらべる', note: '一括見積もり', url: '', img: '' },
+  legal: { label: '敷金の返還について専門家に相談', note: '弁護士・司法書士', url: '', img: '' },
+};
+// 傷・汚れ → 分野。通常損耗（直さなくていい物）には出さない
+const PRO_OF = {
+  screw: 'wall', hole: 'wall', scribble: 'wall', mold: 'wall', petScratch: 'wall', nicotine: 'wall', r2DoorHole: 'wall', r2Mold: 'wall',
+  caster: 'floor', stain: 'floor', petUrine: 'floor',
+  tatamiBurn: 'tatami', tatamiStain: 'tatami', fusumaTear: 'tatami', shojiHole: 'tatami', r2TatamiBurn: 'tatami', r2Fusuma: 'tatami',
+  grease: 'clean', bathMold: 'clean', mirrorScale: 'clean', dust: 'clean', petHair: 'clean', petodor: 'clean', cleaning: 'clean', ac: 'clean',
+  drainHair: 'water', trash: 'trash',
+};
+const PRO_PREVIEW = /[?&]ads=preview/.test(location.search);
+function proLink(key) {
+  const p = PRO_LINKS[key]; if (!p || !(p.url || PRO_PREVIEW)) return '';
+  const pixel = p.img ? `<img src="${p.img}" width="1" height="1" alt="" style="border:0;position:absolute">` : '';
+  return `<a class="pro" href="${p.url || '#'}" target="_blank" rel="noopener sponsored"><i>PR</i><b>🧰 ${p.label}</b><span>${p.note}</span></a>${pixel}`;
+}
+function proHTML(key) { return key ? proLink(key) : ''; }
+// 結果画面：この回で出てきた分野（4つまで）＋引っ越し・相談
+function proBoxHTML(ids) {
+  const keys = [...[...new Set(ids.map(id => PRO_OF[id]).filter(Boolean))].slice(0, 4), 'moving', 'legal'];
+  const links = keys.map(proLink).join('');
+  return links ? `<div class="probox"><h4>実際の退去で頼れるサービス <small>広告</small></h4>${links}</div>` : '';
 }
 
 // 入居時チェック表の、問題にならない記録（どれも部屋に実際にある物。写真の下地の色と、描く傷）
@@ -1036,6 +1075,8 @@ function facePoint(p) { insp.rotation.y = Math.atan2(p.x - insp.position.x, p.z 
 // ---------- カメラ ----------
 const cam = { az: -0.72, pol: 0.92, r: 9.6, target: new THREE.Vector3(-0.9, 0.5, 0), focus: null, area: 'all' };
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(-0.9, 0.5, 0);
+// 業者を追うとき：全体を見ていた向きのまま、業者の斜め後ろ上から
+function chasePos(out) { const p = insp.position; return out.set(p.x + 3.2 * Math.sin(cam.az), 3.6, p.z + 3.2 * Math.cos(cam.az)); }
 function overviewPos(out) { return out.set(cam.target.x + cam.r * Math.sin(cam.pol) * Math.sin(cam.az), cam.target.y + cam.r * Math.cos(cam.pol), cam.target.z + cam.r * Math.sin(cam.pol) * Math.cos(cam.az)); }
 overviewPos(camPos);
 function clampR2(v, m = 0.3) { v.x = Math.max(R2X + m, Math.min(-RX - m, v.x)); v.z = Math.max(-RZ + m, Math.min(BZ - m, v.z)); v.y = Math.min(RH - 0.15, v.y); return v; }
@@ -1121,8 +1162,7 @@ function onTap(x, y) {
   if (!S || S.phase !== 'prep') return;
   ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  const cut = !cam.focus && cam.area === 'all';
-  const hits = ray.intersectObjects(spots.filter(s => !s.done).map(s => s.hit), true).filter(h => shown(h.object) && (!cut || h.point.y < CUT_Y));
+  const hits = ray.intersectObjects(spots.filter(s => !s.done).map(s => s.hit), true).filter(h => shown(h.object));
   if (!hits.length) { if (cam.focus) { focusOn(null); closeSheet(); } return; }
   let o = hits[0].object; while (o && !o.userData.spot) o = o.parent;
   openSpot(o.userData.spot);
@@ -1275,7 +1315,8 @@ function renderDocs() {
       <li><b>納得できないとき</b>：国土交通省「原状回復をめぐるトラブルとガイドライン」をもとに話し合う。消費者ホットライン <b>188</b> でも相談できる。</li></ul>
       <h4>傷・汚れ別の直し方</h4>
       ${Object.keys(GUIDE).map(k => `<div style="margin-bottom:8px"><b>${names[k] || k}</b>${guideHTML(k)}</div>`).join('')}
-      <p style="font-size:11px;color:#7d7266">${AMAZON_NOTE}</p>
+      ${proBoxHTML([])}
+      <p style="font-size:11px;color:#7d7266">${AMAZON_NOTE}${Object.values(PRO_LINKS).some(p => p.url) ? '「PR」の付いたリンクは広告です。' : ''}</p>
       <p style="font-size:11px;color:#7d7266">※ゲーム内の金額は目安です。実際の負担は、契約の内容や傷みの程度、地域によって変わります。</p>`;
   } else {
     el.innerHTML = `<h4>原状回復のガイドライン（国土交通省）のメモ</h4>
@@ -1467,9 +1508,10 @@ async function startInspection() {
   if (!targets.length) { say('them', 'おお…きれいに使われてますね。お部屋の中は問題ないです。'); await choose([['ok', '次へ', 'acc']]); }
   for (const s of targets) {
     $('#dialog').classList.add('hidden');
-    cam.focus = null; // 歩いている間は部屋全体を見せる
+    cam.focus = null; cam.follow = true; // 歩いている間は業者を後ろから追う（壁は切らない）
     const sp = standPos(s.def);
     await walkPath(sp.x, sp.z);
+    cam.follow = false;
     facePoint(new THREE.Vector3(...s.def.pos));
     cam.focus = spotView(s.def);
     await sleep(350);
@@ -1483,8 +1525,9 @@ async function startInspection() {
     S.log.push({ id: s.id, name: s.def.name, why: claim.dup ? s.def.why + DUP_NOTE : s.def.why, kind: s.fake ? 'fake' : s.def.kind, clean: s.def.clean, dirt: s.def.dirt, patchFail: !!(ref && ref.patched && S.patchFail), ...r });
   }
   $('#dialog').classList.add('hidden');
-  cam.focus = null;
+  cam.focus = null; cam.follow = true;
   await walkPath(0.45, RZ - 0.75);
+  cam.follow = false;
   facePoint(new THREE.Vector3(-0.3, 0, 0));
   cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.75) };
   say('them', 'お部屋はこれで全部ですね。あとは書類の上での費用です。');
@@ -1596,6 +1639,7 @@ function showResult() {
     ${summaryHTML(over)}
     <h3 style="margin:10px 0 6px;font-size:16px">答え合わせ</h3>
     ${S.log.map(answerHTML).join('')}
+    ${proBoxHTML(S.log.filter(l => l.fair > 0).map(l => l.id))}
     <div class="center" style="margin-top:14px"><button class="btn primary" id="againBtn" type="button" style="font-size:16px;padding:10px 22px">別の部屋でもう一度</button></div>
     <div class="adslot" id="adSlot"></div>`;
   renderAd();
@@ -1852,23 +1896,23 @@ function tick(now) {
   const u = insp.userData;
   if (u.legs) { u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; u.arms[0].rotation.x = inspTarget ? -sw * 0.3 : -0.5; u.arms[1].rotation.x = sw * 0.6; }
   // カメラ
-  const want = cam.focus ? cam.focus.pos : overviewPos(tmpV.clone());
-  const look = cam.focus ? cam.focus.look : cam.target;
+  const chase = !cam.focus && cam.follow;
+  const want = cam.focus ? cam.focus.pos : chase ? chasePos(tmpV.clone()) : overviewPos(tmpV.clone());
+  const look = cam.focus ? cam.focus.look : chase ? insp.position.clone().setY(0.5) : cam.target;
   const k = 1 - Math.exp(-dt * 4);
   camPos.lerp(want, k); camLook.lerp(look, k);
   camera.position.copy(camPos); camera.lookAt(camLook);
-  const overview = !cam.focus && cam.area === 'all';
-  cutPlane.constant = overview ? CUT_Y : 100;
+  const overview = !cam.focus && !chase && cam.area === 'all';
   lamp.visible = lamp2.visible = !overview;
   // カメラ側の壁を隠す
-  // 全体を見るとき：カメラが壁の外側にあれば隠す。寄るとき：カメラと見る点の間をさえぎる壁を隠す
+  // カメラ側の壁を隠す（壁を途中で切らないので、高い所の傷も見える）。寄るとき：カメラと見る点の間をさえぎる壁を隠す
   for (const key in walls) {
     const g = walls[key], w = g.userData;
     if (w.multi && !(S && S.multi)) { g.visible = false; continue; }
-    if (!cam.focus && cam.area === 'all') { g.visible = true; continue; }
     const da = camPos[w.axis] - w.at, db = camLook[w.axis] - w.at;
     let block = false;
-    if (da * db < 0) {
+    if (overview) block = da * db < 0; // 全体：部屋の中心から見てカメラ側にある壁はすべて隠す（ドールハウス）
+    else if (da * db < 0) {
       const t = da / (da - db), o = w.axis === 'z' ? 'x' : 'z';
       const c = camPos[o] + (camLook[o] - camPos[o]) * t;
       block = t < 0.98 && c > w.lo - 0.25 && c < w.hi + 0.25;
