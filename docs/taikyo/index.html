@@ -44,6 +44,9 @@ button{font:inherit;color:inherit;cursor:pointer;border:0}
 #dialog .bill{display:flex;justify-content:space-between;align-items:center;background:#fff;border:2px dashed var(--line);border-radius:10px;padding:6px 10px;margin:0 0 10px;font-weight:800}
 #dialog .bill .amt{color:var(--accent);font-size:20px}
 #dialog .bill .amt.zero{color:var(--ok)}
+#dialog .peek{position:absolute;right:12px;top:10px;font-size:12px;padding:3px 10px}
+#peekBar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:10px;background:rgba(43,38,34,.82);color:#fff;border-radius:16px;padding:8px 8px 8px 14px;font-size:13px;white-space:nowrap}
+#peekBar .btn{color:var(--ink);font-size:13px;padding:6px 12px}
 #dialog .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #dialog .choices .btn{text-align:left;font-size:13px;padding:8px 10px}
 #dialog .choices .btn.acc{grid-column:1/-1;text-align:center;background:#f1ece2}
@@ -137,10 +140,13 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
 
 <div id="dialog" class="sheet hidden">
   <div class="who" id="dlgWho">業者</div>
+  <button type="button" class="btn peek hidden" id="peekBtn">📍 場所を見る</button>
   <p id="dlgText"></p>
   <div class="bill hidden" id="dlgBill"><span id="dlgLabel"></span><span class="amt" id="dlgAmt"></span></div>
   <div class="choices" id="dlgChoices"></div>
 </div>
+
+<div id="peekBar" class="hidden"><span>ドラッグで見回せる</span><button type="button" class="btn" id="peekBack">やり取りに戻る</button></div>
 
 <div id="title" class="overlay">
   <div class="panel">
@@ -1149,7 +1155,7 @@ canvas.addEventListener('pointermove', e => {
   const p = ptrs.get(e.pointerId); if (!p) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) { const [lo, hi] = rRange(); cam.r = Math.max(lo, Math.min(hi, cam.r * pinch0 / d)); } pinch0 = d; return; }
-  if (moved > 6 && !cam.focus && S && S.phase === 'prep') { cam.az -= dx * 0.008; cam.pol = Math.max(0.35, Math.min(cam.area === 'all' ? 1.25 : 1.45, cam.pol - dy * 0.006)); }
+  if (moved > 6 && !cam.focus && S && (S.phase === 'prep' || S.peek)) { cam.az -= dx * 0.008; cam.pol = Math.max(0.35, Math.min(cam.area === 'all' ? 1.25 : 1.45, cam.pol - dy * 0.006)); }
   else if (moved > 6 && cam.focus && S && S.phase === 'prep') { focusOn(null); closeSheet(); }
 });
 canvas.addEventListener('pointerup', e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (moved <= 6 && downAt && ptrs.size === 0) onTap(e.clientX, e.clientY); });
@@ -1419,6 +1425,31 @@ function choose(opts) {
     for (const [k, label, cls] of opts) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + (cls || ''); b.textContent = label; b.onclick = () => res(k); el.appendChild(b); }
   });
 }
+// やり取りの途中で、話している場所を見に行ける（ドラッグで見回せる）。話している場所には赤い輪を出す
+const talkRing = new THREE.Mesh(new THREE.RingGeometry(0.17, 0.22, 40), new THREE.MeshBasicMaterial({ color: 0xe0533d, transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide }));
+talkRing.renderOrder = 10; talkRing.visible = false; scene.add(talkRing);
+let talkAt = null, peekSave = null;
+function setTalkSpot(def) {
+  talkAt = def || null;
+  $('#peekBtn').classList.toggle('hidden', !talkAt);
+  talkRing.visible = !!talkAt;
+  if (!talkAt) return;
+  const p = new THREE.Vector3(...def.pos), n = new THREE.Vector3(...(def.obj ? NORMALS.F0 : NORMALS[def.wall]));
+  talkRing.position.copy(p).addScaledVector(n, 0.03); talkRing.lookAt(p.clone().add(n));
+}
+function peek(on) {
+  if (on && talkAt) {
+    peekSave = { insp: insp.visible, focus: cam.focus, area: cam.area, target: cam.target.clone(), az: cam.az, pol: cam.pol, r: cam.r };
+    const v = spotView(talkAt), off = v.pos.clone().sub(v.look), d = off.length();
+    cam.target.copy(v.look); cam.r = Math.max(1.4, Math.min(6, d)); cam.az = Math.atan2(off.x, off.z); cam.pol = Math.max(0.35, Math.min(1.45, Math.acos(off.y / d)));
+    cam.area = 'peek'; cam.focus = null; S.peek = true; insp.visible = false; // 業者の体で場所が隠れないように
+  } else if (S.peek) {
+    cam.focus = peekSave.focus; cam.area = peekSave.area; cam.target.copy(peekSave.target); cam.az = peekSave.az; cam.pol = peekSave.pol; cam.r = peekSave.r; S.peek = false; insp.visible = peekSave.insp;
+  } else return;
+  $('#dialog').classList.toggle('hidden', S.peek); $('#peekBar').classList.toggle('hidden', !S.peek);
+}
+$('#peekBtn').onclick = () => peek(true);
+$('#peekBack').onclick = () => peek(false);
 // 信用が0のときに求められる根拠
 const EVIDENCE = [['guide', '国交省のガイドラインを見せる'], ['photo', '入居時チェック表の写真を見せる'], ['contract', '契約書・明細を確認してもらう'], ['look', 'その場所を一緒に見てもらう']];
 const EVIDENCE_FOR = { normal: 'guide', dep: 'guide', partial: 'guide', photo: 'photo', detail: 'contract', dup: 'contract', none: 'look' };
@@ -1528,7 +1559,9 @@ async function startInspection() {
     if (!s.fake && isCovered(s.def, S.cov)) raw = dupClaim(raw, s.def);
     const claim = s.fake ? raw : shapeClaim(raw);
     if (!claim) continue;
+    setTalkSpot(s.def);
     const r = await argue(claim);
+    setTalkSpot(null);
     if (!s.fake && !claim.dup && r.final.amt > 0) addCover(s.def, r.final.label, S.cov);
     const ref = spots.find(x => x.id === s.id);
     S.log.push({ id: s.id, name: s.def.name, why: claim.dup ? s.def.why + DUP_NOTE : s.def.why, kind: s.fake ? 'fake' : s.def.kind, clean: s.def.clean, dirt: s.def.dirt, patchFail: !!(ref && ref.patched && S.patchFail), ...r });
@@ -1777,6 +1810,7 @@ async function agentExplain() {
     it.final = o.amt;
     if (o.amt === 0) continue;
     const bill = { label: o.label, amt: o.amt };
+    setTalkSpot(it.def);
     say('me', o.label.startsWith(it.name) ? `${o.label}で${yen(o.amt)}になります。` : `${it.name}は、${o.label}で${yen(o.amt)}になります。`, bill); who.textContent = 'あなた（業者）';
     await sleep(700);
     if (o.amt > fair) {
@@ -1797,6 +1831,7 @@ async function agentExplain() {
     }
     await choose([['ok', '次へ', 'acc']]);
   }
+  setTalkSpot(null);
   tsay(S.tenant === 'claimer' ? '…で、これで終わり？' : '…これで全部ですね。');
   await choose([['ok', '評価を見る', 'acc']]);
   $('#dialog').classList.add('hidden');
@@ -1865,6 +1900,7 @@ function showAgentResult() {
 let MODE = 'tenant';
 function startRound() {
   buildRound();
+  setTalkSpot(null); $('#peekBar').classList.add('hidden');
   S.mode = MODE;
   insp.visible = false;
   updateAreaBar();
@@ -1912,6 +1948,7 @@ function tick(now) {
   const sw = inspTarget ? Math.sin(inspWalk) * 0.5 : 0;
   const u = insp.userData;
   if (u.legs) { u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; u.arms[0].rotation.x = inspTarget ? -sw * 0.3 : -0.5; u.arms[1].rotation.x = sw * 0.6; }
+  if (talkRing.visible) talkRing.scale.setScalar(1 + 0.12 * Math.sin(now / 180));
   // カメラ
   const chase = !cam.focus && cam.follow;
   const want = cam.focus ? cam.focus.pos : chase ? chasePos(tmpV.clone()) : overviewPos(tmpV.clone());
