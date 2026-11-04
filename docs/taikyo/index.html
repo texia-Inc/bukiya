@@ -23,6 +23,9 @@ button{font:inherit;color:inherit;cursor:pointer;border:0}
 #docsBtn{background:#fff3c4}
 #hearts{color:var(--accent);letter-spacing:1px}
 #found{position:fixed;left:12px;top:calc(76px + env(safe-area-inset-top));pointer-events:none}
+#areaBar{position:fixed;left:12px;right:110px;top:calc(76px + env(safe-area-inset-top));display:flex;flex-wrap:wrap;gap:6px}
+#areaBar button{background:rgba(255,250,240,.94);border:2px solid var(--ink);border-radius:999px;padding:4px 10px;font-weight:800;font-size:13px;box-shadow:0 2px 0 rgba(0,0,0,.18)}
+#areaBar button.on{background:var(--ink);color:#fff}
 #backBtn{position:fixed;left:12px;bottom:calc(16px + env(safe-area-inset-bottom));background:#fff;font-weight:800}
 #startInspBtn{position:fixed;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));background:var(--accent);color:#fff;font-weight:800;font-size:15px;padding:10px 14px}
 #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));background:rgba(43,38,34,.82);color:#fff;border-radius:20px;padding:6px 14px;font-size:13px;pointer-events:none;white-space:nowrap}
@@ -94,6 +97,7 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
   </div>
 </div>
 <div class="chip hidden" id="found"></div>
+<div id="areaBar" class="hidden"></div>
 <button class="chip hidden" id="backBtn" type="button">← 部屋全体</button>
 <button class="chip hidden" id="startInspBtn" type="button">立ち会いを始める ▶</button>
 <div id="hint" class="hidden">ドラッグで回転・タップで調べる</div>
@@ -630,7 +634,11 @@ function makeInspector() {
   for (const s of [-1, 1]) box(0.03, 0.03, 0.02, dark, s * 0.06, 1.64, 0.15, g);
   const clip = box(0.22, 0.3, 0.02, M(0x8b6a43), 0, 0, 0, arms[0]); clip.position.set(0.06, -0.5, 0.12); clip.rotation.x = -0.6;
   box(0.18, 0.24, 0.005, M(0xffffff), 0.06, -0.495, 0.132, arms[0]).rotation.x = -0.6;
-  g.userData = { legs, arms };
+  const shades = new THREE.Group();
+  for (const s of [-1, 1]) box(0.09, 0.05, 0.02, M(0x111111), s * 0.06, 1.64, 0.16, shades);
+  box(0.05, 0.015, 0.02, M(0x111111), 0, 1.65, 0.16, shades);
+  g.add(shades);
+  g.userData = { legs, arms, cloth: navy, shades };
   g.visible = false;
   scene.add(g);
   return g;
@@ -649,7 +657,7 @@ async function walkPath(x, z) {
 function facePoint(p) { insp.rotation.y = Math.atan2(p.x - insp.position.x, p.z - insp.position.z); }
 
 // ---------- カメラ ----------
-const cam = { az: -0.72, pol: 0.92, r: 9.6, target: new THREE.Vector3(-0.9, 0.5, 0), focus: null };
+const cam = { az: -0.72, pol: 0.92, r: 9.6, target: new THREE.Vector3(-0.9, 0.5, 0), focus: null, area: 'all' };
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(-0.9, 0.5, 0);
 function overviewPos(out) { return out.set(cam.target.x + cam.r * Math.sin(cam.pol) * Math.sin(cam.az), cam.target.y + cam.r * Math.cos(cam.pol), cam.target.z + cam.r * Math.sin(cam.pol) * Math.cos(cam.az)); }
 overviewPos(camPos);
@@ -681,19 +689,38 @@ function standPos(def) {
 }
 function focusOn(view) { cam.focus = view; $('#backBtn').classList.toggle('hidden', !view || S.phase !== 'prep'); }
 
+// 場所ごとに寄って見る（寄ったままドラッグで見回せる）
+const AREAS = {
+  all: { label: '全体', target: [-0.9, 0.5, 0], az: -0.72, pol: 0.92 },
+  room: { label: '窓側', target: [0, 0.9, -1.5], r: 3.8, az: 0.35, pol: 0.95 },
+  kitchen: { label: 'キッチン', target: [1.2, 1.0, 1.6], r: 3.0, az: -1.9, pol: 1.0 },
+  entrance: { label: '玄関', target: [0.4, 0.8, 2.2], r: 2.8, az: 2.6, pol: 1.05 },
+  wash: { label: '洗面所', target: [-3.0, 1.15, 2.15], r: 2.8, az: 1.6, pol: 1.15 },
+  bath: { label: 'お風呂', target: [-2.7, 0.6, 1.0], r: 2.5, az: 0.25, pol: 0.75 },
+};
+const rRange = () => cam.area === 'all' ? [4.5, 14] : [1.4, 6];
+function setArea(k) {
+  const a = AREAS[k];
+  cam.area = k; cam.target.set(...a.target); cam.az = a.az; cam.pol = a.pol; cam.r = a.r || baseR();
+  focusOn(null); closeSheet();
+  document.querySelectorAll('#areaBar button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+}
+$('#areaBar').innerHTML = Object.entries(AREAS).map(([k, a]) => `<button type="button" data-k="${k}">${a.label}</button>`).join('');
+$('#areaBar').onclick = e => { const b = e.target.closest('button'); if (b) setArea(b.dataset.k); };
+
 // 操作：ドラッグで回転、ピンチ・ホイールで寄る、タップで調べる
 const ptrs = new Map(); let downAt = null, moved = 0, pinch0 = 0;
 canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); downAt = { x: e.clientX, y: e.clientY }; moved = 0; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } });
 canvas.addEventListener('pointermove', e => {
   const p = ptrs.get(e.pointerId); if (!p) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
-  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) cam.r = Math.max(4.5, Math.min(14, cam.r * pinch0 / d)); pinch0 = d; return; }
-  if (moved > 6 && !cam.focus && S && S.phase === 'prep') { cam.az -= dx * 0.008; cam.pol = Math.max(0.35, Math.min(1.25, cam.pol - dy * 0.006)); }
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch0) { const [lo, hi] = rRange(); cam.r = Math.max(lo, Math.min(hi, cam.r * pinch0 / d)); } pinch0 = d; return; }
+  if (moved > 6 && !cam.focus && S && S.phase === 'prep') { cam.az -= dx * 0.008; cam.pol = Math.max(0.35, Math.min(cam.area === 'all' ? 1.25 : 1.45, cam.pol - dy * 0.006)); }
   else if (moved > 6 && cam.focus && S && S.phase === 'prep') { focusOn(null); closeSheet(); }
 });
 canvas.addEventListener('pointerup', e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; if (moved <= 6 && downAt && ptrs.size === 0) onTap(e.clientX, e.clientY); });
 canvas.addEventListener('pointercancel', e => ptrs.delete(e.pointerId));
-canvas.addEventListener('wheel', e => { cam.r = Math.max(4.5, Math.min(14, cam.r * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: true });
+canvas.addEventListener('wheel', e => { const [lo, hi] = rRange(); cam.r = Math.max(lo, Math.min(hi, cam.r * (1 + Math.sign(e.deltaY) * 0.08))); }, { passive: true });
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function shown(o) { for (; o; o = o.parent) if (!o.visible) return false; return true; }
@@ -715,8 +742,6 @@ function updateHud() {
   $('#clockTxt').textContent = clockStr(S.clock);
   $('#depTxt').textContent = yen(C.deposit);
   $('#hearts').textContent = '♥'.repeat(S.hearts) + '♡'.repeat(3 - S.hearts);
-  const vis = spots.filter(s => !s.def.noClaim);
-  $('#found').textContent = `見つけた傷・汚れ ${vis.filter(s => s.found).length} / ${vis.length}`;
 }
 
 // ---------- 一回分を作る ----------
@@ -725,7 +750,7 @@ function buildRound() {
   for (const y of yellowing) y.parent.remove(y);
   spots = []; yellowing = []; decalSeq = 0;
   C = newContract();
-  S = { phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [] };
+  S = { phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [], boss: pick(['honest', 'normal', 'normal', 'crook', 'crook']), signed: true };
   const ids = [
     ...shuffle(['pins', 'sunburn', 'fridge', 'dents']).slice(0, 3),
     ...shuffle(['screw', 'caster', 'hole']).slice(0, 2),
@@ -845,22 +870,60 @@ $('#docsBtn').onclick = () => { renderDocs(); $('#docs').classList.remove('hidde
 $('#docsClose').onclick = () => $('#docs').classList.add('hidden');
 $('#docTabs').onclick = e => { const t = e.target.closest('button'); if (t) { docTab = t.dataset.t; renderDocs(); } };
 
+// ---------- 業者の性格 ----------
+// honest：最初から妥当な金額で、通常損耗はほぼ請求しない
+// normal：ふっかけるが、正しく言い返せば引く
+// crook：単価を3割高く書き、ない傷や契約にない費用まで請求し、その場でサインを急かす
+const BOSSES = {
+  honest: { name: '佐伯', color: 0x3d6b4f, shades: false,
+    hello: '本日はよろしくお願いします、管理会社の佐伯です。気になる所があれば、何でも聞いてください。',
+    sign: '精算書です。内容をご確認のうえ、ご納得いただけたらサインをお願いします。持ち帰っていただいても大丈夫ですよ。' },
+  normal: { name: '権田', color: 0x2f4a6b, shades: false,
+    hello: 'どうも、管理会社から来ました権田です。お部屋を確認させていただきますね。',
+    sign: 'では、こちらにサインをお願いします。' },
+  crook: { name: '黒沼', color: 0x26262b, shades: true,
+    hello: 'どうも、黒沼です。…手短にいきましょうか。今日中にサインもらえれば、早く返金できますんで。',
+    sign: 'じゃ、ここにサインを。今日サインしてもらえないと、返金がだいぶ遅くなりますよ？' },
+};
+// 悪質な業者が言ってくる、ない傷（どれも何もない場所）
+const FAKES = [
+  { name: '床のキズ（？）', wall: 'F0', pos: [0.9, 0, 0.9], say: 'ここの床、キズがありますね。補修です。', label: 'フローリング部分補修', amt: 22000 },
+  { name: '壁の汚れ（？）', wall: 'R', pos: [RX, 1.3, -1.1], say: 'この壁、汚れてますね。張替えです。', label: 'クロス張替え（1面）', amt: 15000 },
+  { name: '窓ガラスのヒビ（？）', wall: 'B', pos: [0.4, 1.2, -RZ], say: '窓ガラスにヒビが入ってますね。交換です。', label: 'ガラス交換', amt: 30000 },
+  { name: 'クローゼットの扉のキズ（？）', wall: 'L', pos: [-RX, 1.0, -0.4], say: 'クローゼットの扉、キズがありますね。', label: '扉の補修', amt: 18000 },
+];
+const fairOf = c => c.steps.length ? c.steps[c.steps.length - 1].amt : c.amt;
+function shapeClaim(c) {
+  const fair = fairOf(c);
+  if (S.boss === 'honest') {
+    if (fair === 0 && Math.random() < 0.7) return null; // 通常損耗はそもそも請求しない
+    if (fair > 0 && c.steps.length) { const last = c.steps[c.steps.length - 1]; return { ...c, amt: fair, label: last.label || c.label, steps: [], fair }; }
+    return { ...c, fair };
+  }
+  if (S.boss === 'crook' && fair > 0) return { ...c, inflate: 1.3, fair };
+  return { ...c, fair };
+}
+
 // ---------- 立ち会い ----------
 const CHOICES = [
   ['normal', '普通に住んでできたもの（通常損耗）では？'],
   ['photo', '入居したときからありました'],
   ['dep', '住んだ年数で割り引かれるのでは？'],
   ['partial', 'その部分だけの補修で足りるのでは？'],
+  ['detail', '明細（単価・面積）を見せてください'],
+  ['none', 'そこに傷はありませんよ'],
 ];
 const DEFAULT_REBUT = {
   normal: '普通に暮らしてできたものとは言えないですね。',
   photo: '入居時のチェック表には、ここは書いてないですよ。',
   dep: 'これは年数で割り引くものじゃないですね。',
   partial: 'もう必要な範囲だけですよ。',
+  detail: 'はい、これが明細です。単価も面積も、ふつうの金額ですよ。',
+  none: 'いや、ほら、ここにありますよね。',
 };
 let choiceResolve = null;
 function say(who, text, bill) {
-  $('#dlgWho').textContent = who === 'me' ? 'あなた' : '業者・権田';
+  $('#dlgWho').textContent = who === 'me' ? 'あなた' : '業者・' + BOSSES[S.boss].name;
   $('#dlgWho').classList.toggle('me', who === 'me');
   $('#dlgText').textContent = text;
   const b = $('#dlgBill');
@@ -876,7 +939,9 @@ function choose(opts) {
   });
 }
 async function argue(claim) {
-  let amt = claim.amt, label = claim.label, step = 0;
+  let base = claim.amt, label = claim.label, step = 0, f = claim.inflate || 1;
+  const show = () => base <= 1 ? base : Math.round(base * f / 100) * 100;
+  let amt = show();
   const first = { amt, label };
   say('them', claim.say, { label, amt });
   while (true) {
@@ -888,8 +953,11 @@ async function argue(claim) {
     say('me', CHOICES.find(c => c[0] === k)[1], { label, amt });
     await sleep(800);
     const st = claim.steps[step];
-    if (st && st.k === k) {
-      amt = st.amt; label = st.label || label; step++;
+    if (k === 'detail' && f > 1) {
+      f = 1; amt = show();
+      say('them', '…あ、単価を高く書いてましたね。正しい金額に直します。', { label, amt });
+    } else if (st && st.k === k) {
+      base = st.amt; label = st.label || label; step++; amt = show();
       say('them', st.reply, { label, amt });
     } else {
       S.hearts--; updateHud();
@@ -899,24 +967,31 @@ async function argue(claim) {
       toast(S.hearts > 0 ? '信用が下がった…' : '信用がなくなった！');
     }
   }
-  return { first, final: { amt, label } };
+  return { first, final: { amt, label }, fair: claim.fair ?? fairOf(claim) };
 }
 async function startInspection() {
   if (S.phase !== 'prep') return;
   S.phase = 'insp';
   closeSheet(); focusOn(null);
-  ['#startInspBtn', '#found', '#hint', '#backBtn'].forEach(s => $(s).classList.add('hidden'));
+  ['#startInspBtn', '#found', '#hint', '#backBtn', '#areaBar'].forEach(s => $(s).classList.add('hidden'));
+  setArea('all');
   $('#heartChip').classList.remove('hidden');
   $('#phaseLbl').textContent = '立ち会い';
   $('#clockSub').textContent = '';
   S.clock = Math.max(S.clock, END_MIN);
   updateHud();
+  const boss = BOSSES[S.boss];
+  insp.userData.cloth.color.setHex(boss.color); insp.userData.shades.visible = boss.shades;
+  $('#phaseLbl').textContent = '立ち会い（業者：' + boss.name + '）';
   insp.visible = true; insp.position.set(0.47, 0, RZ - 0.3); insp.rotation.y = Math.PI;
   cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.4) };
-  say('them', 'どうも、管理会社から来ました権田です。お部屋を確認させていただきますね。');
+  say('them', boss.hello);
   await choose([['ok', 'お願いします', 'acc']]);
   // 部屋の奥から順に見ていく
-  const targets = spots.filter(s => !s.def.noClaim && !s.done).sort((a, b) => (a.def.pos[0] < -RX) - (b.def.pos[0] < -RX) || a.def.pos[2] - b.def.pos[2]);
+  const targets = spots.filter(s => !s.def.noClaim && !s.done).map(s => ({ id: s.id, def: s.def, claim: () => s.def.claim(S) }));
+  if (S.boss === 'crook') for (const fk of shuffle(FAKES.slice()).slice(0, 2)) targets.push({ id: null, def: { ...fk, why: '悪質な業者が、ない傷を請求してきた。請求された場所を自分の目で確かめ、身に覚えのないものははっきり断る。' }, fake: true,
+    claim: () => ({ say: fk.say, label: fk.label, amt: fk.amt, steps: [{ k: 'none', amt: 0, reply: '…あれ、見間違いでしたかね。失礼しました。' }], rebut: { normal: 'いや、通常損耗とかじゃなくて、キズがあるんですよ。' } }) });
+  targets.sort((a, b) => (a.def.pos[0] < -RX) - (b.def.pos[0] < -RX) || a.def.pos[2] - b.def.pos[2]);
   if (!targets.length) { say('them', 'おお…きれいに使われてますね。お部屋の中は問題ないです。'); await choose([['ok', '次へ', 'acc']]); }
   for (const s of targets) {
     $('#dialog').classList.add('hidden');
@@ -926,7 +1001,8 @@ async function startInspection() {
     facePoint(new THREE.Vector3(...s.def.pos));
     cam.focus = spotView(s.def);
     await sleep(350);
-    const claim = s.def.claim(S);
+    const claim = s.fake ? s.claim() : shapeClaim(s.claim());
+    if (!claim) continue;
     const r = await argue(claim);
     S.log.push({ id: s.id, name: s.def.name, why: s.def.why, ...r });
   }
@@ -937,9 +1013,13 @@ async function startInspection() {
   cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.75) };
   say('them', 'お部屋はこれで全部ですね。あとは書類の上での費用です。');
   await choose([['ok', 'はい', 'acc']]);
-  for (const c of paperClaims()) { const r = await argue(c); S.log.push({ id: c.id, name: c.name, why: c.why, ...r }); }
-  say('them', 'では、こちらが精算書になります。');
-  await choose([['ok', '精算書を見る', 'acc']]);
+  const papers = paperClaims();
+  if (S.boss === 'crook') papers.push({ id: null, name: '室内消毒（抗菌施工）', say: 'それと、室内の消毒代です。みなさんにお願いしてるんで。', label: '室内消毒（抗菌施工）', amt: 16500,
+    steps: [{ k: 'detail', amt: 0, reply: '…契約書には書いてないですね。外しておきます。' }], rebut: { normal: 'みなさん払ってますよ？' },
+    why: '契約書に書かれていない消毒料などは払う必要がない。何の費用か、契約のどこに書いてあるかを確かめる。' });
+  for (const c0 of papers) { const c = shapeClaim(c0); if (!c) continue; const r = await argue(c); S.log.push({ id: c.id, name: c.name, why: c.why, ...r }); }
+  say('them', BOSSES[S.boss].sign);
+  S.signed = (await choose([['sign', 'この場でサインする'], ['home', '明細をもらって、持ち帰って確認する']])) === 'sign';
   $('#dialog').classList.add('hidden');
   showResult();
 }
@@ -961,7 +1041,15 @@ function bestCase() {
 }
 function showResult() {
   S.phase = 'done';
-  const total = S.log.reduce((a, l) => a + l.final.amt, 0);
+  let total = S.log.reduce((a, l) => a + l.final.amt, 0);
+  const over = S.log.reduce((a, l) => a + Math.max(0, l.final.amt - l.fair), 0);
+  let after = '';
+  if (!S.signed && S.boss === 'crook' && over > 0) {
+    const back = Math.round(over * 0.3 / 100) * 100; total -= back;
+    after = `持ち帰って明細を確かめ、消費生活センターに相談した。不当だった分のうち ${yen(back)} が戻ってきた。`;
+  } else if (!S.signed) after = '持ち帰って確かめたが、精算書の内容はそのまま決まった。';
+  else if (S.boss === 'crook' && over > 0) after = 'その場でサインしてしまった…。悪質な業者には、サインせずに明細をもらって持ち帰ろう。';
+  const missed = spots.filter(s => !s.def.noClaim && !s.found).map(s => s.def.name);
   const firstTotal = S.log.reduce((a, l) => a + l.first.amt, 0);
   const refund = Math.max(0, C.deposit - total), extra = Math.max(0, total - C.deposit);
   const best = Math.max(0, C.deposit - bestCase());
@@ -975,6 +1063,8 @@ function showResult() {
       <div class="center"><div class="rank">${rank}</div><div style="font-size:11px;color:#7d7266">最高で ${yen(best)}</div></div>
     </div>
     <p style="margin:8px 0;font-weight:800">${comment}</p>
+    <p style="margin:0 0 6px;font-size:13px">業者：${BOSSES[S.boss].name}（${{ honest: '誠実な人', normal: 'ふつうの人', crook: '悪質な人' }[S.boss]}）${after ? '<br>' + after : ''}</p>
+    ${missed.length ? `<p style="margin:0 0 6px;font-size:13px;color:#7d7266">準備で見落としていた傷・汚れ：${missed.join('、')}</p>` : '<p style="margin:0 0 6px;font-size:13px;color:#2f8f5b">傷・汚れはすべて見つけていた！</p>'}
     <table><tr><th>項目</th><th class="num">請求</th><th class="num">確定</th></tr>
     ${S.log.map(l => `<tr><td><b>${l.name}</b><div class="why">${l.why}</div>${GUIDE[l.id] ? `<details class="real"><summary>実際の退去では？</summary>${guideHTML(l.id)}</details>` : ''}</td><td class="num">${l.first.amt !== l.final.amt ? `<s>${yen(l.first.amt)}</s>` : yen(l.first.amt)}</td><td class="num"><b style="color:${l.final.amt ? '#e2573b' : '#2f8f5b'}">${yen(l.final.amt)}</b></td></tr>`).join('')}
     </table>
@@ -987,10 +1077,10 @@ function showResult() {
 function startRound() {
   buildRound();
   insp.visible = false;
-  cam.az = -0.72; cam.pol = 0.92; cam.r = baseR(); cam.focus = null;
+  setArea('all');
   $('#phaseLbl').textContent = '準備';
   $('#clockSub').textContent = '立ち会い 12:00';
-  ['#hud', '#found', '#startInspBtn', '#hint'].forEach(s => $(s).classList.remove('hidden'));
+  ['#hud', '#startInspBtn', '#hint', '#areaBar'].forEach(s => $(s).classList.remove('hidden'));
   $('#heartChip').classList.add('hidden');
   $('#backBtn').classList.add('hidden');
   updateHud();
@@ -1027,7 +1117,7 @@ function tick(now) {
   // 全体を見るとき：カメラが壁の外側にあれば隠す。寄るとき：カメラと見る点の間をさえぎる壁を隠す
   for (const key in walls) {
     const g = walls[key], w = g.userData;
-    if (!cam.focus) { g.visible = !((camPos[w.axis] - w.at) * w.out > 0.15); continue; }
+    if (!cam.focus && cam.area === 'all') { g.visible = !((camPos[w.axis] - w.at) * w.out > 0.15); continue; }
     const da = camPos[w.axis] - w.at, db = camLook[w.axis] - w.at;
     let block = false;
     if (da * db < 0) {
