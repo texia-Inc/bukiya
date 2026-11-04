@@ -1741,12 +1741,20 @@ const TENANTS = {
 };
 // 取りすぎのとき、入居者が持ち出す理由
 function overReason(it) {
-  if (it.kind === 'owner') return it.id === 'cleaning' ? '特約もないし、掃除もしましたよね。次の人のためのクリーニングは大家さん負担では？' : it.id === 'key' ? '鍵はなくしてないので、交換は大家さん負担ですよね？' : it.id === 'ac' ? 'タバコは吸ってないので、エアコンの洗浄は普通の使用の範囲ですよね？' : 'これって、普通に住んでできたもの（通常損耗）ですよね？';
-  if (it.fairK === 'dup') return 'そこは、ほかの張替えに含まれてますよね？ 二重になっていませんか？';
-  if (it.kind === 'premove') return 'これ、入居したときからありましたよ。チェック表にも載ってますよね？';
-  const idx = +it.pick.slice(1), next = it.steps.filter(st => st.amt > 0 || true)[idx];
-  const k = next && next.k;
-  return k === 'partial' ? '張替えは、傷んだ面だけで足りるんじゃないですか？' : k === 'dep' ? `入居${C.years}年なので、クロスは経過年数で割り引かれるはずですよね？` : 'その金額、高すぎませんか？';
+  const loud = S.tenant === 'claimer';
+  const T = (polite, rude) => loud ? rude : polite;
+  if (it.kind === 'owner') return it.id === 'cleaning' ? T('特約もないし、掃除もしましたよね。次の人のためのクリーニングは大家さん負担では？', '特約もないし、掃除もしたでしょ！ 次の人のクリーニングなんて大家が払いなさいよ！')
+    : it.id === 'key' ? T('鍵はなくしてないので、交換は大家さん負担ですよね？', '鍵なんてなくしてないわよ！ 交換は大家持ちでしょ！')
+    : it.id === 'ac' ? T('タバコは吸ってないので、エアコンの洗浄は普通の使用の範囲ですよね？', 'タバコなんて吸ってないんだから、エアコン洗浄なんて払わないわよ！')
+    : T('これって、普通に住んでできたもの（通常損耗）ですよね？', 'これ、普通に住んでできたものでしょ！ 通常損耗じゃないの！');
+  if (it.fairK === 'dup') return T('そこは、ほかの張替えに含まれてますよね？ 二重になっていませんか？', 'そこ、ほかの張替えに入ってるでしょ！ 二重取りじゃない！');
+  if (it.kind === 'premove') return T('これ、入居したときからありましたよ。チェック表にも載ってますよね？', 'これ、入る前からあったわよ！ チェック表を見なさいよ！');
+  const next = it.steps[+it.pick.slice(1)], k = next && next.k;
+  const unit = /畳|ふすま|障子/.test(it.chain[0].label) ? '枚数' : /フローリング/.test(it.chain[0].label) ? '範囲' : '面';
+  if (k === 'partial') return unit === '範囲' ? T('補修は、傷の範囲だけで足りるんじゃないですか？', '傷のとこだけ直せばいいでしょ！ 全部なんておかしいわよ！')
+    : T(`張替えは、傷んだ${unit}だけで足りるんじゃないですか？`, `傷んだ${unit}だけ張り替えればいいでしょ！`);
+  if (k === 'dep') return T(`入居${C.years}年なので、クロスは経過年数で割り引かれるはずですよね？`, `${C.years}年も住んだのよ！ クロスは年数で割り引きなさいよ！`);
+  return T('その金額、高すぎませんか？', '高すぎでしょ、それ！');
 }
 async function agentExplain() {
   $('#estimate').classList.add('hidden');
@@ -1769,14 +1777,14 @@ async function agentExplain() {
     it.final = o.amt;
     if (o.amt === 0) continue;
     const bill = { label: o.label, amt: o.amt };
-    say('me', `${it.name}は、${o.label}で${yen(o.amt)}になります。`, bill); who.textContent = 'あなた（業者）';
+    say('me', o.label.startsWith(it.name) ? `${o.label}で${yen(o.amt)}になります。` : `${it.name}は、${o.label}で${yen(o.amt)}になります。`, bill); who.textContent = 'あなた（業者）';
     await sleep(700);
     if (o.amt > fair) {
       if (S.tenant === 'timid') { tsay('…はい、わかりました。', bill); it.silentOver = true; it.note = '取りすぎたが、小川さんは黙って払った（あとで気づかれるかも）'; await choose([['ok', '次へ', 'acc']]); continue; }
       SFX.play('bad'); tsay(overReason(it), bill);
       const k = await choose([['fix', 'おっしゃるとおりです。直します'], ['keep', 'いえ、このままでお願いします']]);
       it.note = k === 'fix' ? '取りすぎを指摘され、適正な金額に直した' : '取りすぎを指摘されたのに断って、もめた';
-      if (k === 'fix') { it.final = fair; SFX.play('good'); tsay(fair ? `…${yen(fair)}ですね。それなら納得です。` : 'はい、ありがとうございます。', { label: o.label, amt: fair }); }
+      if (k === 'fix') { it.final = fair; SFX.play('good'); const ok = S.tenant === 'claimer' ? (fair ? `…${yen(fair)}ね。最初からそう言いなさいよ。` : '当然でしょ。') : fair ? `…${yen(fair)}ですね。それなら納得です。` : 'はい、ありがとうございます。'; tsay(ok, { label: it.opts.find(x => x.k === it.fairK).label, amt: fair }); }
       else { S.dispute++; tsay(S.tenant === 'savvy' ? '…ガイドラインと違いますよね。この件は、消費生活センターに相談します。' : 'ふざけないでよ！ 出るとこ出るからね！', bill); if (S.tenant === 'savvy' || Math.random() < 0.5) it.lawsuit = true; }
     } else {
       if (S.tenant === 'claimer') {
@@ -1789,7 +1797,7 @@ async function agentExplain() {
     }
     await choose([['ok', '次へ', 'acc']]);
   }
-  tsay('…これで全部ですね。');
+  tsay(S.tenant === 'claimer' ? '…で、これで終わり？' : '…これで全部ですね。');
   await choose([['ok', '評価を見る', 'acc']]);
   $('#dialog').classList.add('hidden');
   showAgentResult();
