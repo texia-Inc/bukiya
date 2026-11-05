@@ -271,6 +271,13 @@ const WX0 = -3.6, BZ = 0.5, PZ = 1.55;
 // 1LDK・2K の2部屋目（左奥、浴室の裏）：x R2X..-RX、z -RZ..BZ。入口は左の壁の z R2D0..R2D1
 const R2X = -5.4, R2D0 = -0.95, R2D1 = -0.25;
 const START_MIN = 9 * 60, END_MIN = 12 * 60;
+// やることの合計より少しだけ短くなるよう、その回の開始時刻を決める（毎回だいたい35分足りない）
+const SHORT_MIN = 35;
+function startFor(list) {
+  const need = list.reduce((n, s) => n + (s.def.clean ? s.def.clean.t : s.def.fix ? s.def.fix.t : s.def.reveal ? s.def.reveal.t : 0), 0);
+  const len = Math.round((need - SHORT_MIN) / 15) * 15;
+  return END_MIN - Math.min(300, Math.max(150, len));
+}
 
 // ---------- 契約と、その回の状態 ----------
 let C, S;
@@ -283,6 +290,8 @@ function newContract(room) {
   };
   c.acPaid = !c.smoker && Math.random() < 0.35; // 入居時にエアコンクリーニング代を払っている（退去時にまた請求されたら二重取り）
   c.leakReported = Math.random() < 0.5; // シャワーの水漏れを入居中に管理会社へ連絡したか
+  c.incense = !c.smoker && Math.random() < 0.25; // お香を毎日たいていた（壁紙に臭いがしみる）
+  c.dupKey = !c.keyLost && Math.random() < 0.2; // 断らずに合鍵を作っていた
   return c;
 }
 // クロスは6年で残存価値1円（経過年数を考慮した負担額）
@@ -525,6 +534,110 @@ Object.assign(DEFS, {
   set(['tatamiDent', 'tatamiBurn', 'tatamiStain'], { kind: 'tatami', room: 'main' }); DEFS.tatamiSun.cover = { kind: 'tatami', room: 'main', all: true };
   DEFS.r2TatamiBurn.cover = { kind: 'tatami', room: 'r2' }; DEFS.r2TatamiSun.cover = { kind: 'tatami', room: 'r2', all: true };
 }
+// ---- やらかし：ふつうの人がうっかりやりがちなこと。mine は「自分のメモ」に出る心当たり ----
+// 貸主の負担なのに、心当たりがあって謝りたくなるもの（罠）も混ぜる
+{
+  const clothAll = say => ({ say, label: 'クロス張替え（部屋全面）', amt: 60000,
+    steps: [{ k: 'partial', amt: CLOTH, label: 'クロス張替え（1面）', reply: '…確かに、張替えはその面だけで足りますね。1面分にします。' },
+            { k: 'dep', amt: dep(CLOTH), label: `クロス1面（${depLabel()}）`, reply: depReply() }] });
+  const FLOOR_DEP = 'フローリングの部分補修は、住んだ年数は関係ないんですよ。';
+  Object.assign(DEFS, {
+    // 生活のくせ
+    humidifier: { name: '加湿器の前の壁紙のはがれ', size: [.5, .6], kind: 'tenant', mine: '冬のあいだ、加湿器を壁ぎわでつけっぱなしにしていた。',
+      desc: '冬じゅう加湿器を壁ぎわでつけっぱなしにしていたら、壁紙の継ぎ目がはがれて、うっすらカビも出てきた。',
+      claim: () => ({ ...clothAll('壁紙がはがれて、カビまで出てますね。部屋全面の張替えです。'), rebut: { normal: '加湿器を壁に向けてつけっぱなしにしたのは、使い方の問題ですね。' } }),
+      why: '加湿器や部屋干しの湿気で壁紙をはがしたり、カビさせたりしたら借主の負担。ただし張替えは傷んだ面だけで、クロスは経過年数も考慮する。' },
+    hairIron: { name: 'ヘアアイロンの焦げ跡', size: [.42, .3], kind: 'tenant', mine: 'ヘアアイロンを床にじか置きして、焦がしてしまった。',
+      desc: '床に置いたヘアアイロンで、フローリングが細長く焦げてしまった。',
+      claim: () => ({ say: 'フローリングに焦げ跡ですね。床は全部張替えです。', label: 'フローリング張替え（全面）', amt: 110000,
+        steps: [{ k: 'partial', amt: 22000, label: 'フローリング部分補修', reply: '…焦げているのはここだけですね。部分補修にします。' }],
+        rebut: { dep: FLOOR_DEP, normal: '焦げ跡は、普通に住んでいてできるものじゃないですね。' } }),
+      why: '焦げ跡は不注意による傷みで借主の負担。ただし補修は傷の範囲だけで、フローリングの部分補修は経過年数を考慮しない。' },
+    rainStain: { name: '窓ぎわの床の雨ジミ', size: [.8, .4], kind: 'tenant', mine: '窓を開けたまま出かけた日に、大雨が降った。',
+      desc: '窓を開けたまま出かけて、吹き込んだ雨で床が白っぽく変色している。',
+      claim: () => ({ say: '窓ぎわの床、水で傷んでますね。部分補修です。', label: 'フローリング部分補修', amt: 28000, steps: [],
+        rebut: { normal: '雨が吹き込むのを放っておいたのは、住む人の管理の問題ですね。', dep: FLOOR_DEP } }),
+      why: '窓の閉め忘れで雨が吹き込んで傷んだ床は、借主の不注意として負担になる。フローリングの部分補修は経過年数を考慮しない。' },
+    plantWater: { name: '観葉植物の水ジミ', size: [.5, .5], kind: 'tenant', mine: '観葉植物の受け皿から、よく水があふれていた。',
+      desc: '観葉植物の受け皿から水があふれて、床に輪っかの形の黒ずみが残っている。',
+      claim: () => ({ say: '床が水で黒ずんでますね。床は全部張替えです。', label: 'フローリング張替え（全面）', amt: 110000,
+        steps: [{ k: 'partial', amt: 22000, label: 'フローリング部分補修', reply: '…傷んでいるのはこの輪っかの所だけですね。部分補修にします。' }],
+        rebut: { dep: FLOOR_DEP, normal: '水があふれたのを放っておいたシミは、普通の使い方とは言えないですね。' } }),
+      why: '鉢の水があふれたのを放っておいて傷んだ床は借主の負担。ただし補修は傷んだ範囲だけで、フローリングの部分補修は経過年数を考慮しない。' },
+    // よかれと思って
+    hookPeel: { name: '貼れるフックの跡', size: [.42, .36], kind: 'tenant', mine: '「はがせる」と書いてあるフックで、壁に物を掛けていた。',
+      desc: '「はがせる」と書いてあったフックをはがしたら、壁紙の表面ごとめくれてしまった。',
+      claim: () => ({ ...clothAll('壁紙がめくれてますね。フックの跡ですか？ 部屋全面の張替えです。'), rebut: { normal: '画鋲の穴と違って、壁紙ごとはがしてしまったものは借主さんの負担です。' } }),
+      why: '貼ってはがせるフックや両面テープでも、壁紙ごとはがれたら借主の負担（画鋲の穴とはちがう）。ただし張替えは1面分で、経過年数も考慮する。' },
+    tensionRod: { name: '突っ張り棒の跡', size: [.4, .3], kind: 'tenant', mine: '天井まで届く突っ張り棒で、収納を作っていた。',
+      desc: '天井近くまで突っ張り棒を立てていた所の壁に、丸いへこみと跡が残っている。',
+      claim: () => ({ say: '突っ張り棒の跡が、へこんでますね。クロスの張替えです。', label: 'クロス張替え（1面）', amt: CLOTH,
+        steps: [{ k: 'dep', amt: dep(CLOTH), label: `クロス1面（${depLabel()}）`, reply: depReply() }],
+        rebut: { normal: '強く突っ張って壁をへこませたのは、普通の使い方を超えてますね。' } }),
+      why: '突っ張り棒で壁をへこませたり跡を残したりしたら、借主の負担になりやすい（軽い跡なら揉めるところ）。クロスは経過年数を考慮する。' },
+    peelPaper: { name: 'はがせる壁紙の跡', size: [.6, .7], kind: 'tenant', mine: 'ネットで見た「はがせる壁紙」を、1面だけ貼っていた。',
+      desc: 'おしゃれな「はがせる壁紙」を貼っていた。はがしたら、のりが残って元の壁紙もまだらになった。',
+      claim: () => ({ ...clothAll('はがせる壁紙ですか？ のりが残って、元の壁紙が傷んでますね。部屋全面の張替えです。'), rebut: { normal: '自分で貼った物の跡は、普通の使い方には入らないですね。' } }),
+      why: '「はがせる壁紙」でも、のりが残ったり元の壁紙を傷めたりしたら借主の負担。許可なくDIYしない。張替えは1面分で、経過年数も考慮する。' },
+    cfTape: { name: '床の両面テープ跡', size: [.7, .5], kind: 'tenant', mine: 'クッションフロアを、両面テープで床に留めていた。',
+      desc: '床に敷いていたクッションフロアを両面テープで留めていた。はがしたら、ベタベタの跡が残った。', clean: { label: 'はがし剤で落とす', t: 35 },
+      claim: () => ({ say: '床にテープの跡がべったりですね。クリーニング代をいただきます。', label: 'フローリングのテープ跡除去', amt: 16500, steps: [],
+        rebut: { normal: '自分で貼ったテープの跡は、借主さんの負担ですね。' } }),
+      why: '床に貼ったテープののり残りは借主の負担。退去前に、床を傷めないはがし剤で落としておけば請求されない。' },
+    // 誰か（何か）がやった
+    catScratch: { name: '壁の爪とぎ跡', size: [.45, .55], kind: 'tenant', draw: 'petScratch', mine: '「1週間だけ」と、友だちの猫を預かった（ペット不可なのに…）。',
+      desc: '「1週間だけ」と友だちの猫を預かったら、壁で爪をとがれてしまった。…この部屋、ペット不可だ。',
+      claim: () => ({ ...clothAll('壁に動物の爪あとがありますね。ペット不可の物件ですよね？ 部屋全面の張替えです。'), rebut: { normal: '動物の爪あとは、普通の使い方には入らないですよ。' } }),
+      why: 'ペット不可の部屋で動物を飼ったり預かったりしてついた傷は借主の負担（契約違反にもなる）。ただし張替えは1面分で、経過年数も考慮する。' },
+    kidSticker: { name: '壁のシール', size: [.5, .4], kind: 'tenant', mine: '遊びに来た姪っ子が、壁にシールを貼っていった。',
+      desc: '遊びに来た姪っ子が、壁にキャラクターのシールを貼りまくっていった。今ならきれいにはがせそう。', clean: { label: 'シールをはがす', t: 25 },
+      claim: () => ({ say: '壁にシールがたくさん。はがすと壁紙も傷むので、張替えです。', label: 'クロス張替え（1面）', amt: CLOTH,
+        steps: [{ k: 'dep', amt: dep(CLOTH), label: `クロス1面（${depLabel()}）`, reply: depReply() }],
+        rebut: { normal: 'シールを貼ったのは、普通の使い方じゃないですね。' } }),
+      why: 'シールの貼りっぱなしは借主の負担。はがせるうちにはがしておけば請求されない（クロスは経過年数を考慮する）。' },
+    dumbbell: { name: 'ダンベルのへこみ', size: [.36, .36], kind: 'tenant', mine: '筋トレ中に、ダンベルを床に落としたことがある。',
+      desc: '筋トレ中にダンベルを落として、床が丸くへこんでしまった。',
+      claim: () => ({ say: '床にへこみがありますね。何か重い物を落としました？ 補修です。', label: 'フローリング部分補修', amt: 22000, steps: [],
+        rebut: { normal: '家具の跡と違って、重い物を落としたへこみは借主さんの負担です。', dep: FLOOR_DEP } }),
+      why: '重い物を落としたへこみは借主の負担（家具を置いた跡のへこみとはちがう）。フローリングの部分補修は経過年数を考慮しない。' },
+    bikeScuff: { name: '自転車のこすれ跡', size: [.7, .3], kind: 'tenant', mine: '盗まれないよう、自転車を部屋の中に置いていた。',
+      desc: '部屋の中に自転車を置いていたら、ハンドルとペダルで壁が黒くこすれて、へこんでいる。',
+      claim: () => ({ ...clothAll('壁が黒くこすれて、へこんでますね。部屋全面の張替えです。'), rebut: { normal: '自転車をぶつけた跡は、普通の使い方とは言えないですね。' } }),
+      why: '自転車などをぶつけてできた壁のこすれ・へこみは借主の負担。張替えは1面分で、経過年数も考慮する。' },
+    windowSticker: { name: '窓ガラスののり跡', size: [.4, .4], kind: 'tenant', off: 0.03, mine: '窓に目隠しのフィルムを貼っていた。',
+      desc: '窓に貼っていた目隠しフィルムをはがしたら、のりの跡が白く残った。', clean: { label: 'のりを落とす', t: 20 },
+      claim: () => ({ say: '窓ガラスに、のりの跡がべったりですね。ガラスのクリーニング代です。', label: '窓ガラスのクリーニング', amt: 8800, steps: [],
+        rebut: { normal: '自分で貼ったフィルムの跡は、借主さんの負担ですね。' } }),
+      why: '窓に貼ったフィルムやシールののり跡は借主の負担。退去前に落としておけば請求されない。' },
+    hiddenHole: { name: 'カレンダーの裏の穴', size: [.42, .5], kind: 'tenant', draw: 'calendar', mine: 'ぶつけて開けた壁の穴を、カレンダーで隠している…。',
+      desc: '物をぶつけて開けた壁の穴を、カレンダーを貼って隠している。…このまま気づかれないかも？', descRevealed: 'カレンダーをはがした。穴は、立ち会いで正直に話そう。',
+      reveal: { label: 'カレンダーをはがして、正直に見せる', t: 5 },
+      claim: () => ({ say: '壁の穴ですね。ボードの補修と、クロスは部屋全面で張替えです。', label: 'ボード補修＋クロス全面', amt: 72000,
+        steps: [{ k: 'partial', amt: 12000 + CLOTH, label: 'ボード補修＋クロス1面', reply: '…そうですね、張替えはこの面だけにしましょう。' },
+                { k: 'dep', amt: 12000 + dep(CLOTH), label: `ボード補修＋クロス1面（${depLabel()}）`, reply: '…クロス分は年数で割り引きます。ボードの補修代はそのままですよ。' }] }),
+      why: '傷を隠しても、業者は必ず確かめる。隠したのがバレると信用を失い、ほかの言い分も通りにくくなる。穴そのものは借主の負担だが、クロスは面の分だけで経過年数も考慮する（ボードの補修代は別）。' },
+    // 罠：心当たりはあるけど、払わなくていい
+    tvBurn: { name: 'テレビの後ろの黒ずみ', size: [.8, .5], kind: 'owner', draw: 'fridge', mine: 'テレビの裏の壁を、黒く汚してしまった気がする…。',
+      desc: 'テレビを置いていた後ろの壁が、うっすら黒くなっている。…汚しちゃったかな？',
+      claim: () => ({ say: 'テレビの裏の壁、黒ずんでますね。張替えです。', label: 'クロス張替え（1面）', amt: CLOTH,
+        steps: [{ k: 'normal', amt: 0, reply: '…テレビの電気ヤケですか。家電を置けば出るものですね。結構です。' }] }),
+      why: 'テレビなど家電の後ろの壁の黒ずみ（電気ヤケ）は通常損耗で、貸主の負担。' },
+  });
+  Object.assign(DEFS.fridge, { mine: '冷蔵庫の後ろの壁、黒くしちゃったかも…。' });
+  Object.assign(DEFS.dents, { mine: 'ベッドの脚の跡を、床につけてしまった…。' });
+  Object.assign(DEFS.sunburn, { mine: 'ポスターの跡が、くっきり残ってしまった…。' });
+  Object.assign(DEFS.pins, { mine: 'カレンダーを画鋲で留めていた。' });
+  const W3 = ['L', 'R', 'B'], P = (id, place) => { DEFS[id].place = place; };
+  P('humidifier', { walls: W3, y: [0.35, 0.9] }); P('hookPeel', { walls: W3, y: [1.1, 1.7] }); P('tensionRod', { walls: W3, y: [1.95, 2.2] });
+  P('peelPaper', { walls: W3, y: [0.9, 1.5] }); P('catScratch', { walls: W3, y: [0.3, 0.7] }); P('kidSticker', { walls: W3, y: [0.4, 0.9] });
+  P('bikeScuff', { walls: W3, y: [0.3, 0.7] }); P('hiddenHole', { walls: W3, y: [0.9, 1.5] }); P('tvBurn', { walls: W3, y: [0.5, 1.0] });
+  P('windowSticker', { walls: ['B'], seg: { B: [[-0.8, 0.8]] }, y: [0.6, 1.6] });
+  for (const id of ['hairIron', 'plantWater', 'cfTape', 'dumbbell']) P(id, { floor: 'main' });
+  P('rainStain', { floor: 'window' });
+  for (const id of ['humidifier', 'hookPeel', 'tensionRod', 'peelPaper', 'catScratch', 'kidSticker', 'bikeScuff', 'tvBurn']) DEFS[id].cover = { kind: 'cloth', room: 'main' };
+  DEFS.hiddenHole.cover = { kind: 'cloth', room: 'main', board: 12000 };
+  for (const id of ['hairIron', 'rainStain', 'plantWater', 'cfTape', 'dumbbell']) DEFS[id].cover = { kind: 'floor', room: 'main' };
+}
 const ROOM_WIDE = /全面|6枚|1部屋/;
 const covKey = d => d.cover.kind + ':' + d.cover.room;
 // cov：すでに張替えを払った範囲（'all' か、クロスなら面の集合）
@@ -540,7 +653,7 @@ function addCover(def, label, cov) {
   else if (def.cover.kind === 'cloth' && cov[k] !== 'all') (cov[k] = cov[k] || new Set()).add(def.wall);
 }
 // 部屋まるごとの張替えになりうる物を先に見る（あとの物が二重になるかを決めるため）
-const wideFirst = d => (d.cover && (d.cover.all || d.id === 'caster')) ? 0 : 1;
+const wideFirst = d => (d.cover && (d.cover.all || ['caster', 'hairIron', 'plantWater'].includes(d.id))) ? 0 : 1;
 // 適正な負担を、二重にならないように並べて決める
 function fairPlan(list) {
   const cov = {}, out = new Map();
@@ -568,7 +681,7 @@ const wallSegs = () => ({
   B3: [[-5.3, -4.5], [-2.7, -1.95], [-4.4, -2.8, 0.85]],
   Lb: [[-2.6, -1.05], [-0.15, 0.4]],
 });
-const FLOORS = { main: [-1.6, 1.1, -2.5, 1.0], tatami: [-1.6, 1.6, -2.5, -0.2], r2: [-5.2, -2.0, -2.5, 0.3], r2tatami: [-5.2, -2.0, -2.5, -0.2], wash: [-3.0, -2.55, 1.8, 2.55], flooring: [-1.6, 1.1, 0.1, 1.0] };
+const FLOORS = { main: [-1.6, 1.1, -2.5, 1.0], tatami: [-1.6, 1.6, -2.5, -0.2], r2: [-5.2, -2.0, -2.5, 0.3], r2tatami: [-5.2, -2.0, -2.5, -0.2], wash: [-3.0, -2.55, 1.8, 2.55], window: [-0.9, 0.9, -2.55, -2.1], flooring: [-1.6, 1.1, 0.1, 1.0] };
 const ALONG_Z = { L: 1, R: 1, L3: 1, Lb: 1 };
 const wallPos = (w, t, y) => ({ L: [-RX, y, t], R: [RX, y, t], B: [t, y, -RZ], L3: [R2X, y, t], B3: [t, y, -RZ], Lb: [-RX - 0.1, y, t] })[w];
 // 置いた物どうしが重ならないか（同じ面の上で、四角が重なるか）
@@ -622,10 +735,10 @@ function setLeak() {
 // 清掃費：部分補修・年数の割引は当てはまらない。設備の故障・ひび：同じ。残置物：通常損耗か明細だけ
 {
   const CLEAN_FEE = ['normal', 'photo', 'detail', 'none'], EQUIP = ['normal', 'photo', 'detail', 'none'];
-  for (const id of ['grease', 'mirrorScale', 'drainHair', 'toiletStain', 'petHair', 'bathMold']) Object.assign(DEFS[id], { menu: CLEAN_FEE, dirt: true });
+  for (const id of ['grease', 'mirrorScale', 'drainHair', 'toiletStain', 'petHair', 'bathMold', 'cfTape', 'windowSticker']) Object.assign(DEFS[id], { menu: CLEAN_FEE, dirt: true });
   DEFS.sinkCrack.menu = EQUIP; DEFS.faucetLeak.menu = [...EQUIP, 'told'];
   DEFS.trash.menu = ['normal', 'detail'];
-  for (const id of ['stain', 'tatamiStain', 'mold', 'scribble', 'r2Mold']) DEFS[id].dirt = true;
+  for (const id of ['stain', 'tatamiStain', 'mold', 'scribble', 'r2Mold', 'kidSticker']) DEFS[id].dirt = true;
 }
 
 // 書類の上での請求（最後に玄関で）
@@ -642,11 +755,15 @@ function paperClaims() {
     why: '特約がなくても、掃除をせずに退去すると清掃費は借主の負担になる。掃除機がけくらいはしておこう。' });
   if (C.keyLost) out.push({ paper: true, ask: '防犯のための鍵交換は、貸主の負担では？', id: 'key', name: '鍵の交換', say: '鍵が1本足りませんね。鍵の交換代です。', label: '鍵交換', amt: 16500, steps: [],
     rebut: { normal: '鍵をなくした場合の交換は、借主さんのご負担です。' }, why: '鍵をなくしたときの交換費用は借主の負担。' });
+  else if (C.dupKey) out.push({ paper: true, ask: '防犯のための鍵交換は、貸主の負担では？', id: 'key', name: '鍵の交換', say: '鍵が3本ありますね。合鍵を作られました？ 防犯のため、鍵の交換代をいただきます。', label: '鍵交換', amt: 16500, steps: [],
+    rebut: { normal: '断りなく合鍵を作られた場合、交換は借主さんのご負担です。' }, why: '管理会社に断らずに合鍵を作ったら、防犯のための鍵交換は借主の負担になる。合鍵が必要なら先に相談する。' });
   else out.push({ paper: true, ask: '防犯のための鍵交換は、貸主の負担では？', id: 'key', name: '鍵の交換', say: 'それと、次の方のための鍵の交換代です。', label: '鍵交換', amt: 16500,
     steps: [{ k: 'normal', amt: 0, reply: '…なくされてないなら、防犯のための交換はこちらの負担でした。' }],
     why: '鍵をなくしていなければ、入れ替えのときの鍵交換は貸主の負担（防犯のための費用）。' });
   if (S.room === 'pet') out.push({ paper: true, ask: '消臭は、貸主の負担では？', id: 'petodor', name: 'ペットの消臭', say: 'ペットを飼われてたので、消臭の費用です。', label: 'ペットの消臭・クリーニング', amt: 22000, steps: [],
     rebut: { normal: 'ペットの臭いは、通常の使い方を超えるものなんですよ。' }, why: 'ペットの臭いの消臭やクリーニングは、ペット可の物件でも借主の負担。' });
+  if (C.incense) out.push({ paper: true, ask: '普通に暮らしていただけなので、貸主の負担では？', id: 'odor', name: 'お香の臭い', say: 'お部屋に、お香の臭いがかなり残ってますね。消臭の費用です。', label: '室内の消臭（お香の臭い）', amt: 11000, steps: [],
+    rebut: { normal: '壁紙にしみつくほどの臭いは、普通の生活の範囲を超えてるんですよ。' }, why: 'お香やアロマを毎日たいて壁紙に臭いがしみついたら、タバコと同じく借主の負担になりうる（揉めやすいところ）。' });
   if (C.smoker) out.push({ paper: true, ask: '普通に使っただけなので、貸主の負担では？', id: 'ac', name: 'エアコン洗浄', say: 'エアコンもヤニが付いてますので、内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200, steps: [],
     rebut: { normal: 'タバコのヤニが付いた分は、普通の使い方を超えてますね。' }, why: 'タバコのヤニや臭いが付いたエアコンの洗浄は借主の負担。' });
   else if (C.acPaid) out.push({ paper: true, ask: '普通に使っただけなので、貸主の負担では？', extra: ['paid', '入居のときにも払っています（領収書）'], id: 'ac', name: 'エアコン洗浄', say: '最後に、エアコンのクリーニング代です。', label: 'エアコンクリーニング', amt: 13200,
@@ -661,6 +778,11 @@ function paperClaims() {
 // ---------- 実際の退去で役立つ情報（直し方と、Amazon での商品検索）----------
 // fix: 自分でできる対処、note: 気をつけること、buy: Amazon の検索語
 const GUIDE = {
+  hookPeel: { fix: 'めくれた所は、壁紙用の補修シートや補修材で目立たなくできることもある。', note: '次からは、壁紙を傷めにくい「石こうボード用のピンフック」が安心。貼るタイプは、はがす前にドライヤーで温めるとめくれにくい。', buy: ['石膏ボード用 ピン フック', '壁紙 補修シート'] },
+  cfTape: { fix: '床用のシールはがし剤を布に含ませて、少しずつ拭き取る。', note: 'シンナー系の強い溶剤はフローリングのつやを消すので、目立たない所で試してから。', buy: ['シールはがし フローリング用'] },
+  kidSticker: { fix: 'ドライヤーで温めてから、端からゆっくりはがす。のりが残ったら壁紙用のシールはがし剤で。', note: '壁紙ごとめくれないよう、無理に引っぱらない。', buy: ['シールはがし 壁紙'] },
+  windowSticker: { fix: 'ガラスなら、スクレーパーとシールはがし剤できれいに落とせる。', note: '網入りガラスや複層ガラスにフィルムを貼ると熱で割れることがある。貼る前に確認を。', buy: ['ガラス スクレーパー', 'シールはがし スプレー'] },
+  tensionRod: { fix: '跡が残りにくいよう、突っ張り棒の両端に保護パッドを付けておく。', note: '壁のへこみは自分では直しにくい。請求されたら1面分と経過年数を確認。', buy: ['突っ張り棒 保護パッド'] },
   pins: { fix: '通常損耗なので、基本はそのままでOK。気になるなら壁紙用の穴埋め剤で目立たなくできる。', note: '請求されたら「画鋲の穴は通常損耗」と伝える。', buy: ['壁紙 ピン穴 補修'] },
   sunburn: { fix: '通常損耗なので何もしなくてよい。', note: '漂白剤や研磨剤でこすると、かえって壁紙を傷めて借主負担になりかねない。', buy: [] },
   fridge: { fix: '通常損耗なので何もしなくてよい。', note: '強くこすると壁紙が傷む。ホコリを軽く拭く程度に。', buy: [] },
@@ -1063,6 +1185,19 @@ const DRAW = {
   petScratch(g, w, h) { g.lineCap = 'round'; for (let k = 0; k < 6; k++) { const x0 = rnd(.1, .7) * w, y0 = rnd(.1, .5) * h; for (let i = 0; i < 4; i++) { g.strokeStyle = 'rgba(120,100,80,.8)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x0 + i * 9, y0); g.lineTo(x0 + i * 9 + rnd(-8, 8), y0 + rnd(50, 100)); g.stroke(); } } },
   petUrine(g, w, h) { const gr = g.createRadialGradient(w / 2, h / 2, 5, w / 2, h / 2, w * .5); gr.addColorStop(0, 'rgba(60,45,20,.7)'); gr.addColorStop(.75, 'rgba(110,85,30,.55)'); gr.addColorStop(1, 'rgba(110,85,30,0)'); g.fillStyle = gr; g.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28, r = rnd(.36, .5) * w; g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r * .9); } g.fill(); },
   petHair(g, w, h) { for (let k = 0; k < 7; k++) { const x0 = rnd(.15, .85) * w, y0 = rnd(.15, .85) * h; for (let i = 0; i < 40; i++) { g.strokeStyle = `rgba(${150 + rnd(-30, 30)},${120 + rnd(-30, 20)},80,.8)`; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y0); const a = rnd(0, 6.28), r = rnd(4, 18); g.lineTo(x0 + Math.cos(a) * r, y0 + Math.sin(a) * r); g.stroke(); } } },
+  humidifier(g, w, h) { g.fillStyle = 'rgba(235,228,212,.95)'; g.beginPath(); g.moveTo(w * .48, h * .05); g.lineTo(w * .7, h * .12); g.lineTo(w * .62, h * .55); g.lineTo(w * .5, h * .5); g.fill(); g.strokeStyle = 'rgba(120,105,85,.7)'; g.lineWidth = 2; g.stroke(); g.strokeStyle = 'rgba(90,80,65,.6)'; g.beginPath(); g.moveTo(w * .48, 0); g.lineTo(w * .48, h); g.stroke(); for (let i = 0; i < 160; i++) { const y = Math.pow(Math.random(), .6); g.fillStyle = `rgba(30,35,30,${rnd(.15, .5) * y})`; g.beginPath(); g.arc(w * .48 + rnd(-.35, .35) * w * (1 - y * .5), y * h, rnd(1, 3), 0, 7); g.fill(); } },
+  hairIron(g, w, h) { g.save(); g.translate(w / 2, h / 2); g.rotate(-.2); const gr = g.createLinearGradient(0, -h * .3, 0, h * .3); gr.addColorStop(0, 'rgba(60,30,10,0)'); gr.addColorStop(.5, 'rgba(25,12,5,.9)'); gr.addColorStop(1, 'rgba(60,30,10,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(0, 0, w * .42, h * .2, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(15,8,4,.85)'; g.fillRect(-w * .32, -h * .05, w * .64, h * .1); g.restore(); },
+  rainStain(g, w, h) { for (let k = 0; k < 4; k++) { const x = rnd(.2, .8) * w, y = rnd(.3, .7) * h; g.fillStyle = 'rgba(240,235,225,.45)'; g.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28, r = rnd(30, 60); g.lineTo(x + Math.cos(a) * r * 1.6, y + Math.sin(a) * r * .7); } g.fill(); g.strokeStyle = 'rgba(110,80,50,.45)'; g.lineWidth = 2; g.stroke(); } },
+  plantWater(g, w, h) { g.strokeStyle = 'rgba(45,30,15,.75)'; g.lineWidth = 14; g.beginPath(); g.arc(w / 2, h / 2, w * .3, 0, 7); g.stroke(); g.strokeStyle = 'rgba(70,45,20,.35)'; g.lineWidth = 26; g.beginPath(); g.arc(w / 2 + 6, h / 2 + 4, w * .33, 0, 7); g.stroke(); },
+  hookPeel(g, w, h) { for (const [x, y] of [[.28, .45], [.72, .5]]) { g.fillStyle = 'rgba(205,195,175,.95)'; g.beginPath(); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28, r = rnd(22, 34); g.lineTo(x * w + Math.cos(a) * r, y * h + Math.sin(a) * r * 1.3); } g.fill(); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 3; g.stroke(); g.fillStyle = 'rgba(170,160,140,.8)'; g.fillRect(x * w - 12, y * h - 16, 24, 32); } },
+  tensionRod(g, w, h) { const gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w * .3); gr.addColorStop(0, 'rgba(70,60,50,.8)'); gr.addColorStop(.6, 'rgba(110,100,85,.45)'); gr.addColorStop(1, 'rgba(110,100,85,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(60,50,40,.7)'; g.lineWidth = 3; g.beginPath(); g.arc(w / 2, h / 2, w * .14, 0, 7); g.stroke(); },
+  peelPaper(g, w, h) { g.fillStyle = 'rgba(200,190,160,.35)'; g.fillRect(w * .08, h * .05, w * .84, h * .9); for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(170,150,110,${rnd(.15, .45)})`; g.beginPath(); g.arc(rnd(.1, .9) * w, rnd(.08, .92) * h, rnd(4, 14), 0, 7); g.fill(); } g.fillStyle = 'rgba(70,110,120,.9)'; g.beginPath(); g.moveTo(w * .6, h * .95); g.lineTo(w * .92, h * .95); g.lineTo(w * .92, h * .6); g.fill(); g.strokeStyle = 'rgba(240,235,220,.9)'; g.lineWidth = 4; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(w * (.66 + i * .07), h * .95); g.lineTo(w * .92, h * (.95 - (i + 1) * .08)); g.stroke(); } },
+  cfTape(g, w, h) { for (let i = 0; i < 5; i++) { g.save(); g.translate(rnd(.2, .8) * w, rnd(.2, .8) * h); g.rotate(rnd(-.4, .4)); g.fillStyle = 'rgba(215,190,120,.55)'; g.fillRect(-w * .18, -9, w * .36, 18); g.strokeStyle = 'rgba(150,120,60,.5)'; g.lineWidth = 2; g.strokeRect(-w * .18, -9, w * .36, 18); for (let j = 0; j < 8; j++) { g.fillStyle = 'rgba(60,50,40,.5)'; g.beginPath(); g.arc(rnd(-w * .17, w * .17), rnd(-7, 7), rnd(1, 2.5), 0, 7); g.fill(); } g.restore(); } },
+  kidSticker(g, w, h) { const cs = ['#ff6b8b', '#ffd23f', '#4fc3f7', '#8bd16a', '#b388ff']; for (let i = 0; i < 9; i++) { const x = rnd(.12, .88) * w, y = rnd(.15, .85) * h, r = rnd(12, 20); g.fillStyle = cs[i % 5]; g.beginPath(); if (i % 2) { for (let j = 0; j < 10; j++) { const a = j / 10 * 6.28 - 1.57, rr = j % 2 ? r * .45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } } else g.arc(x, y, r, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke(); } },
+  dumbbell(g, w, h) { const gr = g.createRadialGradient(w / 2, h / 2, 3, w / 2, h / 2, w * .4); gr.addColorStop(0, 'rgba(30,15,5,.9)'); gr.addColorStop(.6, 'rgba(70,40,15,.5)'); gr.addColorStop(1, 'rgba(70,40,15,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(40,20,8,.8)'; g.lineWidth = 2; for (let i = 0; i < 6; i++) { const a = rnd(0, 6.28); g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * 12, h / 2 + Math.sin(a) * 12); g.lineTo(w / 2 + Math.cos(a) * rnd(40, 70), h / 2 + Math.sin(a) * rnd(40, 70)); g.stroke(); } },
+  bikeScuff(g, w, h) { g.lineCap = 'round'; for (let i = 0; i < 14; i++) { g.strokeStyle = `rgba(30,28,26,${rnd(.25, .7)})`; g.lineWidth = rnd(3, 9); const x = rnd(.05, .6) * w, y = rnd(.25, .75) * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x + rnd(40, 120), y + rnd(-6, 6)); g.stroke(); } const gr = g.createRadialGradient(w * .7, h / 2, 2, w * .7, h / 2, 26); gr.addColorStop(0, 'rgba(60,55,50,.7)'); gr.addColorStop(1, 'rgba(60,55,50,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
+  windowSticker(g, w, h) { for (const [x, y, a, b] of [[.1, .1, .45, .35], [.5, .45, .4, .4], [.15, .6, .3, .25]]) { g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x * w, y * h, a * w, b * h); g.strokeStyle = 'rgba(220,220,210,.8)'; g.lineWidth = 2; g.strokeRect(x * w, y * h, a * w, b * h); } },
+  calendar(g, w, h) { g.fillStyle = '#fbfaf6'; g.fillRect(w * .05, h * .04, w * .9, h * .92); g.fillStyle = '#d9534f'; g.fillRect(w * .05, h * .04, w * .9, h * .16); g.fillStyle = '#fff'; g.font = `bold ${Math.round(h * .1)}px sans-serif`; g.textAlign = 'center'; g.fillText('11', w / 2, h * .16); g.strokeStyle = 'rgba(80,70,60,.35)'; g.lineWidth = 1.5; for (let i = 1; i < 7; i++) { g.beginPath(); g.moveTo(w * (.05 + i * .9 / 7), h * .24); g.lineTo(w * (.05 + i * .9 / 7), h * .94); g.stroke(); } for (let j = 0; j < 6; j++) { g.beginPath(); g.moveTo(w * .05, h * (.24 + j * .7 / 5)); g.lineTo(w * .95, h * (.24 + j * .7 / 5)); g.stroke(); } g.fillStyle = 'rgba(60,50,40,.9)'; g.beginPath(); g.arc(w / 2, h * .07, 4, 0, 7); g.fill(); },
   patch(g, w, h) { for (const [x, y] of [[.2, .3], [.8, .3], [.2, .72], [.8, .72]]) { g.fillStyle = 'rgba(250,250,248,.95)'; g.beginPath(); g.arc(x * w, y * h, 14, 0, 7); g.fill(); } },
   patchFail(g, w, h) { for (const [x, y] of [[.2, .3], [.8, .3], [.2, .72], [.8, .72]]) { g.fillStyle = 'rgba(232,226,196,.95)'; g.beginPath(); g.ellipse(x * w, y * h, 30, 20, rnd(0, 3), 0, 7); g.fill(); g.strokeStyle = 'rgba(160,150,120,.7)'; g.lineWidth = 2; g.stroke(); } },
 };
@@ -1286,7 +1421,11 @@ function buildRound() {
   setRoomLook(S.room);
   const W = S.room === 'washitsu';
   const ids = [
-    ...shuffle(W ? ['tatamiSun', 'tatamiDent', 'pins', 'sunburn', 'fridge'] : ['pins', 'sunburn', 'fridge', 'dents']).slice(0, 3),
+    ...shuffle(W ? ['tatamiSun', 'tatamiDent', 'pins', 'sunburn', 'fridge', 'tvBurn'] : ['pins', 'sunburn', 'fridge', 'dents', 'tvBurn']).slice(0, 3),
+    // やらかし：生活のくせ・よかれと思って・誰か（何か）がやった
+    ...shuffle(W ? ['humidifier'] : ['humidifier', 'hairIron', 'rainStain', 'plantWater']).slice(0, W ? 1 : 2),
+    ...shuffle(W ? ['hookPeel', 'tensionRod', 'peelPaper'] : ['hookPeel', 'tensionRod', 'peelPaper', 'cfTape']).slice(0, 2),
+    ...shuffle([...(S.room === 'pet' ? [] : ['catScratch']), 'kidSticker', 'bikeScuff', 'hiddenHole', ...(W ? [] : ['dumbbell', 'windowSticker'])]).slice(0, 2),
     ...shuffle(W ? ['tatamiBurn', 'fusumaTear', 'shojiHole', 'screw', 'hole'] : ['screw', 'caster', 'hole']).slice(0, W ? 3 : 2),
     ...shuffle(W ? ['tatamiStain', 'grease', 'mold', 'scribble'] : ['stain', 'grease', 'mold', 'scribble']).slice(0, 3),
     ...(S.room === 'pet' ? ['petScratch', 'petUrine', 'petHair'] : []),
@@ -1325,6 +1464,7 @@ function buildRound() {
     hit.userData.spot = spot; mesh.userData.spot = spot;
     spots.push(spot);
   }
+  S.clock = S.start = startFor(spots);
   const PRE_BG = { doorScratch: '#6f7f8c', entranceDent: '#d9b98a', sinkCrack: '#eef0f2' }, PRE_NOTE = { doorScratch: '傷あり', entranceDent: 'へこみあり', sinkCrack: 'ひびあり' };
   S.album = shuffle([...spots.filter(s => s.def.kind === 'premove').map(s => ({ name: s.def.name, note: PRE_NOTE[s.id] || '傷あり', img: photo(PRE_BG[s.id] || '#ddd', null, s.mesh.material.map.userData.canvas) })),
     ...shuffle(DECOYS.slice()).slice(0, 2).map(([n, t, bg, dk]) => ({ name: n, note: t, img: photo(bg, dk) }))]);
@@ -1339,7 +1479,7 @@ function openSpot(spot) {
   const d = spot.def;
   if (S.mode === 'agent') return openSpotAgent(spot);
   $('#spotName').textContent = d.name;
-  $('#spotDesc').textContent = d.desc;
+  $('#spotDesc').textContent = spot.revealed && d.descRevealed ? d.descRevealed : d.desc;
   const btns = $('#spotBtns'); btns.innerHTML = '';
   if (GUIDE[spot.id]) {
     const det = document.createElement('details'); det.className = 'real'; det.style.width = '100%';
@@ -1350,6 +1490,8 @@ function openSpot(spot) {
   const act = (label, t, fn, cls = '') => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.type = 'button'; b.innerHTML = `${label}<small>${t}分</small>`; if (t > left) b.disabled = true; b.onclick = () => fn(); btns.appendChild(b); };
   if (d.clean) act(d.clean.label, d.clean.t, () => doClean(spot), 'primary');
   else if (d.fix && !spot.patched) act(d.fix.label, d.fix.t, () => doFix(spot), 'primary');
+  else if (d.reveal && !spot.revealed) act(d.reveal.label, d.reveal.t, () => doReveal(spot), 'primary');
+  else if (d.reveal) { const p = document.createElement('p'); p.style.cssText = 'font-size:12px;color:#7d7266;margin:0 0 8px;width:100%'; p.textContent = '隠すのはやめた。立ち会いで何と言うか考えておこう。'; btns.appendChild(p); }
   else { const p = document.createElement('p'); p.style.cssText = 'font-size:12px;color:#7d7266;margin:0 0 8px;width:100%'; p.textContent = spot.patched ? (S.patchFail ? '埋めたけど、色が合わずに目立ってしまった…。' : 'パテできれいに埋めた。') : '自分ではどうにもできない。立ち会いで何と言うか考えておこう。'; btns.appendChild(p); }
   const close = document.createElement('button'); close.className = 'btn'; close.type = 'button'; close.textContent = '閉じる'; close.onclick = () => { closeSheet(); focusOn(null); }; btns.appendChild(close);
   $('#spotSheet').classList.remove('hidden');
@@ -1372,6 +1514,18 @@ function doClean(spot) {
   setTimeout(() => focusOn(null), 900);
   spend(spot.def.clean.t);
 }
+// 隠していた傷を見せる（カレンダーをはがす）。立ち会いで見つかる前なら、信用は下がらない
+function unhide(spot) {
+  const g = spot.mesh.parent; g.remove(spot.mesh);
+  spot.mesh = makeDecal(spot.id, spot.def, 'hole'); spot.mesh.userData.spot = spot; g.add(spot.mesh);
+  spot.revealed = true;
+}
+function doReveal(spot) {
+  closeSheet(); unhide(spot); SFX.play('paper');
+  toast('カレンダーをはがした。隠すのはやめよう');
+  setTimeout(() => focusOn(null), 900);
+  spend(spot.def.reveal.t);
+}
 function doFix(spot) {
   closeSheet();
   spot.patched = true;
@@ -1391,6 +1545,7 @@ function renderDocs() {
   const el = $('#docBody');
   if (docTab === 'contract') {
     const leak = spots.some(sp => sp.id === 'faucetLeak');
+    const mines = spots.filter(sp => sp.def.mine).map(sp => sp.def.mine);
     el.innerHTML = `<h4>賃貸借契約書（抜粋）</h4><table>
       <tr><td>物件</td><td>コーポ汐見 203号室（${{ western: '1K・洋室', washitsu: '1K・和室6畳', pet: '1K・洋室・ペット可（小型犬1匹まで）', '1ldk': '1LDK・寝室は洋室', '2k': '2K・洋室＋和室6畳' }[S.room]}）</td></tr>
       <tr><td>家賃</td><td>${yen(C.rent)} ／月</td></tr>
@@ -1400,10 +1555,12 @@ function renderDocs() {
       ${S.mode === 'agent' ? `<h4>入居者からの申告</h4><ul>
       <li>${C.smoker ? '部屋でタバコを吸っていた。' : 'タバコは吸っていない。'}</li>
       <li>${C.keyLost ? '鍵を1本なくした（返却は1本）。' : '鍵は2本とも返却済み。'}</li>${S.room === 'pet' ? '<li>小型犬を飼っていた。</li>' : ''}
-      ${C.acPaid ? '<li>入居のときに、エアコンクリーニング代を受け取っている。</li>' : ''}${leak ? `<li>${C.leakReported ? '入居中に、シャワーの水漏れの連絡を受けている（記録あり）。' : 'シャワーの水漏れの連絡は、入居中に受けていない。'}</li>` : ''}</ul>` : `<h4>自分のメモ</h4><ul>
+      ${C.acPaid ? '<li>入居のときに、エアコンクリーニング代を受け取っている。</li>' : ''}${C.incense ? '<li>お香をよくたいていた。</li>' : ''}${C.dupKey ? '<li>返却された鍵が3本（断りなく合鍵が作られている）。</li>' : ''}${leak ? `<li>${C.leakReported ? '入居中に、シャワーの水漏れの連絡を受けている（記録あり）。' : 'シャワーの水漏れの連絡は、入居中に受けていない。'}</li>` : ''}</ul>` : `<h4>自分のメモ</h4><ul>
       <li>${C.smoker ? '部屋でタバコを吸っていた。' : 'タバコは吸わない。'}</li>
       <li>${C.keyLost ? '鍵を1本なくしてしまった…。' : '鍵は2本とも返せる。'}</li>${S.room === 'pet' ? '<li>小型犬を飼っていた。</li>' : ''}
-      ${C.acPaid ? '<li>入居のとき、エアコンクリーニング代 11,000円を払った（領収書あり）。</li>' : ''}${leak ? `<li>${C.leakReported ? 'シャワーの水漏れは、去年管理会社に連絡した（「退去のときに交換します」と言われた。記録あり）。' : 'シャワーの水漏れ、管理会社に連絡しないまま放っておいた…。'}</li>` : ''}</ul>`}`;
+      ${C.acPaid ? '<li>入居のとき、エアコンクリーニング代 11,000円を払った（領収書あり）。</li>' : ''}${leak ? `<li>${C.leakReported ? 'シャワーの水漏れは、去年管理会社に連絡した（「退去のときに交換します」と言われた。記録あり）。' : 'シャワーの水漏れ、管理会社に連絡しないまま放っておいた…。'}</li>` : ''}
+      ${C.incense ? '<li>お香が好きで、毎日たいていた。</li>' : ''}${C.dupKey ? '<li>ホームセンターで合鍵を1本作った（管理会社には言っていない）。返す鍵は3本。</li>' : ''}</ul>
+      ${mines.length ? `<h4>心当たり（払うもの？ 払わなくていいもの？）</h4><ul>${mines.map(m => `<li>${m}</li>`).join('')}</ul>` : ''}`}`;
   } else if (docTab === 'album') {
     el.innerHTML = `<h4>入居時チェック表（${C.years}年前・写真つき）</h4><p style="font-size:12px;color:#7d7266;margin:0 0 8px">入居したときに管理会社と確認した、もとからあった傷や汚れ。</p><div class="album">${S.album.map(a => `<figure><div class="ph" style="background-image:url(${a.img});background-size:cover"></div><b>${a.name}</b><br>${a.note}</figure>`).join('')}</div>`;
   } else if (docTab === 'real') {
@@ -1413,6 +1570,8 @@ function renderDocs() {
       <li><b>退去の前</b>：契約書の特約（クリーニング代など）を確認。掃除とゴミ出しは済ませる。自分で補修するなら目立たない所で試してから。</li>
       <li><b>入居中</b>：設備が壊れたら、すぐ管理会社に連絡して記録を残す。黙って放っておくと、広がった被害は借主の負担になる。入居時に払った費用（エアコンクリーニングなど）の領収書もとっておく。</li>
       <li><b>立ち会いのとき</b>：立ち会いは法律上の義務ではないが、出ないと入居前の傷も言い返せない。その場で精算書にサインせず、「どこを・何㎡・単価いくら」の明細をもらう。決まったことはメモしておく。</li>
+      <li><b>ごまかさない</b>：傷を隠したり「入居前からあった」と嘘をついたりすると、ほかの言い分も信じてもらえなくなる。やったことは正直に話し、範囲や年数で交渉する。</li>
+      <li><b>貼る物・DIY</b>：「はがせる」と書いてあるフックや壁紙でも、壁紙を傷めることがある。突っ張り棒には保護パッドを。ペット不可の部屋では、預かるのもNG。</li>
       <li><b>後日の請求書</b>：立ち会いのメモと見くらべる。立ち会いで言われなかった項目や、金額が増えている所があれば連絡する。</li>
       <li><b>納得できないとき</b>：国土交通省「原状回復をめぐるトラブルとガイドライン」をもとに話し合う。消費者ホットライン <b>188</b> でも相談できる。</li></ul>
       <h4>傷・汚れ別の直し方</h4>
@@ -1423,8 +1582,8 @@ function renderDocs() {
   } else {
     el.innerHTML = `<h4>原状回復のガイドライン（国土交通省）のメモ</h4>
       <p style="font-size:12px;color:#7d7266;margin:0 0 6px">普通に暮らしてできた傷み（通常損耗）や年月による劣化（経年変化）は、家賃に含まれている＝貸主の負担。</p>
-      <h4>🙆 借主が払わなくていいもの</h4><ul><li>画鋲・ピンの穴</li><li>日焼けによるクロスの変色・ポスター跡</li><li>冷蔵庫など家電の後ろの黒ずみ</li><li>家具を置いた床のへこみ</li><li>鍵の交換（なくしていなければ）</li><li>次の入居者のためのクリーニング（特約がなく、ふだんの掃除をしていれば）</li><li>エアコンの内部洗浄（タバコを吸っていなければ）。入居時にも払っていたら二重取り</li><li>設備が古くなって起きた故障（入居中に連絡してあれば揉めにくい）</li><li>入居前からあった傷（チェック表が証拠）</li></ul>
-      <h4>🙅 借主が払うもの</h4><ul><li>ネジ穴・くぎ穴、不注意でつけた穴や傷</li><li>放っておいたシミ・カビ・油汚れ、落書き</li><li>タバコのヤニ・臭い</li><li>残していった物の処分</li><li>故障を連絡せずに放っておいて、広がった被害</li><li>鍵をなくしたときの交換</li><li>金額まではっきり書かれた特約（クリーニングなど）</li></ul>
+      <h4>🙆 借主が払わなくていいもの</h4><ul><li>画鋲・ピンの穴</li><li>日焼けによるクロスの変色・ポスター跡</li><li>冷蔵庫やテレビなど家電の後ろの黒ずみ</li><li>家具を置いた床のへこみ</li><li>鍵の交換（なくしていなければ）</li><li>次の入居者のためのクリーニング（特約がなく、ふだんの掃除をしていれば）</li><li>エアコンの内部洗浄（タバコを吸っていなければ）。入居時にも払っていたら二重取り</li><li>設備が古くなって起きた故障（入居中に連絡してあれば揉めにくい）</li><li>入居前からあった傷（チェック表が証拠）</li></ul>
+      <h4>🙅 借主が払うもの</h4><ul><li>ネジ穴・くぎ穴、不注意でつけた穴や傷</li><li>放っておいたシミ・カビ・油汚れ、落書き</li><li>タバコのヤニ・臭い</li><li>残していった物の処分</li><li>故障を連絡せずに放っておいて、広がった被害</li><li>貼れるフック・はがせる壁紙・テープで傷めた壁紙や床</li><li>重い物を落としたへこみ、焦げ跡、自転車などのこすれ</li><li>ペット不可の部屋で預かった動物の傷</li><li>断らずに作った合鍵（鍵の交換）</li><li>お香などが壁紙にしみつくほどの臭い（揉めやすい）</li><li>鍵をなくしたときの交換</li><li>金額まではっきり書かれた特約（クリーニングなど）</li></ul>
       <h4>💡 払うときも、減らせるポイント</h4><ul><li>張替えは<b>傷んだ面の分だけ</b>（ヤニなど部屋じゅうの汚れは別）</li><li>同じ面・同じ部屋の張替えは<b>1回分だけ</b>（全面張替えを払ったら、そこの傷でまたクロス代を払わない）</li><li>クロスは<b>6年で価値がほぼ1円</b>。住んだ年数の分だけ割り引かれる</li><li>フローリングの<b>部分補修</b>は年数で割り引かれない</li><li>畳表・ふすま紙・障子紙は<b>消耗品</b>なので年数で割り引かれないが、<b>傷んだ枚数だけ</b></li></ul>
       <h4>🐶 ペット可の部屋</h4><ul><li>ペット可でも、ペットの傷・シミ・臭いは借主の負担</li></ul>`;
   }
@@ -1432,7 +1591,7 @@ function renderDocs() {
 $('#soundBtn').textContent = SFX.on ? '🔊' : '🔇';
 $('#soundBtn').onclick = () => { $('#soundBtn').textContent = SFX.toggle() ? '🔊' : '🔇'; SFX.play('tap'); };
 $('#docsBtn').onclick = () => { SFX.play('paper'); renderDocs(); $('#docs').classList.remove('hidden'); };
-$('#docsClose').onclick = () => $('#docs').classList.add('hidden');
+$('#docsClose').onclick = () => { $('#docs').classList.add('hidden'); if (S.startNote) { S.startNote = false; toast(`今日は ${clockStr(S.start)} から。業者は 12:00 に来る`); } };
 $('#docTabs').onclick = e => { const t = e.target.closest('button'); if (t) { docTab = t.dataset.t; renderDocs(); } };
 
 // ---------- 業者の性格 ----------
@@ -1562,12 +1721,19 @@ async function argue(claim) {
     if (amt === 0) { await choose([['ok', '次へ', 'acc']]); break; }
     const menu = claim.paper ? [['normal', claim.ask || '貸主の負担では？'], ['detail', '金額の根拠（契約書・明細）を見せてください'], ...(claim.extra ? [claim.extra] : [])]
       : CHOICES.filter(c => (claim.menu ? claim.menu.includes(c[0]) : c[0] !== 'told') && (c[0] !== 'dup' || claim.cover || claim.dupable)).map(c => c[0] === 'none' && claim.dirt ? ['none', 'そんな汚れはありませんよ'] : c);
+    if (claim.secret && !claim.admitted) menu.push(['admit', 'すみません、私がやりました（正直に話す）']);
     const opts = menu.map(c => [...c]);
     opts.push(['accept', '認める（このまま払う）', 'acc']);
     const k = await choose(opts);
     if (k === 'accept') { moves.push({ k, ok: true }); SFX.play('stamp'); say('me', 'わかりました。', { label, amt }); await sleep(500); break; }
     say('me', menu.find(c => c[0] === k)[1], { label, amt });
     await sleep(800);
+    if (k === 'admit') { // 正直に話すと、信用が1つ戻る（請求の金額は、ここから言い分で詰める）
+      claim.admitted = true; moves.push({ k, ok: true }); SFX.play('good');
+      if (S.hearts < 3) { S.hearts++; updateHud(); toast('正直に話して、信用が上がった'); }
+      say('them', '…正直に言っていただけると助かります。では、金額の話をしましょうか。', { label, amt });
+      continue;
+    }
     const st = claim.steps[step];
     const good = (k === 'detail' && f > 1) || stepHit(st, k);
     // 信用が0のときは、正しい言い返しでも根拠を求められる。正しい根拠なら通り、信用が1つ戻る
@@ -1600,6 +1766,14 @@ async function argue(claim) {
         : later ? (k === 'dep' ? '年数で割り引く前に、まず張替えの範囲の話ですね。' : 'その話は、もう一つ決めることがあってからですね。')
         : (claim.rebut && claim.rebut[k]) || (k === 'dep' && !claim.paper && /クロス/.test(label) ? 'いえ、年数の割引の前に、そもそも張替えが必要なんですよ。' : (claim.paper ? PAPER_REBUT : DEFAULT_REBUT)[k]);
       SFX.play('bad');
+      // 自分でやった傷を「入居前から」とごまかすと、チェック表で嘘がバレて信用が大きく下がる
+      if (k === 'photo' && claim.kind === 'tenant' && S.hearts > 0) {
+        moves[moves.length - 1].lie = true;
+        S.hearts = Math.max(0, S.hearts - 2); updateHud();
+        say('them', '入居時のチェック表には載ってないですね。…それに、これ最近の跡ですよね？ 正直に言ってもらえますか。' + (S.hearts === 0 ? '　…こういうことをされると、ほかのお話も信用できなくなりますよ。' : ''), { label, amt });
+        toast('ごまかしがバレた…信用が大きく下がった');
+        continue;
+      }
       if (S.hearts === 0) { // 信用0で的外れなら、この項目は打ち切り（次の項目ではまた言い返せる）
         say('them', msg + '　…もういいですか？ この件は、このままでお願いします。', { label, amt });
         await choose([['ok', '次へ', 'acc']]); break;
@@ -1633,7 +1807,7 @@ async function startInspection() {
   say('them', boss.hello);
   S.skipped = (await choose([['ok', 'お願いします', 'acc'], ['skip', '（立ち会わずに、鍵を預けて帰る）', 'acc']])) === 'skip';
   // 部屋の奥から順に見ていく
-  const targets = spots.filter(s => !s.def.noClaim && !s.done).map(s => ({ id: s.id, def: { ...s.def, id: s.id }, claim: () => ({ ...s.def.claim(S), menu: s.def.menu, dirt: s.def.dirt, cover: s.def.cover }) }));
+  const targets = spots.filter(s => !s.def.noClaim && !s.done).map(s => ({ id: s.id, def: { ...s.def, id: s.id }, claim: () => ({ ...s.def.claim(S), menu: s.def.menu, dirt: s.def.dirt, cover: s.def.cover, kind: s.def.kind, secret: !!s.def.mine && s.def.kind === 'tenant' }) }));
   S.cov = {};
   const W = S.room === 'washitsu';
   const fakes = FAKES.filter(f => !(S.multi && f.closet) && !(f.multiOnly && !S.multi) && !(W && f.glass))
@@ -1659,11 +1833,21 @@ async function startInspection() {
     const claim = s.fake ? raw : shapeClaim(raw);
     if (!claim) continue;
     setTalkSpot(s.def);
+    const ref = spots.find(x => x.id === s.id);
+    // 隠していた傷は、業者がめくって見つける。隠したことで信用が下がる
+    const hid = !!(ref && ref.def.reveal && !ref.revealed);
+    if (hid) {
+      say('them', '…このカレンダー、めくってもいいですか？');
+      await sleep(900); unhide(ref); SFX.play('bad');
+      if (S.hearts > 0) { S.hearts--; updateHud(); }
+      say('them', '…穴、隠してましたね？ こういうのは、最初に言ってもらわないと。');
+      toast('隠していたのがバレた…信用が下がった');
+      await choose([['ok', '…すみません', 'acc']]);
+    }
     const r = await argue(claim);
     setTalkSpot(null);
     if (!s.fake && !claim.dup && r.final.amt > 0) addCover(s.def, r.final.label, S.cov);
-    const ref = spots.find(x => x.id === s.id);
-    S.log.push({ id: s.id, name: s.def.name, why: claim.dup ? s.def.why + DUP_NOTE : s.def.why, kind: s.fake ? 'fake' : s.def.kind, clean: s.def.clean, dirt: s.def.dirt, patchFail: !!(ref && ref.patched && S.patchFail), ...r });
+    S.log.push({ id: s.id, name: s.def.name, why: claim.dup ? s.def.why + DUP_NOTE : s.def.why, kind: s.fake ? 'fake' : s.def.kind, clean: s.def.clean, dirt: s.def.dirt, patchFail: !!(ref && ref.patched && S.patchFail), hid, ...r });
   }
   $('#dialog').classList.add('hidden');
   cam.focus = null; cam.follow = true;
@@ -1775,7 +1959,7 @@ function tenantShareText(rank, firstTotal, total, refund, extra, over) {
 }
 
 // ---------- 答え合わせ ----------
-const SAY = { normal: '通常損耗では？', photo: '入居時からあった', dep: '年数で割り引いて', partial: '部分補修で足りる', detail: '明細を見せて', none: '何もない', dup: '張替え済みでは？', paid: '入居時に払った', told: '入居中に連絡した', accept: '認めた' };
+const SAY = { normal: '通常損耗では？', photo: '入居時からあった', dep: '年数で割り引いて', partial: '部分補修で足りる', detail: '明細を見せて', none: '何もない', dup: '張替え済みでは？', paid: '入居時に払った', told: '入居中に連絡した', admit: '正直に話した', accept: '認めた' };
 const KIND = { owner: ['貸主の負担（通常損耗・経年変化）', 'o'], tenant: ['借主の負担', 't'], premove: ['入居前からの傷（借主は払わない）', 'o'], fake: ['存在しない傷', 'o'] };
 const sayOf = (l, k) => l.paper ? ({ normal: '貸主の負担では？', detail: '根拠を見せて' }[k] || SAY[k]) : k === 'none' && l.dirt ? '汚れはない' : SAY[k];
 function pathText(l) {
@@ -1787,7 +1971,9 @@ function answerHTML(l) {
   const diff = l.final.amt - l.fair, ok = diff <= 0;
   const [kl, kc] = KIND[l.kind] || KIND.tenant;
   const mv = l.absent ? '立ち会わなかったので、言い返せなかった' : l.moves.length ? l.moves.map(m => m.k === 'accept' ? '認めた' : `${sayOf(l, m.k)}<span class="${m.ok ? 'o' : 'x'}">${m.ok ? '✓' : '✗'}</span>`).join(' → ') : '（請求が0円になった）';
-  const prep = l.clean ? `準備で「${l.clean.label}」（${l.clean.t}分）をしていれば、請求されなかった。` : l.patchFail ? 'パテ埋めに失敗して、かえって目立ってしまった。' : '';
+  const prep = [l.clean ? `準備で「${l.clean.label}」（${l.clean.t}分）をしていれば、請求されなかった。` : l.patchFail ? 'パテ埋めに失敗して、かえって目立ってしまった。' : '',
+    l.hid ? 'カレンダーで隠していたのがバレて、信用が下がった。準備のうちにはがして見せておけば、下がらなかった。' : '',
+    l.moves.some(m => m.lie) ? '「入居時からあった」とごまかしてバレ、信用が大きく下がった。やったことは正直に話すほうが、ほかの言い分も通りやすい。' : ''].filter(Boolean).join(' ');
   return `<div class="ans ${ok ? '' : 'ng'}">
     <div class="ah"><b>${l.name}</b><span class="kind ${kc}">${kl}</span></div>
     <div class="amts">請求 ${yen(l.first.amt)} → 確定 ${yen(l.final.amt)}　／　適正 ${yen(l.fair)}　${ok ? '<span class="good">✓ 適正</span>' : `<span class="bad">払いすぎ ${yen(diff)}</span>`}</div>
@@ -1821,7 +2007,8 @@ function bestCase() {
   let sum = 0;
   for (const v of fairPlan(list).values()) sum += v.fair;
   sum += C.cleaningClause ? 33000 : 0;
-  sum += C.keyLost ? 16500 : 0;
+  sum += C.keyLost || C.dupKey ? 16500 : 0;
+  sum += C.incense ? 11000 : 0;
   sum += C.smoker ? 13200 : 0;
   sum += S.room === 'pet' ? 22000 : 0;
   return sum;
@@ -1884,6 +2071,11 @@ const ADESC = {
   trash: '段ボールとゴミ袋が残されている。', bathMold: '浴槽のふちのゴムパッキンに黒カビ。', mirrorScale: '洗面台の鏡に水アカのウロコ。', drainHair: '浴室の排水口に髪の毛がつまっている。', toiletStain: 'トイレの便器に黄ばみと尿石。',
   tatamiSun: '窓ぎわの畳が日焼けで変色している。', tatamiDent: '畳にたんすの脚のへこみ。', tatamiBurn: '畳にアイロンの焦げ跡。', tatamiStain: '畳に飲みこぼしのシミ。',
   fusumaTear: 'ふすまに破れた穴。', shojiHole: '障子に穴。', petScratch: '壁の下の方にペットのひっかき傷。', petUrine: '床にペットのおしっこのシミ（変色）。', petHair: '床のすみにペットの抜け毛。',
+  humidifier: '壁ぎわの壁紙の継ぎ目がはがれ、うっすらカビ。加湿器を置いていたらしい。', hairIron: 'フローリングに細長い焦げ跡。ヘアアイロンを置いたらしい。', rainStain: '窓ぎわの床が、雨が吹き込んだように白く変色している。',
+  plantWater: '床に、鉢の受け皿の形の輪っか状の黒ずみ。', hookPeel: '貼るフックをはがした所の壁紙が、表面ごとめくれている。', tensionRod: '天井近くの壁に、突っ張り棒の丸いへこみ。',
+  peelPaper: '「はがせる壁紙」の跡。のりが残り、元の壁紙がまだらに傷んでいる。', cfTape: '床に両面テープののり跡がべったり残っている。', catScratch: '壁に動物の爪とぎ跡。…ペット不可の物件のはず。',
+  kidSticker: '壁にキャラクターのシールがたくさん貼られている。', dumbbell: '床に、重い物を落としたような丸いへこみ。', bikeScuff: '壁の低い所に、自転車がこすれたような黒い跡とへこみ。',
+  windowSticker: '窓ガラスに、フィルムをはがしたのり跡。', hiddenHole: 'カレンダーが貼ったままになっている。めくると、裏の壁に穴があいている。', tvBurn: 'テレビを置いていた後ろの壁が、うっすら黒い。',
   faucetLeak: 'シャワー水栓から水がポタポタ漏れている。', cfDent: '洗面所の床に収納ラックの脚の跡。', sinkCrack: '洗面ボウルに細いひび。',
 };
 function openSpotAgent(spot) {
@@ -2108,7 +2300,7 @@ function startRound() {
   ['#hud', '#startInspBtn', '#hint', '#areaBar'].forEach(s => $(s).classList.remove('hidden'));
   $('#heartChip').classList.add('hidden');
   $('#backBtn').classList.add('hidden');
-  if (MODE !== 'agent') updateHud();
+  if (MODE !== 'agent') { updateHud(); S.startNote = true; }
   docTab = 'contract'; renderDocs(); $('#docs').classList.remove('hidden');
 }
 $('#startBtn').onclick = () => { MODE = 'tenant'; $('#title').classList.add('hidden'); startRound(); };
