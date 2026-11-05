@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>退去シミュレーター</title>
+<meta name="description" content="退去の日の午前中に部屋を片づけ、立ち会いの業者の請求に言い返して敷金を守る3Dゲーム。国交省のガイドラインに沿って「払わなくていいもの」が分かる。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="退去シミュレーター｜敷金、守れる？">
+<meta property="og:description" content="立ち会いの業者の請求に言い返して敷金を守る3Dゲーム。画鋲の穴、クロスの張替え、ハウスクリーニング代…払わなくていいのはどれ？">
+<meta property="og:url" content="https://texia-inc.github.io/bukiya/taikyo/">
+<meta property="og:image" content="https://texia-inc.github.io/bukiya/taikyo/ogp.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
@@ -38,6 +45,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:0}
 .btn.primary{background:var(--accent);color:#fff}
 .btn.good{background:#e6f4ea}
 .btn[disabled]{opacity:.4;pointer-events:none}
+.btn.share{background:#111;color:#fff;border-color:#111}
 .btn small{font-weight:500;font-size:11px;margin-left:4px}
 #dialog .who{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 10px;font-size:12px;font-weight:800;margin-bottom:6px}
 #dialog .who.me{background:var(--blue)}
@@ -90,6 +98,7 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
 .est .opts button{background:#f4efe6;border:2px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12.5px;font-weight:800}
 .est .opts button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .est .item.todo{border-color:var(--accent)}
+.est .memo{background:#fffbe6;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin:0 0 10px;font-size:13px;line-height:1.7}
 #docs{z-index:5}
 .ans{border:1px solid var(--line);border-left:6px solid var(--ok);border-radius:10px;padding:8px 10px;margin:0 0 8px;background:#fff;font-size:13px;line-height:1.6}
 .ans.ng{border-left-color:var(--accent)}
@@ -181,6 +190,19 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
   </div>
 </div>
 
+<div id="bill" class="overlay hidden">
+  <div class="panel est">
+    <h3 style="margin:0 0 4px">📮 後日届いた精算書</h3>
+    <p style="font-size:12px;color:#7d7266;margin:0 0 8px">立ち会いのメモと見くらべる。立ち会いで言われていない項目や、金額が違う行には「おかしい？」を押してから、管理会社に連絡する。</p>
+    <div id="billMemo"></div>
+    <div id="billList"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <b>請求の合計 <span id="billTotal" style="color:#e2573b"></span></b>
+      <button class="btn primary" id="billGo" type="button">この内容で管理会社に連絡する ▶</button>
+    </div>
+  </div>
+</div>
+
 <div id="result" class="overlay hidden">
   <div class="panel res" id="resBody"></div>
 </div>
@@ -255,10 +277,13 @@ let C, S;
 const MULTI = r => r === '1ldk' || r === '2k';
 function newContract(room) {
   const rent = MULTI(room) ? pick([76000, 84000, 92000]) : pick([52000, 58000, 64000, 70000]);
-  return {
+  const c = {
     rent, deposit: rent * 2, years: pick([2, 3, 4, 5, 7]),
     smoker: Math.random() < 0.3, cleaningClause: Math.random() < 0.5, keyLost: Math.random() < 0.25,
   };
+  c.acPaid = !c.smoker && Math.random() < 0.35; // 入居時にエアコンクリーニング代を払っている（退去時にまた請求されたら二重取り）
+  c.leakReported = Math.random() < 0.5; // シャワーの水漏れを入居中に管理会社へ連絡したか
+  return c;
 }
 // クロスは6年で残存価値1円（経過年数を考慮した負担額）
 const depRate = () => Math.max(0, 1 - C.years / 6);
@@ -577,12 +602,28 @@ function placeDef(base, placed) {
   return null;
 }
 
+// 入居中の故障：管理会社に連絡していれば貸主の負担。黙って放っておくと、広がった被害は借主の負担
+function setLeak() {
+  const d = DEFS.faucetLeak;
+  if (C.leakReported) Object.assign(d, { kind: 'owner',
+    desc: 'シャワーの水栓から、ずっと水がポタポタ垂れている。去年、管理会社に連絡したら「退去のときに交換します」と言われた。',
+    claim: () => ({ say: 'シャワー水栓から水が漏れてますね。壊しました？ 水栓の交換です。', label: 'シャワー水栓の交換', amt: 25000,
+      steps: [{ k: ['told', 'normal'], amt: 0, reply: '…あ、入居中にご連絡いただいてましたね。古くなっての故障なので、こちらで直します。' }] }),
+    why: '設備が古くなって起きた故障は貸主の負担。入居中に連絡しておけば記録が残り、揉めにくい。' });
+  else Object.assign(d, { kind: 'tenant',
+    desc: 'シャワーの水栓から、ずっと水がポタポタ垂れている。…管理会社に連絡しないまま放っておいたら、下の床パネルまで黒ずんできた。',
+    claim: () => ({ say: 'シャワー水栓の水漏れ、ずっと放っておかれましたね。水栓の交換と、傷んだ床パネルの補修です。', label: '水栓交換＋床パネル補修', amt: 34800,
+      steps: [{ k: 'normal', amt: 9800, label: '床パネルの補修（放っておいて傷んだ分）', reply: '…水栓は古くなっただけなので、交換はこちらで持ちます。ただ、連絡せずに放っておいて傷んだ床の分はお願いします。' }],
+      rebut: { told: '連絡の記録は、こちらには残っていないですね…。' } }),
+    why: '設備の故障そのものは貸主の負担。ただし気づいていたのに連絡せず放っておき、被害が広がった分は借主の負担になる。故障に気づいたらすぐ連絡する。' });
+}
+
 // 立ち会いで出す言い返しを、請求の種類に合わせてしぼる（意味の通らない選択肢を出さない）
 // 清掃費：部分補修・年数の割引は当てはまらない。設備の故障・ひび：同じ。残置物：通常損耗か明細だけ
 {
   const CLEAN_FEE = ['normal', 'photo', 'detail', 'none'], EQUIP = ['normal', 'photo', 'detail', 'none'];
   for (const id of ['grease', 'mirrorScale', 'drainHair', 'toiletStain', 'petHair', 'bathMold']) Object.assign(DEFS[id], { menu: CLEAN_FEE, dirt: true });
-  for (const id of ['faucetLeak', 'sinkCrack']) DEFS[id].menu = EQUIP;
+  DEFS.sinkCrack.menu = EQUIP; DEFS.faucetLeak.menu = [...EQUIP, 'told'];
   DEFS.trash.menu = ['normal', 'detail'];
   for (const id of ['stain', 'tatamiStain', 'mold', 'scribble', 'r2Mold']) DEFS[id].dirt = true;
 }
@@ -608,6 +649,9 @@ function paperClaims() {
     rebut: { normal: 'ペットの臭いは、通常の使い方を超えるものなんですよ。' }, why: 'ペットの臭いの消臭やクリーニングは、ペット可の物件でも借主の負担。' });
   if (C.smoker) out.push({ paper: true, ask: '普通に使っただけなので、貸主の負担では？', id: 'ac', name: 'エアコン洗浄', say: 'エアコンもヤニが付いてますので、内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200, steps: [],
     rebut: { normal: 'タバコのヤニが付いた分は、普通の使い方を超えてますね。' }, why: 'タバコのヤニや臭いが付いたエアコンの洗浄は借主の負担。' });
+  else if (C.acPaid) out.push({ paper: true, ask: '普通に使っただけなので、貸主の負担では？', extra: ['paid', '入居のときにも払っています（領収書）'], id: 'ac', name: 'エアコン洗浄', say: '最後に、エアコンのクリーニング代です。', label: 'エアコンクリーニング', amt: 13200,
+    steps: [{ k: ['paid', 'normal'], amt: 0, reply: '…入居のときにもいただいてましたね。二重になりますし、普通に使った範囲なので外します。' }],
+    why: '入居時にエアコンクリーニング代を払っているのに、退去時にもまた請求するのは二重取り。タバコを吸っていなければ、退去時の洗浄は貸主の負担。入居時の領収書はとっておく。' });
   else out.push({ paper: true, ask: '普通に使っただけなので、貸主の負担では？', id: 'ac', name: 'エアコン洗浄', say: '最後に、エアコンの内部洗浄代です。', label: 'エアコン内部洗浄', amt: 13200,
     steps: [{ k: 'normal', amt: 0, reply: '…タバコも吸われてないなら、普通に使った範囲ですね。' }],
     why: 'タバコを吸っていなければ、エアコンの内部洗浄は普通に使った範囲で貸主の負担。' });
@@ -1237,6 +1281,7 @@ function buildRound() {
   spots = []; yellowing = []; decalSeq = 0;
   const room = pick(['western', 'washitsu', 'pet', '1ldk', '2k']);
   C = newContract(room);
+  setLeak();
   S = { defs: {}, room, multi: MULTI(room), phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [], boss: pick(['honest', 'normal', 'normal', 'crook', 'crook']), signed: true };
   setRoomLook(S.room);
   const W = S.room === 'washitsu';
@@ -1345,6 +1390,7 @@ function renderDocs() {
   document.querySelectorAll('#docTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === docTab));
   const el = $('#docBody');
   if (docTab === 'contract') {
+    const leak = spots.some(sp => sp.id === 'faucetLeak');
     el.innerHTML = `<h4>賃貸借契約書（抜粋）</h4><table>
       <tr><td>物件</td><td>コーポ汐見 203号室（${{ western: '1K・洋室', washitsu: '1K・和室6畳', pet: '1K・洋室・ペット可（小型犬1匹まで）', '1ldk': '1LDK・寝室は洋室', '2k': '2K・洋室＋和室6畳' }[S.room]}）</td></tr>
       <tr><td>家賃</td><td>${yen(C.rent)} ／月</td></tr>
@@ -1353,9 +1399,11 @@ function renderDocs() {
       <tr><td>特約</td><td>${C.cleaningClause ? '<b>退去時のハウスクリーニング費用 33,000円（税込）は借主の負担とする。</b> <span class="stamp">合意</span>' : 'なし'}</td></tr></table>
       ${S.mode === 'agent' ? `<h4>入居者からの申告</h4><ul>
       <li>${C.smoker ? '部屋でタバコを吸っていた。' : 'タバコは吸っていない。'}</li>
-      <li>${C.keyLost ? '鍵を1本なくした（返却は1本）。' : '鍵は2本とも返却済み。'}</li>${S.room === 'pet' ? '<li>小型犬を飼っていた。</li>' : ''}</ul>` : `<h4>自分のメモ</h4><ul>
+      <li>${C.keyLost ? '鍵を1本なくした（返却は1本）。' : '鍵は2本とも返却済み。'}</li>${S.room === 'pet' ? '<li>小型犬を飼っていた。</li>' : ''}
+      ${C.acPaid ? '<li>入居のときに、エアコンクリーニング代を受け取っている。</li>' : ''}${leak ? `<li>${C.leakReported ? '入居中に、シャワーの水漏れの連絡を受けている（記録あり）。' : 'シャワーの水漏れの連絡は、入居中に受けていない。'}</li>` : ''}</ul>` : `<h4>自分のメモ</h4><ul>
       <li>${C.smoker ? '部屋でタバコを吸っていた。' : 'タバコは吸わない。'}</li>
-      <li>${C.keyLost ? '鍵を1本なくしてしまった…。' : '鍵は2本とも返せる。'}</li>${S.room === 'pet' ? '<li>小型犬を飼っていた。</li>' : ''}</ul>`}`;
+      <li>${C.keyLost ? '鍵を1本なくしてしまった…。' : '鍵は2本とも返せる。'}</li>${S.room === 'pet' ? '<li>小型犬を飼っていた。</li>' : ''}
+      ${C.acPaid ? '<li>入居のとき、エアコンクリーニング代 11,000円を払った（領収書あり）。</li>' : ''}${leak ? `<li>${C.leakReported ? 'シャワーの水漏れは、去年管理会社に連絡した（「退去のときに交換します」と言われた。記録あり）。' : 'シャワーの水漏れ、管理会社に連絡しないまま放っておいた…。'}</li>` : ''}</ul>`}`;
   } else if (docTab === 'album') {
     el.innerHTML = `<h4>入居時チェック表（${C.years}年前・写真つき）</h4><p style="font-size:12px;color:#7d7266;margin:0 0 8px">入居したときに管理会社と確認した、もとからあった傷や汚れ。</p><div class="album">${S.album.map(a => `<figure><div class="ph" style="background-image:url(${a.img});background-size:cover"></div><b>${a.name}</b><br>${a.note}</figure>`).join('')}</div>`;
   } else if (docTab === 'real') {
@@ -1363,7 +1411,9 @@ function renderDocs() {
     el.innerHTML = `<h4>実際の退去で気をつけること</h4><ul>
       <li><b>入居したとき</b>：もとからある傷や汚れを日付入りの写真に撮り、チェック表にして管理会社に出しておく。</li>
       <li><b>退去の前</b>：契約書の特約（クリーニング代など）を確認。掃除とゴミ出しは済ませる。自分で補修するなら目立たない所で試してから。</li>
-      <li><b>立ち会いのとき</b>：その場で精算書にサインしない。「どこを・何㎡・単価いくら」の明細をもらう。</li>
+      <li><b>入居中</b>：設備が壊れたら、すぐ管理会社に連絡して記録を残す。黙って放っておくと、広がった被害は借主の負担になる。入居時に払った費用（エアコンクリーニングなど）の領収書もとっておく。</li>
+      <li><b>立ち会いのとき</b>：立ち会いは法律上の義務ではないが、出ないと入居前の傷も言い返せない。その場で精算書にサインせず、「どこを・何㎡・単価いくら」の明細をもらう。決まったことはメモしておく。</li>
+      <li><b>後日の請求書</b>：立ち会いのメモと見くらべる。立ち会いで言われなかった項目や、金額が増えている所があれば連絡する。</li>
       <li><b>納得できないとき</b>：国土交通省「原状回復をめぐるトラブルとガイドライン」をもとに話し合う。消費者ホットライン <b>188</b> でも相談できる。</li></ul>
       <h4>傷・汚れ別の直し方</h4>
       ${Object.keys(GUIDE).map(k => `<div style="margin-bottom:8px"><b>${names[k] || k}</b>${guideHTML(k)}</div>`).join('')}
@@ -1373,8 +1423,8 @@ function renderDocs() {
   } else {
     el.innerHTML = `<h4>原状回復のガイドライン（国土交通省）のメモ</h4>
       <p style="font-size:12px;color:#7d7266;margin:0 0 6px">普通に暮らしてできた傷み（通常損耗）や年月による劣化（経年変化）は、家賃に含まれている＝貸主の負担。</p>
-      <h4>🙆 借主が払わなくていいもの</h4><ul><li>画鋲・ピンの穴</li><li>日焼けによるクロスの変色・ポスター跡</li><li>冷蔵庫など家電の後ろの黒ずみ</li><li>家具を置いた床のへこみ</li><li>鍵の交換（なくしていなければ）</li><li>次の入居者のためのクリーニング（特約がなく、ふだんの掃除をしていれば）</li><li>エアコンの内部洗浄（タバコを吸っていなければ）</li><li>入居前からあった傷（チェック表が証拠）</li></ul>
-      <h4>🙅 借主が払うもの</h4><ul><li>ネジ穴・くぎ穴、不注意でつけた穴や傷</li><li>放っておいたシミ・カビ・油汚れ、落書き</li><li>タバコのヤニ・臭い</li><li>残していった物の処分</li><li>鍵をなくしたときの交換</li><li>金額まではっきり書かれた特約（クリーニングなど）</li></ul>
+      <h4>🙆 借主が払わなくていいもの</h4><ul><li>画鋲・ピンの穴</li><li>日焼けによるクロスの変色・ポスター跡</li><li>冷蔵庫など家電の後ろの黒ずみ</li><li>家具を置いた床のへこみ</li><li>鍵の交換（なくしていなければ）</li><li>次の入居者のためのクリーニング（特約がなく、ふだんの掃除をしていれば）</li><li>エアコンの内部洗浄（タバコを吸っていなければ）。入居時にも払っていたら二重取り</li><li>設備が古くなって起きた故障（入居中に連絡してあれば揉めにくい）</li><li>入居前からあった傷（チェック表が証拠）</li></ul>
+      <h4>🙅 借主が払うもの</h4><ul><li>ネジ穴・くぎ穴、不注意でつけた穴や傷</li><li>放っておいたシミ・カビ・油汚れ、落書き</li><li>タバコのヤニ・臭い</li><li>残していった物の処分</li><li>故障を連絡せずに放っておいて、広がった被害</li><li>鍵をなくしたときの交換</li><li>金額まではっきり書かれた特約（クリーニングなど）</li></ul>
       <h4>💡 払うときも、減らせるポイント</h4><ul><li>張替えは<b>傷んだ面の分だけ</b>（ヤニなど部屋じゅうの汚れは別）</li><li>同じ面・同じ部屋の張替えは<b>1回分だけ</b>（全面張替えを払ったら、そこの傷でまたクロス代を払わない）</li><li>クロスは<b>6年で価値がほぼ1円</b>。住んだ年数の分だけ割り引かれる</li><li>フローリングの<b>部分補修</b>は年数で割り引かれない</li><li>畳表・ふすま紙・障子紙は<b>消耗品</b>なので年数で割り引かれないが、<b>傷んだ枚数だけ</b></li></ul>
       <h4>🐶 ペット可の部屋</h4><ul><li>ペット可でも、ペットの傷・シミ・臭いは借主の負担</li></ul>`;
   }
@@ -1435,6 +1485,7 @@ const CHOICES = [
   ['detail', '明細（単価・数量）を見せてください'],
   ['none', 'そこには何もありませんよ'],
   ['dup', 'それは前の張替えに含まれていますよね'],
+  ['told', '入居中に、管理会社へ連絡してあります'],
 ];
 const DEFAULT_REBUT = {
   normal: '普通に暮らしてできたものとは言えないですね。',
@@ -1444,6 +1495,7 @@ const DEFAULT_REBUT = {
   detail: 'はい、これが明細です。単価も数量も、ふつうの金額ですよ。',
   none: 'いや、ほら、ここにありますよね。',
   dup: 'いえ、ここはまだ、どの張替えにも含まれていませんよ。',
+  told: 'その連絡の記録は、こちらにはないですね。',
 };
 // 書類の上での費用（クリーニング・鍵・エアコンなど）に的外れな返しをしたとき
 const PAPER_REBUT = {
@@ -1497,8 +1549,8 @@ function peek(on) {
 $('#peekBtn').onclick = () => peek(true);
 $('#peekBack').onclick = () => peek(false);
 // 信用が0のときに求められる根拠
-const EVIDENCE = [['guide', '国交省のガイドラインを見せる'], ['photo', '入居時チェック表の写真を見せる'], ['contract', '契約書・明細を確認してもらう'], ['look', 'その場所を一緒に見てもらう']];
-const EVIDENCE_FOR = { normal: 'guide', dep: 'guide', partial: 'guide', photo: 'photo', detail: 'contract', dup: 'contract', none: 'look' };
+const EVIDENCE = [['guide', '国交省のガイドラインを見せる'], ['photo', '入居時チェック表の写真を見せる'], ['contract', '契約書・明細・領収書を確認してもらう'], ['call', '管理会社に連絡した記録を見せる'], ['look', 'その場所を一緒に見てもらう']];
+const EVIDENCE_FOR = { normal: 'guide', dep: 'guide', partial: 'guide', photo: 'photo', detail: 'contract', dup: 'contract', paid: 'contract', told: 'call', none: 'look' };
 const stepHit = (st, k) => !!st && (Array.isArray(st.k) ? st.k.includes(k) : st.k === k);
 async function argue(claim) {
   let base = claim.amt, label = claim.label, step = 0, f = claim.inflate || 1;
@@ -1508,8 +1560,8 @@ async function argue(claim) {
   say('them', claim.say, { label, amt });
   while (true) {
     if (amt === 0) { await choose([['ok', '次へ', 'acc']]); break; }
-    const menu = claim.paper ? [['normal', claim.ask || '貸主の負担では？'], ['detail', '金額の根拠（契約書・明細）を見せてください']]
-      : CHOICES.filter(c => (!claim.menu || claim.menu.includes(c[0])) && (c[0] !== 'dup' || claim.cover || claim.dupable)).map(c => c[0] === 'none' && claim.dirt ? ['none', 'そんな汚れはありませんよ'] : c);
+    const menu = claim.paper ? [['normal', claim.ask || '貸主の負担では？'], ['detail', '金額の根拠（契約書・明細）を見せてください'], ...(claim.extra ? [claim.extra] : [])]
+      : CHOICES.filter(c => (claim.menu ? claim.menu.includes(c[0]) : c[0] !== 'told') && (c[0] !== 'dup' || claim.cover || claim.dupable)).map(c => c[0] === 'none' && claim.dirt ? ['none', 'そんな汚れはありませんよ'] : c);
     const opts = menu.map(c => [...c]);
     opts.push(['accept', '認める（このまま払う）', 'acc']);
     const k = await choose(opts);
@@ -1579,7 +1631,7 @@ async function startInspection() {
   insp.visible = true; insp.position.set(0.47, 0, RZ - 0.3); insp.rotation.y = Math.PI;
   cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.4) };
   say('them', boss.hello);
-  await choose([['ok', 'お願いします', 'acc']]);
+  S.skipped = (await choose([['ok', 'お願いします', 'acc'], ['skip', '（立ち会わずに、鍵を預けて帰る）', 'acc']])) === 'skip';
   // 部屋の奥から順に見ていく
   const targets = spots.filter(s => !s.def.noClaim && !s.done).map(s => ({ id: s.id, def: { ...s.def, id: s.id }, claim: () => ({ ...s.def.claim(S), menu: s.def.menu, dirt: s.def.dirt, cover: s.def.cover }) }));
   S.cov = {};
@@ -1591,6 +1643,7 @@ async function startInspection() {
     claim: () => ({ dupable: /クロス|フローリング/.test(fk.label), say: fk.say, label: fk.label, amt: fk.amt, steps: [{ k: 'none', amt: 0, reply: '…あれ、見間違いでしたかね。失礼しました。' }], rebut: { normal: 'いや、通常損耗とかじゃなくて、キズがあるんですよ。' } }) });
   const ZR = { main: 0, r2: 1, wet: 2 };
   targets.sort((a, b) => ZR[zoneOf(a.def.pos[0], a.def.pos[2])] - ZR[zoneOf(b.def.pos[0], b.def.pos[2])] || wideFirst(a.def) - wideFirst(b.def) || a.def.pos[2] - b.def.pos[2]);
+  if (S.skipped) return absentInspection(targets);
   if (!targets.length) { say('them', 'おお…きれいに使われてますね。お部屋の中は問題ないです。'); await choose([['ok', '次へ', 'acc']]); }
   for (const s of targets) {
     $('#dialog').classList.add('hidden');
@@ -1620,16 +1673,79 @@ async function startInspection() {
   cam.focus = { pos: new THREE.Vector3(-0.6, 2.1, -0.9), look: new THREE.Vector3(0.4, 1.0, RZ - 0.75) };
   say('them', 'お部屋はこれで全部ですね。あとは書類の上での費用です。');
   await choose([['ok', 'はい', 'acc']]);
+  for (const c0 of allPapers()) { const c = shapeClaim(c0); if (!c) continue; const r = await argue(c); S.log.push({ id: c.id, name: c.name, why: c.why, kind: (c.fair ?? fairOf(c)) > 0 ? 'tenant' : 'owner', paper: true, ...r }); }
+  say('them', BOSSES[S.boss].sign);
+  S.signed = (await choose([['sign', 'この場でサインする'], ['home', '明細をもらって、持ち帰って確認する']])) === 'sign';
+  $('#dialog').classList.add('hidden');
+  if (S.signed) showResult(); else laterBill();
+}
+function allPapers() {
   const papers = paperClaims();
   if (S.boss === 'crook') papers.push({ paper: true, ask: '頼んでいない消毒代は、払わなくていいのでは？', id: null, name: '室内消毒（抗菌施工）', say: 'それと、室内の消毒代です。みなさんにお願いしてるんで。', label: '室内消毒（抗菌施工）', amt: 16500,
     steps: [{ k: 'normal', amt: 0, reply: '…契約書には書いてないですね。外しておきます。' }], rebut: { detail: '明細は「室内消毒 一式」です。みなさん払ってますよ？' },
     why: '契約書に書かれていない消毒料などは払う必要がない。何の費用か、契約のどこに書いてあるかを確かめる。' });
-  for (const c0 of papers) { const c = shapeClaim(c0); if (!c) continue; const r = await argue(c); S.log.push({ id: c.id, name: c.name, why: c.why, kind: (c.fair ?? fairOf(c)) > 0 ? 'tenant' : 'owner', paper: true, ...r }); }
-  say('them', BOSSES[S.boss].sign);
-  S.signed = (await choose([['sign', 'この場でサインする'], ['home', '明細をもらって、持ち帰って確認する']])) === 'sign';
-  $('#dialog').classList.add('hidden');
-  showResult();
+  return papers;
 }
+// 立ち会わなかったとき：業者が一人で見て、言われたとおりの金額で精算書が届く
+function absentResult(claim) {
+  const f = claim.inflate || 1, amt = claim.amt <= 1 ? claim.amt : Math.round(claim.amt * f / 100) * 100;
+  return { first: { amt, label: claim.label }, final: { amt, label: claim.label }, fair: claim.fair ?? fairOf(claim), moves: [], absent: true,
+    path: [...(claim.inflate > 1 ? ['detail'] : []), ...claim.steps.map(x => [].concat(x.k)[0])] };
+}
+async function absentInspection(targets) {
+  say('them', S.boss === 'crook' ? '…そうですか。じゃあ、こっちで全部見ておきますんで。' : 'わかりました。では、こちらで確認して、あとで精算書をお送りしますね。');
+  await choose([['ok', '（鍵を渡して帰る）', 'acc']]);
+  $('#dialog').classList.add('hidden'); insp.visible = false;
+  for (const s of targets) {
+    let raw = s.claim();
+    if (!s.fake && isCovered(s.def, S.cov)) raw = dupClaim(raw, s.def);
+    const claim = s.fake ? raw : shapeClaim(raw);
+    if (!claim) continue;
+    const r = absentResult(claim);
+    if (!s.fake && !claim.dup && r.final.amt > 0) addCover(s.def, r.final.label, S.cov);
+    S.log.push({ id: s.id, name: s.def.name, why: claim.dup ? s.def.why + DUP_NOTE : s.def.why, kind: s.fake ? 'fake' : s.def.kind, clean: s.def.clean, dirt: s.def.dirt, patchFail: false, ...r });
+  }
+  for (const c0 of allPapers()) { const c = shapeClaim(c0); if (!c) continue; S.log.push({ id: c.id, name: c.name, why: c.why, kind: (c.fair ?? fairOf(c)) > 0 ? 'tenant' : 'owner', paper: true, ...absentResult(c) }); }
+  S.signed = false;
+  laterBill();
+}
+
+// ---------- 後日届く精算書（持ち帰ったとき）----------
+// 立ち会いで言われなかった項目が足されたり、金額が増えたりしていることがある。立ち会いのメモと見くらべる
+const LATER_ADD = [['フローリング補修', 22000], ['ロールカーテン交換', 8800], ['網戸の張替え', 6600], ['照明器具の清掃', 5500], ['室内消臭', 11000]];
+function laterBill() {
+  S.phase = 'bill';
+  const agreed = S.log.filter(l => l.final.amt > 0).map(l => ({ label: l.final.label, amt: l.final.amt, memo: l.final.amt, ok: true }));
+  const lines = agreed.map(a => ({ ...a }));
+  const n = S.boss === 'crook' ? 2 : S.boss === 'normal' && Math.random() < 0.6 ? 1 : 0;
+  for (const [label, amt] of shuffle(LATER_ADD.filter(([lb]) => !lines.some(x => x.label === lb))).slice(0, n))
+    lines.splice(Math.floor(Math.random() * (lines.length + 1)), 0, { label, amt, memo: 0, ok: false });
+  const okLines = lines.filter(l => l.ok);
+  if (S.boss === 'crook' && okLines.length) { const x = pick(okLines); x.amt = x.memo + Math.max(3000, Math.round(x.memo * 0.5 / 1000) * 1000); x.ok = false; x.raised = true; }
+  S.bill = lines;
+  $('#billMemo').innerHTML = S.skipped ? '<p class="memo">立ち会わなかったので、メモがない…。どれが立ち会いで決まった金額なのか分からない。</p>'
+    : `<div class="memo"><b>📝 立ち会いのメモ（決まったこと）</b>${agreed.length ? agreed.map(a => `<div>${a.label}　${yen(a.amt)}</div>`).join('') : '<div>（払うものはなし）</div>'}</div>`;
+  renderBill();
+  $('#bill').classList.remove('hidden');
+}
+function renderBill() {
+  $('#billList').innerHTML = S.bill.map((l, i) => `<div class="item"><b>${l.label}</b>　${yen(l.amt)}${S.skipped ? '' : `<div class="opts"><button type="button" data-i="${i}" class="${l.flag ? 'on' : ''}">${l.flag ? '✓ おかしい' : 'おかしい？'}</button></div>`}</div>`).join('') || '<p>請求はなし。</p>';
+  $('#billTotal').textContent = yen(S.bill.reduce((a, l) => a + l.amt, 0));
+}
+$('#billList').onclick = e => { const b = e.target.closest('button'); if (!b) return; const l = S.bill[+b.dataset.i]; l.flag = !l.flag; SFX.play('tap'); renderBill(); };
+$('#billGo').onclick = () => {
+  S.billExtra = 0; S.billBogus = 0; S.billNotes = [];
+  for (const l of S.bill) {
+    const bogus = l.amt - l.memo;
+    if (!l.ok) S.billBogus += bogus;
+    if (l.flag && !l.ok) S.billNotes.push(l.raised ? `${l.label}：メモでは ${yen(l.memo)}。メモの金額に直してもらった` : `${l.label}：立ち会いで言われていない項目。外してもらった`);
+    else if (l.flag) S.billNotes.push(`${l.label}：立ち会いで決まったとおりの金額だった`);
+    else if (!l.ok) { S.billExtra += bogus; S.billNotes.push(S.skipped ? `${l.label}：${l.raised ? '金額が上乗せされていた' : 'あとから足された項目だった'}が、立ち会っていないので気づけなかった（${yen(bogus)}）` : l.raised ? `${l.label}：メモより ${yen(bogus)} 増えていたのに、見のがした` : `${l.label}：立ち会いで言われていない項目なのに、見のがして払った（${yen(bogus)}）`); }
+  }
+  if (!S.billNotes.length) S.billNotes.push('立ち会いのメモどおりの請求書だった。');
+  $('#bill').classList.add('hidden');
+  showResult();
+};
 
 // ---------- 広告 ----------
 // 広告サービスのタグ（<script> を含む HTML）をここに入れると、精算書・評価の下に出る。
@@ -1642,8 +1758,24 @@ function renderAd() {
   else el.remove();
 }
 
+// ---------- シェア ----------
+const SHARE_URL = 'https://texia-inc.github.io/bukiya/taikyo/';
+function shareX(text) {
+  const u = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(SHARE_URL)}&hashtags=${encodeURIComponent('退去シミュレーター,敷金')}`;
+  window.open(u, '_blank', 'noopener');
+}
+const shareBtnHTML = '<div class="center" style="margin:4px 0 10px"><button class="btn share" id="shareBtn" type="button">𝕏 結果をポストする</button></div>';
+function tenantShareText(rank, firstTotal, total, refund, extra, over) {
+  const crook = S.boss === 'crook' ? 'ない傷まで請求してくる悪質業者に当たった。' : '';
+  const money = extra ? `それでも追加で ${yen(extra)} 請求された` : `敷金 ${yen(refund)} が戻ってきた`;
+  if (S.skipped) return `退去シミュレーターで立ち会いをサボったら、業者の言い値で ${yen(total)} 取られた😇 ${over ? `払いすぎ ${yen(over)}。` : ''}立ち会い、ちゃんと出ようね…`;
+  if (rank === 'S') return `退去シミュレーターでランクS🏆 ${crook}業者の請求 ${yen(firstTotal)} を ${yen(total)} まで減らして、${money}！ あなたは敷金を守れる？`;
+  if (rank === 'A' || rank === 'B') return `退去シミュレーターでランク${rank}。${crook}業者の請求 ${yen(firstTotal)} を ${yen(total)} まで減らした…けど${over ? `、まだ ${yen(over)} 払いすぎてたらしい` : '、掃除しておけばもっと減らせた'}。あなたは何円守れる？`;
+  return `退去シミュレーターでランク${rank}😇 ${crook}業者の言いなりで ${yen(over)} も払いすぎた…。立ち会いで言い返せる自信ある？`;
+}
+
 // ---------- 答え合わせ ----------
-const SAY = { normal: '通常損耗では？', photo: '入居時からあった', dep: '年数で割り引いて', partial: '部分補修で足りる', detail: '明細を見せて', none: '何もない', dup: '張替え済みでは？', accept: '認めた' };
+const SAY = { normal: '通常損耗では？', photo: '入居時からあった', dep: '年数で割り引いて', partial: '部分補修で足りる', detail: '明細を見せて', none: '何もない', dup: '張替え済みでは？', paid: '入居時に払った', told: '入居中に連絡した', accept: '認めた' };
 const KIND = { owner: ['貸主の負担（通常損耗・経年変化）', 'o'], tenant: ['借主の負担', 't'], premove: ['入居前からの傷（借主は払わない）', 'o'], fake: ['存在しない傷', 'o'] };
 const sayOf = (l, k) => l.paper ? ({ normal: '貸主の負担では？', detail: '根拠を見せて' }[k] || SAY[k]) : k === 'none' && l.dirt ? '汚れはない' : SAY[k];
 function pathText(l) {
@@ -1654,7 +1786,7 @@ function pathText(l) {
 function answerHTML(l) {
   const diff = l.final.amt - l.fair, ok = diff <= 0;
   const [kl, kc] = KIND[l.kind] || KIND.tenant;
-  const mv = l.moves.length ? l.moves.map(m => m.k === 'accept' ? '認めた' : `${sayOf(l, m.k)}<span class="${m.ok ? 'o' : 'x'}">${m.ok ? '✓' : '✗'}</span>`).join(' → ') : '（請求が0円になった）';
+  const mv = l.absent ? '立ち会わなかったので、言い返せなかった' : l.moves.length ? l.moves.map(m => m.k === 'accept' ? '認めた' : `${sayOf(l, m.k)}<span class="${m.ok ? 'o' : 'x'}">${m.ok ? '✓' : '✗'}</span>`).join(' → ') : '（請求が0円になった）';
   const prep = l.clean ? `準備で「${l.clean.label}」（${l.clean.t}分）をしていれば、請求されなかった。` : l.patchFail ? 'パテ埋めに失敗して、かえって目立ってしまった。' : '';
   return `<div class="ans ${ok ? '' : 'ng'}">
     <div class="ah"><b>${l.name}</b><span class="kind ${kc}">${kl}</span></div>
@@ -1696,16 +1828,17 @@ function bestCase() {
 }
 function showResult() {
   S.phase = 'done';
-  let total = S.log.reduce((a, l) => a + l.final.amt, 0);
-  const over = S.log.reduce((a, l) => a + Math.max(0, l.final.amt - l.fair), 0);
+  let total = S.log.reduce((a, l) => a + l.final.amt, 0) + (S.signed ? 0 : S.billExtra || 0);
+  const over = S.log.reduce((a, l) => a + Math.max(0, l.final.amt - l.fair), 0) + (S.signed ? 0 : S.billExtra || 0);
   let after = '';
-  if (!S.signed && S.boss === 'crook' && over > 0) {
+  if (S.skipped) after = '立ち会わなかったので、入居前の傷や普通の傷みも言い返せないまま精算された。';
+  else if (!S.signed && S.boss === 'crook' && over > 0) {
     const back = Math.round(over * 0.3 / 100) * 100; total -= back;
     after = `持ち帰って明細を確かめ、消費生活センターに相談した。不当だった分のうち ${yen(back)} が戻ってきた。`;
-  } else if (!S.signed) after = '持ち帰って確かめたが、精算書の内容はそのまま決まった。';
+  } else if (!S.signed) after = '明細を持ち帰って、後日の精算書をメモと見くらべた。';
   else if (S.boss === 'crook' && over > 0) after = 'その場でサインしてしまった…。悪質な業者には、サインせずに明細をもらって持ち帰ろう。';
   const missed = spots.filter(s => !s.def.noClaim && !s.found).map(s => s.def.name);
-  const firstTotal = S.log.reduce((a, l) => a + l.first.amt, 0);
+  const firstTotal = S.log.reduce((a, l) => a + l.first.amt, 0) + (S.signed ? 0 : S.billBogus || 0);
   const refund = Math.max(0, C.deposit - total), extra = Math.max(0, total - C.deposit);
   const ideal = bestCase();
   const ratio = firstTotal > ideal ? Math.max(0, Math.min(1, 1 - (total - ideal) / (firstTotal - ideal))) : (total <= ideal ? 1 : 0);
@@ -1722,8 +1855,10 @@ function showResult() {
       <div class="center"><div class="rank">${rank}</div><div style="font-size:11px;color:#7d7266">理想の負担 ${yen(ideal)}</div></div>
     </div>
     <p style="margin:8px 0;font-weight:800">${comment}</p>
+    ${shareBtnHTML}
     <p style="margin:0 0 6px;font-size:13px">業者：${BOSSES[S.boss].name}（${{ honest: '誠実な人', normal: 'ふつうの人', crook: '悪質な人' }[S.boss]}）${after ? '<br>' + after : ''}</p>
     ${missed.length ? `<p style="margin:0 0 6px;font-size:13px;color:#7d7266">準備で見落としていた傷・汚れ：${missed.join('、')}</p>` : '<p style="margin:0 0 6px;font-size:13px;color:#2f8f5b">傷・汚れはすべて見つけていた！</p>'}
+    ${!S.signed && S.billNotes ? `<div class="sum"><div>📮 <b>後日の精算書</b></div>${S.billNotes.map(n => `<div style="font-size:13px">・${n}</div>`).join('')}</div>` : ''}
     ${summaryHTML(over)}
     <h3 style="margin:10px 0 6px;font-size:16px">答え合わせ</h3>
     ${S.log.map(answerHTML).join('')}
@@ -1734,6 +1869,7 @@ function showResult() {
   $('#result').classList.remove('hidden');
   rankSound(rank);
   $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
+  $('#shareBtn').onclick = () => shareX(tenantShareText(rank, firstTotal, total, refund, extra, over));
 }
 
 // ---------- 業者モード ----------
@@ -1824,6 +1960,8 @@ function overReason(it) {
   const T = (polite, rude) => loud ? rude : polite;
   if (it.kind === 'owner') return it.id === 'cleaning' ? T('特約もないし、掃除もしましたよね。次の人のためのクリーニングは大家さん負担では？', '特約もないし、掃除もしたでしょ！ 次の人のクリーニングなんて大家が払いなさいよ！')
     : it.id === 'key' ? T('鍵はなくしてないので、交換は大家さん負担ですよね？', '鍵なんてなくしてないわよ！ 交換は大家持ちでしょ！')
+    : it.id === 'ac' && C.acPaid ? T('エアコンのクリーニング代は、入居のときにも払いましたよね？ 二重じゃないですか？', '入居のときも払ったわよ！ 二重取りでしょ！')
+    : it.id === 'faucetLeak' ? T('水漏れは入居中に連絡してありますよね？ 古くなって壊れたものは大家さんの負担では？', '水漏れはちゃんと連絡したでしょ！ 古くて壊れたのは大家持ちよ！')
     : it.id === 'ac' ? T('タバコは吸ってないので、エアコンの洗浄は普通の使用の範囲ですよね？', 'タバコなんて吸ってないんだから、エアコン洗浄なんて払わないわよ！')
     : T('これって、普通に住んでできたもの（通常損耗）ですよね？', 'これ、普通に住んでできたものでしょ！ 通常損耗じゃないの！');
   if (it.fairK === 'dup') return T('そこは、ほかの張替えに含まれてますよね？ 二重になっていませんか？', 'そこ、ほかの張替えに入ってるでしょ！ 二重取りじゃない！');
@@ -1832,6 +1970,7 @@ function overReason(it) {
   const unit = /畳|ふすま|障子/.test(it.chain[0].label) ? '枚数' : /フローリング/.test(it.chain[0].label) ? '範囲' : '面';
   if (k === 'partial') return unit === '範囲' ? T('補修は、傷の範囲だけで足りるんじゃないですか？', '傷のとこだけ直せばいいでしょ！ 全部なんておかしいわよ！')
     : T(`張替えは、傷んだ${unit}だけで足りるんじゃないですか？`, `傷んだ${unit}だけ張り替えればいいでしょ！`);
+  if (k === 'normal') return T('水栓が古くなって壊れたのは、大家さんの負担ですよね？', '古くなって壊れただけでしょ！ そこは大家が払いなさいよ！');
   if (k === 'dep') return T(`入居${C.years}年なので、クロスは経過年数で割り引かれるはずですよね？`, `${C.years}年も住んだのよ！ クロスは年数で割り引きなさいよ！`);
   return T('その金額、高すぎませんか？', '高すぎでしょ、それ！');
 }
@@ -1924,6 +2063,7 @@ function showAgentResult() {
       <div class="center"><div class="rank">${rank}</div></div>
     </div>
     <p style="margin:8px 0;font-weight:800">${comment}</p>
+    ${shareBtnHTML}
     ${notes.length ? `<p style="font-size:13px;margin:0 0 6px">${notes.join('<br>')}</p>` : ''}
     <div class="sum">
       <div>🔍 <b>見つけた所</b> ${est.filter(it => !it.paper && it.id && !['cleaning', 'key', 'ac', 'petodor'].includes(it.id)).length} か所${missed.length ? `　<span style="color:#e2573b">見落とし ${missed.length} か所（大家さんの損 ${yen(missed.reduce((a, m) => a + m.fair, 0))}）</span>` : '（見落としなし！）'}</div>
@@ -1938,6 +2078,7 @@ function showAgentResult() {
   renderAd();
   $('#result').classList.remove('hidden');
   rankSound(rank);
+  $('#shareBtn').onclick = () => shareX(`退去シミュレーターの業者モードでランク${rank}。大家さんの満足 ${owner}・入居者の納得 ${tenant}${S.tenant === 'claimer' ? '。大声さんの相手で心が折れかけた…' : over ? `。${yen(over)} 取りすぎて怒られた…` : ''}。取りすぎず、取りこぼさず。あなたは適正に精算できる？`);
   $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
   $('#toTitleBtn').onclick = () => { $('#result').classList.add('hidden'); $('#title').classList.remove('hidden'); };
 }
