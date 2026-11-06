@@ -1033,7 +1033,7 @@ const cf = new THREE.Mesh(new THREE.PlaneGeometry(-RX - WX0, RZ - PZ), new THREE
 cf.rotation.x = -Math.PI / 2; cf.position.set((WX0 - RX) / 2, 0.001, (RZ + PZ) / 2); cf.receiveShadow = true; scene.add(cf);
 box(-RX - WX0, 0.05, PZ - BZ, M(0xc9d3d8), (WX0 - RX) / 2, 0.025, (PZ + BZ) / 2); // 浴室の床
 box(T, RH, RZ - BZ + T, matWall, WX0 - T / 2, RH / 2, (RZ + BZ) / 2, gL2);
-box(-RX - WX0 + T, RH, T, matWall, (WX0 - RX) / 2, RH / 2, BZ - T / 2, gB2);
+box(-RX - T / 2 - WX0, RH, T, matWall, (WX0 - RX - T / 2) / 2, RH / 2, BZ - T / 2, gB2); // 端は左の壁の厚みの中で止める（部屋側に突き出すと柱のように見える）
 // 洗面所と浴室のしきり（折れ戸のぶんだけ開けておく）
 const OX0 = -3.0, OX1 = -2.3;
 box(OX0 - WX0, RH, 0.08, matWall, (WX0 + OX0) / 2, RH / 2, PZ, gP);
