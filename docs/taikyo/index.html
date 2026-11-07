@@ -47,6 +47,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:0}
 .btn[disabled]{opacity:.4;pointer-events:none}
 .btn.share{background:#111;color:#fff;border-color:#111}
 .btn small{font-weight:500;font-size:11px;margin-left:4px}
+#dailyBtn small{display:block;margin:2px 0 0}
 #dialog .who{display:inline-block;background:var(--ink);color:#fff;border-radius:8px;padding:2px 10px;font-size:12px;font-weight:800;margin-bottom:6px}
 #dialog .who.me{background:var(--blue)}
 #dialog .bill{display:flex;justify-content:space-between;align-items:center;background:#fff;border:2px dashed var(--line);border-radius:10px;padding:6px 10px;margin:0 0 10px;font-weight:800}
@@ -161,7 +162,9 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
   <div class="panel">
     <div class="logo">退去シミュレーター<small>〜 敷金を守りぬけ 〜</small></div>
     <div class="tag"><b>入居者として</b>：午前中に部屋を片づけ、立ち会いで不当な請求に言い返して敷金を取り戻す。<br><b>業者として</b>：退去した部屋を点検して見積もりを作り、入居者に説明する。取りすぎても取らなすぎてもダメ。</div>
-    <div class="center btns" style="justify-content:center"><button class="btn primary" id="startBtn" type="button" style="font-size:17px;padding:10px 20px">入居者として</button><button class="btn" id="startAgentBtn" type="button" style="font-size:17px;padding:10px 20px;background:#2f4a6b;color:#fff">業者として</button></div>
+    <div class="center" style="margin:0 0 10px"><button class="btn primary" id="dailyBtn" type="button" style="font-size:17px;padding:10px 20px;background:#2f8f5b"></button></div>
+    <div class="center btns" style="justify-content:center"><button class="btn primary" id="startBtn" type="button" style="font-size:17px;padding:10px 20px">入居者として（ランダム）</button><button class="btn" id="startAgentBtn" type="button" style="font-size:17px;padding:10px 20px;background:#2f4a6b;color:#fff">業者として</button></div>
+    <div class="center" id="titleRec" style="font-size:13px;color:#7d7266;margin-top:10px;line-height:1.7"></div>
   </div>
 </div>
 
@@ -213,8 +216,11 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
-const pick = a => a[Math.floor(Math.random() * a.length)];
-const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+// 乱数。今日の部屋では、日付から決まる乱数に差し替えて、全員が同じ部屋・同じ業者で遊ぶ
+let rand = Math.random;
+const seeded = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const pick = a => a[Math.floor(rand() * a.length)];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const yen = n => '¥' + Math.round(n).toLocaleString();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -286,12 +292,12 @@ function newContract(room) {
   const rent = MULTI(room) ? pick([76000, 84000, 92000]) : pick([52000, 58000, 64000, 70000]);
   const c = {
     rent, deposit: rent * 2, years: pick([2, 3, 4, 5, 7]),
-    smoker: Math.random() < 0.3, cleaningClause: Math.random() < 0.5, keyLost: Math.random() < 0.25,
+    smoker: rand() < 0.3, cleaningClause: rand() < 0.5, keyLost: rand() < 0.25,
   };
-  c.acPaid = !c.smoker && Math.random() < 0.35; // 入居時にエアコンクリーニング代を払っている（退去時にまた請求されたら二重取り）
-  c.leakReported = Math.random() < 0.5; // シャワーの水漏れを入居中に管理会社へ連絡したか
-  c.incense = !c.smoker && Math.random() < 0.25; // お香を毎日たいていた（壁紙に臭いがしみる）
-  c.dupKey = !c.keyLost && Math.random() < 0.2; // 断らずに合鍵を作っていた
+  c.acPaid = !c.smoker && rand() < 0.35; // 入居時にエアコンクリーニング代を払っている（退去時にまた請求されたら二重取り）
+  c.leakReported = rand() < 0.5; // シャワーの水漏れを入居中に管理会社へ連絡したか
+  c.incense = !c.smoker && rand() < 0.25; // お香を毎日たいていた（壁紙に臭いがしみる）
+  c.dupKey = !c.keyLost && rand() < 0.2; // 断らずに合鍵を作っていた
   return c;
 }
 // クロスは6年で残存価値1円（経過年数を考慮した負担額）
@@ -913,7 +919,7 @@ function texCanvas(w, h, draw) {
   t.userData = { canvas: c };
   return t;
 }
-const rnd = (a, b) => a + Math.random() * (b - a);
+const rnd = (a, b) => a + rand() * (b - a);
 
 const floorTex = texCanvas(512, 512, (g, w, h) => {
   const rows = 8;
@@ -938,7 +944,7 @@ floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
 floorTex.repeat.set(2.4, 3.6);
 const wallTex = texCanvas(256, 256, (g, w, h) => {
   g.fillStyle = '#f4f1ea'; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 2500; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(0,0,0,.035)' : 'rgba(255,255,255,.5)'; g.fillRect(rnd(0, w), rnd(0, h), 2, 2); }
+  for (let i = 0; i < 2500; i++) { g.fillStyle = rand() < .5 ? 'rgba(0,0,0,.035)' : 'rgba(255,255,255,.5)'; g.fillRect(rnd(0, w), rnd(0, h), 2, 2); }
 });
 wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping;
 wallTex.repeat.set(3, 2);
@@ -1162,17 +1168,17 @@ const DRAW = {
   sunburn(g, w, h) { const gr = g.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w * .7); gr.addColorStop(0, 'rgba(225,200,140,0)'); gr.addColorStop(.6, 'rgba(225,200,140,.35)'); gr.addColorStop(1, 'rgba(225,200,140,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(255,255,255,.98)'; g.fillRect(w * .12, h * .1, w * .76, h * .8); g.fillStyle = 'rgba(70,60,50,.8)'; for (const [x, y] of [[.15, .13], [.85, .13], [.15, .87], [.85, .87]]) { g.beginPath(); g.arc(x * w, y * h, 3, 0, 7); g.fill(); } },
   fridge(g, w, h) { const gr = g.createRadialGradient(w / 2, h * .45, 5, w / 2, h * .45, w * .55); gr.addColorStop(0, 'rgba(40,36,32,.75)'); gr.addColorStop(.7, 'rgba(70,62,52,.35)'); gr.addColorStop(1, 'rgba(70,62,52,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(40,35,30,.25)'; g.lineWidth = 6; for (let i = 0; i < 6; i++) { const x = rnd(.25, .75) * w; g.beginPath(); g.moveTo(x, h * .2); g.lineTo(x + rnd(-6, 6), h * .9); g.stroke(); } },
   dents(g, w, h) { for (const [x, y] of [[.12, .07], [.88, .07], [.12, .93], [.88, .93]]) { const gr = g.createRadialGradient(x * w, y * h, 1, x * w, y * h, 16); gr.addColorStop(0, 'rgba(70,40,20,.85)'); gr.addColorStop(1, 'rgba(70,40,20,0)'); g.fillStyle = gr; g.fillRect(x * w - 18, y * h - 18, 36, 36); } },
-  caster(g, w, h) { g.lineCap = 'round'; for (let i = 0; i < 40; i++) { const r = rnd(30, 110), a = rnd(0, 6.28); g.strokeStyle = Math.random() < .5 ? 'rgba(255,240,215,.75)' : 'rgba(90,60,35,.45)'; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.arc(w / 2 + rnd(-15, 15), h / 2 + rnd(-15, 15), r, a, a + rnd(.3, 1.1)); g.stroke(); } },
+  caster(g, w, h) { g.lineCap = 'round'; for (let i = 0; i < 40; i++) { const r = rnd(30, 110), a = rnd(0, 6.28); g.strokeStyle = rand() < .5 ? 'rgba(255,240,215,.75)' : 'rgba(90,60,35,.45)'; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.arc(w / 2 + rnd(-15, 15), h / 2 + rnd(-15, 15), r, a, a + rnd(.3, 1.1)); g.stroke(); } },
   hole(g, w, h) { g.fillStyle = 'rgba(235,230,220,1)'; g.beginPath(); for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28, r = rnd(42, 58); g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); } g.fill(); g.fillStyle = 'rgba(25,20,18,1)'; g.beginPath(); for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28, r = rnd(26, 40); g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); } g.fill(); g.strokeStyle = 'rgba(80,70,60,.8)'; g.lineWidth = 2; for (let i = 0; i < 5; i++) { const a = rnd(0, 6.28); g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * 45, h / 2 + Math.sin(a) * 45); g.lineTo(w / 2 + Math.cos(a) * 62, h / 2 + Math.sin(a) * 62); g.stroke(); } },
   stain(g, w, h) { g.fillStyle = 'rgba(120,60,20,.55)'; g.beginPath(); for (let i = 0; i < 18; i++) { const a = i / 18 * 6.28, r = rnd(60, 100); g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r * .8); } g.fill(); g.strokeStyle = 'rgba(90,40,10,.6)'; g.lineWidth = 5; g.stroke(); for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(rnd(.15, .85) * w, rnd(.15, .85) * h, rnd(5, 14), 0, 7); g.fill(); } },
   grease(g, w, h) { for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(${150 + rnd(0, 40)},${100 + rnd(0, 30)},30,${rnd(.2, .5)})`; g.beginPath(); g.arc(rnd(.1, .9) * w, rnd(.2, .9) * h, rnd(3, 16), 0, 7); g.fill(); } g.strokeStyle = 'rgba(150,100,30,.4)'; g.lineWidth = 4; for (let i = 0; i < 6; i++) { const x = rnd(.2, .8) * w, y = rnd(.3, .6) * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + rnd(30, 80)); g.stroke(); } },
-  mold(g, w, h) { for (let i = 0; i < 450; i++) { const x = Math.pow(Math.random(), 1.8), y = Math.pow(Math.random(), 1.8); const a = (1 - x) * (1 - y); g.fillStyle = `rgba(25,30,25,${rnd(.3, .85) * Math.min(1, a * 1.8)})`; g.beginPath(); g.arc(x * w * .95 + 4, (1 - y) * h - 2, rnd(1, 4.5), 0, 7); g.fill(); } },
+  mold(g, w, h) { for (let i = 0; i < 450; i++) { const x = Math.pow(rand(), 1.8), y = Math.pow(rand(), 1.8); const a = (1 - x) * (1 - y); g.fillStyle = `rgba(25,30,25,${rnd(.3, .85) * Math.min(1, a * 1.8)})`; g.beginPath(); g.arc(x * w * .95 + 4, (1 - y) * h - 2, rnd(1, 4.5), 0, 7); g.fill(); } },
   scribble(g, w, h) { g.lineCap = 'round'; g.lineWidth = 7; g.strokeStyle = 'rgba(220,60,50,.9)'; g.beginPath(); g.arc(w * .22, h * .3, 30, 0, 7); g.stroke(); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28; g.beginPath(); g.moveTo(w * .22 + Math.cos(a) * 40, h * .3 + Math.sin(a) * 40); g.lineTo(w * .22 + Math.cos(a) * 55, h * .3 + Math.sin(a) * 55); g.stroke(); } g.strokeStyle = 'rgba(40,90,200,.85)'; g.beginPath(); g.moveTo(w * .45, h * .85); g.lineTo(w * .62, h * .45); g.lineTo(w * .8, h * .85); g.closePath(); g.stroke(); g.strokeStyle = 'rgba(40,160,70,.85)'; g.beginPath(); for (let x = 0; x < w; x += 20) g.lineTo(x, h * .92 + Math.sin(x / 15) * 8); g.stroke(); },
   doorScratch(g, w, h) { g.lineCap = 'round'; for (let i = 0; i < 9; i++) { g.strokeStyle = 'rgba(210,215,220,.9)'; g.lineWidth = rnd(1.5, 3); const x = rnd(.1, .6) * w, y = rnd(.2, .8) * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x + rnd(40, 110), y + rnd(-12, 12)); g.stroke(); } },
   entranceDent(g, w, h) { const gr = g.createRadialGradient(w * .45, h * .45, 4, w / 2, h / 2, w * .42); gr.addColorStop(0, 'rgba(60,35,15,.75)'); gr.addColorStop(.7, 'rgba(60,35,15,.25)'); gr.addColorStop(1, 'rgba(60,35,15,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
   nicotine(g, w, h) { const gr = g.createRadialGradient(w / 2, h * .3, 10, w / 2, h * .3, w * .6); gr.addColorStop(0, 'rgba(170,130,50,.65)'); gr.addColorStop(1, 'rgba(170,130,50,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
-  bathMold(g, w, h) { for (let i = 0; i < 500; i++) { const x = rnd(0, w), y = h * (.55 + (Math.random() - .5) * Math.random() * .9); g.fillStyle = `rgba(20,25,22,${rnd(.35, .9)})`; g.beginPath(); g.arc(x, y, rnd(1, 3.5), 0, 7); g.fill(); } },
-  mirrorScale(g, w, h) { for (let i = 0; i < 160; i++) { const x = rnd(0, w), y = rnd(0, h), r = rnd(3, 12); g.strokeStyle = `rgba(255,255,255,${rnd(.4, .85)})`; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); if (Math.random() < .4) { g.fillStyle = 'rgba(255,255,255,.35)'; g.fill(); } } },
+  bathMold(g, w, h) { for (let i = 0; i < 500; i++) { const x = rnd(0, w), y = h * (.55 + (rand() - .5) * rand() * .9); g.fillStyle = `rgba(20,25,22,${rnd(.35, .9)})`; g.beginPath(); g.arc(x, y, rnd(1, 3.5), 0, 7); g.fill(); } },
+  mirrorScale(g, w, h) { for (let i = 0; i < 160; i++) { const x = rnd(0, w), y = rnd(0, h), r = rnd(3, 12); g.strokeStyle = `rgba(255,255,255,${rnd(.4, .85)})`; g.lineWidth = rnd(1, 2.5); g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); if (rand() < .4) { g.fillStyle = 'rgba(255,255,255,.35)'; g.fill(); } } },
   drainHair(g, w, h) { g.fillStyle = '#9aa0a6'; g.beginPath(); g.arc(w / 2, h / 2, w * .42, 0, 7); g.fill(); g.fillStyle = '#3b3f43'; for (let i = 0; i < 5; i++) g.fillRect(w * .25, h * (.28 + i * .1), w * .5, h * .04); g.strokeStyle = 'rgba(20,15,12,.9)'; g.lineWidth = 2; for (let i = 0; i < 14; i++) { g.beginPath(); let x = rnd(.2, .8) * w, y = rnd(.2, .8) * h; g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += rnd(-40, 40); y += rnd(-40, 40); g.quadraticCurveTo(x + rnd(-20, 20), y + rnd(-20, 20), x, y); } g.stroke(); } },
   faucetLeak(g, w, h) { const gr = g.createLinearGradient(0, h * .25, 0, h); gr.addColorStop(0, 'rgba(160,110,60,.55)'); gr.addColorStop(1, 'rgba(160,110,60,0)'); g.fillStyle = gr; g.fillRect(w * .4, h * .25, w * .2, h * .75); g.fillStyle = 'rgba(120,180,220,.8)'; for (const y of [.45, .62, .8]) { g.beginPath(); g.ellipse(w / 2, y * h, 7, 11, 0, 0, 7); g.fill(); } },
   toiletStain(g, w, h) { g.strokeStyle = 'rgba(190,150,60,.8)'; g.lineWidth = 10; g.beginPath(); g.ellipse(w / 2, h / 2, w * .4, h * .4, 0, 0, 7); g.stroke(); for (let i = 0; i < 40; i++) { const a = rnd(0, 7), r = rnd(.32, .46); g.fillStyle = `rgba(160,120,50,${rnd(.3, .7)})`; g.beginPath(); g.arc(w / 2 + Math.cos(a) * w * r, h / 2 + Math.sin(a) * h * r, rnd(2, 6), 0, 7); g.fill(); } },
@@ -1185,7 +1191,7 @@ const DRAW = {
   petScratch(g, w, h) { g.lineCap = 'round'; for (let k = 0; k < 6; k++) { const x0 = rnd(.1, .7) * w, y0 = rnd(.1, .5) * h; for (let i = 0; i < 4; i++) { g.strokeStyle = 'rgba(120,100,80,.8)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x0 + i * 9, y0); g.lineTo(x0 + i * 9 + rnd(-8, 8), y0 + rnd(50, 100)); g.stroke(); } } },
   petUrine(g, w, h) { const gr = g.createRadialGradient(w / 2, h / 2, 5, w / 2, h / 2, w * .5); gr.addColorStop(0, 'rgba(60,45,20,.7)'); gr.addColorStop(.75, 'rgba(110,85,30,.55)'); gr.addColorStop(1, 'rgba(110,85,30,0)'); g.fillStyle = gr; g.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28, r = rnd(.36, .5) * w; g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r * .9); } g.fill(); },
   petHair(g, w, h) { for (let k = 0; k < 7; k++) { const x0 = rnd(.15, .85) * w, y0 = rnd(.15, .85) * h; for (let i = 0; i < 40; i++) { g.strokeStyle = `rgba(${150 + rnd(-30, 30)},${120 + rnd(-30, 20)},80,.8)`; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y0); const a = rnd(0, 6.28), r = rnd(4, 18); g.lineTo(x0 + Math.cos(a) * r, y0 + Math.sin(a) * r); g.stroke(); } } },
-  humidifier(g, w, h) { g.fillStyle = 'rgba(235,228,212,.95)'; g.beginPath(); g.moveTo(w * .48, h * .05); g.lineTo(w * .7, h * .12); g.lineTo(w * .62, h * .55); g.lineTo(w * .5, h * .5); g.fill(); g.strokeStyle = 'rgba(120,105,85,.7)'; g.lineWidth = 2; g.stroke(); g.strokeStyle = 'rgba(90,80,65,.6)'; g.beginPath(); g.moveTo(w * .48, 0); g.lineTo(w * .48, h); g.stroke(); for (let i = 0; i < 160; i++) { const y = Math.pow(Math.random(), .6); g.fillStyle = `rgba(30,35,30,${rnd(.15, .5) * y})`; g.beginPath(); g.arc(w * .48 + rnd(-.35, .35) * w * (1 - y * .5), y * h, rnd(1, 3), 0, 7); g.fill(); } },
+  humidifier(g, w, h) { g.fillStyle = 'rgba(235,228,212,.95)'; g.beginPath(); g.moveTo(w * .48, h * .05); g.lineTo(w * .7, h * .12); g.lineTo(w * .62, h * .55); g.lineTo(w * .5, h * .5); g.fill(); g.strokeStyle = 'rgba(120,105,85,.7)'; g.lineWidth = 2; g.stroke(); g.strokeStyle = 'rgba(90,80,65,.6)'; g.beginPath(); g.moveTo(w * .48, 0); g.lineTo(w * .48, h); g.stroke(); for (let i = 0; i < 160; i++) { const y = Math.pow(rand(), .6); g.fillStyle = `rgba(30,35,30,${rnd(.15, .5) * y})`; g.beginPath(); g.arc(w * .48 + rnd(-.35, .35) * w * (1 - y * .5), y * h, rnd(1, 3), 0, 7); g.fill(); } },
   hairIron(g, w, h) { g.save(); g.translate(w / 2, h / 2); g.rotate(-.2); const gr = g.createLinearGradient(0, -h * .3, 0, h * .3); gr.addColorStop(0, 'rgba(60,30,10,0)'); gr.addColorStop(.5, 'rgba(25,12,5,.9)'); gr.addColorStop(1, 'rgba(60,30,10,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(0, 0, w * .42, h * .2, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(15,8,4,.85)'; g.fillRect(-w * .32, -h * .05, w * .64, h * .1); g.restore(); },
   rainStain(g, w, h) { for (let k = 0; k < 4; k++) { const x = rnd(.2, .8) * w, y = rnd(.3, .7) * h; g.fillStyle = 'rgba(240,235,225,.45)'; g.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28, r = rnd(30, 60); g.lineTo(x + Math.cos(a) * r * 1.6, y + Math.sin(a) * r * .7); } g.fill(); g.strokeStyle = 'rgba(110,80,50,.45)'; g.lineWidth = 2; g.stroke(); } },
   plantWater(g, w, h) { g.strokeStyle = 'rgba(45,30,15,.75)'; g.lineWidth = 14; g.beginPath(); g.arc(w / 2, h / 2, w * .3, 0, 7); g.stroke(); g.strokeStyle = 'rgba(70,45,20,.35)'; g.lineWidth = 26; g.beginPath(); g.arc(w / 2 + 6, h / 2 + 4, w * .33, 0, 7); g.stroke(); },
@@ -1414,10 +1420,11 @@ function buildRound() {
   for (const s of spots) { s.mesh.parent && s.mesh.parent.remove(s.mesh); if (s.hit !== s.mesh) s.hit.parent && s.hit.parent.remove(s.hit); if (s.marker) scene.remove(s.marker); }
   for (const y of yellowing) y.parent.remove(y);
   spots = []; yellowing = []; decalSeq = 0;
+  rand = DAILY ? seeded(dailySeed(DAILY)) : Math.random;
   const room = pick(['western', 'washitsu', 'pet', '1ldk', '2k']);
   C = newContract(room);
   setLeak();
-  S = { defs: {}, room, multi: MULTI(room), phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [], boss: pick(['honest', 'normal', 'normal', 'crook', 'crook']), signed: true };
+  S = { defs: {}, room, multi: MULTI(room), phase: 'prep', clock: START_MIN, hearts: 3, vacuumed: false, patchFail: false, log: [], boss: pick(['honest', 'normal', 'normal', 'crook', 'crook']), signed: true, daily: DAILY };
   setRoomLook(S.room);
   const W = S.room === 'washitsu';
   const ids = [
@@ -1529,7 +1536,7 @@ function doReveal(spot) {
 function doFix(spot) {
   closeSheet();
   spot.patched = true;
-  const ok = Math.random() < spot.def.fix.rate;
+  const ok = rand() < spot.def.fix.rate;
   SFX.play(ok ? 'good' : 'bad');
   const g = spot.mesh.parent; g.remove(spot.mesh);
   if (ok) { spot.done = true; spot.mesh = makeDecal('screw', spot.def, 'patch'); g.add(spot.mesh); toast('パテで埋めた。ほとんど分からない！'); }
@@ -1623,7 +1630,7 @@ function shapeClaim(c) {
   const fair = fairOf(c);
   if (S.boss === 'honest') {
     if (c.dup && fair === 0) return null; // 二重になる請求はしない
-    if (fair === 0 && Math.random() < 0.7) return null; // 通常損耗はそもそも請求しない
+    if (fair === 0 && rand() < 0.7) return null; // 通常損耗はそもそも請求しない
     if (fair > 0 && c.steps.length) {
       const last = c.steps[c.steps.length - 1], head = c.say.split('。')[0] + '。';
       const say = c.dup ? head + 'クロスはさっきの張替えに含まれるので、ボードの補修代だけお願いします。' : head + `${last.label || c.label}の分だけ、ご負担をお願いします。`;
@@ -1790,6 +1797,7 @@ async function startInspection() {
   if (S.phase !== 'prep') return;
   SFX.play('bell');
   S.phase = 'insp';
+  if (S.daily) rand = seeded(dailySeed(S.daily) ^ 0x5bd1e995); // 準備で何をしても、同じ請求から始まるように
   closeSheet(); focusOn(null);
   ['#startInspBtn', '#found', '#hint', '#backBtn', '#areaBar'].forEach(s => $(s).classList.add('hidden'));
   setArea('all');
@@ -1901,9 +1909,9 @@ function laterBill() {
   S.phase = 'bill';
   const agreed = S.log.filter(l => l.final.amt > 0).map(l => ({ label: l.final.label, amt: l.final.amt, memo: l.final.amt, ok: true }));
   const lines = agreed.map(a => ({ ...a }));
-  const n = S.boss === 'crook' ? 2 : S.boss === 'normal' && Math.random() < 0.6 ? 1 : 0;
+  const n = S.boss === 'crook' ? 2 : S.boss === 'normal' && rand() < 0.6 ? 1 : 0;
   for (const [label, amt] of shuffle(LATER_ADD.filter(([lb]) => !lines.some(x => x.label === lb))).slice(0, n))
-    lines.splice(Math.floor(Math.random() * (lines.length + 1)), 0, { label, amt, memo: 0, ok: false });
+    lines.splice(Math.floor(rand() * (lines.length + 1)), 0, { label, amt, memo: 0, ok: false });
   const okLines = lines.filter(l => l.ok);
   if (S.boss === 'crook' && okLines.length) { const x = pick(okLines); x.amt = x.memo + Math.max(3000, Math.round(x.memo * 0.5 / 1000) * 1000); x.ok = false; x.raised = true; }
   S.bill = lines;
@@ -1942,6 +1950,41 @@ function renderAd() {
   else el.remove();
 }
 
+// ---------- 今日の部屋・記録 ----------
+// 日付は日本時間で決める。#1 は公開した日
+const todayKey = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const dayBefore = k => new Date(Date.parse(k) - 864e5).toISOString().slice(0, 10);
+const dailyNo = k => Math.round((Date.parse(k) - Date.parse('2026-11-07')) / 864e5) + 1;
+const dailySeed = k => [...k].reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619), 2166136261);
+const RANKS = 'DCBAS';
+function loadRec() { try { return JSON.parse(localStorage.getItem('taikyo_rec')) || {}; } catch (e) { return {}; } }
+function saveRec(r) { try { localStorage.setItem('taikyo_rec', JSON.stringify(r)); } catch (e) {} }
+// 結果を記録して、更新したものを返す（今日の部屋は、その日の最初の1回だけ記録する）
+function record(rank, over) {
+  const r = loadRec(), out = {};
+  r.plays = (r.plays || 0) + 1;
+  r.best = r.best || {};
+  const b = r.best[S.room];
+  if (!b || RANKS.indexOf(rank) > RANKS.indexOf(b.rank) || (rank === b.rank && over < b.over)) { out.best = !!b; r.best[S.room] = { rank, over }; }
+  if (S.daily && (!r.daily || r.daily.key !== S.daily)) {
+    r.streak = r.daily && r.daily.key === dayBefore(S.daily) ? (r.streak || 0) + 1 : 1;
+    r.daily = { key: S.daily, rank, over, marks: S.marks };
+    out.daily = true;
+  }
+  saveRec(r);
+  return { ...out, rec: r };
+}
+// 請求ごとの結果：🟩 適正まで下げた　🟨 下げたけど払いすぎ　🟥 言いなり
+const markOf = l => l.final.amt <= l.fair ? '🟩' : l.final.amt < l.first.amt ? '🟨' : '🟥';
+const ROOM_NAME = { western: '洋室', washitsu: '和室', pet: 'ペット可', '1ldk': '1LDK', '2k': '2K' };
+function renderTitleRec() {
+  const r = loadRec(), k = todayKey(), done = r.daily && r.daily.key === k;
+  $('#dailyBtn').innerHTML = `📅 今日の部屋 #${dailyNo(k)}<small>${done ? `済み：ランク${r.daily.rank}（もう一度は練習）` : 'みんな同じ部屋・同じ業者'}</small>`;
+  const streak = r.daily && (r.daily.key === k || r.daily.key === dayBefore(k)) ? r.streak : 0;
+  const best = Object.entries(r.best || {}).map(([room, b]) => `${ROOM_NAME[room] || room} ${b.rank}`).join('・');
+  $('#titleRec').innerHTML = r.plays ? `🔥 連続 ${streak} 日　🎮 ${r.plays} 回${best ? `<br>自己ベスト：${best}` : ''}` : '';
+}
+
 // ---------- シェア ----------
 const SHARE_URL = 'https://texia-inc.github.io/bukiya/taikyo/';
 function shareX(text) {
@@ -1950,6 +1993,7 @@ function shareX(text) {
 }
 const shareBtnHTML = '<div class="center" style="margin:4px 0 10px"><button class="btn share" id="shareBtn" type="button">𝕏 結果をポストする</button></div>';
 function tenantShareText(rank, firstTotal, total, refund, extra, over) {
+  if (S.daily) return `退去シミュレーター 今日の部屋 #${dailyNo(S.daily)}\nランク${rank}　${over ? `払いすぎ ${yen(over)}` : '払いすぎ ¥0🏆'}\n${S.marks || ''}\n${ROOM_NAME[S.room]}・${{ honest: '誠実な業者', normal: 'ふつうの業者', crook: '悪質な業者' }[S.boss]}。あなたはいくら守れる？`;
   const crook = S.boss === 'crook' ? 'ない傷まで請求してくる悪質業者に当たった。' : '';
   const money = extra ? `それでも追加で ${yen(extra)} 請求された` : `敷金 ${yen(refund)} が戻ってきた`;
   if (S.skipped) return `退去シミュレーターで立ち会いをサボったら、業者の言い値で ${yen(total)} 取られた😇 ${over ? `払いすぎ ${yen(over)}。` : ''}立ち会い、ちゃんと出ようね…`;
@@ -2031,6 +2075,9 @@ function showResult() {
   const ratio = firstTotal > ideal ? Math.max(0, Math.min(1, 1 - (total - ideal) / (firstTotal - ideal))) : (total <= ideal ? 1 : 0);
   const rank = ratio >= 0.99 ? 'S' : ratio >= 0.9 ? 'A' : ratio >= 0.75 ? 'B' : ratio >= 0.5 ? 'C' : 'D';
   // ランクは「避けられた負担をどれだけ避けたか」。敷金が戻ったかどうかとは別に書く
+  S.marks = S.log.map(markOf).join('').replace(/((?:\p{Extended_Pictographic}){10})(?=.)/gu, '$1\n'); // 10個ずつ改行
+  const got = record(rank, over);
+  const badge = [got.daily ? `📅 今日の部屋 #${dailyNo(S.daily)} を記録しました（🔥 連続 ${got.rec.streak} 日）` : S.daily ? '📅 今日の部屋の記録は1日1回。今回は練習です' : '', got.best ? `🎉 ${ROOM_NAME[S.room]}の自己ベスト更新！` : ''].filter(Boolean);
   const comment = {
     S: extra ? '完ぺきな対応。払うべき分だけになった（それでも敷金では足りなかった）。' : ideal ? '完ぺき！ 払うべき分だけにおさえた。' : '完ぺき！ 敷金を守りぬいた。',
     A: 'お見事。不当な請求はほとんど減らせた。', B: 'まずまず。まだ減らせる所があった。', C: '取られすぎ…。ガイドラインを読み直そう。', D: '業者の言いなりだった…。',
@@ -2042,6 +2089,8 @@ function showResult() {
       <div class="center"><div class="rank">${rank}</div><div style="font-size:11px;color:#7d7266">理想の負担 ${yen(ideal)}</div></div>
     </div>
     <p style="margin:8px 0;font-weight:800">${comment}</p>
+    ${S.marks ? `<div style="font-size:20px;letter-spacing:2px;margin:0 0 4px;white-space:pre-line;line-height:1.3">${S.marks}</div><div style="font-size:11px;color:#7d7266;margin:0 0 6px">🟩 適正まで下げた　🟨 下げたけど払いすぎ　🟥 言いなり</div>` : ''}
+    ${badge.map(t => `<p style="margin:0 0 6px;font-size:13px;font-weight:800;color:#2f8f5b">${t}</p>`).join('')}
     ${shareBtnHTML}
     <p style="margin:0 0 6px;font-size:13px">業者：${BOSSES[S.boss].name}（${{ honest: '誠実な人', normal: 'ふつうの人', crook: '悪質な人' }[S.boss]}）${after ? '<br>' + after : ''}</p>
     ${missed.length ? `<p style="margin:0 0 6px;font-size:13px;color:#7d7266">準備で見落としていた傷・汚れ：${missed.join('、')}</p>` : '<p style="margin:0 0 6px;font-size:13px;color:#2f8f5b">傷・汚れはすべて見つけていた！</p>'}
@@ -2050,12 +2099,13 @@ function showResult() {
     <h3 style="margin:10px 0 6px;font-size:16px">答え合わせ</h3>
     ${S.log.map(answerHTML).join('')}
     ${proBoxHTML(S.log.filter(l => l.fair > 0).map(l => l.id))}
-    <div class="center" style="margin-top:14px"><button class="btn primary" id="againBtn" type="button" style="font-size:16px;padding:10px 22px">別の部屋でもう一度</button></div>
+    <div class="center" style="margin-top:14px"><button class="btn primary" id="againBtn" type="button" style="font-size:16px;padding:10px 22px">別の部屋でもう一度</button> <button class="btn" id="titleBtn" type="button">タイトルへ</button></div>
     <div class="adslot" id="adSlot"></div>`;
   renderAd();
   $('#result').classList.remove('hidden');
   rankSound(rank);
-  $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); startRound(); };
+  $('#againBtn').onclick = () => { $('#result').classList.add('hidden'); DAILY = null; startRound(); };
+  $('#titleBtn').onclick = () => { $('#result').classList.add('hidden'); toTitle(); };
   $('#shareBtn').onclick = () => shareX(tenantShareText(rank, firstTotal, total, refund, extra, over));
 }
 
@@ -2095,7 +2145,7 @@ function openSpotAgent(spot) {
 function simulateTenantPrep() {
   for (const sp of spots) {
     if (!sp.def.clean) continue;
-    if (Math.random() < (sp.id === 'dust' ? 0.6 : 0.45)) { sp.done = true; sp.mesh.visible = false; if (sp.id === 'dust') S.vacuumed = true; }
+    if (rand() < (sp.id === 'dust' ? 0.6 : 0.45)) { sp.done = true; sp.mesh.visible = false; if (sp.id === 'dust') S.vacuumed = true; }
   }
 }
 // 見積もりの選択肢：請求しない（理由）＋ 金額の段階（大きい順）。fair が適正
@@ -2196,14 +2246,14 @@ async function agentExplain() {
       const k = await choose([['fix', 'おっしゃるとおりです。直します'], ['keep', 'いえ、このままでお願いします']]);
       it.note = k === 'fix' ? '取りすぎを指摘され、適正な金額に直した' : '取りすぎを指摘されたのに断って、もめた';
       if (k === 'fix') { it.final = fair; SFX.play('good'); const ok = S.tenant === 'claimer' ? (fair ? `…${yen(fair)}ね。最初からそう言いなさいよ。` : '当然でしょ。') : fair ? `…${yen(fair)}ですね。それなら納得です。` : 'はい、ありがとうございます。'; tsay(ok, { label: it.opts.find(x => x.k === it.fairK).label, amt: fair }); }
-      else { S.dispute++; tsay(S.tenant === 'savvy' ? '…ガイドラインと違いますよね。この件は、消費生活センターに相談します。' : 'ふざけないでよ！ 出るとこ出るからね！', bill); if (S.tenant === 'savvy' || Math.random() < 0.5) it.lawsuit = true; }
+      else { S.dispute++; tsay(S.tenant === 'savvy' ? '…ガイドラインと違いますよね。この件は、消費生活センターに相談します。' : 'ふざけないでよ！ 出るとこ出るからね！', bill); if (S.tenant === 'savvy' || rand() < 0.5) it.lawsuit = true; }
     } else {
       if (S.tenant === 'claimer') {
         tsay('高すぎ！ 普通に住んでただけでしょ！ まけてよ！', bill);
         const k = await choose([['explain', 'ガイドラインでは借主の負担です（理由を説明する）'], ['discount', 'では、半額にします']]);
         it.note = k === 'discount' ? '正しい請求なのに、まけて半額にした（大家さんの損）' : '正しい請求の理由を説明した';
         if (k === 'discount') { it.final = Math.round(o.amt / 2 / 100) * 100; tsay('最初からそうしてよね。', { label: o.label, amt: it.final }); }
-        else tsay(Math.random() < 0.7 ? '…ふーん。そういう決まりなら、まあ仕方ないか。' : '…納得いかないけど、もういいわよ。', bill);
+        else tsay(rand() < 0.7 ? '…ふーん。そういう決まりなら、まあ仕方ないか。' : '…納得いかないけど、もういいわよ。', bill);
       } else tsay(S.tenant === 'savvy' ? (o.amt === fair ? '…ガイドラインどおりですね。わかりました。' : '…（思ったより安いな）はい、それでお願いします。') : '…はい、わかりました。', bill);
     }
     await choose([['ok', '次へ', 'acc']]);
@@ -2225,7 +2275,7 @@ function showAgentResult() {
   const over = est.reduce((a, it) => a + Math.max(0, it.final - fairAmt(it)), 0);
   const lawsuits = est.filter(it => it.lawsuit).length;
   let reviews = 0;
-  for (const it of est) if (it.silentOver && Math.random() < 0.4) reviews++;
+  for (const it of est) if (it.silentOver && rand() < 0.4) reviews++;
   if (reviews) notes.push(`あとで入居者が取られすぎに気づき、管理会社の口コミに星1をつけた（${reviews}件分）`);
   const owner = Math.max(0, Math.round((fairTotal ? got / fairTotal : 1) * 100) - lawsuits * 10);
   const tenant = Math.max(0, Math.round(100 - over / 1000 * 1.5 - S.dispute * 10 - reviews * 15 - lawsuits * 10));
@@ -2276,7 +2326,7 @@ function showAgentResult() {
 }
 
 // ---------- 開始 ----------
-let MODE = 'tenant';
+let MODE = 'tenant', DAILY = null;
 function startRound() {
   buildRound();
   setTalkSpot(null); $('#peekBar').classList.add('hidden');
@@ -2303,8 +2353,10 @@ function startRound() {
   if (MODE !== 'agent') { updateHud(); S.startNote = true; }
   docTab = 'contract'; renderDocs(); $('#docs').classList.remove('hidden');
 }
-$('#startBtn').onclick = () => { MODE = 'tenant'; $('#title').classList.add('hidden'); startRound(); };
-$('#startAgentBtn').onclick = () => { MODE = 'agent'; $('#title').classList.add('hidden'); startRound(); };
+$('#startBtn').onclick = () => { MODE = 'tenant'; DAILY = null; $('#title').classList.add('hidden'); startRound(); };
+$('#dailyBtn').onclick = () => { MODE = 'tenant'; DAILY = todayKey(); $('#title').classList.add('hidden'); startRound(); };
+function toTitle() { ['#hud', '#startInspBtn', '#hint', '#areaBar', '#docs'].forEach(s => $(s).classList.add('hidden')); renderTitleRec(); $('#title').classList.remove('hidden'); }
+$('#startAgentBtn').onclick = () => { MODE = 'agent'; DAILY = null; $('#title').classList.add('hidden'); startRound(); };
 $('#startInspBtn').onclick = () => S.mode === 'agent' ? openEstimate() : startInspection();
 $('#estGo').onclick = () => agentExplain();
 $('#backBtn').onclick = () => { closeSheet(); focusOn(null); };
@@ -2358,6 +2410,7 @@ function tick(now) {
 requestAnimationFrame(tick);
 // 何も始まっていない間も、部屋を見せておく
 buildRound();
+renderTitleRec();
 window.__t = { get S() { return S; }, get C() { return C; }, spots: () => spots, startInspection, openSpot, cam, insp };
 </script>
 </body>
