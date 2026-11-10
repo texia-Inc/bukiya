@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>退去シミュレーター</title>
-<meta name="description" content="退去の日の午前中に部屋を片づけ、立ち会いの業者の請求に言い返して敷金を守る3Dゲーム。国交省のガイドラインに沿って「払わなくていいもの」が分かる。">
+<meta name="description" content="退去の日の午前中に部屋を片づけ、立ち会いで業者の請求を一つずつ確かめて敷金を守る3Dゲーム。国交省のガイドラインに沿って「払わなくていいもの」が分かる。">
 <meta property="og:type" content="website">
 <meta property="og:title" content="退去シミュレーター｜敷金、守れる？">
-<meta property="og:description" content="立ち会いの業者の請求に言い返して敷金を守る3Dゲーム。画鋲の穴、クロスの張替え、ハウスクリーニング代…払わなくていいのはどれ？">
+<meta property="og:description" content="立ち会いで業者の請求を確かめて敷金を守る3Dゲーム。画鋲の穴、クロスの張替え、ハウスクリーニング代…払わなくていいのはどれ？">
 <meta property="og:url" content="https://texia-inc.github.io/bukiya/taikyo/">
 <meta property="og:image" content="https://texia-inc.github.io/bukiya/taikyo/ogp.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -161,7 +161,7 @@ details.real summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight
 <div id="title" class="overlay">
   <div class="panel">
     <div class="logo">退去シミュレーター<small>〜 敷金を守りぬけ 〜</small></div>
-    <div class="tag"><b>入居者として</b>：午前中に部屋を片づけ、立ち会いで不当な請求に言い返して敷金を取り戻す。<br><b>業者として</b>：退去した部屋を点検して見積もりを作り、入居者に説明する。取りすぎても取らなすぎてもダメ。</div>
+    <div class="tag"><b>入居者として</b>：午前中に部屋を片づけ、立ち会いで請求を確かめ、払わなくていいものは根拠を示して伝えて、敷金を取り戻す。<br><b>業者として</b>：退去した部屋を点検して見積もりを作り、入居者に説明する。取りすぎても取らなすぎてもダメ。</div>
     <div class="center" style="margin:0 0 10px"><button class="btn primary" id="dailyBtn" type="button" style="font-size:17px;padding:10px 20px;background:#2f8f5b"></button></div>
     <div class="center btns" style="justify-content:center"><button class="btn primary" id="startBtn" type="button" style="font-size:17px;padding:10px 20px">入居者として（ランダム）</button><button class="btn" id="startAgentBtn" type="button" style="font-size:17px;padding:10px 20px;background:#2f4a6b;color:#fff">業者として</button></div>
     <div class="center" id="titleRec" style="font-size:13px;color:#7d7266;margin-top:10px;line-height:1.7"></div>
@@ -1576,7 +1576,7 @@ function renderDocs() {
       <li><b>入居したとき</b>：もとからある傷や汚れを日付入りの写真に撮り、チェック表にして管理会社に出しておく。</li>
       <li><b>退去の前</b>：契約書の特約（クリーニング代など）を確認。掃除とゴミ出しは済ませる。自分で補修するなら目立たない所で試してから。</li>
       <li><b>入居中</b>：設備が壊れたら、すぐ管理会社に連絡して記録を残す。黙って放っておくと、広がった被害は借主の負担になる。入居時に払った費用（エアコンクリーニングなど）の領収書もとっておく。</li>
-      <li><b>立ち会いのとき</b>：立ち会いは法律上の義務ではないが、出ないと入居前の傷も言い返せない。その場で精算書にサインせず、「どこを・何㎡・単価いくら」の明細をもらう。決まったことはメモしておく。</li>
+      <li><b>立ち会いのとき</b>：立ち会いは法律上の義務ではないが、出ないと入居前の傷も説明できない。その場で精算書にサインせず、「どこを・何㎡・単価いくら」の明細をもらう。決まったことはメモしておく。</li>
       <li><b>ごまかさない</b>：傷を隠したり「入居前からあった」と嘘をついたりすると、ほかの言い分も信じてもらえなくなる。やったことは正直に話し、範囲や年数で交渉する。</li>
       <li><b>貼る物・DIY</b>：「はがせる」と書いてあるフックや壁紙でも、壁紙を傷めることがある。突っ張り棒には保護パッドを。ペット不可の部屋では、預かるのもNG。</li>
       <li><b>後日の請求書</b>：立ち会いのメモと見くらべる。立ち会いで言われなかった項目や、金額が増えている所があれば連絡する。</li>
@@ -1999,7 +1999,7 @@ function tenantShareText(rank, firstTotal, total, refund, extra, over) {
   if (S.skipped) return `退去シミュレーターで立ち会いをサボったら、業者の言い値で ${yen(total)} 取られた😇 ${over ? `払いすぎ ${yen(over)}。` : ''}立ち会い、ちゃんと出ようね…`;
   if (rank === 'S') return `退去シミュレーターでランクS🏆 ${crook}業者の請求 ${yen(firstTotal)} を ${yen(total)} まで減らして、${money}！ あなたは敷金を守れる？`;
   if (rank === 'A' || rank === 'B') return `退去シミュレーターでランク${rank}。${crook}業者の請求 ${yen(firstTotal)} を ${yen(total)} まで減らした…けど${over ? `、まだ ${yen(over)} 払いすぎてたらしい` : '、掃除しておけばもっと減らせた'}。あなたは何円守れる？`;
-  return `退去シミュレーターでランク${rank}😇 ${crook}業者の言いなりで ${yen(over)} も払いすぎた…。立ち会いで言い返せる自信ある？`;
+  return `退去シミュレーターでランク${rank}😇 ${crook}請求をそのまま受け入れて、${yen(over)} も払いすぎた…。立ち会いで請求を確かめられる自信ある？`;
 }
 
 // ---------- 答え合わせ ----------
@@ -2009,12 +2009,12 @@ const sayOf = (l, k) => l.paper ? ({ normal: '貸主の負担では？', detail:
 function pathText(l) {
   const q = l.path.map(k => `「${sayOf(l, k)}」`).join(' → ');
   if (l.fair === 0) return q ? `${q}と言えば0円になる。` : '請求に応じる必要はない。';
-  return q ? `${q}と言い返して、残りの ${yen(l.fair)} は認める。` : `借主の負担で、金額も妥当。認めるのが正解。`;
+  return q ? `${q}と伝えて、残りの ${yen(l.fair)} は認める。` : `借主の負担で、金額も妥当。認めるのが正解。`;
 }
 function answerHTML(l) {
   const diff = l.final.amt - l.fair, ok = diff <= 0;
   const [kl, kc] = KIND[l.kind] || KIND.tenant;
-  const mv = l.absent ? '立ち会わなかったので、言い返せなかった' : l.moves.length ? l.moves.map(m => m.k === 'accept' ? '認めた' : `${sayOf(l, m.k)}<span class="${m.ok ? 'o' : 'x'}">${m.ok ? '✓' : '✗'}</span>`).join(' → ') : '（請求が0円になった）';
+  const mv = l.absent ? '立ち会わなかったので、その場で説明できなかった' : l.moves.length ? l.moves.map(m => m.k === 'accept' ? '認めた' : `${sayOf(l, m.k)}<span class="${m.ok ? 'o' : 'x'}">${m.ok ? '✓' : '✗'}</span>`).join(' → ') : '（請求が0円になった）';
   const prep = [l.clean ? `準備で「${l.clean.label}」（${l.clean.t}分）をしていれば、請求されなかった。` : l.patchFail ? 'パテ埋めに失敗して、かえって目立ってしまった。' : '',
     l.hid ? 'カレンダーで隠していたのがバレて、信用が下がった。準備のうちにはがして見せておけば、下がらなかった。' : '',
     l.moves.some(m => m.lie) ? '「入居時からあった」とごまかしてバレ、信用が大きく下がった。やったことは正直に話すほうが、ほかの言い分も通りやすい。' : ''].filter(Boolean).join(' ');
@@ -2035,7 +2035,7 @@ function summaryHTML(over) {
   const left = S.log.filter(l => l.clean).reduce((a, l) => a + l.final.amt, 0);
   return `<div class="sum">
     <div>🧹 <b>準備で防いだ請求 ${yen(saved)}</b>${cleaned.length ? '（' + cleaned.map(c => c.name).join('、') + '）' : '（なし）'}${S.vacuumed ? '。掃除機もかけた' : '。掃除機はかけなかった'}</div>
-    <div>🗣 <b>言い返して減らした ${yen(cut)}</b></div>
+    <div>🗣 <b>話し合いで減らした ${yen(cut)}</b></div>
     <div>💸 <b style="color:${over ? '#e2573b' : '#2f8f5b'}">払いすぎ ${yen(over)}</b>${over ? '（下の答え合わせで ✗ の所）' : '（なし！）'}</div>
     ${left ? `<div>🧽 掃除すれば防げた請求 ${yen(left)}</div>` : ''}
   </div>`;
@@ -2062,7 +2062,7 @@ function showResult() {
   let total = S.log.reduce((a, l) => a + l.final.amt, 0) + (S.signed ? 0 : S.billExtra || 0);
   const over = S.log.reduce((a, l) => a + Math.max(0, l.final.amt - l.fair), 0) + (S.signed ? 0 : S.billExtra || 0);
   let after = '';
-  if (S.skipped) after = '立ち会わなかったので、入居前の傷や普通の傷みも言い返せないまま精算された。';
+  if (S.skipped) after = '立ち会わなかったので、入居前の傷や普通の傷みも説明できないまま精算された。';
   else if (!S.signed && S.boss === 'crook' && over > 0) {
     const back = Math.round(over * 0.3 / 100) * 100; total -= back;
     after = `持ち帰って明細を確かめ、消費生活センターに相談した。不当だった分のうち ${yen(back)} が戻ってきた。`;
