@@ -6,7 +6,7 @@
 <title>キャノンボール・ラン</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,400;0,700;0,900;1,900&family=Overpass+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Overpass:ital,wght@0,400;0,700;0,900;1,900&family=Overpass+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
 <style>
 /* Layout: full-bleed 3D road map seen from above at an angle; green interstate signage as the HUD */
 :root{
@@ -31,6 +31,14 @@ body{background:var(--night);color:var(--ink);font-family:var(--font-body);overf
 #game{position:fixed;inset:0;user-select:none;-webkit-user-select:none;touch-action:none}
 #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #fpLayer{position:absolute;inset:0;pointer-events:none}
+#gl.retro{image-rendering:pixelated;image-rendering:crisp-edges}
+.standings{font-family:'DotGothic16',var(--font-mono);font-size:12px;line-height:1.35;background:rgba(0,0,0,.72);border:2px solid #2a2a2a;border-radius:4px;padding:5px 9px;min-width:140px;color:#f1efe6}
+.standings .me{color:#ff4a3a}
+.standings .gap{color:#777}
+.standings .lap{text-align:right;color:#f2c230}
+.settings{display:flex;flex-wrap:wrap;gap:6px}
+.set-btn{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:rgba(12,15,19,.6)}
+.set-btn b{color:var(--amber)}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 
@@ -188,6 +196,7 @@ table.res{width:100%;border-collapse:collapse;font-size:13.5px}
 #hitflash{position:absolute;inset:0;pointer-events:none;background:rgba(229,50,45,.35);opacity:0;transition:opacity .25s}
 #hitflash.on{opacity:1;transition:none}
 @media (max-width:520px){
+  .standings{font-size:10.5px;min-width:112px}
   .wpn{grid-template-columns:repeat(3,56px);gap:6px}
   .wpn .hb{width:56px;height:52px;font-size:11.5px}
   .tl{width:calc(100% - 140px)}
@@ -224,6 +233,7 @@ table.res{width:100%;border-collapse:collapse;font-size:13.5px}
         <span class="lbl">時刻</span><span class="val" id="clock">21:00</span>
       </div>
       <canvas id="mini" width="150" height="150" title="タップで全体マップ"></canvas>
+      <div class="standings" id="standings"></div>
       <div class="radar" id="radar" hidden>RADAR</div>
     </div>
     <div class="bl">
@@ -262,7 +272,8 @@ table.res{width:100%;border-collapse:collapse;font-size:13.5px}
       <p class="tagline">夜9時、コネチカット州ダリエンをスタート。ゴールは西海岸のレドンドビーチ。<b>道は自由、武器も自由。いちばん先に着いた者が勝ち。</b>機関銃とミサイルでライバルを足止めし、ロケット砲で検問をぶち抜け。</p>
       <div class="cars" id="cars" role="radiogroup" aria-label="車を選ぶ"></div>
       <button class="cta" id="toPlanBtn">ルートを決める</button>
-      <div class="keys"><b>操作</b>：アクセルは自動。手を離せば道なりに走ります。<br>後方視点：画面を左右にドラッグ／<kbd>←</kbd><kbd>→</kbd> でハンドル。見下ろし視点（Vで切替）：行きたい方向へドラッグ／矢印キー。<br><kbd>F</kbd> 機関銃（長押し）　<kbd>R</kbd> ミサイル　<kbd>E</kbd> ロケット砲　<kbd>Q</kbd> オイル　<kbd>Shift</kbd> ニトロ　<kbd>Space</kbd> ブレーキ　<kbd>V</kbd> 視点　<kbd>M</kbd> マップ</div>
+      <div class="keys"><b>操作</b>：画面を左右にドラッグ／<kbd>←</kbd><kbd>→</kbd> でハンドル。<kbd>↑</kbd> アクセル（設定で自動にもできる）、<kbd>↓</kbd> ブレーキ。<kbd>Space</kbd>＋ハンドルでドリフト。<br><kbd>F</kbd> 機関銃（長押し）　<kbd>R</kbd> ミサイル　<kbd>E</kbd> ロケット砲　<kbd>Q</kbd> オイル　<kbd>Shift</kbd> ニトロ　<kbd>V</kbd> 視点（運転席→後方→見下ろし）　<kbd>M</kbd> マップ</div>
+      <div class="settings" data-settings></div>
       <div class="best" id="bestLine"></div>
     </div>
   </div>
@@ -295,6 +306,7 @@ table.res{width:100%;border-collapse:collapse;font-size:13.5px}
       <div class="res-head">一時停止中</div>
       <p class="res-sub">ライバルたちもいまは止まっている。</p>
       <button class="cta" id="resumeBtn">レースに戻る</button>
+      <div class="settings" data-settings></div>
       <button class="ghost" id="quitBtn">リタイアしてタイトルへ</button>
     </div>
   </div>
@@ -365,9 +377,9 @@ const ROADS = [
   ['wic','den','D','カンザス牧場道'],['lub','abq','D','リャノ荒野道'],['phx','bar','D','モハーヴェ砂漠道'],['lv','red','D','デスバレー越え'],['tul','dal','D','レッドリバー道'],
 ];
 const TYPES = {
-  I: {w: 18, cap: 1.0, kind: 'INTERSTATE', col: 0x2b2d31, map: '#ece7da', mw: 3},
-  U: {w: 11, cap: .88, kind: 'US ROUTE', col: 0x36383c, map: '#e0a63a', mw: 2.2},
-  D: {w: 8, cap: .64, kind: 'DIRT ROAD', col: 0x8f6c47, map: '#b0835a', mw: 1.7},
+  I: {w: 30, cap: 1.0, kind: 'INTERSTATE', col: 0x2b2d31, map: '#ece7da', mw: 3},
+  U: {w: 18, cap: .88, kind: 'US ROUTE', col: 0x36383c, map: '#e0a63a', mw: 2.2},
+  D: {w: 13, cap: .64, kind: 'DIRT ROAD', col: 0x8f6c47, map: '#b0835a', mw: 1.7},
 };
 const RIVER = [[-91.2,42.3],[-90.9,41.2],[-90.6,40.3],[-90.25,39.2],[-89.8,37.9],[-89.4,37.0],[-89.7,36.1],[-90.15,35.0],[-90.8,34.0],[-91.1,32.9],[-91.3,31.3]];
 const CANYON = [[-115.0,36.05],[-114.2,36.1],[-113.4,36.25],[-112.5,36.2],[-111.7,36.55],[-110.9,37.2],[-110.1,37.9],[-109.5,38.6],[-109.2,39.4]];
@@ -496,7 +508,7 @@ function mountain(x, z) {
 }
 function lonOf(x) { return x / 150 - 96; }
 function surface(x, z) {
-  const r = nearestRoad(x, z, 16);
+  const r = nearestRoad(x, z, 22);
   if (r && r.d <= r.e.w / 2 + 1) return {kind: 'road', type: r.e.type, cap: TYPES[r.e.type].cap, road: r};
   if (isWater(x, z)) return {kind: 'water', cap: 0, road: r};
   const m = mountain(x, z);
@@ -630,8 +642,8 @@ for (const t of ['D', 'U', 'I']) ribbon(EDGES.filter(e => e.type === t).map(e =>
 {
   const white = {pos: [], idx: [], y: .14}, yellow = {pos: [], idx: [], y: .14};
   for (const e of EDGES) {
-    if (e.type === 'I') { dashes(e.path, 4.5, 14, 6, .22, white); dashes(e.path, -4.5, 14, 6, .22, white); dashes(e.path, .5, 4, 4.01, .18, yellow); dashes(e.path, -.5, 4, 4.01, .18, yellow); dashes(e.path, 8.4, 4, 4.01, .2, white); dashes(e.path, -8.4, 4, 4.01, .2, white); }
-    if (e.type === 'U') dashes(e.path, 0, 12, 6, .2, yellow);
+    if (e.type === 'I') { for (const o of [7.5, -7.5]) dashes(e.path, o, 16, 7, .25, white); dashes(e.path, .6, 4, 4.01, .2, yellow); dashes(e.path, -.6, 4, 4.01, .2, yellow); dashes(e.path, 14.2, 4, 4.01, .25, white); dashes(e.path, -14.2, 4, 4.01, .25, white); }
+    if (e.type === 'U') { dashes(e.path, 0, 12, 6, .22, yellow); dashes(e.path, 8.4, 4, 4.01, .22, white); dashes(e.path, -8.4, 4, 4.01, .22, white); }
   }
   quadMesh(white.pos, white.idx, 0xe9e7e0, true); quadMesh(yellow.pos, yellow.idx, 0xf2c230, true);
 }
@@ -654,22 +666,22 @@ const nearCity = (x, z, r) => NODE_LIST.some(n => Math.hypot(x - n.x, z - n.z) <
     const x = R(-1300, 3300), z = R(Z0, Z1), lon = lonOf(x);
     const dens = lon > -88 ? .75 : lon > -95 ? .35 : .08;
     if (srnd() > dens || isOcean(x, z) || mountain(x, z) > .6 || nearCity(x, z, 55)) continue;
-    const r = nearestRoad(x, z, 14); if (r) continue;
+    const r = nearestRoad(x, z, 22); if (r) continue;
     if (polyDist(riverPath, x, z) < 16) continue;
     const s = R(.8, 1.5); trees.push({x, z, y: 3.5 * s, sx: s, sy: s, c: srnd() < .5 ? 0x24452a : 0x2f5530});
   }
   for (let k = 0; k < 4000 && cacti.length < 900; k++) {
-    const x = R(-3350, -1000), z = R(-300, Z1); if (lonOf(x) > -102 || isWater(x, z) || nearCity(x, z, 45) || nearestRoad(x, z, 10)) continue;
+    const x = R(-3350, -1000), z = R(-300, Z1); if (lonOf(x) > -102 || isWater(x, z) || nearCity(x, z, 45) || nearestRoad(x, z, 18)) continue;
     const s = R(.7, 1.4); cacti.push({x, z, y: 2 * s, sx: s, sy: s, c: 0x4a7a3e});
   }
   for (let k = 0; k < 2500 && rocks.length < 700; k++) {
-    const x = R(-3350, -200), z = R(Z0, Z1); if (isWater(x, z) || nearCity(x, z, 40) || nearestRoad(x, z, 10)) continue;
+    const x = R(-3350, -200), z = R(Z0, Z1); if (isWater(x, z) || nearCity(x, z, 40) || nearestRoad(x, z, 18)) continue;
     const s = R(1, 3.5); rocks.push({x, z, y: s * .4, sx: s, sy: s * .7, r: R(0, 6), c: srnd() < .5 ? 0x8a7563 : 0x9c6040});
   }
   for (let k = 0; k < 9000 && mtns.length < 520; k++) {
     const x = R(X0 + 200, X1 - 200), z = R(Z0, Z1), m = mountain(x, z); if (m < .42 || isWater(x, z)) continue;
     const rad = 14 + m * 30 * R(.7, 1.2), h = rad * R(.7, 1.25);
-    const rd = nearestRoad(x, z, rad + 12); if (rd) continue;
+    const rd = nearestRoad(x, z, rad + 18); if (rd) continue;
     mtns.push({x, z, y: h / 2, sx: rad, sy: h, r: R(0, 6), c: srnd() < .5 ? 0x6f6155 : 0x7d6b58});
     if (h > 34) snow.push({x, z, y: h - h * .16, sx: rad * .33, sy: h * .33, r: R(0, 6), c: 0xeeeef2});
   }
@@ -685,7 +697,7 @@ const nearCity = (x, z, r) => NODE_LIST.some(n => Math.hypot(x - n.x, z - n.z) <
     const big = ['chi','phi','dal','den','stl','lv','phx','pit','kc','dc'].includes(n.id), cnt = big ? 46 : 24;
     for (let k = 0; k < cnt * 3 && blds.filter(b => b.n === n).length < cnt; k++) {
       const a = R(0, 6.28), r = R(9, big ? 50 : 36), x = n.x + Math.cos(a) * r, z = n.z + Math.sin(a) * r;
-      if (isWater(x, z) || nearestRoad(x, z, 9)) continue;
+      if (isWater(x, z) || nearestRoad(x, z, 17)) continue;
       const w = R(4, 9), h = R(3, big ? (r < 25 ? 34 : 16) : 12);
       blds.push({n, x, z, y: h / 2, sx: w, sy: h, sz: R(4, 9), r: R(0, 1.5), c: pick2(pal)});
     }
@@ -784,7 +796,7 @@ for (const e of EDGES) {
   }
   let k = 0;
   for (let s = R(200, 400); s < e.path.len - 60; s += R(380, 560), k++) {
-    const p = e.path.at(s), lane = (srnd() < .5 ? -1 : 1) * (e.type === 'I' ? R(2, 7) : R(0, 3));
+    const p = e.path.at(s), lane = (srnd() < .5 ? -1 : 1) * (e.type === 'I' ? R(2, 12) : R(0, 6));
     PICKUPS.push({x: p.x - p.tz * lane, z: p.z + p.tx * lane, kind: ['fuel', 'ammo', 'fuel', 'nitro'][k % 4], got: false, mesh: null});
   }
 }
@@ -797,7 +809,7 @@ for (const e of EDGES) {
   if (nearCity(p.x, p.z, 90)) continue;
   const grp = new THREE.Group();
   const bar = new THREE.Mesh(new THREE.BoxGeometry(.8, 1.3, e.w + 2), new THREE.MeshLambertMaterial({color: 0xf07a1a})); bar.position.y = .65; bar.castShadow = true; grp.add(bar);
-  for (let i = -2; i <= 2; i++) { const st = new THREE.Mesh(new THREE.BoxGeometry(.84, .3, 1.6), new THREE.MeshBasicMaterial({color: 0xf4f2ea})); st.position.set(0, .8, i * 4); grp.add(st); }
+  for (let i = -3; i <= 3; i++) { const st = new THREE.Mesh(new THREE.BoxGeometry(.84, .3, 1.6), new THREE.MeshBasicMaterial({color: 0xf4f2ea})); st.position.set(0, .8, i * 4); grp.add(st); }
   for (const side of [-1, 1]) { const c = makeCar('cop', 0x15171c, {cop: true}); scene.remove(c); c.position.set(-3.5, 0, side * e.w / 4); c.rotation.y = Math.PI / 2; grp.add(c); grp['cop' + side] = c; }
   grp.position.set(p.x, 0, p.z); grp.rotation.y = -hd; scene.add(grp);
   BLOCKS.push({e, x: p.x, z: p.z, hd, w: e.w + 2, hp: 14, dead: false, warned: false, mesh: grp});
@@ -851,6 +863,7 @@ function updateParts(dt) {
 }
 function explosion(x, z, big) {
   const k = big ? 1.6 : 1;
+  if (G && G.player && Math.hypot(x - G.x, z - G.z) < 260) sfx('boom');
   puff(x, 2, z, {life: .35, size: 6 * k, grow: 30 * k, color: 0xffd27a, add: true});
   for (let i = 0; i < (big ? 14 : 8); i++) puff(x + rand(-2, 2), 1.5, z + rand(-2, 2), {life: rand(.5, .9), size: 3 * k, grow: 8, color: 0xff7a2a, add: true, vx: rand(-12, 12), vy: rand(4, 14), vz: rand(-12, 12)});
   for (let i = 0; i < (big ? 10 : 6); i++) puff(x + rand(-3, 3), 2.5, z + rand(-3, 3), {life: rand(1.2, 2), size: 3 * k, grow: 4, color: 0x3a3632, op: .5, vy: rand(4, 8)});
@@ -873,7 +886,11 @@ const OILS = [];
 for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(oilGeo, oilMat); m.position.y = .22; m.visible = false; scene.add(m); OILS.push({m, life: 0}); }
 
 /* ================= GAME STATE ================= */
-let view = 'fp';
+const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
+const settings = Object.assign({autoGas: isTouch, assist: 'weak', retro: true, sound: true}, (() => { try { return JSON.parse(localStorage.getItem('cannonball-settings') || '{}'); } catch (e) { return {}; } })());
+function saveSettings() { try { localStorage.setItem('cannonball-settings', JSON.stringify(settings)); } catch (e) {} }
+let view = (() => { try { return localStorage.getItem('cannonball-view') || 'cockpit'; } catch (e) { return 'cockpit'; } })();
+if (!['cockpit', 'chase', 'top'].includes(view)) view = 'cockpit';
 let G = null, sel = 1, planNodes = ['dar'], planHist = [], planCtx = 'pre', now = 0;
 const keys = {left: false, right: false, up: false, down: false, brake: false, fire: false};
 let joyVec = null;
@@ -891,8 +908,9 @@ function newRace(carIdx, nodes) {
   for (const z of [-.95, .95]) { const g = new THREE.Mesh(new THREE.BoxGeometry(.5, .12, .12), new THREE.MeshBasicMaterial({color: 0x222222})); g.position.set(3.15, .2, z); hood.add(g); }
   scene.add(hood);
   const player = makeCar('player' + carIdx, car.color, {stripe: car.stripe, van: car.van, side: car.side});
+  setupCockpitFor(car);
   G = {
-    mode: 'count', countT: 3.2, car, carIdx, player, hood, x: start.x, z: start.z, hd, v: 0,
+    mode: 'count', countT: 3.2, car, carIdx, player, hood, x: start.x, z: start.z, hd, v: 0, vx: 0, vz: 0, steerS: 0, slip: 0, accel: 0,
     fuel: car.tank, nitro: car.nitro, nitroT: 0, inv: 0, stopT: 0, fuelStop: false, shake: 0,
     hours: 0, tickets: 0, crashes: 0, escapes: 0, hits: 0, refuelCd: {}, route, rIdx: 0, nodes,
     ammo: {mg: 240, missile: 3, rocket: 2, oil: 2}, mgCd: 0, gunSide: 1, spinT: 0, warnT: 0,
@@ -914,7 +932,7 @@ function makeRival(r, i) {
   o.pos = rivalPos(o); return o;
 }
 function rivalPos(r) {
-  const p = r.path.at(Math.max(0, r.s)), t = r.path.types[p.i] || 'I', off = t === 'I' ? 4.5 : t === 'U' ? 2.75 : 0;
+  const p = r.path.at(Math.max(0, r.s)), t = r.path.types[p.i] || 'I', off = t === 'I' ? 7.5 : t === 'U' ? 4.5 : 0;
   return {x: p.x - p.tz * off, z: p.z + p.tx * off, hd: Math.atan2(p.tz, p.tx)};
 }
 function stepRivals(dt) {
@@ -965,7 +983,7 @@ function update(dt) {
   if (G.mode === 'count') {
     const before = Math.ceil(G.countT); G.countT -= dt; const after = Math.ceil(G.countT);
     if (after !== before && after > 0) toast(String(after), '', '', true);
-    if (G.countT <= 0) { G.mode = 'race'; toast('GO!', '目指すは西海岸、レドンドビーチ', 'good', true); cb('ブレイカー19、キャノンボール各車スタート！ 西海岸で会おう。'); }
+    if (G.countT <= 0) { G.mode = 'race'; toast('GO!', settings.autoGas ? '目指すは西海岸、レドンドビーチ' : '↑キーでアクセル。目指すは西海岸', 'good', true); cb('ブレイカー19、キャノンボール各車スタート！ 西海岸で会おう。'); }
     return;
   }
   if (G.mode !== 'race') return;
@@ -981,47 +999,85 @@ function update(dt) {
     G.stopT -= dt; braking = true; want = null;
     if (G.stopT <= 0 && G.fuelStop) { G.fuelStop = false; G.fuel = c.tank * .45; toast('給油完了', '再スタート！', 'good'); }
   }
-  const fp = view === 'fp';
-  let steerIn = 0;
-  if (fp) {
-    want = null;
-    if (G.stopT <= 0) { steerIn = joyVec ? clamp(joyVec.x, -1, 1) : (keys.right ? 1 : 0) - (keys.left ? 1 : 0); if (Math.abs(steerIn) < .15) steerIn = 0; }
+  const relMode = view !== 'top';
+  let steerIn = 0, thrIn = settings.autoGas ? 1 : 0;
+  if (G.stopT <= 0) {
+    if (relMode) {
+      want = null;
+      if (joyVec) {
+        steerIn = clamp(joyVec.x * 1.15, -1, 1);
+        if (!settings.autoGas) thrIn = joyVec.y < -.2 ? clamp(-joyVec.y * 1.4, 0, 1) : 0;
+        if (joyVec.y > .5) braking = true;
+      } else {
+        steerIn = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+        if (!settings.autoGas) thrIn = keys.up ? 1 : 0;
+        if (keys.down) braking = true;
+      }
+      if (Math.abs(steerIn) < .12) steerIn = 0;
+    } else if (!settings.autoGas) thrIn = want != null || keys.up ? 1 : 0;
   }
-  const rd = surf.road || nearestRoad(G.x, G.z, 14);
-  let target = want ?? G.hd;
-  if (rd && rd.d < rd.e.w / 2 + 6 && G.stopT <= 0) {
-    let tang = Math.atan2(rd.tz, rd.tx);
-    if (Math.abs(angDiff(tang, target)) > Math.PI / 2) tang += Math.PI;
-    const diff = angDiff(target, tang);
-    if (want == null) {
-      const dirSign = Math.cos(angDiff(tang, Math.atan2(rd.tz, rd.tx))) > 0 ? 1 : -1;
-      const latDir = rd.lat * dirSign, half = rd.e.w / 2 - 1.6;
-      target = tang + (latDir > half ? -.25 : latDir < -half ? .25 : 0) * 1;
-    } else if (Math.abs(diff) < .75) target = tang + diff * .35;
-  }
-  const d = angDiff(target, G.hd);
-  const turnRate = c.turn * (G.v < 8 ? .9 : 1) * (1 - .25 * G.v / c.top);
+  G.steerS += (steerIn - G.steerS) * Math.min(1, dt * (steerIn ? 4.5 : 7));
+  const rd = surf.road || nearestRoad(G.x, G.z, 22);
+  const vF0 = G.vx * Math.cos(G.hd) + G.vz * Math.sin(G.hd);
+  const drift = relMode && braking && Math.abs(G.steerS) > .35 && vF0 > 22;
+  const spd = clamp(Math.abs(vF0) / 14, .2, 1);
   if (G.spinT > 0) { G.spinT -= dt; G.hd += 7.85 * dt; }
-  else if (steerIn || Math.abs(G.steerS || 0) > .05) {
-    G.steerS = (G.steerS || 0) + (steerIn - (G.steerS || 0)) * Math.min(1, dt * (steerIn ? 3 : 8));
-    G.hd += G.steerS * c.turn * .38 * (1.3 - .5 * G.v / c.top) * dt;
+  else if (relMode) {
+    let yaw = G.steerS * c.turn * .5 * spd * (1 - .4 * Math.min(1, vF0 / c.top)) * (drift ? 1.9 : 1);
+    if (!steerIn && settings.assist !== 'off' && rd && rd.d < rd.e.w / 2 + 6 && G.stopT <= 0) {
+      let tang = Math.atan2(rd.tz, rd.tx); if (Math.abs(angDiff(tang, G.hd)) > Math.PI / 2) tang += Math.PI;
+      const strong = settings.assist === 'strong';
+      let diff = angDiff(tang, G.hd);
+      if (strong || Math.abs(diff) < .5) {
+        if (strong) {
+          const dirSign = Math.cos(angDiff(tang, Math.atan2(rd.tz, rd.tx))) > 0 ? 1 : -1;
+          const latDir = rd.lat * dirSign, half = rd.e.w / 2 - 2;
+          diff += latDir > half ? -.25 : latDir < -half ? .25 : 0;
+        }
+        yaw += clamp(diff, -1, 1) * (strong ? 2.4 : 1.2) * spd;
+      }
+    }
+    G.hd += yaw * dt;
+  } else {
+    let target = want ?? G.hd;
+    if (rd && rd.d < rd.e.w / 2 + 6 && G.stopT <= 0) {
+      let tang = Math.atan2(rd.tz, rd.tx);
+      if (Math.abs(angDiff(tang, target)) > Math.PI / 2) tang += Math.PI;
+      const diff = angDiff(target, tang);
+      if (want == null) {
+        const dirSign = Math.cos(angDiff(tang, Math.atan2(rd.tz, rd.tx))) > 0 ? 1 : -1;
+        const latDir = rd.lat * dirSign, half = rd.e.w / 2 - 2;
+        target = tang + (latDir > half ? -.25 : latDir < -half ? .25 : 0);
+      } else if (Math.abs(diff) < .75) target = tang + diff * .35;
+    }
+    const d = angDiff(target, G.hd), turnRate = c.turn * (1 - .25 * G.v / c.top);
+    G.hd += clamp(d, -turnRate * dt, turnRate * dt);
+    if (want != null && Math.abs(d) > 2.2 && G.v > 14) braking = true;
   }
-  else G.hd += clamp(d, -turnRate * (fp ? .55 : 1) * dt, turnRate * (fp ? .55 : 1) * dt);
-  if (want != null && Math.abs(d) > 2.2 && G.v > 14) braking = true;
-
+  // velocity in the (new) car frame: lateral part = slide
+  const fx = Math.cos(G.hd), fz = Math.sin(G.hd), rx = -fz, rz = fx;
+  let vF = G.vx * fx + G.vz * fz, vR = G.vx * rx + G.vz * rz;
   if (G.nitroT > 0) G.nitroT -= dt;
-  const cap = c.top * (surf.kind === 'road' ? surf.cap : surf.cap || .4) * (G.nitroT > 0 ? 1.3 : 1);
-  const thr = G.fuel > 0 && G.stopT <= 0 && !braking;
-  if (G.v > cap) G.v = Math.max(cap, G.v - (surf.kind === 'road' ? 18 : 55) * dt);
-  else if (thr) G.v = Math.min(cap, G.v + c.acc * (G.nitroT > 0 ? 1.8 : 1) * Math.max(.25, 1 - G.v / (cap + 1)) * dt);
-  else G.v = Math.max(0, G.v - 5 * dt);
-  if (braking) G.v = Math.max(0, G.v - 55 * dt);
+  const cap = c.top * (surf.cap || .4) * (G.nitroT > 0 ? 1.3 : 1);
+  const thr = G.fuel > 0 && G.stopT <= 0 && !braking ? (G.nitroT > 0 ? 1 : thrIn) : 0;
+  if (vF > cap) vF = Math.max(cap, vF - (surf.kind === 'road' ? 18 : 55) * dt);
+  else if (thr > 0) vF = Math.min(cap, vF + c.acc * thr * (G.nitroT > 0 ? 1.8 : 1) * Math.max(.25, 1 - vF / (cap + 1)) * dt);
+  else vF = Math.max(0, vF - 6 * dt);
+  if (braking) vF = Math.max(0, vF - (drift ? 20 : 55) * dt);
+  const grip = drift ? 1.2 : surf.kind !== 'road' ? 3.2 : surf.type === 'D' ? 4.2 : 9;
+  vR *= Math.exp(-grip * dt);
+  G.accel = (vF - G.v) / Math.max(dt, .001); G.v = vF; G.slip = vR; G.drift = drift;
+  G.vx = fx * vF + rx * vR; G.vz = fz * vF + rz * vR;
+  if (Math.abs(vR) > 5 && vF > 10) {
+    G.smokeT = (G.smokeT || 0) - dt;
+    if (G.smokeT <= 0) { G.smokeT = .04; for (const sd of [-1, 1]) puff(G.x - fx * 1.8 + rx * sd, .5, G.z - fz * 1.8 + rz * sd, {life: .9, size: 1.2, grow: 4, color: surf.kind === 'road' && surf.type !== 'D' ? 0xd8d8d8 : 0xb89a70, op: .5, vy: 1.5}); }
+  }
 
-  const nx = G.x + Math.cos(G.hd) * G.v * dt, nz = G.z + Math.sin(G.hd) * G.v * dt;
+  const nx = G.x + G.vx * dt, nz = G.z + G.vz * dt;
   const ns = surface(nx, nz);
   if (ns.kind === 'water' || nx < X0 + 50 || nx > X1 - 50 || nz < Z0 + 30 || nz > Z1 - 30) {
     if (G.v > 12) { toast('進めない！', ns.kind === 'water' ? '川や海は橋（道路）でしか渡れない' : 'マップの端だ', 'bad'); G.shake = .2; }
-    G.v = 0;
+    setSpeed(0);
   } else { G.x = nx; G.z = nz; }
 
   // fuel
@@ -1047,7 +1103,7 @@ function update(dt) {
   for (const p of PICKUPS) {
     if (p.got || Math.abs(p.x - G.x) > 5 || Math.abs(p.z - G.z) > 5) continue;
     if (Math.hypot(p.x - G.x, p.z - G.z) < 4) {
-      p.got = true; p.mesh.visible = false;
+      p.got = true; p.mesh.visible = false; sfx('pickup');
       if (p.kind === 'fuel') { G.fuel = Math.min(c.tank, G.fuel + c.tank * .35); toast('+ ガソリン', '', 'good'); }
       else if (p.kind === 'ammo') {
         G.ammo.mg += 150; const w = pick(['missile', 'missile', 'rocket', 'oil']); G.ammo[w] += w === 'oil' ? 2 : 1;
@@ -1119,13 +1175,13 @@ function fireMG() {
   const b = BULLETS.find(b => b.life <= 0); if (!b) return;
   const ox = Math.cos(G.hd), oz = Math.sin(G.hd), sx = -oz * .8 * G.gunSide, sz = ox * .8 * G.gunSide;
   Object.assign(b, {x: G.x + ox * 2.6 + sx, z: G.z + oz * 2.6 + sz, vx: Math.cos(a) * 240 + ox * G.v, vz: Math.sin(a) * 240 + oz * G.v, life: .65});
-  b.m.visible = true;
+  b.m.visible = true; sfx('shot');
   puff(b.x + ox, .9, b.z + oz, {life: .06, size: 1.4, color: 0xffd27a, add: true});
 }
 function launch(kind, owner, x, z, hd, target) {
   const m = MISSILES.slice(owner === 'player' ? 0 : 10, owner === 'player' ? 10 : 14).find(m => m.life <= 0); if (!m) return false;
   Object.assign(m, {kind, owner, x, z, hd, target, life: kind === 'rocket' ? 2.6 : 4, speed: kind === 'rocket' ? 150 : owner === 'player' ? 120 : 84, trailT: 0});
-  m.m.visible = true; m.m.scale.setScalar(kind === 'rocket' ? 1.5 : 1);
+  m.m.visible = true; m.m.scale.setScalar(kind === 'rocket' ? 1.5 : 1); sfx('launch');
   return true;
 }
 function useWeapon(w) {
@@ -1175,7 +1231,7 @@ function updateWeapons(dt) {
     if (m.owner === 'rival') {
       if (Math.hypot(G.x - m.x, G.z - m.z) < 2.8) {
         hit = true;
-        if (G.inv <= 0) { G.v = Math.min(G.v, 8); G.spinT = .8; G.inv = 1.6; penalty(.1); toast('被弾！', 'ミサイルを食らった（+6分）', 'bad'); flashHit(); }
+        if (G.inv <= 0) { setSpeed(Math.min(G.v, 8)); G.spinT = .8; G.inv = 1.6; penalty(.1); toast('被弾！', 'ミサイルを食らった（+6分）', 'bad'); flashHit(); }
       }
     } else for (const tg of tl) if (Math.hypot(tg.x - m.x, tg.z - m.z) < tg.rad + .5) { hit = true; break; }
     if (hit || m.life <= 0 || isOcean(m.x, m.z)) {
@@ -1217,13 +1273,17 @@ function updateWeapons(dt) {
     if (!b.warned && dist < 380) { b.warned = true; cb(`ブレイカー19！ この先の${b.e.name}に検問だ！ ロケット砲でぶち抜くか、脇道へ回れ！`); }
     const al = dx * Math.cos(b.hd) + dz * Math.sin(b.hd), la = -dx * Math.sin(b.hd) + dz * Math.cos(b.hd);
     if (Math.abs(al) < 2.4 && Math.abs(la) < b.w / 2 && G.inv <= 0) {
-      G.v = 0; G.inv = 1.5; G.shake = .5; G.crashes++; penalty(.25);
+      setSpeed(0); G.inv = 1.5; G.shake = .5; G.crashes++; penalty(.25);
       G.x -= Math.cos(G.hd) * 4; G.z -= Math.sin(G.hd) * 4;
       toast('検問に突っ込んだ！', '+15分。ロケット砲で壊すか、道を外れて回り込め', 'bad'); flashHit();
     }
   }
 }
 function flashHit() { const el = $('#hitflash'); el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 60); }
+function setSpeed(v) {
+  const r = G.v > .01 ? v / G.v : 0;
+  G.vx *= r; G.vz *= r; G.v = v; if (v === 0) { G.vx = 0; G.vz = 0; }
+}
 function useNitro() {
   if (G && G.mode === 'race' && G.nitro > 0 && G.nitroT <= 0 && G.stopT <= 0) { G.nitro--; G.nitroT = 3; toast('NITRO!', '', 'good'); }
 }
@@ -1237,8 +1297,8 @@ function updateTraffic(dt) {
       const q = nearestRoad(G.x + Math.cos(a) * r, G.z + Math.sin(a) * r, 40);
       if (q && q.e.type !== 'D') {
         const dir = Math.random() < .5 ? 1 : -1;
-        const off = q.e.type === 'I' ? pick([2.5, 6.4]) : 2.75;
-        if (!TRAFFIC.some(t => t.active && t.e === q.e && t.dir === dir && t.off === off && Math.abs(t.s - q.s) < 25)) {
+        const off = q.e.type === 'I' ? pick([3.8, 11]) : 4.5;
+        if (!TRAFFIC.some(t => t.active && t.e === q.e && t.dir === dir && t.off === off && Math.abs(t.s - q.s) < 30)) {
           Object.assign(free, {active: true, e: q.e, s: q.s, dir, off, speed: free.truck ? rand(17, 22) : rand(19, 28), hp: free.truck ? 6 : 3, wreck: false, smokeT: 0});
           free.m.rotation.z = 0;
           free.m.visible = true;
@@ -1264,8 +1324,10 @@ function updateTraffic(dt) {
     if (G.inv <= 0) {
       const dx = G.x - t.x, dz = G.z - t.z, al = dx * Math.cos(t.hd) + dz * Math.sin(t.hd), la = -dx * Math.sin(t.hd) + dz * Math.cos(t.hd);
       if (Math.abs(al) < (t.m.L + 4.6) / 2 * .85 && Math.abs(la) < (t.m.W + 2.2) / 2 * .85) {
-        G.v = Math.min(G.v * .35, 14); G.inv = 1.3; G.shake = .4; G.crashes++; penalty(.05);
-        t.s += t.dir * 5; G.x += dx / (Math.hypot(dx, dz) || 1) * 2; G.z += dz / (Math.hypot(dx, dz) || 1) * 2;
+        const dl = Math.hypot(dx, dz) || 1;
+        setSpeed(G.v * .55); G.inv = 1; G.shake = .35; G.crashes++; penalty(.03);
+        G.vx += dx / dl * 9; G.vz += dz / dl * 9;
+        t.s += t.dir * 6; G.x += dx / dl * 1.5; G.z += dz / dl * 1.5; sfx('crash');
         toast('クラッシュ！', '', 'bad'); cb(pick(CRASH_LINES));
       }
     }
@@ -1315,6 +1377,196 @@ function updateCops(dt) {
   }
 }
 
+/* ================= COCKPIT ================= */
+scene.add(camera);
+let frameNo = 0;
+const cockpit = new THREE.Group(); camera.add(cockpit); cockpit.visible = false;
+const ckMat = c => new THREE.MeshLambertMaterial({color: c, emissive: 0x15151a});
+const ckBasic = c => new THREE.MeshBasicMaterial({color: c});
+function ckBox(w, h, d, x, y, z, mat, parent = cockpit) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; }
+function canvasPlane(w, h, cw, ch, x, y, z) {
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const tex = new THREE.CanvasTexture(c); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearFilter;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map: tex, transparent: true}));
+  m.position.set(x, y, z); cockpit.add(m); return {m, c, g: c.getContext('2d'), tex};
+}
+const CK = {};
+{
+  const dark = ckMat(0x242428), darker = ckMat(0x18181b), trim = ckMat(0x34343a);
+  CK.hood = ckBox(2.3, .14, 2.6, .42, -.86, -2.85, ckMat(0x1c1c20));
+  CK.stripe = ckBox(.5, .02, 2.6, .42, -.78, -2.85, ckMat(0xd4a72c));
+  ckBox(3.0, .55, .8, .42, -.82, -1.08, dark);
+  const top = ckBox(3.0, .06, .6, .42, -.53, -1.22, darker); top.rotation.x = .1;
+  ckBox(.9, .14, .3, 0, -.5, -.95, darker);
+  for (const [x, rz] of [[-1.0, -.55], [1.84, .55]]) {
+    const pil = ckBox(.13, 1.9, .14, x, .1, -1.32, darker); pil.rotation.z = rz; pil.rotation.x = -.3;
+    if (x < 0) {
+      CK.leds = [];
+      for (let i = 0; i < 10; i++) CK.leds.push(ckBox(.026, .036, .02, .075, -.4 + i * .05, .075, ckBasic(0x113322), pil));
+      ckBox(.05, .56, .015, .075, -.17, .068, ckBasic(0x0d1a12), pil);
+    }
+  }
+  ckBox(3.1, .32, 1.5, .42, .8, -.62, darker);
+  ckBox(3.0, .22, .2, .42, .62, -1.45, darker);
+  // rear-view mirror
+  ckBox(.46, .15, .04, .42, .43, -1.2, darker);
+  ckBox(.02, .1, .02, .42, .53, -1.22, darker);
+  CK.mirrorRT = new THREE.WebGLRenderTarget(192, 60, {minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
+  CK.mirrorRT.texture.wrapS = THREE.RepeatWrapping; CK.mirrorRT.texture.repeat.x = -1; CK.mirrorRT.texture.offset.x = 1;
+  const mir = new THREE.Mesh(new THREE.PlaneGeometry(.42, .12), new THREE.MeshBasicMaterial({map: CK.mirrorRT.texture}));
+  mir.position.set(.42, .43, -1.177); cockpit.add(mir);
+  CK.mirrorCam = new THREE.PerspectiveCamera(50, 192 / 60, .5, 500);
+  // steering wheel
+  CK.wheelBase = new THREE.Group(); CK.wheelBase.position.set(0, -.5, -.66); CK.wheelBase.rotation.x = -.38; cockpit.add(CK.wheelBase);
+  CK.wheel = new THREE.Group(); CK.wheelBase.add(CK.wheel);
+  const wm = ckMat(0x2e2e33);
+  CK.wheel.add(new THREE.Mesh(new THREE.TorusGeometry(.22, .03, 6, 22), wm));
+  ckBox(.4, .035, .025, 0, 0, 0, ckMat(0x55555a), CK.wheel); ckBox(.035, .2, .025, 0, -.1, 0, ckMat(0x55555a), CK.wheel);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, .05, 10), ckMat(0x2c2c30)); hub.rotation.x = Math.PI / 2; CK.wheel.add(hub);
+  ckBox(.05, .05, .3, 0, -.06, -.16, trim, CK.wheelBase);
+  // gauges, center display, shifter, nitro bottle
+  CK.gauge = canvasPlane(.5, .17, 288, 98, 0, -.43, -.88);
+  CK.disp = canvasPlane(.17, .075, 128, 56, .36, -.45, -.9);
+  ckBox(.18, .06, .26, .46, -.82, -.55, darker);
+  CK.shift = ckBox(.022, .26, .022, .46, -.68, -.55, ckMat(0x8a8a90)); CK.shift.rotation.x = -.25;
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(.04, 8, 6), ckMat(0x111111)); knob.position.set(.46, -.55, -.58); cockpit.add(knob); CK.knob = knob;
+  CK.bottle = new THREE.Mesh(new THREE.CylinderGeometry(.065, .065, .34, 10), ckMat(0x2f6fe0)); CK.bottle.position.set(.98, -.58, -.62); cockpit.add(CK.bottle);
+  CK.bottleLvl = ckBox(.02, .3, .02, .92, -.58, -.57, ckBasic(0x7fe0ff));
+  // roof gun
+  const gun = new THREE.Group(); gun.position.set(.95, .5, -1.5); cockpit.add(gun);
+  ckBox(.16, .14, .7, 0, 0, 0, ckMat(0x6a4a2c), gun);
+  for (const gx of [-.035, .035]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.1, 8), ckMat(0x8d8f94)); b.rotation.x = Math.PI / 2; b.position.set(gx, .06, -.8); gun.add(b); }
+  CK.flash = new THREE.Sprite(new THREE.SpriteMaterial({map: fxTex, color: 0xffd27a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending}));
+  CK.flash.position.set(0, .06, -1.45); CK.flash.scale.set(.5, .5, 1); CK.flash.visible = false; gun.add(CK.flash);
+}
+function setupCockpitFor(car) {
+  CK.hood.material.color.setHex(car.color === 0x1c1c20 ? 0x202024 : car.color);
+  CK.stripe.visible = !!car.stripe;
+  if (car.side) CK.stripe.visible = false;
+}
+function ordinal(n) { return n + (n === 1 ? 'ST' : n === 2 ? 'ND' : n === 3 ? 'RD' : 'TH'); }
+function gearInfo() {
+  const c = G.car, f = clamp(G.v / c.top, 0, 1.3), bands = [0, .16, .34, .54, .76, 1.0];
+  let g = 1; while (g < 5 && f > bands[g]) g++;
+  const lo = bands[g - 1], hi = bands[g];
+  return {gear: G.v < .5 ? 'N' : String(g), rpm: clamp(.25 + .75 * (f - lo) / (hi - lo), 0, 1.08)};
+}
+function updateCockpit() {
+  CK.wheel.rotation.z = -G.steerS * 2.3;
+  const f = G.fuel / G.car.tank, lit = Math.ceil(f * 10);
+  CK.leds.forEach((m, i) => m.material.color.setHex(i < lit ? (f < .25 ? 0xff3b30 : 0x3cff9a) : 0x112018));
+  CK.bottleLvl.scale.y = Math.max(.05, G.nitro / 5); CK.bottleLvl.position.y = -.73 + .15 * CK.bottleLvl.scale.y;
+  CK.flash.visible = keys.fire && G.ammo.mg > 0 && Math.floor(now * 30) % 2 === 0;
+  if ((frameNo % 3) !== 0) return;
+  const gi = gearInfo();
+  {
+    const {g, c, tex} = CK.gauge; g.clearRect(0, 0, c.width, c.height);
+    g.fillStyle = '#0b0b0d'; g.fillRect(0, 0, c.width, c.height);
+    const dial = (cx, val, max, label, red) => {
+      g.strokeStyle = '#555'; g.lineWidth = 3; g.beginPath(); g.arc(cx, 52, 40, Math.PI * .75, Math.PI * 2.25); g.stroke();
+      g.strokeStyle = '#b02a22'; g.beginPath(); g.arc(cx, 52, 40, Math.PI * (.75 + 1.5 * red), Math.PI * 2.25); g.stroke();
+      g.fillStyle = '#9aa29c'; g.font = '10px DotGothic16, monospace'; g.textAlign = 'center'; g.fillText(label, cx, 84);
+      const a = Math.PI * (.75 + 1.5 * clamp(val / max, 0, 1));
+      g.strokeStyle = '#ff5a2a'; g.lineWidth = 3; g.beginPath(); g.moveTo(cx, 52); g.lineTo(cx + Math.cos(a) * 34, 52 + Math.sin(a) * 34); g.stroke();
+    };
+    dial(52, G.v * MPH, 200, 'MPH', .85); dial(236, gi.rpm * 8, 8.5, 'RPM×1000', .8);
+    g.fillStyle = '#1b2a1f'; g.fillRect(112, 22, 64, 52);
+    g.fillStyle = '#7dffb0'; g.font = '26px DotGothic16, monospace'; g.textAlign = 'center'; g.fillText(Math.round(G.v * MPH), 144, 52);
+    g.font = '14px DotGothic16, monospace'; g.fillStyle = '#f2c230'; g.fillText('GEAR ' + gi.gear, 144, 70);
+    tex.needsUpdate = true;
+  }
+  {
+    const {g, c, tex} = CK.disp; g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#ff8a1e'; g.font = '40px DotGothic16, monospace'; g.textAlign = 'left'; g.fillText(String(G.rank || 1), 8, 44);
+    g.font = '18px DotGothic16, monospace'; g.fillText(ordinal(G.rank || 1).slice(-2), 36, 26); g.fillStyle = '#ffd27a'; g.fillText('/' + (G.rivals.length + 1), 72, 46);
+    tex.needsUpdate = true;
+  }
+  const shiftOff = {N: 0, 1: -.05, 2: .05, 3: -.05, 4: .05, 5: -.05}[gi.gear] || 0;
+  CK.knob.position.z = -.58 + shiftOff; CK.knob.position.x = .46 + ({1: -.04, 2: -.04, 3: 0, 4: 0, 5: .04}[gi.gear] || 0);
+}
+function renderMirror() {
+  const ox = Math.cos(G.hd), oz = Math.sin(G.hd);
+  CK.mirrorCam.position.set(G.x - ox * 1.5, 1.6, G.z - oz * 1.5);
+  CK.mirrorCam.lookAt(G.x - ox * 40, 1, G.z - oz * 40);
+  cockpit.visible = false; arrow.visible = false;
+  renderer.setRenderTarget(CK.mirrorRT); renderer.render(scene, CK.mirrorCam); renderer.setRenderTarget(null);
+  cockpit.visible = true;
+}
+
+/* ================= WEATHER ================= */
+const WX_N = 1600, wxPos = new Float32Array(WX_N * 3);
+for (let i = 0; i < WX_N; i++) { wxPos[i * 3] = rand(-70, 70); wxPos[i * 3 + 1] = rand(0, 40); wxPos[i * 3 + 2] = rand(-70, 70); }
+const wxGeo = new THREE.BufferGeometry(); wxGeo.setAttribute('position', new THREE.BufferAttribute(wxPos, 3));
+const wxMat = new THREE.PointsMaterial({color: 0xffffff, size: .35, transparent: true, opacity: .85, depthWrite: false});
+const weather = new THREE.Points(wxGeo, wxMat); weather.frustumCulled = false; weather.visible = false; scene.add(weather);
+let wxKind = null, wxCheckT = 0, wxLast = performance.now();
+function updateWeather() {
+  const t = performance.now(), dt = Math.min(.05, (t - wxLast) / 1000); wxLast = t;
+  if (!G || G.mode === 'attract' || !G.player) { weather.visible = false; return; }
+  if ((wxCheckT -= dt) <= 0) {
+    wxCheckT = .5;
+    const lon = lonOf(G.x), {h} = dayInfo();
+    const kind = lon < -103.5 && (mountain(G.x, G.z) > .18 || G.z < -150) ? 'snow' : lon > -88 && (h >= 22 || h < 5) ? 'rain' : null;
+    if (kind !== wxKind) {
+      wxKind = kind;
+      if (kind === 'snow') { wxMat.size = .35; wxMat.color.setHex(0xffffff); wxMat.opacity = .85; cb('こちらスノープラウ。峠は雪だ、スリップに気をつけな。'); }
+      if (kind === 'rain') { wxMat.size = .14; wxMat.color.setHex(0x9fb4d8); wxMat.opacity = .6; }
+    }
+  }
+  weather.visible = !!wxKind;
+  if (!wxKind) return;
+  const fall = wxKind === 'snow' ? 7 : 55, drift = wxKind === 'snow' ? Math.sin(now) * 2 : 0;
+  for (let i = 0; i < WX_N; i++) {
+    let y = wxPos[i * 3 + 1] - fall * dt; if (y < 0) y += 40;
+    wxPos[i * 3 + 1] = y; wxPos[i * 3] += drift * dt;
+    if (wxPos[i * 3] > 70) wxPos[i * 3] -= 140; if (wxPos[i * 3] < -70) wxPos[i * 3] += 140;
+  }
+  wxGeo.attributes.position.needsUpdate = true;
+  weather.position.set(G.x, 0, G.z);
+}
+
+/* ================= AUDIO ================= */
+let AC = null, master = null, eng = null, noiseBuf = null, siren = null, skid = null;
+function initAudio() {
+  if (AC || !settings.sound) { if (AC) AC.resume(); return; }
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = .55; master.connect(AC.destination);
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const o1 = AC.createOscillator(), o2 = AC.createOscillator(), lp = AC.createBiquadFilter(), g = AC.createGain();
+    o1.type = 'sawtooth'; o2.type = 'square'; o2.detune.value = -1200 + 8; lp.type = 'lowpass'; lp.frequency.value = 700; g.gain.value = 0;
+    o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(master); o1.start(); o2.start();
+    eng = {o1, o2, lp, g};
+    const so = AC.createOscillator(), sg = AC.createGain(); so.type = 'triangle'; sg.gain.value = 0; so.connect(sg); sg.connect(master); so.start(); siren = {o: so, g: sg};
+    const sk = AC.createBufferSource(); sk.buffer = noiseBuf; sk.loop = true; const sbp = AC.createBiquadFilter(); sbp.type = 'bandpass'; sbp.frequency.value = 1800; sbp.Q.value = 3;
+    const skg = AC.createGain(); skg.gain.value = 0; sk.connect(sbp); sbp.connect(skg); skg.connect(master); sk.start(); skid = {g: skg};
+  } catch (e) { AC = null; }
+}
+function updateAudio() {
+  if (!AC || !eng) return;
+  const on = settings.sound && G && G.player && (G.mode === 'race' || G.mode === 'count');
+  const t = AC.currentTime;
+  if (!on) { eng.g.gain.setTargetAtTime(0, t, .05); siren.g.gain.setTargetAtTime(0, t, .05); skid.g.gain.setTargetAtTime(0, t, .05); return; }
+  const gi = gearInfo(), base = 38 + gi.rpm * 95 + (gi.gear === 'N' ? 0 : +gi.gear * 4);
+  eng.o1.frequency.setTargetAtTime(base, t, .04); eng.o2.frequency.setTargetAtTime(base, t, .04);
+  eng.lp.frequency.setTargetAtTime(350 + gi.rpm * 1500 + (G.nitroT > 0 ? 700 : 0), t, .05);
+  eng.g.gain.setTargetAtTime(.05 + .06 * gi.rpm, t, .05);
+  siren.g.gain.setTargetAtTime(G.chaser ? .05 : 0, t, .1);
+  if (G.chaser) siren.o.frequency.setTargetAtTime(Math.floor(now * 1.6) % 2 ? 960 : 720, t, .05);
+  skid.g.gain.setTargetAtTime(Math.abs(G.slip || 0) > 5 && G.v > 10 ? Math.min(.12, Math.abs(G.slip) * .01) : 0, t, .05);
+}
+function sfx(kind) {
+  if (!AC || !settings.sound || AC.state !== 'running') return;
+  const t = AC.currentTime, src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = noiseBuf; src.connect(f); f.connect(g); g.connect(master);
+  const env = (peak, dur) => { g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(.001, t + dur); src.start(t, Math.random() * .5, dur + .05); };
+  if (kind === 'shot') { f.type = 'highpass'; f.frequency.value = 900; env(.22, .07); }
+  else if (kind === 'boom') { f.type = 'lowpass'; f.frequency.value = 420; env(.9, 1.1); }
+  else if (kind === 'launch') { f.type = 'bandpass'; f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(2400, t + .5); env(.35, .55); }
+  else if (kind === 'crash') { f.type = 'lowpass'; f.frequency.value = 1200; env(.6, .35); }
+  else if (kind === 'pickup') { src.disconnect(); const o = AC.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(660, t); o.frequency.setValueAtTime(990, t + .07); o.connect(g); g.gain.setValueAtTime(.08, t); g.gain.exponentialRampToValueAtTime(.001, t + .18); o.start(t); o.stop(t + .2); }
+}
+
 /* ================= RENDER ================= */
 function dayInfo() {
   const h = (START_CLOCK + (G ? G.hours : 0)) % 24;
@@ -1345,8 +1597,7 @@ function render() {
   }
   for (const b of BLOCKS) if (!b.dead && Math.abs(b.x - fx) < 400 && Math.abs(b.z - fz) < 400) { setCopLights(b.mesh['cop-1'], true, now); setCopLights(b.mesh.cop1, true, now + .06); }
   if (G.player) {
-    const fpv = view === 'fp' && G.mode !== 'attract';
-    G.player.visible = G.mode !== 'attract' && !(G.inv > 0 && Math.floor(now * 12) % 2);
+    G.player.visible = G.mode !== 'attract' && view !== 'cockpit' && !(G.inv > 0 && Math.floor(now * 12) % 2);
     place(G.player, G.x, G.z, G.hd);
     G.hood.visible = false; place(G.hood, G.x, G.z, G.hd); G.hood.position.y = .7;
     halo.visible = G.mode !== 'attract'; halo.position.x = G.x; halo.position.z = G.z;
@@ -1358,9 +1609,22 @@ function render() {
   const zoom = (1 + fv / 80 * .35) * (portrait ? 1.35 : 1) * (G.mode === 'attract' ? 1.3 : 1);
   const lead = Math.min(30, fv * .45);
   const lx = fx + Math.cos(fhd) * lead, lz = fz + Math.sin(fhd) * lead;
-  const fpNow = view === 'fp' && G.mode !== 'attract' && G.player;
-  setCamMode(fpNow);
-  if (fpNow) {
+  const vm = G.mode === 'attract' || !G.player ? 'top' : view;
+  const fpNow = vm !== 'top';
+  setCamMode(vm);
+  cockpit.visible = vm === 'cockpit';
+  if (vm === 'cockpit') {
+    const ox = Math.cos(G.hd), oz = Math.sin(G.hd), side = .42, eyeY = G.car.van ? 1.75 : 1.22;
+    const bob = Math.sin(now * 17) * .006 * Math.min(1, G.v / 30) + (G.surf && G.surf.kind !== 'road' ? Math.sin(now * 31) * .025 : 0);
+    camPos.set(G.x + ox * .1 + oz * side, eyeY + bob, G.z + oz * .1 - ox * side);
+    camera.position.copy(camPos);
+    camera.lookAt(camPos.x + ox * 20, eyeY - .3, camPos.z + oz * 20);
+    camera.rotateZ(clamp(-G.steerS * .035 * Math.min(1, G.v / 30) - G.slip * .004, -.08, .08));
+    camera.rotateX(clamp(-G.accel * .0012, -.03, .03));
+    if (G.shake > 0 && !reduceMotion) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(G.shake * .12));
+    camLook.set(G.x + ox * 45, 0, G.z + oz * 45);
+    updateCockpit();
+  } else if (vm === 'chase') {
     if (G.camHd == null || !camInit) { G.camHd = G.hd; camInit = true; }
     G.camHd += angDiff(G.hd, G.camHd) * Math.min(1, (1 / 60) * 4.5);
     const ox = Math.cos(G.camHd), oz = Math.sin(G.camHd), back = 12 + G.v * .04;
@@ -1368,8 +1632,6 @@ function render() {
     camera.position.copy(camPos);
     if (G.shake > 0 && !reduceMotion) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(G.shake * .8));
     camera.lookAt(camLook);
-    const aim = new THREE.Vector3(G.x + Math.cos(G.hd) * 45, 1, G.z + Math.sin(G.hd) * 45).project(camera);
-    const cr = $('#cross'); cr.style.left = ((aim.x + 1) / 2 * 100) + '%'; cr.style.top = ((1 - aim.y) / 2 * 100) + '%';
     camLook.set(G.x + ox * 45, 0, G.z + oz * 45);
   } else {
     const tp = new THREE.Vector3(lx, 0, lz + 0), cp = new THREE.Vector3(lx, 100 * zoom, lz + 78 * zoom);
@@ -1378,6 +1640,14 @@ function render() {
     camera.position.copy(camPos);
     if (G.shake > 0 && !reduceMotion) camera.position.add(new THREE.Vector3(rand(-1, 1), rand(-1, 1), 0).multiplyScalar(G.shake * 3));
     camera.lookAt(camLook);
+  }
+  if (fpNow) {
+    const fovBase = vm === 'cockpit' ? (portrait ? 84 : 70) : (portrait ? 72 : 58);
+    const fov = fovBase + Math.min(1.2, G.v / G.car.top) * 7 + (G.nitroT > 0 ? 5 : 0);
+    if (Math.abs(camera.fov - fov) > .2) { camera.fov += (fov - camera.fov) * .1; camera.updateProjectionMatrix(); }
+    camera.updateMatrixWorld();
+    const aim = new THREE.Vector3(G.x + Math.cos(G.hd) * 45, 1, G.z + Math.sin(G.hd) * 45).project(camera);
+    const cr = $('#cross'); cr.style.left = ((aim.x + 1) / 2 * 100) + '%'; cr.style.top = ((1 - aim.y) / 2 * 100) + '%';
   }
   sun.position.set(camLook.x + 70, 150, camLook.z + 40); sun.target.position.copy(camLook);
   // headlight
@@ -1394,6 +1664,7 @@ function render() {
   arrow.visible = !!tgt && G.mode === 'race' && !fpNow;
   halo.visible = halo.visible && !fpNow;
   $('#fpLayer').hidden = !(fpNow && (G.mode === 'race' || G.mode === 'count'));
+  $('#vignette').hidden = vm === 'cockpit';
   if (fpNow && tgt) {
     const rel = angDiff(Math.atan2(tgt.z - G.z, tgt.x - G.x), G.hd) * 180 / Math.PI;
     $('#compassArrow').style.transform = `rotate(${rel}deg)`;
@@ -1402,14 +1673,16 @@ function render() {
   if (tgt) { const a = Math.atan2(tgt.z - G.z, tgt.x - G.x); arrow.position.set(G.x + Math.cos(a) * 9, .5, G.z + Math.sin(a) * 9); arrow.rotation.y = -a; }
   const nw = nextWaypoint();
   beacon.visible = !!nw; if (nw) { beacon.position.x = nw.x; beacon.position.z = nw.z; }
+  updateWeather();
+  if (vm === 'cockpit' && (frameNo++ & 1) === 0) renderMirror();
   renderer.render(scene, camera);
 }
 let camFp = null;
-function setCamMode(fp) {
-  if (camFp === fp) return;
-  camFp = fp; camera.fov = fp ? (innerHeight > innerWidth ? 72 : 58) : 38; camera.near = fp ? .5 : 1; camera.updateProjectionMatrix();
-  scene.fog.near = fp ? 160 : 240; scene.fog.far = fp ? 650 : 720; camInit = false;
-  if (G && G.player) G.player.children[0].visible = true;
+function setCamMode(vm) {
+  if (camFp === vm) return;
+  camFp = vm;
+  camera.fov = vm === 'cockpit' ? 70 : vm === 'chase' ? 60 : 38; camera.near = vm === 'cockpit' ? .05 : vm === 'chase' ? .5 : 1; camera.updateProjectionMatrix();
+  scene.fog.near = vm === 'top' ? 240 : 150; scene.fog.far = vm === 'top' ? 720 : 640; camInit = false;
 }
 function nextWaypoint() {
   if (!G || G.mode === 'attract') return null;
@@ -1474,7 +1747,7 @@ function drawMini() {
   const span = 520, s = cw / span, ox = G.x - cw / 2 / s, oz = G.z - ch / 2 / s, big = span * 1.5;
   g.fillStyle = '#222'; g.fillRect(0, 0, cw, ch);
   g.save();
-  if (view === 'fp') { g.translate(cw / 2, ch / 2); g.rotate(-G.hd - Math.PI / 2); g.translate(-cw / 2, -ch / 2); }
+  if (view !== 'top') { g.translate(cw / 2, ch / 2); g.rotate(-G.hd - Math.PI / 2); g.translate(-cw / 2, -ch / 2); }
   const bx = G.x - big / 2, bz = G.z - big / 2;
   g.drawImage(base, (bx - X0) * MAPS, (bz - Z0) * MAPS, big * MAPS, big * MAPS, (bx - ox) * s, (bz - oz) * s, big * s, big * s);
   drawOverlay(g, {ox, oz, s}, .8, {route: G.route, rivals: true, cops: true, player: true, cities: false});
@@ -1531,10 +1804,40 @@ $('#recBtn').addEventListener('click', recommend);
 $('#undoBtn').addEventListener('click', () => { if (planHist.length) { planNodes = planNodes.slice(0, planHist.pop()); drawBig(); } });
 $('#clearBtn').addEventListener('click', () => { planNodes = [planNodes[0]]; planHist = []; drawBig(); });
 $('#goBtn').addEventListener('click', () => {
+  initAudio();
   if (planCtx === 'pre') { newRace(sel, planNodes); showScreen(null); $('#hud').hidden = false; buildPips(); camInit = false; }
   else { G.route = buildRoute(planNodes); G.rIdx = 0; G.mode = 'race'; showScreen(null); }
 });
 addEventListener('resize', () => { if (!$('#planScreen').hidden) drawBig(); });
+
+/* ================= SETTINGS ================= */
+const SET_DEF = [
+  ['autoGas', 'アクセル', [[false, '手動'], [true, '自動']]],
+  ['assist', 'ハンドル補助', [['off', 'なし'], ['weak', '弱'], ['strong', '強']]],
+  ['retro', '画質', [[true, 'レトロ'], [false, '高画質']]],
+  ['sound', '音', [[true, 'ON'], [false, 'OFF']]],
+];
+function renderSettings() {
+  document.querySelectorAll('[data-settings]').forEach((box, bi) => {
+    box.innerHTML = '';
+    for (const [key, label, opts] of SET_DEF) {
+      const b = document.createElement('button'); b.className = 'set-btn'; b.id = `set-${key}-${bi}`;
+      const cur = opts.find(o => o[0] === settings[key]) || opts[0];
+      b.innerHTML = `${label}：<b>${cur[1]}</b>`;
+      b.addEventListener('click', () => {
+        const i = opts.findIndex(o => o[0] === settings[key]); settings[key] = opts[(i + 1) % opts.length][0];
+        saveSettings(); applySettings(); renderSettings();
+      });
+      box.appendChild(b);
+    }
+  });
+}
+function applySettings() {
+  renderer.setPixelRatio(settings.retro ? .42 : Math.min(window.devicePixelRatio || 1, 1.75));
+  canvas.classList.toggle('retro', settings.retro);
+  resize();
+  if (!settings.sound && AC) AC.suspend(); else if (settings.sound && AC) AC.resume();
+}
 
 /* ================= SCREENS ================= */
 function showScreen(id) {
@@ -1612,12 +1915,22 @@ function hud(dt) {
   const myD = distToGoal(G.x, G.z);
   const pos = G.rivals.filter(r => r.fin != null || distToGoal(r.path.at(Math.max(0, r.s)).x, r.path.at(Math.max(0, r.s)).z) < myD).length + 1;
   $('#pos').innerHTML = `${pos}<small>/${G.rivals.length + 1}</small>`;
+  G.rank = pos;
+  {
+    const all = G.rivals.map(r => ({name: r.name, d: r.fin != null ? -1e6 + r.fin : distToGoal(r.pos ? r.pos.x : 0, r.pos ? r.pos.z : 0)}));
+    all.push({name: 'YOU', d: myD, me: true}); all.sort((a, b) => a.d - b.d);
+    const mi = all.findIndex(e => e.me), show = new Set([0, mi - 1, mi, mi + 1].filter(i => i >= 0 && i < all.length));
+    let html = '', last = -1;
+    for (const i of [...show].sort((a, b) => a - b)) { if (i - last > 1) html += '<div class="gap">-----</div>'; html += `<div class="${all[i].me ? 'me' : ''}">${i + 1}. ${all[i].name}</div>`; last = i; }
+    html += `<div class="lap">${Math.round(myD * MI).toLocaleString()} mi</div>`;
+    $('#standings').innerHTML = html;
+  }
   const f = G.fuel / G.car.tank, fb = $('#fuelBar'); fb.style.width = f * 100 + '%'; fb.className = f < .2 ? 'low' : '';
   [...$('#pips').children].forEach((p, i) => p.className = 'pip' + (i < G.nitro ? ' on' : ''));
   $('#tickets').textContent = `切符${G.tickets}`;
   $('#cMg').textContent = G.ammo.mg; $('#cMs').textContent = G.ammo.missile; $('#cRk').textContent = G.ammo.rocket; $('#cOil').textContent = G.ammo.oil;
   for (const [id, w] of [['#cMg', 'mg'], ['#cMs', 'missile'], ['#cRk', 'rocket'], ['#cOil', 'oil']]) $(id).parentElement.classList.toggle('empty', G.ammo[w] <= 0);
-  $('#hint').innerHTML = view === 'fp' ? '左右に <b>ドラッグ</b> / <b>←→</b> でハンドル　<b>F</b> 機関銃　<b>R</b> ミサイル　<b>E</b> ロケット　<b>Q</b> オイル　<b>V</b> 視点' : '行きたい方向へ <b>ドラッグ</b> / <b>矢印キー</b>　<b>F</b> 機関銃　<b>R</b> ミサイル　<b>E</b> ロケット　<b>Q</b> オイル　<b>V</b> 視点';
+  $('#hint').innerHTML = view !== 'top' ? (settings.autoGas ? '' : '<b>↑</b> アクセル　') + '左右に <b>ドラッグ</b> / <b>←→</b> でハンドル　<b>Space</b>+ハンドルでドリフト　<b>F</b> 機関銃　<b>R</b> ミサイル　<b>E</b> ロケット　<b>Q</b> オイル　<b>V</b> 視点' : '行きたい方向へ <b>ドラッグ</b> / <b>矢印キー</b>　<b>F</b> 機関銃　<b>R</b> ミサイル　<b>E</b> ロケット　<b>Q</b> オイル　<b>V</b> 視点';
   $('#radar').hidden = !COPS.some(k => k.state === 'park' && Math.hypot(k.x - G.x, k.z - G.z) < 170) && !G.chaser;
   $('#radar').textContent = G.warnT > 0 ? 'MISSILE' : G.chaser ? 'PURSUIT' : 'RADAR';
   if (G.warnT > 0) $('#radar').hidden = false;
@@ -1640,7 +1953,7 @@ const KEYMAP = {ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'rig
 const racing = () => G && G.mode === 'race';
 addEventListener('keydown', e => {
   const k = KEYMAP[e.code];
-  if (k && racing()) { keys[k] = true; e.preventDefault(); }
+  if (k && G && (G.mode === 'race' || G.mode === 'count')) { keys[k] = true; e.preventDefault(); }
   if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyN') && racing()) useNitro();
   if ((e.code === 'KeyF' || e.code === 'KeyJ') && racing()) { keys.fire = true; e.preventDefault(); }
   if (!e.repeat && racing()) { const w = {KeyR: 'missile', KeyE: 'rocket', KeyQ: 'oil'}[e.code]; if (w) useWeapon(w); }
@@ -1649,7 +1962,11 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyP' || e.code === 'Escape') { if (G && G.mode === 'map') $('#goBtn').click(); else setPaused(racing()); }
 });
 addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) keys[k] = false; if (e.code === 'KeyF' || e.code === 'KeyJ') keys.fire = false; });
-function toggleView() { view = view === 'fp' ? 'top' : 'fp'; toast(view === 'fp' ? '後方視点' : '見下ろし視点', view === 'fp' ? '左右でハンドル' : '行きたい方向を指す', ''); }
+function toggleView() {
+  view = {cockpit: 'chase', chase: 'top', top: 'cockpit'}[view];
+  try { localStorage.setItem('cannonball-view', view); } catch (e) {}
+  toast({cockpit: '運転席視点', chase: '後方視点', top: '見下ろし視点'}[view], view === 'top' ? '行きたい方向を指す' : '左右でハンドル', '');
+}
 $('#viewBtn').addEventListener('click', toggleView);
 for (const b of document.querySelectorAll('.hb[data-w]')) b.addEventListener('pointerdown', e => { e.preventDefault(); useWeapon(b.dataset.w); });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; joyVec = null; $('#joy').hidden = true; setPaused(true); });
@@ -1680,7 +1997,7 @@ for (const b of document.querySelectorAll('.hb[data-k]')) {
 $('#mapBtn').addEventListener('click', () => { if (racing()) openPlan('race'); });
 $('#mini').addEventListener('click', () => { if (racing()) openPlan('race'); });
 $('#pauseBtn').addEventListener('click', () => setPaused(true));
-$('#toPlanBtn').addEventListener('click', () => openPlan('pre'));
+$('#toPlanBtn').addEventListener('click', () => { initAudio(); openPlan('pre'); });
 $('#againBtn').addEventListener('click', () => openPlan('pre'));
 $('#changeBtn').addEventListener('click', toTitle);
 $('#resumeBtn').addEventListener('click', () => setPaused(false));
@@ -1690,11 +2007,11 @@ $('#quitBtn').addEventListener('click', toTitle);
 let last = performance.now();
 function frame(t) {
   const dt = Math.min(.05, (t - last) / 1000); last = t; now = t / 1000;
-  update(dt); if (G && G.mode !== 'paused' && G.mode !== 'map') updateParts(dt); render(); hud(dt);
+  update(dt); if (G && G.mode !== 'paused' && G.mode !== 'map') updateParts(dt); render(); hud(dt); updateAudio();
   if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) $('#toast').classList.remove('show'); }
   requestAnimationFrame(frame);
 }
-resize(); buildCars(); toTitle(); $('#loading').hidden = true;
+resize(); buildCars(); renderSettings(); applySettings(); toTitle(); $('#loading').hidden = true;
 requestAnimationFrame(frame);
 })();
 </script>
